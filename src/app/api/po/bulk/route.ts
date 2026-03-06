@@ -63,9 +63,16 @@ export async function POST(req: Request) {
 
     // Pre-fetch UnitProduksi map + ensure placeholder exists
     const units = await prisma.unitProduksi.findMany();
-    const unitMap = new Map(units.map((u) => [u.siteArea.toLowerCase(), u]));
+    const unitMap = new Map(
+      units.map((u: { siteArea: string; idRegional: string }) => [
+        (u.siteArea || "").toLowerCase(),
+        u,
+      ]),
+    );
     // Ensure fallback placeholder (idRegional: 'UNKNOWN')
-    let fallbackUnit = units.find((u) => u.idRegional === "UNKNOWN");
+    let fallbackUnit = units.find(
+      (u: { idRegional: string }) => u.idRegional === "UNKNOWN",
+    );
     if (!fallbackUnit) {
       try {
         fallbackUnit = await prisma.unitProduksi.create({
