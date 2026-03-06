@@ -10,9 +10,11 @@ import prisma from "@/lib/db";
 export async function GET() {
   try {
     const result = await prisma.$queryRaw<
-      { table_name: string }[]
+      Array<{ table_name: string }>
     >`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`;
-    return NextResponse.json({ tables: result.map((r) => r.table_name) });
+    return NextResponse.json({
+      tables: result.map((r: { table_name: string }) => r.table_name),
+    });
   } catch (error) {
     console.error("GET /api/debug/tables error:", error);
     return NextResponse.json(
