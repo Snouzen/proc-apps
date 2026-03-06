@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../server/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id            String          @id
+  name          String          @unique
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  satuanKg      Float           @default(1)
+  PurchaseOrderItems PurchaseOrderItem[]
+}
+
+model PurchaseOrder {
+  id             String       @id
+  ritelId        String
+  unitProduksiId String
+  noPo           String       @unique
+  tglPo          DateTime
+  expiredTgl     DateTime?
+  linkPo         String?
+  noInvoice      String?
+  tujuanDetail   String?
+  regional       String?
+  statusKirim    Boolean      @default(false)
+  statusSdif     Boolean      @default(false)
+  statusPo       Boolean      @default(false)
+  statusFp       Boolean      @default(false)
+  statusKwi      Boolean      @default(false)
+  statusInv      Boolean      @default(false)
+  statusTagih    Boolean      @default(false)
+  statusBayar    Boolean      @default(false)
+  remarks        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime
+  RitelModern    RitelModern  @relation(fields: [ritelId], references: [id])
+  UnitProduksi   UnitProduksi @relation(fields: [unitProduksiId], references: [idRegional])
+  Items          PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id             String        @id
+  purchaseOrderId String
+  productId      String
+  pcs            Int
+  pcsKirim       Int
+  hargaKg        Float
+  hargaPcs       Float
+  nominal        Float
+  rpTagih        Float
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  PurchaseOrder  PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  Product        Product       @relation(fields: [productId], references: [id])
+}
+
+model RitelModern {
+  id            String          @id
+  namaPt        String
+  inisial       String?
+  tujuan        String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  PurchaseOrder PurchaseOrder[]
+
+  @@map("ritel_modern")
+}
+
+model UnitProduksi {
+  idRegional    String          @id @default(cuid())
+  namaRegional  String
+  siteArea      String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  PurchaseOrder PurchaseOrder[]
+}
