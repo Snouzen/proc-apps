@@ -220,14 +220,14 @@ export default function CompanyDetail() {
           {
             ...base,
             "Nama Produk": "",
-            kg: "",
-            pcs: "",
-            "harga per kg": "",
-            "harga per pcs": "",
-            nominal: "",
+            kg: 0,
+            pcs: 0,
+            "harga per kg": 0,
+            "harga per pcs": 0,
+            nominal: 0,
             kirim: fmtBool(r.statusKirim),
-            "pcs kirim": "",
-            "rp tagih": "",
+            "pcs kirim": 0,
+            "rp tagih": 0,
           },
         ];
       }

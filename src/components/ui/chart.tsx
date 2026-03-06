@@ -1,5 +1,5 @@
 import React from "react";
-import { Tooltip, TooltipProps, ResponsiveContainer } from "recharts";
+import { Tooltip, ResponsiveContainer } from "recharts";
 
 export type ChartConfig = Record<
   string,
@@ -58,7 +58,7 @@ export function ChartTooltip({
 }) {
   // Wrap recharts Tooltip to use our content; payload will be handled by recharts
   return (
-    <Tooltip cursor={cursor} content={content as TooltipProps["content"]} />
+    <Tooltip cursor={cursor} content={content as any} />
   );
 }
 

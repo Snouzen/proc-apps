@@ -14,7 +14,9 @@ export async function POST(request: Request) {
         where: { noPo: { in: list.map((s: any) => String(s)) } },
         select: { noPo: true },
       });
-      return NextResponse.json({ exists: rows.map((r) => r.noPo) });
+      return NextResponse.json({
+        exists: rows.map((r: { noPo: string }) => r.noPo),
+      });
     } catch (e: any) {
       // Fallback raw SQL if Prisma client shape mismatches
       const sql = `SELECT "noPo" FROM "PurchaseOrder" WHERE "noPo" = ANY($1::text[])`;
@@ -22,7 +24,9 @@ export async function POST(request: Request) {
         sql,
         list,
       )) as any;
-      return NextResponse.json({ exists: rows.map((r) => r.noPo) });
+      return NextResponse.json({
+        exists: rows.map((r: { noPo: string }) => r.noPo),
+      });
     }
   } catch (error) {
     const message =
@@ -30,4 +34,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

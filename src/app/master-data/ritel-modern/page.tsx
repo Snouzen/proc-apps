@@ -260,7 +260,7 @@ export default function RitelModernPage() {
     const payload = {
       namaPt: selectedCompany,
       inisial: inisial,
-      tujuan: storeName,
+      tujuan: newStoreName,
     };
 
     try {
@@ -270,7 +270,7 @@ export default function RitelModernPage() {
         alert("Data Berhasil disimpan!");
         setIsModalOpen(false);
         setSelectedCompany("");
-        setStoreName("");
+        setNewStoreName("");
 
         window.location.reload();
       }
@@ -853,7 +853,11 @@ export default function RitelModernPage() {
                               {alias || "—"}
                             </span>
                             <span className="text-xs text-slate-500">
-                              {stores.length} toko
+                              {
+                                (stores as { id: string; tujuan: string }[])
+                                  .length
+                              }{" "}
+                              toko
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -864,7 +868,10 @@ export default function RitelModernPage() {
                                   setViewCompany({
                                     namaPt: viewAliases.namaPt,
                                     inisial: alias,
-                                    stores: stores as any,
+                                    stores: stores as {
+                                      id: string;
+                                      tujuan: string;
+                                    }[],
                                   });
                                 }, 0);
                               }}

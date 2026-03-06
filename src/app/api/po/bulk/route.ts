@@ -62,17 +62,18 @@ export async function POST(req: Request) {
     }
 
     // Pre-fetch UnitProduksi map + ensure placeholder exists
-    const units = await prisma.unitProduksi.findMany();
-    const unitMap = new Map(
-      units.map((u: { siteArea: string; idRegional: string }) => [
-        (u.siteArea || "").toLowerCase(),
-        u,
-      ]),
+    type UnitLite = {
+      siteArea: string;
+      idRegional: string;
+      namaRegional?: string;
+    };
+    const units =
+      (await prisma.unitProduksi.findMany()) as unknown as UnitLite[];
+    const unitMap = new Map<string, UnitLite>(
+      units.map((u) => [String(u.siteArea || "").toLowerCase(), u]),
     );
     // Ensure fallback placeholder (idRegional: 'UNKNOWN')
-    let fallbackUnit = units.find(
-      (u: { idRegional: string }) => u.idRegional === "UNKNOWN",
-    );
+    let fallbackUnit = units.find((u) => u.idRegional === "UNKNOWN");
     if (!fallbackUnit) {
       try {
         fallbackUnit = await prisma.unitProduksi.create({
@@ -266,7 +267,9 @@ export async function POST(req: Request) {
         // Upsert PO Header
         const poData = {
           ritelId: ritel.id,
-          unitProduksiId: unitToUse?.idRegional ?? null,
+          unitProduksiId: (unitToUse?.idRegional ??
+            fallbackUnit?.idRegional ??
+            "UNKNOWN") as string,
           tglPo,
           expiredTgl,
           linkPo,
@@ -293,13 +296,13 @@ export async function POST(req: Request) {
             // gunakan nested relation untuk menghindari error "Argument `RitelModern` is missing"
             RitelModern: { connect: { id: ritel.id } },
             // Always connect UnitProduksi (use fallback when missing)
-            ...(unitToUse
-              ? {
-                  UnitProduksi: {
-                    connect: { idRegional: unitToUse.idRegional },
-                  },
-                }
-              : {}),
+            UnitProduksi: {
+              connect: {
+                idRegional: (unitToUse?.idRegional ??
+                  fallbackUnit?.idRegional ??
+                  "UNKNOWN") as string,
+              },
+            },
             tglPo,
             expiredTgl,
             linkPo,

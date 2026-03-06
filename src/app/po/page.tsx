@@ -14,7 +14,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -33,7 +33,7 @@ type ItemPO = {
   rpTagih: number;
 };
 
-export default function InputPODetailPage() {
+function InputPODetailPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
@@ -1077,5 +1077,13 @@ export default function InputPODetailPage() {
         )}
       </form>
     </div>
+  );
+}
+
+export default function InputPODetailPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <InputPODetailPageInner />
+    </Suspense>
   );
 }

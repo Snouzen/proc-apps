@@ -214,9 +214,9 @@ export default function ProdukPage() {
         "kg per pcs",
         "kg",
       ].map(norm);
-      const satuanKey = Object.keys(first).find((k) =>
-        satuanCandidates.includes(norm(k)),
-      );
+      const satuanKey =
+        Object.keys(first).find((k) => satuanCandidates.includes(norm(k))) ??
+        null;
       if (!productKey) {
         const existing = Object.keys(first).join(", ");
         showToast(

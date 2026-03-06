@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       updatedAt: new Date(),
     };
 
-    const updatedPO = await prisma.$transaction(async (tx) => {
+    const updatedPO = await prisma.$transaction(async (tx: any) => {
       const po = await tx.purchaseOrder.upsert({
         where: { noPo },
         create: {
@@ -369,7 +369,7 @@ export async function DELETE(request: Request) {
         { status: 404 },
       );
     }
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.purchaseOrderItem.deleteMany({
         where: { purchaseOrderId: po.id },
       });
