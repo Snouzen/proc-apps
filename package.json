@@ -7,6 +7,7 @@
     "dev:frontend": "next dev -p 3000",
     "dev:backend": "cd server && nodemon index.js",
     "build": "next build",
+    "postinstall": "prisma generate || echo \"skip prisma generate\"",
     "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
     "start:frontend": "next start",
     "start:backend": "cd server && node index.js",
