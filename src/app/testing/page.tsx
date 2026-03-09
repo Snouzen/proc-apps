@@ -1,9 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Eye } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Plus,
+  Upload,
+  Pencil,
+  Trash2,
+  CalendarClock,
+} from "lucide-react";
+import Link from "next/link";
 import PODetailModal from "@/components/po-detail-modal";
 import { LoaderThree } from "@/components/ui/loader";
+import { getMe } from "@/lib/me";
+import BulkUploadModal from "@/components/bulk-upload-modal";
 
 type GroupedPO = {
   company: string;
@@ -20,36 +32,67 @@ export default function TestingPage() {
   const itemsPerPage = 10;
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [inisialPage, setInisialPage] = useState<Record<string, number>>({});
   const [activeInisial, setActiveInisial] = useState<
     Record<string, string | null>
   >({});
   const [poPage, setPoPage] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/po", { cache: "no-store" });
-        const json = await res.json();
-        const byCompany: Record<string, any[]> = {};
-        for (const po of json) {
-          const company = po?.RitelModern?.namaPt || "Unknown";
-          if (!byCompany[company]) byCompany[company] = [];
-          byCompany[company].push(po);
-        }
-        const g: GroupedPO[] = Object.entries(byCompany)
-          .map(([k, v]) => ({ company: k, pos: v }))
-          .sort((a, b) => a.company.localeCompare(b.company));
-        setGroups(g);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const me = await getMe();
+      let url = "/api/po";
+      if (me?.role === "rm" && me?.regional) {
+        url += `?regional=${encodeURIComponent(me.regional)}`;
       }
-    };
+      const res = await fetch(url, { cache: "no-store" });
+      const json = await res.json();
+      const byCompany: Record<string, any[]> = {};
+      for (const po of json) {
+        const company = po?.RitelModern?.namaPt || "Unknown";
+        if (!byCompany[company]) byCompany[company] = [];
+        byCompany[company].push(po);
+      }
+      const g: GroupedPO[] = Object.entries(byCompany)
+        .map(([k, v]) => ({ company: k, pos: v }))
+        .sort((a, b) => a.company.localeCompare(b.company));
+      setGroups(g);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  const handlePOCreated = () => {
+    fetchData(); // Reload
+  };
+
+  const handleDelete = async (noPo: string) => {
+    setDeleting(true);
+    try {
+      await fetch("/api/po", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noPo }),
+      });
+      fetchData();
+      setConfirmDelete(null);
+    } catch (e) {
+      console.error(e);
+      alert("Gagal menghapus PO");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
@@ -99,12 +142,28 @@ export default function TestingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Testing</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Company</h1>
           <p className="text-sm text-slate-500">
-            Komparasi tampilan PO dalam bentuk list dropdown per company
+            Monitoring daftar PO per company
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsBulkOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 border-slate-200 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all shadow-sm active:scale-95"
+          >
+            <Upload size={18} />
+            Bulk Upload
+          </button>
+          <Link
+            href="/po"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded-xl hover:bg-slate-700 transition-colors"
+          >
+            <Plus size={18} />
+            Add PO
+          </Link>
         </div>
       </div>
 
@@ -330,15 +389,43 @@ export default function TestingPage() {
                                                         {n(totalRpTagih)}
                                                       </div>
                                                     </div>
-                                                    <button
-                                                      title="View Detail"
-                                                      onClick={() =>
-                                                        openModal(po)
-                                                      }
-                                                      className="p-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors"
-                                                    >
-                                                      <Eye size={16} />
-                                                    </button>
+                                                    <div className="flex gap-1">
+                                                      <button
+                                                        title="Extend"
+                                                        className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                                                      >
+                                                        <CalendarClock
+                                                          size={16}
+                                                        />
+                                                      </button>
+                                                      <Link
+                                                        href={`/po?noPo=${encodeURIComponent(po.noPo)}&company=${encodeURIComponent(po?.RitelModern?.namaPt || "")}`}
+                                                        title="Edit"
+                                                        className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                                                      >
+                                                        <Pencil size={16} />
+                                                      </Link>
+                                                      <button
+                                                        title="Delete"
+                                                        onClick={() =>
+                                                          setConfirmDelete(
+                                                            po.noPo,
+                                                          )
+                                                        }
+                                                        className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                                      >
+                                                        <Trash2 size={16} />
+                                                      </button>
+                                                      <button
+                                                        title="View Detail"
+                                                        onClick={() =>
+                                                          openModal(po)
+                                                        }
+                                                        className="p-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors"
+                                                      >
+                                                        <Eye size={16} />
+                                                      </button>
+                                                    </div>
                                                   </div>
                                                 );
                                               })}
@@ -440,6 +527,40 @@ export default function TestingPage() {
         onClose={() => setIsModalOpen(false)}
         data={selectedPO}
       />
+
+      <BulkUploadModal
+        open={isBulkOpen}
+        onClose={() => setIsBulkOpen(false)}
+        onSuccess={handlePOCreated}
+      />
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+            <h3 className="font-bold text-lg text-slate-800 mb-2">Hapus PO?</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              Anda yakin ingin menghapus PO <strong>{confirmDelete}</strong>?
+              Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-gray-100 rounded-xl transition-colors"
+                disabled={deleting}
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDelete)}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleting ? "Menghapus..." : "Hapus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

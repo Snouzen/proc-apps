@@ -25,9 +25,13 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [poPlannedTotal, setPoPlannedTotal] = useState<number>(0);
+  const [poDone, setPoDone] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState(0);
   const [errorList, setErrorList] = useState<string[]>([]);
+  const [failedRows, setFailedRows] = useState<number[]>([]);
+  const [showFailedRows, setShowFailedRows] = useState<boolean>(false);
   const [missingCounts, setMissingCounts] = useState<Record<
     string,
     number
@@ -190,8 +194,23 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     setError(null);
     setErrorList([]);
     setSuccessCount(0);
+    setPoDone(0);
 
     try {
+      // Hitung target total PO yang akan diproses (bukan item rows)
+      const uniqueNos = Array.from(
+        new Set(
+          previewData
+            .map((row) => String(getCell(row, headerKeys.noPo)).trim())
+            .filter((s) => !!s),
+        ),
+      );
+      const planned =
+        replaceDupes === true
+          ? uniqueNos.length
+          : Math.max(uniqueNos.length - duplicateNos.length, 0);
+      setPoPlannedTotal(planned);
+
       // Chunk large payloads to prevent server overload/timeouts
       const CHUNK = 800; // item-rows per request
       const chunk = <T,>(arr: T[], size: number) =>
@@ -205,9 +224,14 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
       let addedPoCount = 0;
       let replacedPoCount = 0;
       const allErrors: string[] = [];
+      const failedSet = new Set<number>();
 
       for (let i = 0; i < batches.length; i++) {
-        setUploadProgress(`Batch ${i + 1}/${batches.length}`);
+        setUploadProgress(
+          poPlannedTotal > 0
+            ? `Uploading PO ${poDone}/${poPlannedTotal} • Batch ${i + 1}/${batches.length}`
+            : `Batch ${i + 1}/${batches.length}`,
+        );
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 menit per kloter
         try {
@@ -228,10 +252,30 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
           totalSuccess += Number(result?.count || 0);
           addedPoCount += Number(result?.addedPoCount || 0);
           replacedPoCount += Number(result?.replacedPoCount || 0);
+          // Update progress PO done per batch
+          const poProgressIncrement =
+            replaceDupes === true
+              ? Number(result?.addedPoCount || 0) +
+                Number(result?.replacedPoCount || 0)
+              : Number(result?.addedPoCount || 0);
+          setPoDone((d) => d + poProgressIncrement);
+          setUploadProgress(
+            poPlannedTotal > 0
+              ? `Uploading PO ${Math.min(
+                  poDone + poProgressIncrement,
+                  poPlannedTotal,
+                )}/${poPlannedTotal} • Batch ${i + 1}/${batches.length}`
+              : `Batch ${i + 1}/${batches.length}`,
+          );
           if (Array.isArray(result?.errors)) {
-            allErrors.push(
-              ...result.errors.map((e: string) => `Batch ${i + 1}: ${e}`),
-            );
+            for (const e of result.errors as string[]) {
+              allErrors.push(`Batch ${i + 1}: ${e}`);
+              const m = e.match(/Row\s*~?(\d+)/i);
+              if (m && m[1]) {
+                const n = Number(m[1]);
+                if (Number.isFinite(n)) failedSet.add(n);
+              }
+            }
           }
           if (Array.isArray(result?.duplicatePOs)) {
             aggregateDuplicates.push(...result.duplicatePOs.map(String));
@@ -257,6 +301,7 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
       (window as any).__bulk_replacedPoCount__ = replacedPoCount;
       setMissingCounts(aggregateMissing);
       setErrorList(allErrors);
+      setFailedRows(Array.from(failedSet).sort((a, b) => a - b));
       setUploadProgress(null);
 
       if (onSuccess) onSuccess();
@@ -408,6 +453,28 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
                 <AlertCircle size={18} />
                 <p>{errorList.length} rows failed to upload:</p>
               </div>
+              {failedRows.length > 0 && (
+                <div className="text-xs text-amber-800">
+                  <div className="flex items-center justify-between mb-1">
+                    <span>
+                      Baris gagal:{" "}
+                      <span className="font-bold">{failedRows.length}</span>
+                    </span>
+                    <button
+                      onClick={() => setShowFailedRows((v) => !v)}
+                      className="px-2 py-1 rounded-md border border-amber-200 bg-white hover:bg-amber-50"
+                    >
+                      {showFailedRows ? "Sembunyikan" : "Lihat Detail"}
+                    </button>
+                  </div>
+                  {showFailedRows && (
+                    <div className="max-h-36 overflow-y-auto border border-amber-100 rounded-md bg-white p-2">
+                      {failedRows.slice(0, 200).join(", ")}
+                      {failedRows.length > 200 && " ..."}
+                    </div>
+                  )}
+                </div>
+              )}
               <ul className="list-disc list-inside text-xs text-amber-800 max-h-40 overflow-y-auto">
                 {errorList.map((err, idx) => (
                   <li key={idx}>{err}</li>
@@ -553,8 +620,16 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
                 <LoaderThree
                   label={
                     uploadProgress
-                      ? `Processing ${uploadProgress}`
-                      : "Processing..."
+                      ? `${uploadProgress} (Remaining: ${Math.max(
+                          poPlannedTotal - poDone,
+                          0,
+                        )})`
+                      : poPlannedTotal > 0
+                        ? `Uploading PO ${poDone}/${poPlannedTotal} (Remaining: ${Math.max(
+                            poPlannedTotal - poDone,
+                            0,
+                          )})`
+                        : "Processing..."
                   }
                 />
               ) : (

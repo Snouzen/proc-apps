@@ -1,9 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import { Menu, Search, Bell, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Modal from "@/components/modal";
+import { getMe, getMeSync, clearMeCache } from "@/lib/me";
+import Breadcrumbs from "@/components/breadcrumbs";
 
 export default function ClientLayout({
   children,
@@ -15,14 +17,63 @@ export default function ClientLayout({
   const pathname = usePathname();
   const router = useRouter();
 
-  if (pathname === "/login") {
+  const isLogin = pathname === "/login";
+
+  // Try to initialize state from sync cache to prevent "slow" feeling
+  const [profileRole, setProfileRole] = useState<"pusat" | "rm" | null>(() => {
+    if (typeof window !== "undefined") {
+      const s = getMeSync();
+      if (s?.authenticated && s.role) return s.role;
+    }
+    return null;
+  });
+  const [profileRegional, setProfileRegional] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const s = getMeSync();
+      if (s?.authenticated && s.regional) return s.regional;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    getMe()
+      .then((data) => {
+        if (!mounted) return;
+        if (data?.authenticated && data?.role === "rm") {
+          setProfileRole("rm");
+          setProfileRegional(data?.regional || null);
+        } else if (data?.authenticated) {
+          setProfileRole("pusat");
+          setProfileRegional(null);
+        } else {
+          setProfileRole(null);
+          setProfileRegional(null);
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setProfileRole(null);
+        setProfileRegional(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (isLogin) {
     return <>{children}</>;
   }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex">
       {/* 1. SIDEBAR */}
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        setIsOpen={setSidebarOpen}
+        initialRole={profileRole}
+        initialRegional={profileRegional}
+      />
 
       {/* 2. MAIN AREA */}
       <main
@@ -41,17 +92,24 @@ export default function ClientLayout({
                 <Menu size={22} />
               </button>
 
-              <div className="hidden sm:flex items-center gap-2 bg-gray-100/50 px-4 py-2 rounded-xl border border-gray-100">
-                <Search size={16} className="text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="bg-transparent border-none focus:outline-none text-sm w-40 lg:w-64"
-                />
+              <div className="hidden lg:block h-6 w-[1px] bg-slate-200 mx-1"></div>
+
+              {/* BREADCRUMBS */}
+              <div className="hidden md:block">
+                <Breadcrumbs />
               </div>
             </div>
 
             <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2 bg-gray-100/50 px-4 py-2 rounded-xl border border-gray-100 mr-2">
+                <Search size={16} className="text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="bg-transparent border-none focus:outline-none text-sm w-32 xl:w-64"
+                />
+              </div>
+
               <button className="relative p-2 text-gray-500 rounded-xl hover:bg-gray-50 transition-colors">
                 <Bell size={20} />
                 <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
@@ -65,20 +123,65 @@ export default function ClientLayout({
                 {/* Info Teks */}
                 <div className="text-right hidden sm:block leading-tight">
                   <p className="text-sm font-black text-slate-800">
-                    Admin Pusat
+                    {profileRole === "rm"
+                      ? (() => {
+                          let reg = String(profileRegional || "");
+                          if (reg.startsWith("Reg "))
+                            reg = reg.replace(/^Reg\s+/i, "Regional ");
+                          // Tambahkan kota default jika belum ada
+                          const low = reg.toLowerCase();
+                          if (
+                            /regional\s*1\b/i.test(reg) &&
+                            !low.includes("bandung")
+                          )
+                            reg = reg + " Bandung";
+                          if (
+                            /regional\s*2\b/i.test(reg) &&
+                            !low.includes("surabaya")
+                          )
+                            reg = reg + " Surabaya";
+                          if (
+                            /regional\s*3\b/i.test(reg) &&
+                            !low.includes("makassar")
+                          )
+                            reg = reg + " Makassar";
+                          return reg.trim();
+                        })()
+                      : profileRole === "pusat"
+                        ? "Admin Pusat"
+                        : ""}
                   </p>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                    Super Admin
+                    {profileRole === "rm"
+                      ? (() => {
+                          const reg = String(profileRegional || "");
+                          const m =
+                            reg.match(/\bReg(?:ional)?\s+(\d+)/i) ||
+                            reg.match(/\b(\d+)\b/);
+                          const num = m && m[1] ? m[1] : "";
+                          return `RM ${num}`.trim();
+                        })()
+                      : profileRole === "pusat"
+                        ? "Super Admin"
+                        : ""}
                   </p>
                 </div>
 
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-full border-2 border-[#004a87] p-0.5 shadow-sm">
-                  <img
-                    src="https://ui-avatars.com/api/?name=Administrator+Pusat&background=004a87&color=fff"
-                    alt="user"
-                    className="w-full h-full rounded-full object-cover"
-                  />
+                  {profileRole ? (
+                    <img
+                      src={
+                        profileRole === "rm"
+                          ? "https://ui-avatars.com/api/?name=RM&background=004a87&color=fff"
+                          : "https://ui-avatars.com/api/?name=Administrator+Pusat&background=004a87&color=fff"
+                      }
+                      alt="user"
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-slate-200 animate-pulse" />
+                  )}
                 </div>
 
                 {/* Garis Pembatas Kecil */}
@@ -113,7 +216,8 @@ export default function ClientLayout({
       >
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Anda yakin ingin logout dari akun Admin Pusat?
+            Anda yakin ingin logout dari akun{" "}
+            {profileRole === "rm" ? "Regional Manager" : "Admin Pusat"}?
           </p>
           <div className="flex gap-2">
             <button
@@ -128,6 +232,9 @@ export default function ClientLayout({
                 fetch("/api/auth/logout", { method: "POST" })
                   .catch(() => {})
                   .finally(() => {
+                    clearMeCache();
+                    setProfileRole(null);
+                    setProfileRegional(null);
                     setLogoutOpen(false);
                     router.push("/login");
                   });

@@ -12,9 +12,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const token = signSession(result.payload);
+    // Minimal server-side log for troubleshooting (email + role only)
+    try {
+      console.info(
+        "[auth/login] user:",
+        (email || "").toString().toLowerCase(),
+        "role:",
+        result.payload.role,
+        "regional:",
+        result.payload.regional || "-",
+      );
+    } catch {}
     const res = NextResponse.json({
       ok: true,
       role: result.payload.role,
+      regional: result.payload.regional ?? null,
     });
     res.cookies.set("session", token, {
       httpOnly: true,

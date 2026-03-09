@@ -213,6 +213,7 @@ export async function GET(request: Request) {
     const noPo = searchParams.get("noPo") || undefined;
     const includeUnknown =
       (searchParams.get("includeUnknown") || "false") === "true";
+    const regionalParam = searchParams.get("regional") || undefined;
     const noPoListRaw = searchParams.get("noPoList") || undefined;
     let noPoList: string[] | undefined = undefined;
     if (noPoListRaw) {
@@ -233,6 +234,56 @@ export async function GET(request: Request) {
       const where: any = {};
       if (noPo) where.noPo = noPo;
       if (noPoList && noPoList.length > 0) where.noPo = { in: noPoList };
+      if (regionalParam && regionalParam.trim()) {
+        const rp = regionalParam.trim().toLowerCase();
+        const syn = (() => {
+          if (
+            rp.includes("bandung") ||
+            rp.includes("reg 1") ||
+            rp.includes("regional 1") ||
+            rp.includes(" i")
+          ) {
+            return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
+          }
+          if (
+            rp.includes("surabaya") ||
+            rp.includes("reg 2") ||
+            rp.includes("regional 2") ||
+            rp.includes(" ii")
+          ) {
+            return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
+          }
+          if (
+            rp.includes("makassar") ||
+            rp.includes("reg 3") ||
+            rp.includes("regional 3") ||
+            rp.includes(" iii")
+          ) {
+            return [
+              "reg 3",
+              "regional 3",
+              "reg iii",
+              "regional iii",
+              "makassar",
+            ];
+          }
+          return [regionalParam.trim()];
+        })();
+        where.OR = [
+          ...syn.map((s) => ({
+            regional: { contains: s, mode: "insensitive" as const },
+          })),
+          {
+            UnitProduksi: {
+              is: {
+                OR: syn.map((s) => ({
+                  namaRegional: { contains: s, mode: "insensitive" as const },
+                })),
+              },
+            },
+          },
+        ];
+      }
       if (company && company.trim()) {
         where.RitelModern = {
           is: {
@@ -277,6 +328,55 @@ export async function GET(request: Request) {
       if (company && company.trim()) {
         params.push(`%${company.trim()}%`);
         whereSql += ` WHERE rm."namaPt" ILIKE $${params.length} `;
+      }
+      if (regionalParam && regionalParam.trim()) {
+        const rp = regionalParam.trim().toLowerCase();
+        const syn = (() => {
+          if (
+            rp.includes("bandung") ||
+            rp.includes("reg 1") ||
+            rp.includes("regional 1") ||
+            rp.includes(" i")
+          ) {
+            return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
+          }
+          if (
+            rp.includes("surabaya") ||
+            rp.includes("reg 2") ||
+            rp.includes("regional 2") ||
+            rp.includes(" ii")
+          ) {
+            return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
+          }
+          if (
+            rp.includes("makassar") ||
+            rp.includes("reg 3") ||
+            rp.includes("regional 3") ||
+            rp.includes(" iii")
+          ) {
+            return [
+              "reg 3",
+              "regional 3",
+              "reg iii",
+              "regional iii",
+              "makassar",
+            ];
+          }
+          return [regionalParam.trim()];
+        })();
+        const conds: string[] = [];
+        syn.forEach((s) => {
+          params.push(`%${s}%`);
+          conds.push(`po."regional" ILIKE $${params.length}`);
+        });
+        syn.forEach((s) => {
+          params.push(`%${s}%`);
+          conds.push(`up."namaRegional" ILIKE $${params.length}`);
+        });
+        const orBlock = conds.length ? `(${conds.join(" OR ")})` : "";
+        if (orBlock) {
+          whereSql += whereSql ? ` AND ${orBlock} ` : ` WHERE ${orBlock} `;
+        }
       }
       if (noPo) {
         params.push(noPo);

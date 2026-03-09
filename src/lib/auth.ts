@@ -1,10 +1,11 @@
 import { createHmac, randomBytes } from "crypto";
 
-export type Role = "pusat";
+export type Role = "pusat" | "rm";
 
 export interface SessionPayload {
   email: string;
   role: Role;
+  regional?: string | null;
   exp: number;
   jti: string;
 }
@@ -23,12 +24,41 @@ export function authenticate(
   email: string,
   password: string,
 ): { ok: true; payload: SessionPayload } | { ok: false } {
-  const expected = getExpectedCredentials();
-  if (email === expected.email && password === expected.password) {
+  // Normalize email
+  let lower = email.toLowerCase().trim();
+  if (!lower.includes("@")) {
+    lower = `${lower}@bulog.co.id`;
+  }
+  // STRICT mapping as requested
+  const PASS = "password";
+  const map: Record<
+    string,
+    { role: Role; regional: string | null }
+  > = {
+    "gmi_27001@bulog.co.id": { role: "pusat", regional: null },
+    "rmi_27001@bulog.co.id": { role: "rm", regional: "Regional 1 Bandung" },
+    "rmii_27001@bulog.co.id": { role: "rm", regional: "Regional 2 Surabaya" },
+    "rmiii_27001@bulog.co.id": { role: "rm", regional: "Regional 3 Makassar" },
+  };
+  const entry = map[lower];
+  if (entry && password === PASS) {
     const payload: SessionPayload = {
-      email,
+      email: lower,
+      role: entry.role,
+      regional: entry.regional,
+      exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      jti: randomBytes(8).toString("hex"),
+    };
+    return { ok: true, payload };
+  }
+  // Fallback to env credentials for pusat (optional)
+  const expected = getExpectedCredentials();
+  if (lower === expected.email.toLowerCase() && password === expected.password) {
+    const payload: SessionPayload = {
+      email: lower,
       role: "pusat",
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+      regional: null,
+      exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
       jti: randomBytes(8).toString("hex"),
     };
     return { ok: true, payload };

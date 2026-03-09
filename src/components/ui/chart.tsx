@@ -34,17 +34,49 @@ export function ChartContainer({
   );
 }
 
-export function ChartTooltipContent({
-  labelFormatter,
-  indicator,
-}: {
+export function ChartTooltipContent(props: {
   labelFormatter?: (v: any) => string;
-  indicator?: "dot" | "line";
+  active?: boolean;
+  label?: any;
+  payload?: Array<{ dataKey?: string; value?: number; name?: string }>;
 }) {
+  const { labelFormatter, active, label, payload } = props;
+  if (!active || !payload || payload.length === 0) return null;
+  const labelText =
+    labelFormatter != null ? labelFormatter(label) : String(label ?? "");
+  const entries = payload.map((p) => ({
+    name: p?.dataKey,
+    value: p?.value,
+    color:
+      p?.dataKey === "desktop"
+        ? "var(--color-desktop)"
+        : p?.dataKey === "mobile"
+        ? "var(--color-mobile)"
+        : "#999",
+    label:
+      p?.dataKey === "desktop"
+        ? "In Progress"
+        : p?.dataKey === "mobile"
+        ? "New PO"
+        : p?.name || "",
+  }));
   return (
     <div className="rounded-xl bg-black text-white px-3 py-2 text-xs shadow-2xl">
-      <div className="font-bold">Tooltip</div>
-      {/* The actual content is rendered by ChartTooltip via payload */}
+      <div className="font-bold">{labelText}</div>
+      <div className="mt-1 space-y-1">
+        {entries.map((e, idx) => (
+          <div key={idx} className="flex items-center justify-between gap-6">
+            <span className="flex items-center gap-2">
+              <span
+                className="inline-block w-2 h-2 rounded-full"
+                style={{ background: e.color }}
+              />
+              {e.label}
+            </span>
+            <span className="font-bold">{e.value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -57,9 +89,7 @@ export function ChartTooltip({
   content: React.ReactNode;
 }) {
   // Wrap recharts Tooltip to use our content; payload will be handled by recharts
-  return (
-    <Tooltip cursor={cursor} content={content as any} />
-  );
+  return <Tooltip cursor={cursor} content={content as any} />;
 }
 
 export function ChartLegend({ content }: { content: React.ReactNode }) {

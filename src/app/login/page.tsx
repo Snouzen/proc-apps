@@ -1,11 +1,12 @@
 "use client";
 import React, { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { setMeCache } from "@/lib/me";
 
 function LoginPageInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("gmi_27001@bulog.co.id");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("password");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,17 +16,39 @@ function LoginPageInner() {
     setLoading(true);
     setError(null);
     try {
+      let eNorm = email.trim().toLowerCase();
+      if (!eNorm.includes("@")) {
+        eNorm = `${eNorm}@bulog.co.id`;
+      }
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: eNorm, password }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Email atau password salah");
       }
+      const payload = await res.json().catch(() => ({}));
+      // Set cache immediately
+      const meData = {
+        authenticated: true,
+        email: eNorm,
+        role: payload?.role,
+        regional: payload?.regional ?? null,
+      };
+      // @ts-ignore
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("__me__", JSON.stringify(meData));
+        (window as any).__me__ = meData;
+      }
+      
       const next = params.get("next") || "/";
       router.replace(next);
+      // Force reload to ensure layout picks up the new role
+      setTimeout(() => {
+         window.location.href = next;
+      }, 100);
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan saat login.");
     } finally {
@@ -43,7 +66,11 @@ function LoginPageInner() {
           <p className="text-sm text-black text-center mt-1">
             Login to your account
           </p>
-          <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 mt-6"
+            suppressHydrationWarning
+          >
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-black">
                 Email
@@ -55,6 +82,7 @@ function LoginPageInner() {
                 className="w-full rounded-lg border border-slate-700 bg-white px-3 py-2 text-sm text-black placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="m@example.com"
                 required
+                suppressHydrationWarning
               />
             </div>
             <div className="space-y-1.5">
@@ -68,6 +96,7 @@ function LoginPageInner() {
                 className="w-full rounded-lg border border-slate-700 bg-white px-3 py-2 text-sm text-black placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="••••••••"
                 required
+                suppressHydrationWarning
               />
             </div>
             <button

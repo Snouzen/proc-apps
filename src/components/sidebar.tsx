@@ -15,16 +15,28 @@ import {
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { getMe } from "@/lib/me";
 // Hindari Next/Image untuk logo agar tidak terjadi error validasi gambar saat dev
 
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  initialRole?: "pusat" | "rm" | null;
+  initialRegional?: string | null;
 }
 
-export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
+export default function Sidebar({
+  isOpen,
+  setIsOpen,
+  initialRole,
+  initialRegional,
+}: SidebarProps) {
   const pathname = usePathname();
   const [poMenuOpen, setPoMenuOpen] = useState(false);
+  const [role, setRole] = useState<"pusat" | "rm" | null>(initialRole || null);
+  const [regional, setRegional] = useState<string | null>(
+    initialRegional ?? null,
+  );
 
   // Otomatis buka sub-menu kalau kita lagi di halaman PO
   useEffect(() => {
@@ -33,29 +45,69 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     }
   }, [pathname]);
 
-  const menuItems = [
+  useEffect(() => {
+    if (initialRole) {
+      setRole(initialRole === "rm" ? "rm" : "pusat");
+      setRegional(initialRegional ?? null);
+      return;
+    }
+    (async () => {
+      try {
+        const data = await getMe();
+        if (data?.authenticated && data?.role === "rm") {
+          setRole("rm");
+          setRegional(data?.regional || null);
+        } else if (data?.authenticated) {
+          setRole("pusat");
+          setRegional(null);
+        } else {
+          setRole(null);
+          setRegional(null);
+        }
+      } catch {
+        setRole(null);
+        setRegional(null);
+      }
+    })();
+  }, [initialRole, initialRegional]);
+
+  const baseMenu = [
     { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" },
+  ];
+  const pusatExtras = [
     { name: "Company", icon: <BookOpen size={20} />, path: "/company" },
-    { name: "Testing", icon: <ClipboardList size={20} />, path: "/testing" },
+  ];
+  const rmExtras = [
+    { name: "Company", icon: <BookOpen size={20} />, path: "/company" },
   ];
 
-  const subItems = [
-    {
-      name: `Unit Produksi`,
-      icon: <FileLock size={16} />,
-      path: "/master-data/unit-produksi",
-    },
-    {
-      name: `Produk`,
-      icon: <FileCheck size={16} />,
-      path: "/master-data/produk",
-    },
-    {
-      name: `Ritel Modern`,
-      icon: <ClipboardList size={16} />,
-      path: "/master-data/ritel-modern",
-    },
-  ];
+  let menuItems = baseMenu;
+  if (role === "pusat") {
+    menuItems = [...baseMenu, ...pusatExtras];
+  } else if (role === "rm") {
+    menuItems = [...baseMenu, ...rmExtras];
+  }
+
+  const subItems =
+    role === "rm" || !role
+      ? []
+      : [
+          {
+            name: `Unit Produksi`,
+            icon: <FileLock size={16} />,
+            path: "/master-data/unit-produksi",
+          },
+          {
+            name: `Produk`,
+            icon: <FileCheck size={16} />,
+            path: "/master-data/produk",
+          },
+          {
+            name: `Ritel Modern`,
+            icon: <ClipboardList size={16} />,
+            path: "/master-data/ritel-modern",
+          },
+        ];
 
   return (
     <>
@@ -117,73 +169,60 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             );
           })}
 
-          {/* Collapsible Master Data */}
+          {/* Collapsible Master Data (hide for RM) */}
           <div className="space-y-1">
-            <div
-              onClick={() =>
-                isOpen ? setPoMenuOpen(!poMenuOpen) : setIsOpen(true)
-              }
-              className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+            {role !== "rm" && (
+              <>
+                <div
+                  onClick={() =>
+                    isOpen ? setPoMenuOpen(!poMenuOpen) : setIsOpen(true)
+                  }
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
                 ${pathname.includes("/master-data") ? "bg-slate-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
-            >
-              <div className="flex items-center gap-3">
-                <FileText size={20} className="shrink-0" />
-                {isOpen && (
-                  <span className="text-sm whitespace-nowrap animate-in slide-in-from-left-2">
-                    Master Data
-                  </span>
-                )}
-              </div>
-              {isOpen && (
-                <span
-                  className={`transition-transform duration-200 ${poMenuOpen ? "rotate-90" : ""}`}
                 >
-                  <ChevronRight size={16} />
-                </span>
-              )}
-            </div>
-
-            {isOpen && poMenuOpen && (
-              <div className="mt-1 space-y-1 ml-4 border-l-2 border-slate-50 animate-in fade-in slide-in-from-top-2 duration-300">
-                {subItems.map((sub) => {
-                  const subActive = pathname === sub.path;
-                  return (
-                    <Link
-                      key={sub.name}
-                      href={sub.path}
-                      className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
-                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
-                    >
-                      <span className="shrink-0">{sub.icon}</span>
-                      <span className="text-xs whitespace-nowrap">
-                        {sub.name}
+                  <div className="flex items-center gap-3">
+                    <FileText size={20} className="shrink-0" />
+                    {isOpen && (
+                      <span className="text-sm whitespace-nowrap animate-in slide-in-from-left-2">
+                        Master Data
                       </span>
-                    </Link>
-                  );
-                })}
-              </div>
+                    )}
+                  </div>
+                  {isOpen && (
+                    <span
+                      className={`transition-transform duration-200 ${poMenuOpen ? "rotate-90" : ""}`}
+                    >
+                      <ChevronRight size={16} />
+                    </span>
+                  )}
+                </div>
+
+                {isOpen && poMenuOpen && (
+                  <div className="mt-1 space-y-1 ml-4 border-l-2 border-slate-50 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {subItems.map((sub) => {
+                      const subActive = pathname === sub.path;
+                      return (
+                        <Link
+                          key={sub.name}
+                          href={sub.path}
+                          className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        >
+                          <span className="shrink-0">{sub.icon}</span>
+                          <span className="text-xs whitespace-nowrap">
+                            {sub.name}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </nav>
 
-        {/* User Profile Section */}
-        <div className="p-4 mt-auto border-t border-gray-50">
-          <div
-            className={`p-3 bg-slate-50 rounded-2xl flex items-center transition-all ${isOpen ? "gap-3" : "justify-center"}`}
-          >
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs shrink-0 border-2 border-white shadow-sm">
-              AJ
-            </div>
-            {isOpen && (
-              <div className="overflow-hidden whitespace-nowrap animate-in fade-in duration-500">
-                <p className="text-xs font-bold text-slate-800">Angga Jovary</p>
-                <p className="text-[10px] text-slate-500 font-medium tracking-tight">
-                  Administration
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* User Profile Section removed as requested */}
       </aside>
     </>
   );

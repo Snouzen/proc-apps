@@ -69,9 +69,20 @@ export async function POST(req: Request) {
     };
     const units =
       (await prisma.unitProduksi.findMany()) as unknown as UnitLite[];
-    const unitMap = new Map<string, UnitLite>(
-      units.map((u) => [String(u.siteArea || "").toLowerCase(), u]),
-    );
+    const AREA_ALIASES: Record<string, string[]> = {
+      "spb dki jakarta": ["spb dki", "spb dki jkt", "spb dki (jakarta)"],
+    };
+    const unitMap = new Map<string, UnitLite>();
+    for (const u of units) {
+      const key = String(u.siteArea || "")
+        .toLowerCase()
+        .trim();
+      unitMap.set(key, u);
+      const aliases = AREA_ALIASES[key] || [];
+      for (const a of aliases) {
+        unitMap.set(a.toLowerCase(), u);
+      }
+    }
     // Ensure fallback placeholder (idRegional: 'UNKNOWN')
     let fallbackUnit = units.find((u) => u.idRegional === "UNKNOWN");
     if (!fallbackUnit) {
