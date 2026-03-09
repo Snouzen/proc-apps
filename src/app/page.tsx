@@ -182,6 +182,7 @@ export default function Home() {
       <div className="mt-8 bg-white text-black rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <TableUnderChart
           poData={poData}
+          setPoData={setPoData}
           role={role}
           regional={regional}
           units={unitData}
@@ -193,11 +194,13 @@ export default function Home() {
 
 function TableUnderChart({
   poData,
+  setPoData,
   role,
   regional,
   units,
 }: {
   poData: any[];
+  setPoData: React.Dispatch<React.SetStateAction<any[]>>;
   role: "pusat" | "rm" | null;
   regional: string | null;
   units: any[];
