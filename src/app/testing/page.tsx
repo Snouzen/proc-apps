@@ -596,14 +596,13 @@ export default function TestingPage({
                                                 year: "numeric",
                                               })
                                             : "-";
-                                          const productNames = items
+                                          const productNames: string[] = items
                                             .map((it: any) => it?.Product?.name)
                                             .filter(Boolean)
                                             .map(String);
-                                          const uniqueProducts = Array.from(
-                                            new Set(productNames),
-                                          );
-                                          const productText =
+                                          const uniqueProducts: string[] =
+                                            Array.from(new Set(productNames));
+                                          const productText: string =
                                             uniqueProducts.length > 0
                                               ? uniqueProducts.length > 1
                                                 ? `${uniqueProducts[0]} (+${uniqueProducts.length - 1} lainnya)`
@@ -1051,18 +1050,18 @@ export default function TestingPage({
                                                             },
                                                           )
                                                         : "-";
-                                                      const productNames = items
+                                                      const productNames: string[] = items
                                                         .map(
                                                           (it: any) =>
                                                             it?.Product?.name,
                                                         )
                                                         .filter(Boolean)
                                                         .map(String);
-                                                      const uniqueProducts =
+                                                      const uniqueProducts: string[] =
                                                         Array.from(
                                                           new Set(productNames),
                                                         );
-                                                      const productText =
+                                                      const productText: string =
                                                         uniqueProducts.length >
                                                         0
                                                           ? uniqueProducts.length >

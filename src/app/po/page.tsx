@@ -599,9 +599,9 @@ function InputPODetailPageInner() {
   const [editPickerOpen, setEditPickerOpen] = useState(false);
   const [editPickerSelected, setEditPickerSelected] = useState<string>("");
   const [deletePickerOpen, setDeletePickerOpen] = useState(false);
-  const [deleteSelection, setDeleteSelection] = useState<
-    Record<string, boolean>
-  >({});
+  const [deleteSelection, setDeleteSelection] = useState<Record<string, boolean>>(
+    {},
+  );
 
   return (
     <div className="max-w-6xl mx-auto pb-20 animate-in fade-in duration-500">
@@ -1217,7 +1217,14 @@ function InputPODetailPageInner() {
                   onClick={() => {
                     if (poDrafts.length === 0) return;
                     const init: Record<string, boolean> = {};
-                    for (const d of poDrafts) init[d.noPo] = false;
+                    for (const d of poDrafts) {
+                      const items = Array.isArray(d.items) ? d.items : [];
+                      for (let i = 0; i < items.length; i++) {
+                        const it = items[i];
+                        const k = `${d.noPo}::${it?.id || i}`;
+                        init[k] = false;
+                      }
+                    }
                     setDeleteSelection(init);
                     setDeletePickerOpen(true);
                   }}
@@ -1297,16 +1304,31 @@ function InputPODetailPageInner() {
                   <div className="p-4">
                     {(() => {
                       const total = poDrafts.length;
-                      const selectedCount = Object.values(deleteSelection).filter(
+                      const selectedItemCount = Object.values(deleteSelection).filter(
                         Boolean,
                       ).length;
-                      const allChecked = total > 0 && selectedCount === total;
+                      const selectedPoCount = (() => {
+                        const set = new Set<string>();
+                        for (const k of Object.keys(deleteSelection)) {
+                          if (!deleteSelection[k]) continue;
+                          const noPo = k.split("::")[0] || "";
+                          if (noPo) set.add(noPo);
+                        }
+                        return set.size;
+                      })();
+                      const totalItemCount = Object.keys(deleteSelection).length;
+                      const allChecked =
+                        totalItemCount > 0 && selectedItemCount === totalItemCount;
                       return (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                           <div className="text-sm text-slate-600">
                             Terpilih:{" "}
                             <span className="font-black text-slate-800">
-                              {selectedCount}
+                              {selectedItemCount}
+                            </span>{" "}
+                            item •{" "}
+                            <span className="font-black text-slate-800">
+                              {selectedPoCount}
                             </span>{" "}
                             / {total} PO
                           </div>
@@ -1315,9 +1337,13 @@ function InputPODetailPageInner() {
                               type="checkbox"
                               checked={allChecked}
                               onChange={(e) => {
-                                const next: Record<string, boolean> = {};
-                                for (const d of poDrafts) next[d.noPo] = e.target.checked;
-                                setDeleteSelection(next);
+                                setDeleteSelection((prev) => {
+                                  const next: Record<string, boolean> = {};
+                                  for (const k of Object.keys(prev)) {
+                                    next[k] = e.target.checked;
+                                  }
+                                  return next;
+                                });
                               }}
                             />
                             Select all
@@ -1374,6 +1400,7 @@ function InputPODetailPageInner() {
                               const tuj = d.tujuan || "-";
                               return rows.length > 0 ? (
                                 rows.map((it: any, idx: number) => {
+                                  const itemKey = `${d.noPo}::${it?.id || idx}`;
                                   const pcs = Number(it?.pcs) || 0;
                                   const pcsKirim = Number(it?.pcsKirim) || 0;
                                   const hargaPcs = Number(it?.hargaPcs) || 0;
@@ -1386,11 +1413,11 @@ function InputPODetailPageInner() {
                                       <td className="px-4 py-3 align-top">
                                         <input
                                           type="checkbox"
-                                          checked={!!deleteSelection[d.noPo]}
+                                          checked={!!deleteSelection[itemKey]}
                                           onChange={(e) =>
                                             setDeleteSelection((prev) => ({
                                               ...prev,
-                                              [d.noPo]: e.target.checked,
+                                              [itemKey]: e.target.checked,
                                             }))
                                           }
                                         />
@@ -1457,13 +1484,14 @@ function InputPODetailPageInner() {
                                   <td className="px-4 py-3">
                                     <input
                                       type="checkbox"
-                                      checked={!!deleteSelection[d.noPo]}
+                                      checked={false}
                                       onChange={(e) =>
                                         setDeleteSelection((prev) => ({
                                           ...prev,
-                                          [d.noPo]: e.target.checked,
+                                          ...prev,
                                         }))
                                       }
+                                      disabled
                                     />
                                   </td>
                                   <td className="px-4 py-3 font-mono font-bold text-slate-800 whitespace-nowrap">
@@ -1500,12 +1528,30 @@ function InputPODetailPageInner() {
                     <button
                       type="button"
                       onClick={() => {
-                        const selected = Object.keys(deleteSelection).filter(
+                        const selectedItemKeys = Object.keys(deleteSelection).filter(
                           (k) => deleteSelection[k],
                         );
-                        if (selected.length === 0) return;
+                        if (selectedItemKeys.length === 0) return;
+                        const setByPo = new Map<string, Set<string>>();
+                        for (const k of selectedItemKeys) {
+                          const [noPo, rawId] = k.split("::");
+                          if (!noPo || !rawId) continue;
+                          if (!setByPo.has(noPo)) setByPo.set(noPo, new Set());
+                          setByPo.get(noPo)?.add(rawId);
+                        }
                         setPoDrafts((prev) =>
-                          prev.filter((d) => !selected.includes(d.noPo)),
+                          prev
+                            .map((d) => {
+                              const toRemove = setByPo.get(d.noPo);
+                              if (!toRemove) return d;
+                              const items = Array.isArray(d.items) ? d.items : [];
+                              const kept = items.filter((it: any, idx: number) => {
+                                const id = String(it?.id || idx);
+                                return !toRemove.has(id);
+                              });
+                              return { ...d, items: kept };
+                            })
+                            .filter((d) => Array.isArray(d.items) && d.items.length > 0),
                         );
                         setDeletePickerOpen(false);
                         setDeleteSelection({});
