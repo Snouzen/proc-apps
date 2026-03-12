@@ -27,6 +27,33 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning>
+        <Script id="chunk-load-fallback" strategy="beforeInteractive">
+          {`
+            (function() {
+              function shouldReload(msg) {
+                if (!msg) return false;
+                var s = String(msg);
+                return /ChunkLoadError|Loading chunk|failed to load chunk|dynamically imported module|importing a module script failed/i.test(s);
+              }
+              function reloadOnce() {
+                try {
+                  if (sessionStorage.getItem('__chunk_reload__') === '1') return;
+                  sessionStorage.setItem('__chunk_reload__', '1');
+                } catch (e) {}
+                try { window.location.reload(); } catch (e) {}
+              }
+              window.addEventListener('error', function(e) {
+                var msg = (e && (e.message || (e.error && e.error.message))) || '';
+                if (shouldReload(msg)) reloadOnce();
+              });
+              window.addEventListener('unhandledrejection', function(e) {
+                var r = e && e.reason;
+                var msg = (r && (r.message || r)) || '';
+                if (shouldReload(msg)) reloadOnce();
+              });
+            })();
+          `}
+        </Script>
         <Script id="cz-hydration-fix" strategy="beforeInteractive">
           {`
             (function() {

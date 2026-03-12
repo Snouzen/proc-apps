@@ -14,12 +14,14 @@ import {
   Hourglass,
   ListChecks,
   Menu,
+  Pencil,
   RefreshCw,
   Search,
   UserPlus,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import PODetailModal from "@/components/po-detail-modal";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const [poData, setPoData] = useState<any[]>([]);
@@ -28,9 +30,9 @@ export default function Home() {
   const [regional, setRegional] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
   const [unitData, setUnitData] = useState<any[]>([]);
-  const [tableFocus, setTableFocus] = useState<"in_progress" | "completed" | null>(
-    null,
-  );
+  const [tableFocus, setTableFocus] = useState<
+    "in_progress" | "completed" | null
+  >(null);
 
   useEffect(() => {
     let mounted = true;
@@ -249,6 +251,7 @@ function TableUnderChart({
   focusGroup: "in_progress" | "completed" | null;
   onFocusApplied: () => void;
 }) {
+  const router = useRouter();
   const [group, setGroup] = useState<
     "all" | "in_progress" | "almost_expired" | "completed" | "assign"
   >(() => (role === "rm" ? "assign" : "in_progress"));
@@ -368,9 +371,13 @@ function TableUnderChart({
     const arr = [...filtered];
     arr.sort((a, b) => {
       const da =
-        group === "all" ? toDate(a?.updatedAt) || toDate(a?.tglPo) : toDate(a?.tglPo);
+        group === "all"
+          ? toDate(a?.updatedAt) || toDate(a?.tglPo)
+          : toDate(a?.tglPo);
       const db =
-        group === "all" ? toDate(b?.updatedAt) || toDate(b?.tglPo) : toDate(b?.tglPo);
+        group === "all"
+          ? toDate(b?.updatedAt) || toDate(b?.tglPo)
+          : toDate(b?.tglPo);
       if (!da && !db) return 0;
       if (!da) return 1;
       if (!db) return -1;
@@ -540,7 +547,10 @@ function TableUnderChart({
       expiredTgl: po?.expiredTgl || null,
       linkPo: po?.linkPo || null,
       noInvoice: po?.noInvoice || null,
-      siteArea: po?.UnitProduksi?.siteArea || "-",
+      siteArea:
+        po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
+          ? po.UnitProduksi.siteArea
+          : "-",
       tujuanDetail: po?.tujuanDetail || null,
       regional: po?.regional || po?.UnitProduksi?.namaRegional || null,
       Items: mappedItems,
@@ -889,6 +899,20 @@ function TableUnderChart({
                       )
                     ) : (
                       <div className="inline-flex items-center gap-2">
+                        <button
+                          className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
+                          title="Edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const no = String(
+                              po?.noPo || po?.nopo || po?.poNumber || "",
+                            ).trim();
+                            if (!no) return;
+                            router.push(`/po?noPo=${encodeURIComponent(no)}`);
+                          }}
+                        >
+                          <Pencil size={14} />
+                        </button>
                         <button
                           className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
                           title="Update"

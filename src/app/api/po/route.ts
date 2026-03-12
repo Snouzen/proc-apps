@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       company,
+      inisial,
       siteArea,
       tujuan,
       noPo,
@@ -28,51 +29,106 @@ export async function POST(request: Request) {
 
     if (
       !company ||
-      !siteArea ||
+      !inisial ||
       !noPo ||
       !tglPo ||
+      !expiredTgl ||
+      !tujuan ||
       !Array.isArray(items) ||
       items.length === 0
     ) {
       return NextResponse.json(
-        { error: "company, siteArea, noPo, tglPo, dan items wajib diisi" },
+        {
+          error:
+            "company, inisial, noPo, tglPo, expiredTgl, tujuan, dan items wajib diisi",
+        },
+        { status: 400 },
+      );
+    }
+
+    const companyTrim = String(company).trim();
+    const inisialTrim = String(inisial).trim();
+    const tujuanTrim = String(tujuan).trim();
+    const noPoTrim = String(noPo).trim();
+    const siteAreaTrim = String(siteArea || "").trim();
+
+    const tglPoParsed = parseDate(tglPo);
+    const expiredParsed = parseDate(expiredTgl);
+    if (!tglPoParsed) {
+      return NextResponse.json({ error: "tglPo tidak valid" }, { status: 400 });
+    }
+    if (!expiredParsed) {
+      return NextResponse.json(
+        { error: "expiredTgl tidak valid" },
         { status: 400 },
       );
     }
 
     const ritel =
       (await prisma.ritelModern.findFirst({
-        where: { namaPt: company },
+        where: {
+          namaPt: { equals: companyTrim, mode: "insensitive" },
+          inisial: { equals: inisialTrim, mode: "insensitive" },
+        },
       })) ??
       (await prisma.ritelModern.create({
         data: {
           id: randomUUID(),
-          namaPt: company,
-          inisial: null,
-          tujuan: tujuan ?? null,
+          namaPt: companyTrim,
+          inisial: inisialTrim,
+          tujuan: tujuanTrim || null,
           updatedAt: new Date(),
         },
       }));
 
-    const unit = await prisma.unitProduksi.findFirst({
-      where: { siteArea: siteArea },
-    });
-    if (!unit) {
-      return NextResponse.json(
-        { error: "Unit Produksi dengan siteArea tersebut belum terdaftar" },
-        { status: 400 },
-      );
+    let unit: any = null;
+    if (siteAreaTrim) {
+      unit = await prisma.unitProduksi.findFirst({
+        where: { siteArea: { equals: siteAreaTrim, mode: "insensitive" } },
+      });
+      if (!unit) {
+        return NextResponse.json(
+          { error: "Unit Produksi dengan siteArea tersebut belum terdaftar" },
+          { status: 400 },
+        );
+      }
+    } else {
+      unit = await prisma.unitProduksi.findFirst({
+        where: { idRegional: "UNKNOWN" },
+      });
+      if (!unit) {
+        try {
+          unit = await prisma.unitProduksi.create({
+            data: {
+              idRegional: "UNKNOWN",
+              siteArea: "UNKNOWN",
+              namaRegional: "Unknown",
+              updatedAt: new Date(),
+            } as any,
+          });
+        } catch {
+          unit = await prisma.unitProduksi.findFirst({
+            where: { idRegional: "UNKNOWN" },
+          });
+        }
+      }
+      if (!unit) {
+        return NextResponse.json(
+          { error: "Unit Produksi belum tersedia" },
+          { status: 400 },
+        );
+      }
     }
 
     // Upsert PO Header
     const poData = {
       ritelId: ritel.id,
       unitProduksiId: unit.idRegional,
-      tglPo: parseDate(tglPo) as Date,
-      expiredTgl: parseDate(expiredTgl),
+      tglPo: tglPoParsed as Date,
+      expiredTgl: expiredParsed,
       linkPo: linkPo || null,
       noInvoice: noInvoice || null,
-      tujuanDetail: tujuan || null,
+      tujuanDetail: tujuanTrim || null,
       regional: regional || null,
       statusKirim: !!status?.kirim,
       statusSdif: !!status?.sdif,
@@ -88,10 +144,10 @@ export async function POST(request: Request) {
 
     const updatedPO = await prisma.$transaction(async (tx: any) => {
       const po = await tx.purchaseOrder.upsert({
-        where: { noPo },
+        where: { noPo: noPoTrim },
         create: {
           id: randomUUID(),
-          noPo,
+          noPo: noPoTrim,
           ...poData,
           createdAt: new Date(),
         },

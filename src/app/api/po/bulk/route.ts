@@ -306,12 +306,14 @@ export async function POST(req: Request) {
       findKey(sample, ["Nama Company", "Nama PT", "Company"]) || "Nama Company";
     const keyInisial = findKey(sample, ["Inisial", "Initial"]) || "Inisial";
     const parseDate = (d: any) => {
-      if (!d) return new Date();
+      if (d === undefined || d === null) return null;
+      if (typeof d === "string" && d.trim() === "") return null;
       if (typeof d === "number") {
-        return new Date(Math.round((d - 25569) * 86400 * 1000));
+        const dt = new Date(Math.round((d - 25569) * 86400 * 1000));
+        return isNaN(dt.getTime()) ? null : dt;
       }
       const date = new Date(d);
-      return isNaN(date.getTime()) ? new Date() : date;
+      return isNaN(date.getTime()) ? null : date;
     };
     const parseBool = (val: any) => String(val).toUpperCase() === "TRUE";
 
@@ -339,10 +341,7 @@ export async function POST(req: Request) {
           }
 
           const companyName = String(firstRow?.[keyCompany] || "").trim();
-          const inisial =
-            firstRow?.[keyInisial] != null
-              ? String(firstRow[keyInisial]).trim() || null
-              : null;
+          const inisial = String(firstRow?.[keyInisial] || "").trim();
           const tglPoRaw = firstRow?.[keyTglPo];
           const linkPo = firstRow?.[keyLinkPo]
             ? String(firstRow[keyLinkPo]).trim()
@@ -359,6 +358,12 @@ export async function POST(req: Request) {
           if (!companyName) {
             throw new Error("Missing required field: Nama PT/Company");
           }
+          if (!inisial) {
+            throw new Error("Missing required field: Inisial");
+          }
+          if (!tujuan) {
+            throw new Error("Missing required field: Tujuan");
+          }
 
           const ritel = await getRitel(companyName, inisial);
 
@@ -368,7 +373,15 @@ export async function POST(req: Request) {
           const unitToUse = unit ?? fallbackUnit;
 
           const tglPo = parseDate(tglPoRaw);
-          const expiredTgl = expiredPoRaw ? parseDate(expiredPoRaw) : null;
+          if (!tglPo) {
+            throw new Error("Missing/invalid required field: Tanggal PO");
+          }
+          const expiredTgl = parseDate(expiredPoRaw);
+          if (!expiredTgl) {
+            throw new Error(
+              "Missing/invalid required field: Tanggal Expired PO",
+            );
+          }
 
           const statusKirim = parseBool(firstRow?.[keyKirim]);
           const statusSdif = parseBool(firstRow?.[keySdif]);
