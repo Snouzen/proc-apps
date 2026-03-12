@@ -37,7 +37,6 @@ function LoginPageInner() {
         role: payload?.role,
         regional: payload?.regional ?? null,
       };
-      // @ts-ignore
       if (typeof window !== "undefined") {
         sessionStorage.setItem("__me__", JSON.stringify(meData));
         (window as any).__me__ = meData;

@@ -3,7 +3,7 @@ const RITEL_API = "/api/ritel";
 const PRODUCT_API = "/api/product";
 const PO_API = "/api/po";
 
-export const saveRitel = async (payload: any) => {
+export const saveRitel = async (payload: any, signal?: AbortSignal) => {
   try {
     const response = await fetch(RITEL_API, {
       method: "POST",
@@ -11,6 +11,7 @@ export const saveRitel = async (payload: any) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
+      signal,
     });
 
     if (!response.ok) {
@@ -50,8 +51,7 @@ export const saveUnitProduksi = async (payload: {
 };
 
 export const saveProduct = async (name: string, satuanKg?: number) => {
-  const payload =
-    typeof satuanKg === "number" ? { name, satuanKg } : { name };
+  const payload = typeof satuanKg === "number" ? { name, satuanKg } : { name };
 
   let lastErr: any = null;
   for (let attempt = 0; attempt < 3; attempt++) {

@@ -28,15 +28,25 @@ export default function Breadcrumbs() {
   }
 
   const segments = pathname.split("/").filter(Boolean);
+  const useCompanyRoot = pathname === "/po" || pathname.startsWith("/po/");
 
   return (
     <div className="flex items-center gap-2 text-sm text-slate-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
-      <Link
-        href="/"
-        className="flex items-center gap-1 hover:text-slate-800 transition-colors"
-      >
-        <Home size={18} className="text-slate-400" />
-      </Link>
+      {useCompanyRoot ? (
+        <Link
+          href="/company"
+          className="hover:text-slate-800 transition-colors truncate max-w-[150px]"
+        >
+          Company
+        </Link>
+      ) : (
+        <Link
+          href="/"
+          className="flex items-center gap-1 hover:text-slate-800 transition-colors"
+        >
+          <Home size={18} className="text-slate-400" />
+        </Link>
+      )}
 
       {segments.map((segment, index) => {
         const isLast = index === segments.length - 1;

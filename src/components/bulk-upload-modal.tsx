@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Upload,
   X,
@@ -32,15 +32,51 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
   const [errorList, setErrorList] = useState<string[]>([]);
   const [failedRows, setFailedRows] = useState<number[]>([]);
   const [showFailedRows, setShowFailedRows] = useState<boolean>(false);
+  const [showDuplicateRows, setShowDuplicateRows] = useState<boolean>(false);
   const [missingCounts, setMissingCounts] = useState<Record<
     string,
     number
   > | null>(null);
   const [duplicateNos, setDuplicateNos] = useState<string[]>([]);
+  const [duplicateRowMap, setDuplicateRowMap] = useState<
+    Record<string, number[]>
+  >({});
   const [replaceDupes, setReplaceDupes] = useState<boolean>(false);
+  const [readMeta, setReadMeta] = useState<{
+    totalRows: number;
+    parsedRows: number;
+    emptyRows: number[];
+    missingNoPoRows: number[];
+    missingCompanyRows: number[];
+  } | null>(null);
+  const [showReadMeta, setShowReadMeta] = useState(false);
+  const [resultOpen, setResultOpen] = useState(false);
+  const [resultSummary, setResultSummary] = useState<{
+    uniquePoCount: number;
+    plannedPoCount: number;
+    addedPoCount: number;
+    replacedPoCount: number;
+    skippedDuplicatePoCount: number;
+    addedPOs: string[];
+    skippedDuplicatePOs: string[];
+    replacedPOs: string[];
+    uploadedItemRows: number;
+    totalItemRows: number;
+    errors: string[];
+    listTruncated?: boolean;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [progressMeta, setProgressMeta] = useState<{
+    batchIndex: number;
+    batchTotal: number;
+    poDone: number;
+    poTotal: number;
+  } | null>(null);
+  const cancelRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
   const [headerKeys, setHeaderKeys] = useState<{
     noPo: string | null;
     company: string | null;
@@ -49,6 +85,23 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     total: string | null;
   }>({ noPo: null, company: null, inisial: null, product: null, total: null });
 
+  const uniquePoNos = useMemo(() => {
+    const key = headerKeys.noPo;
+    if (!key) return [];
+    const set = new Set<string>();
+    for (const row of previewData) {
+      const v = String(getCell(row, key)).trim();
+      if (v) set.add(v);
+    }
+    return Array.from(set);
+  }, [previewData, headerKeys.noPo]);
+
+  const plannedPoCountPreview = useMemo(() => {
+    const unique = uniquePoNos.length;
+    if (replaceDupes) return unique;
+    return Math.max(unique - duplicateNos.length, 0);
+  }, [uniquePoNos.length, duplicateNos.length, replaceDupes]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -56,10 +109,16 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     setFile(selectedFile);
     setError(null);
     setErrorList([]);
+    setResultOpen(false);
+    setResultSummary(null);
+    setReadMeta(null);
+    setShowReadMeta(false);
     setLoading(true);
 
     try {
-      const data = await readExcel(selectedFile);
+      const res = await readExcel(selectedFile);
+      const data = Array.isArray(res) ? res : res.data;
+      if (!Array.isArray(res)) setReadMeta(res.meta);
       setPreviewData(data);
       const first = data[0] || {};
       const noPoKey = findColumnKey(first, [
@@ -92,12 +151,27 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
       setError(err.message || "Failed to read file");
       setFile(null);
       setDuplicateNos([]);
+      setReadMeta(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const readExcel = (file: File): Promise<any[]> => {
+  const readExcel = (
+    file: File,
+  ): Promise<
+    | any[]
+    | {
+        data: any[];
+        meta: {
+          totalRows: number;
+          parsedRows: number;
+          emptyRows: number[];
+          missingNoPoRows: number[];
+          missingCompanyRows: number[];
+        };
+      }
+  > => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -107,7 +181,67 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(sheet);
-          resolve(jsonData);
+
+          const allRows = XLSX.utils.sheet_to_json(sheet, {
+            header: 1,
+            blankrows: true,
+            defval: "",
+          }) as any[][];
+          const header = Array.isArray(allRows?.[0]) ? allRows[0] : [];
+          const normalizeHeader = (s: any) =>
+            String(s ?? "")
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, " ");
+          const findHeaderIndex = (aliases: string[]) => {
+            const targets = aliases.map(normalizeHeader);
+            for (let i = 0; i < header.length; i++) {
+              if (targets.includes(normalizeHeader(header[i]))) return i;
+            }
+            return -1;
+          };
+          const idxNoPo = findHeaderIndex([
+            "Nomor PO",
+            "No PO",
+            "NO PO",
+            "NOPO",
+          ]);
+          const idxCompany = findHeaderIndex([
+            "Nama Company",
+            "Nama PT",
+            "Company",
+          ]);
+          const emptyRows: number[] = [];
+          const missingNoPoRows: number[] = [];
+          const missingCompanyRows: number[] = [];
+          for (let i = 1; i < allRows.length; i++) {
+            const row = Array.isArray(allRows[i]) ? allRows[i] : [];
+            const rowNum = i + 1;
+            const hasAny = row.some((c) => String(c ?? "").trim() !== "");
+            if (!hasAny) {
+              emptyRows.push(rowNum);
+              continue;
+            }
+            if (idxNoPo >= 0) {
+              const v = String(row[idxNoPo] ?? "").trim();
+              if (!v) missingNoPoRows.push(rowNum);
+            }
+            if (idxCompany >= 0) {
+              const v = String(row[idxCompany] ?? "").trim();
+              if (!v) missingCompanyRows.push(rowNum);
+            }
+          }
+
+          resolve({
+            data: jsonData as any[],
+            meta: {
+              totalRows: Math.max(allRows.length - 1, 0),
+              parsedRows: (jsonData as any[]).length,
+              emptyRows,
+              missingNoPoRows,
+              missingCompanyRows,
+            },
+          });
         } catch (err) {
           reject(err);
         }
@@ -127,12 +261,11 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     }
     return null;
   };
-  const getCell = (row: any, key: string | null) =>
-    key
-      ? typeof row?.[key] === "string"
-        ? row[key].trim()
-        : String(row?.[key] ?? "").trim()
-      : "";
+  function getCell(row: any, key: string | null) {
+    if (!key) return "";
+    const v = row?.[key];
+    return typeof v === "string" ? v.trim() : String(v ?? "").trim();
+  }
 
   const validateDuplicates = async (rows: any[]) => {
     try {
@@ -182,8 +315,18 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
       }
       const dupes = nos.filter((n) => found.has(n));
       setDuplicateNos(dupes);
+      const dupeSet = new Set(dupes);
+      const map: Record<string, number[]> = {};
+      for (let i = 0; i < rows.length; i++) {
+        const noPo = String(getCell(rows[i], noPoKey)).trim();
+        if (!noPo || !dupeSet.has(noPo)) continue;
+        const excelRow = i + 2;
+        (map[noPo] ??= []).push(excelRow);
+      }
+      setDuplicateRowMap(map);
     } catch {
       setDuplicateNos([]);
+      setDuplicateRowMap({});
     }
   };
 
@@ -191,10 +334,14 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     if (!previewData.length) return;
 
     setUploading(true);
+    setProgressOpen(true);
+    cancelRef.current = false;
     setError(null);
     setErrorList([]);
     setSuccessCount(0);
     setPoDone(0);
+    setResultOpen(false);
+    setResultSummary(null);
 
     try {
       // Hitung target total PO yang akan diproses (bukan item rows)
@@ -211,62 +358,95 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
           : Math.max(uniqueNos.length - duplicateNos.length, 0);
       setPoPlannedTotal(planned);
 
-      // Chunk large payloads to prevent server overload/timeouts
-      const CHUNK = 800; // item-rows per request
-      const chunk = <T,>(arr: T[], size: number) =>
-        Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
-          arr.slice(i * size, i * size + size),
-        );
-      const batches = chunk(previewData, CHUNK);
+      const CHUNK = previewData.length > 5000 ? 80 : 400;
+      const batchTotal = Math.max(1, Math.ceil(previewData.length / CHUNK));
       let totalSuccess = 0;
-      let aggregateMissing: Record<string, number> = {};
-      let aggregateDuplicates: string[] = [];
+      const aggregateMissing: Record<string, number> = {};
+      const skippedDuplicatePOs: string[] = [];
+      let skippedDuplicatePoCount = 0;
+      const addedPOs: string[] = [];
+      const replacedPOs: string[] = [];
       let addedPoCount = 0;
       let replacedPoCount = 0;
+      let poDoneLocal = 0;
       const allErrors: string[] = [];
       const failedSet = new Set<number>();
+      let listDupeTruncated = false;
+      let listAddedTruncated = false;
+      let listReplacedTruncated = false;
+      let listErrorsTruncated = false;
 
-      for (let i = 0; i < batches.length; i++) {
-        setUploadProgress(
-          poPlannedTotal > 0
-            ? `Uploading PO ${poDone}/${poPlannedTotal} • Batch ${i + 1}/${batches.length}`
-            : `Batch ${i + 1}/${batches.length}`,
-        );
+      setProgressMeta({
+        batchIndex: 0,
+        batchTotal,
+        poDone: 0,
+        poTotal: planned,
+      });
+
+      for (let i = 0; i < batchTotal; i++) {
+        if (cancelRef.current) {
+          allErrors.push("Upload dibatalkan.");
+          break;
+        }
+        const batch = previewData.slice(i * CHUNK, (i + 1) * CHUNK);
+        const batchLabel =
+          planned > 0
+            ? `Uploading PO ${poDoneLocal}/${planned} • Batch ${i + 1}/${batchTotal}`
+            : `Batch ${i + 1}/${batchTotal}`;
+        setUploadProgress(batchLabel);
+        setProgressMeta({
+          batchIndex: i + 1,
+          batchTotal,
+          poDone: poDoneLocal,
+          poTotal: planned,
+        });
+        await new Promise((r) => setTimeout(r, 0));
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 menit per kloter
+        abortRef.current = controller;
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 menit per kloter
         try {
-          const res = await fetch("/api/po/bulk", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              data: batches[i],
-              replaceDuplicates: replaceDupes,
-            }),
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId);
-          const result = await res.json();
+          let res: Response;
+          let result: any;
+          try {
+            res = await fetch("/api/po/bulk", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                data: batch,
+                replaceDuplicates: replaceDupes,
+              }),
+              signal: controller.signal,
+            });
+            result = await res.json();
+          } finally {
+            clearTimeout(timeoutId);
+          }
           if (!res.ok) {
             throw new Error(result?.error || `Batch ${i + 1} failed`);
           }
           totalSuccess += Number(result?.count || 0);
           addedPoCount += Number(result?.addedPoCount || 0);
           replacedPoCount += Number(result?.replacedPoCount || 0);
+          skippedDuplicatePoCount += Number(result?.duplicatePoCount || 0);
           // Update progress PO done per batch
           const poProgressIncrement =
             replaceDupes === true
               ? Number(result?.addedPoCount || 0) +
                 Number(result?.replacedPoCount || 0)
               : Number(result?.addedPoCount || 0);
-          setPoDone((d) => d + poProgressIncrement);
+          poDoneLocal = poDoneLocal + poProgressIncrement;
+          setPoDone(poDoneLocal);
           setUploadProgress(
-            poPlannedTotal > 0
-              ? `Uploading PO ${Math.min(
-                  poDone + poProgressIncrement,
-                  poPlannedTotal,
-                )}/${poPlannedTotal} • Batch ${i + 1}/${batches.length}`
-              : `Batch ${i + 1}/${batches.length}`,
+            planned > 0
+              ? `Uploading PO ${Math.min(poDoneLocal, planned)}/${planned} • Batch ${i + 1}/${batchTotal}`
+              : `Batch ${i + 1}/${batchTotal}`,
           );
+          setProgressMeta({
+            batchIndex: i + 1,
+            batchTotal,
+            poDone: poDoneLocal,
+            poTotal: planned,
+          });
           if (Array.isArray(result?.errors)) {
             for (const e of result.errors as string[]) {
               allErrors.push(`Batch ${i + 1}: ${e}`);
@@ -277,9 +457,24 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
               }
             }
           }
-          if (Array.isArray(result?.duplicatePOs)) {
-            aggregateDuplicates.push(...result.duplicatePOs.map(String));
+          if (result?.errorsTruncated) {
+            listErrorsTruncated = true;
+            allErrors.push(
+              `Batch ${i + 1}: daftar error dipotong (terlalu banyak).`,
+            );
           }
+          if (Array.isArray(result?.duplicatePOs)) {
+            skippedDuplicatePOs.push(...result.duplicatePOs.map(String));
+          }
+          if (Array.isArray(result?.addedPOs)) {
+            addedPOs.push(...result.addedPOs.map(String));
+          }
+          if (Array.isArray(result?.replacedPOs)) {
+            replacedPOs.push(...result.replacedPOs.map(String));
+          }
+          if (result?.duplicatePOsTruncated) listDupeTruncated = true;
+          if (result?.addedPOsTruncated) listAddedTruncated = true;
+          if (result?.replacedPOsTruncated) listReplacedTruncated = true;
           if (result?.missingCounts) {
             for (const [k, v] of Object.entries(result.missingCounts)) {
               aggregateMissing[k] = (aggregateMissing[k] || 0) + Number(v || 0);
@@ -292,39 +487,50 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
               ? `Batch ${i + 1} timeout / koneksi terputus`
               : `Batch ${i + 1} gagal: ${err?.message || "unknown error"}`;
           allErrors.push(msg);
+        } finally {
+          abortRef.current = null;
         }
       }
 
       setSuccessCount(totalSuccess);
-      (window as any).__bulk_addedPoCount__ = addedPoCount;
-      (window as any).__bulk_duplicates__ = aggregateDuplicates;
-      (window as any).__bulk_replacedPoCount__ = replacedPoCount;
       setMissingCounts(aggregateMissing);
       setErrorList(allErrors);
       setFailedRows(Array.from(failedSet).sort((a, b) => a - b));
       setUploadProgress(null);
+      setProgressOpen(false);
+      setProgressMeta(null);
 
       if (onSuccess) onSuccess();
+      router.refresh();
 
-      // Selesai: tutup modal bila tanpa error; jika ada error, tetap tampilkan ringkasan
-      if (allErrors.length === 0) {
-        setTimeout(() => {
-          setFile(null);
-          setPreviewData([]);
-          setDuplicateNos([]);
-          setReplaceDupes(false);
-          setUploading(false);
-          onClose();
-          router.refresh();
-        }, 1000);
-      } else {
-        setUploading(false);
-        router.refresh();
-      }
+      const dedupe = (list: string[]) => Array.from(new Set(list));
+      const summary = {
+        uniquePoCount: uniqueNos.length,
+        plannedPoCount: planned,
+        addedPoCount,
+        replacedPoCount,
+        skippedDuplicatePoCount,
+        addedPOs: dedupe(addedPOs),
+        skippedDuplicatePOs: dedupe(skippedDuplicatePOs),
+        replacedPOs: dedupe(replacedPOs),
+        uploadedItemRows: totalSuccess,
+        totalItemRows: previewData.length,
+        errors: allErrors,
+        listTruncated:
+          listDupeTruncated ||
+          listAddedTruncated ||
+          listReplacedTruncated ||
+          listErrorsTruncated,
+      };
+      setResultSummary(summary);
+      setResultOpen(true);
+      setUploading(false);
     } catch (err: any) {
       setError(err.message || "Something went wrong during upload");
       setUploading(false);
       setUploadProgress(null);
+      setProgressOpen(false);
+      setProgressMeta(null);
     }
   };
 
@@ -343,7 +549,13 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     setError(null);
     setErrorList([]);
     setDuplicateNos([]);
+    setDuplicateRowMap({});
     setReplaceDupes(false);
+    setShowDuplicateRows(false);
+    setReadMeta(null);
+    setShowReadMeta(false);
+    setResultOpen(false);
+    setResultSummary(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -407,6 +619,103 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
             </div>
           )}
 
+          {readMeta &&
+            (readMeta.totalRows !== readMeta.parsedRows ||
+              readMeta.emptyRows.length > 0 ||
+              readMeta.missingNoPoRows.length > 0 ||
+              readMeta.missingCompanyRows.length > 0) && (
+              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-amber-800 font-semibold">
+                    Validasi pembacaan Excel
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowReadMeta((v) => !v)}
+                    className="px-2 py-1 rounded-md border border-amber-200 bg-white hover:bg-amber-50 text-amber-800 text-xs font-semibold"
+                  >
+                    {showReadMeta ? "Sembunyikan" : "Lihat Detail"}
+                  </button>
+                </div>
+                <div className="mt-2 text-xs text-amber-800/80">
+                  Total item rows terdeteksi:{" "}
+                  <span className="font-bold">{readMeta.totalRows}</span> •
+                  Terbaca jadi item records:{" "}
+                  <span className="font-bold">{readMeta.parsedRows}</span>
+                </div>
+                <div className="mt-1 text-xs text-amber-800/80">
+                  Row kosong (ke-skip):{" "}
+                  <span className="font-bold">{readMeta.emptyRows.length}</span>{" "}
+                  • Row Nomor PO kosong:{" "}
+                  <span className="font-bold">
+                    {readMeta.missingNoPoRows.length}
+                  </span>{" "}
+                  • Row Company kosong:{" "}
+                  <span className="font-bold">
+                    {readMeta.missingCompanyRows.length}
+                  </span>
+                </div>
+                {showReadMeta && (
+                  <div className="mt-3 grid grid-cols-1 gap-2">
+                    {readMeta.emptyRows.length > 0 && (
+                      <div className="text-xs">
+                        <div className="font-semibold text-amber-900 mb-1">
+                          Row kosong (ke-skip)
+                        </div>
+                        <div className="max-h-28 overflow-y-auto border border-amber-100 rounded-md bg-white p-2 text-amber-900/80">
+                          {readMeta.emptyRows.slice(0, 300).join(", ")}
+                          {readMeta.emptyRows.length > 300 && " ..."}
+                        </div>
+                      </div>
+                    )}
+                    {readMeta.missingNoPoRows.length > 0 && (
+                      <div className="text-xs">
+                        <div className="font-semibold text-amber-900 mb-1">
+                          Row berisi tapi Nomor PO kosong (akan di-skip saat
+                          upload)
+                        </div>
+                        <div className="max-h-28 overflow-y-auto border border-amber-100 rounded-md bg-white p-2 text-amber-900/80">
+                          {readMeta.missingNoPoRows.slice(0, 300).join(", ")}
+                          {readMeta.missingNoPoRows.length > 300 && " ..."}
+                        </div>
+                      </div>
+                    )}
+                    {readMeta.missingCompanyRows.length > 0 && (
+                      <div className="text-xs">
+                        <div className="font-semibold text-amber-900 mb-1">
+                          Row berisi tapi Company kosong (akan error di server)
+                        </div>
+                        <div className="max-h-28 overflow-y-auto border border-amber-100 rounded-md bg-white p-2 text-amber-900/80">
+                          {readMeta.missingCompanyRows.slice(0, 300).join(", ")}
+                          {readMeta.missingCompanyRows.length > 300 && " ..."}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+          {previewData.length > 0 && (
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm">
+              <div className="text-slate-700 font-semibold">
+                Ringkasan record
+              </div>
+              <div className="mt-2 text-xs text-slate-600">
+                Total item rows:{" "}
+                <span className="font-bold">{previewData.length}</span>
+                {readMeta &&
+                  readMeta.totalRows !== previewData.length &&
+                  ` (di sheet: ${readMeta.totalRows})`}{" "}
+                • Total PO unik:{" "}
+                <span className="font-bold">{uniquePoNos.length}</span> • Akan
+                diproses:{" "}
+                <span className="font-bold">{plannedPoCountPreview}</span> PO{" "}
+                {replaceDupes ? "(Replace ON)" : "(Skip duplikat)"}
+              </div>
+            </div>
+          )}
+
           {previewData.length > 0 && duplicateNos.length > 0 && (
             <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl text-sm">
               <div className="flex items-center justify-between">
@@ -414,6 +723,14 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
                   Deteksi Duplikat: {duplicateNos.length} nomor PO sudah ada
                 </div>
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowDuplicateRows((v) => !v)}
+                    className="px-2 py-1 rounded-md border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold"
+                    type="button"
+                    title="Lihat baris Excel yang terdampak duplikat"
+                  >
+                    {showDuplicateRows ? "Sembunyikan Baris" : "Lihat Baris"}
+                  </button>
                   <label className="flex items-center gap-2 text-blue-700">
                     <input
                       type="checkbox"
@@ -424,12 +741,54 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
                   </label>
                 </div>
               </div>
+              <div className="mt-2 text-xs text-blue-700/80">
+                Total item rows: {previewData.length} • Total PO unik:{" "}
+                {uniquePoNos.length} • Akan diproses: {plannedPoCountPreview} PO{" "}
+                {replaceDupes ? "(Replace ON)" : "(Skip duplikat)"}
+              </div>
               {duplicateNos.length > 0 && (
                 <div className="mt-2 text-xs text-blue-700/80">
                   Contoh: {duplicateNos.slice(0, 5).join(", ")}
                   {duplicateNos.length > 5 && " ..."}
                 </div>
               )}
+              {showDuplicateRows && (
+                <div className="mt-3 text-xs text-blue-800">
+                  <div className="font-semibold mb-1">
+                    Baris Excel terdampak:
+                  </div>
+                  <div className="max-h-36 overflow-y-auto border border-blue-100 rounded-md bg-white p-2 space-y-1">
+                    {Object.entries(duplicateRowMap)
+                      .slice(0, 30)
+                      .map(([noPo, rows]) => (
+                        <div key={noPo} className="flex gap-2">
+                          <span className="font-mono font-bold">{noPo}</span>
+                          <span className="text-blue-700/80">
+                            Row: {rows.slice(0, 25).join(", ")}
+                            {rows.length > 25 && " ..."}
+                          </span>
+                        </div>
+                      ))}
+                    {Object.keys(duplicateRowMap).length > 30 && (
+                      <div className="text-blue-700/70 italic">
+                        ...dan {Object.keys(duplicateRowMap).length - 30} PO
+                        duplikat lainnya
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {previewData.length > 0 && duplicateNos.length === 0 && (
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm">
+              <div className="text-slate-700 font-semibold">
+                Validasi: tidak ada duplikat PO di database
+              </div>
+              <div className="mt-2 text-xs text-slate-600">
+                Total item rows: {previewData.length} • Total PO unik:{" "}
+                {uniquePoNos.length} • Akan diproses: {plannedPoCountPreview} PO
+              </div>
             </div>
           )}
 
@@ -483,49 +842,44 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
             </div>
           )}
 
-          {successCount > 0 && (
+          {successCount > 0 && resultSummary && (
             <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3 text-emerald-700 text-sm">
               <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
               <div>
                 <p>
-                  Successfully uploaded {successCount} item rows
-                  {typeof (window as any).__bulk_addedPoCount__ === "number"
-                    ? ` (PO baru: ${(window as any).__bulk_addedPoCount__})`
+                  Upload selesai: {resultSummary.totalItemRows} item rows
+                  diproses • {resultSummary.uploadedItemRows} item rows
+                  tersimpan
+                </p>
+                <p className="text-emerald-700/80 text-xs mt-1">
+                  PO baru: {resultSummary.addedPoCount} • Duplikat di-skip:{" "}
+                  {resultSummary.skippedDuplicatePoCount}
+                  {resultSummary.replacedPoCount > 0
+                    ? ` • Duplikat di-replace: ${resultSummary.replacedPoCount}`
                     : ""}
                 </p>
-                {/* Duplicate summary (if set globally by result handler) */}
-                {Array.isArray((window as any).__bulk_duplicates__) &&
-                  (window as any).__bulk_duplicates__.length > 0 && (
-                    <p className="text-emerald-700/80 text-xs mt-1">
-                      Duplikat di-skip:{" "}
-                      {(window as any).__bulk_duplicates__.length}
-                      {": "}
-                      {(window as any).__bulk_duplicates__
-                        .slice(0, 5)
-                        .join(", ")}
-                      {(window as any).__bulk_duplicates__.length > 5 && " ..."}
-                    </p>
-                  )}
-                {typeof (window as any).__bulk_replacedPoCount__ === "number" &&
-                  (window as any).__bulk_replacedPoCount__ > 0 && (
-                    <p className="text-emerald-700/80 text-xs mt-1">
-                      Duplikat di-replace:{" "}
-                      {(window as any).__bulk_replacedPoCount__}
-                    </p>
-                  )}
                 {missingCounts && (
                   <p className="text-emerald-700/80 text-xs mt-1">
                     Kolom kosong terdeteksi:{" "}
                     {Object.entries(missingCounts)
-                      .filter(([_, c]) => (c as number) > 0)
+                      .filter(([_label, count]) => (count as number) > 0)
                       .slice(0, 8)
-                      .map(([k, c]) => `${k}: ${c}`)
+                      .map(([label, count]) => `${label}: ${count}`)
                       .join(" · ")}
                     {Object.entries(missingCounts).filter(
-                      ([_, c]) => (c as number) > 0,
+                      ([_label, count]) => (count as number) > 0,
                     ).length > 8 && " · ..."}
                   </p>
                 )}
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setResultOpen(true)}
+                    className="px-3 py-2 rounded-xl bg-white border border-emerald-200 text-emerald-700 text-xs font-bold hover:bg-emerald-50"
+                  >
+                    Lihat Ringkasan
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -639,6 +993,213 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
           </div>
         </div>
       </Modal>
+      {resultOpen && resultSummary && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+          <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 bg-slate-50/60 flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-800">
+                Ringkasan Bulk Upload
+              </h3>
+              <button
+                type="button"
+                onClick={() => setResultOpen(false)}
+                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-slate-700"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 text-sm text-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-slate-100 bg-white p-4">
+                  <div className="text-xs text-slate-500">Total PO unik</div>
+                  <div className="text-xl font-extrabold">
+                    {resultSummary.uniquePoCount}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-white p-4">
+                  <div className="text-xs text-slate-500">PO diproses</div>
+                  <div className="text-xl font-extrabold">
+                    {resultSummary.plannedPoCount}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <div className="text-xs text-emerald-700/80">PO baru</div>
+                  <div className="text-xl font-extrabold text-emerald-700">
+                    {resultSummary.addedPoCount}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <div className="text-xs text-blue-700/80">
+                    Duplikat di-skip
+                  </div>
+                  <div className="text-xl font-extrabold text-blue-700">
+                    {resultSummary.skippedDuplicatePoCount}
+                  </div>
+                </div>
+              </div>
+
+              {resultSummary.addedPOs.length > 0 && (
+                <div>
+                  <div className="font-bold text-slate-800 mb-2">
+                    Preview PO baru ({resultSummary.addedPOs.length})
+                  </div>
+                  <div className="max-h-56 overflow-y-auto border border-slate-100 rounded-2xl bg-white p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {resultSummary.addedPOs.slice(0, 200).map((n) => (
+                        <div
+                          key={n}
+                          className="px-3 py-2 rounded-xl border border-slate-100 bg-slate-50 font-mono text-xs"
+                        >
+                          {n}
+                        </div>
+                      ))}
+                    </div>
+                    {resultSummary.addedPOs.length > 200 && (
+                      <div className="text-xs text-slate-500 mt-3 italic">
+                        ...dan {resultSummary.addedPOs.length - 200} PO lainnya
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {resultSummary.errors.length > 0 && (
+                <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+                  <div className="font-bold text-amber-800">
+                    Ada error ({resultSummary.errors.length})
+                  </div>
+                  <div className="text-xs text-amber-800 mt-2 max-h-32 overflow-y-auto">
+                    <ul className="list-disc list-inside">
+                      {resultSummary.errors.slice(0, 80).map((e, idx) => (
+                        <li key={idx}>{e}</li>
+                      ))}
+                    </ul>
+                    {resultSummary.errors.length > 80 && (
+                      <div className="italic mt-2">
+                        ...dan {resultSummary.errors.length - 80} error lainnya
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResultOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResultOpen(false);
+                    reset();
+                    onClose();
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800"
+                >
+                  Selesai
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {progressOpen && uploading && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+          <div className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 bg-slate-50/60">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-800">
+                    Upload Bulk PO
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {progressMeta
+                      ? `Batch ${progressMeta.batchIndex}/${progressMeta.batchTotal} • ${Math.max(
+                          progressMeta.batchTotal - progressMeta.batchIndex,
+                          0,
+                        )} batch remaining`
+                      : "Menyiapkan batch..."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    cancelRef.current = true;
+                    abortRef.current?.abort();
+                  }}
+                  className="px-3 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700"
+                >
+                  Cancel Upload
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm text-slate-700">
+                  <span className="font-semibold">Progress</span>
+                  <span className="text-slate-500">
+                    {progressMeta && progressMeta.poTotal > 0
+                      ? `${progressMeta.poDone}/${progressMeta.poTotal} uploaded`
+                      : progressMeta
+                        ? `${progressMeta.batchIndex}/${progressMeta.batchTotal} batch`
+                        : ""}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className="h-full bg-slate-900"
+                    style={{
+                      width: (() => {
+                        if (!progressMeta) return "0%";
+                        if (progressMeta.poTotal > 0) {
+                          const pct = Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Math.round(
+                                (progressMeta.poDone / progressMeta.poTotal) *
+                                  100,
+                              ),
+                            ),
+                          );
+                          return `${pct}%`;
+                        }
+                        const pct = Math.max(
+                          0,
+                          Math.min(
+                            100,
+                            Math.round(
+                              (progressMeta.batchIndex /
+                                Math.max(progressMeta.batchTotal, 1)) *
+                                100,
+                            ),
+                          ),
+                        );
+                        return `${pct}%`;
+                      })(),
+                    }}
+                  />
+                </div>
+                {progressMeta && progressMeta.poTotal > 0 && (
+                  <div className="text-xs text-slate-600">
+                    {Math.max(progressMeta.poTotal - progressMeta.poDone, 0)} of{" "}
+                    {progressMeta.poTotal} remaining
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-slate-500">
+                {uploadProgress || "Sedang memproses..."}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {showConfirm && !uploading && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           <div

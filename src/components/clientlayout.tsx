@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
-import { Menu, Search, Bell, LogOut } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Modal from "@/components/modal";
 import { getMe, getMeSync, clearMeCache } from "@/lib/me";
@@ -101,20 +101,6 @@ export default function ClientLayout({
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 bg-gray-100/50 px-4 py-2 rounded-xl border border-gray-100 mr-2">
-                <Search size={16} className="text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="bg-transparent border-none focus:outline-none text-sm w-32 xl:w-64"
-                />
-              </div>
-
-              <button className="relative p-2 text-gray-500 rounded-xl hover:bg-gray-50 transition-colors">
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
-
               {/* Garis Pembatas Utama */}
               <div className="h-8 w-[1px] bg-slate-200 mx-2 hidden sm:block"></div>
 

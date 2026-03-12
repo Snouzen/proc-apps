@@ -6,6 +6,7 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Eye,
   Zap,
   Edit2,
@@ -708,9 +709,24 @@ export default function RitelModernPage() {
           />
           <div className="relative bg-white w-full max-w-6xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800">
-                Tambah Toko/DC
-              </h3>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddStoreFor(null);
+                    setTimeout(() => {
+                      setViewAliases({ namaPt: addStoreFor.namaPt });
+                    }, 0);
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-slate-700 hover:bg-gray-50"
+                >
+                  <ChevronLeft size={16} />
+                  <span className="text-xs font-bold">Back</span>
+                </button>
+                <h3 className="text-lg font-extrabold text-slate-800">
+                  Tambah Toko/DC
+                </h3>
+              </div>
               <button
                 onClick={() => setAddStoreFor(null)}
                 className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
@@ -733,7 +749,12 @@ export default function RitelModernPage() {
               <div className="flex gap-2 justify-end">
                 <StatefulButton
                   variant="cancel"
-                  onClick={() => setAddStoreFor(null)}
+                  onClick={() => {
+                    setAddStoreFor(null);
+                    setTimeout(() => {
+                      setViewAliases({ namaPt: addStoreFor.namaPt });
+                    }, 0);
+                  }}
                 >
                   Batal
                 </StatefulButton>
@@ -1274,10 +1295,25 @@ export default function RitelModernPage() {
           />
           <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800">
-                {viewCompany.namaPt}{" "}
-                {viewCompany.inisial ? `(${viewCompany.inisial})` : ""}
-              </h3>
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewCompany(null);
+                    setTimeout(() => {
+                      setViewAliases({ namaPt: viewCompany.namaPt });
+                    }, 0);
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-slate-700 hover:bg-gray-50"
+                >
+                  <ChevronLeft size={16} />
+                  <span className="text-xs font-bold">Back</span>
+                </button>
+                <h3 className="text-lg font-extrabold text-slate-800 truncate">
+                  {viewCompany.namaPt}{" "}
+                  {viewCompany.inisial ? `(${viewCompany.inisial})` : ""}
+                </h3>
+              </div>
               <button
                 onClick={() => setViewCompany(null)}
                 className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"

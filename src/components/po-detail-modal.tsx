@@ -2,7 +2,7 @@
 
 import { FileText, Package, X, ExternalLink } from "lucide-react";
 import Modal from "./modal";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type POData = {
   id: string;
@@ -47,6 +47,7 @@ type Props = {
 };
 
 export default function PODetailModal({ open, onClose, data }: Props) {
+  const router = useRouter();
   if (!data) return null;
 
   const formatDate = (d: string | null) => {
@@ -68,10 +69,6 @@ export default function PODetailModal({ open, onClose, data }: Props) {
     }).format(val);
   };
 
-  const formatNumber = (val: number) => {
-    return new Intl.NumberFormat("id-ID").format(val);
-  };
-
   return (
     <Modal
       open={open}
@@ -87,12 +84,17 @@ export default function PODetailModal({ open, onClose, data }: Props) {
             </p>
             <h2 className="text-lg font-bold text-slate-800">{data.company}</h2>
           </div>
-          <Link
-            href={`/company/${encodeURIComponent(data.company)}`}
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              router.push(`/company/${encodeURIComponent(data.company)}`);
+            }}
             className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+            title="Lihat semua PO untuk company ini"
           >
             View all PO <ExternalLink size={12} />
-          </Link>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -191,8 +193,11 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {data.Items?.slice(0, 5).map((item) => (
-                    <tr key={item.id} className="group hover:bg-slate-50/50">
+                  {data.Items?.slice(0, 5).map((item, idx) => (
+                    <tr
+                      key={item.id || `${item?.Product?.name || "item"}-${idx}`}
+                      className="group hover:bg-slate-50/50"
+                    >
                       <td className="px-4 py-3 font-medium text-slate-700">
                         {item.Product.name}
                       </td>
@@ -216,13 +221,18 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                         colSpan={4}
                         className="px-4 py-3 text-center bg-slate-50/50"
                       >
-                        <Link
-                          href={`/company/${encodeURIComponent(data.company)}`}
-                          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1"
-                        >
-                          View All ({data.Items.length - 5} more items){" "}
-                          <ExternalLink size={12} />
-                        </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          router.push(`/company/${encodeURIComponent(data.company)}`);
+                        }}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1"
+                        title="Lihat semua PO untuk company ini"
+                      >
+                        View All ({data.Items.length - 5} more items){" "}
+                        <ExternalLink size={12} />
+                      </button>
                       </td>
                     </tr>
                   )}

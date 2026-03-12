@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  Eye,
   Plus,
+  Search,
   Upload,
   Pencil,
   Trash2,
@@ -22,7 +22,7 @@ type GroupedPO = {
   pos: any[];
 };
 
-export default function TestingPage() {
+export default function TestingPage({ focusCompany }: { focusCompany?: string } = {}) {
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<GroupedPO[]>([]);
   const [openCompanies, setOpenCompanies] = useState<Record<string, boolean>>(
@@ -30,6 +30,7 @@ export default function TestingPage() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
@@ -40,6 +41,9 @@ export default function TestingPage() {
     Record<string, string | null>
   >({});
   const [poPage, setPoPage] = useState<Record<string, number>>({});
+  const [poRowsPerPage, setPoRowsPerPage] = useState<Record<string, number>>(
+    {},
+  );
 
   const fetchData = async () => {
     setLoading(true);
@@ -94,16 +98,49 @@ export default function TestingPage() {
     }
   };
 
+  const filteredGroups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return groups;
+    return groups.filter((g) => {
+      const companyName = String(g.company || "").toLowerCase();
+      if (companyName.includes(q)) return true;
+      const list = Array.isArray(g.pos) ? g.pos : [];
+      return list.some((po: any) => {
+        const noPo = String(po?.noPo || "").toLowerCase();
+        if (noPo.includes(q)) return true;
+        const inisial = String(po?.RitelModern?.inisial || "").toLowerCase();
+        return inisial.includes(q);
+      });
+    });
+  }, [groups, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentItems = useMemo(
-    () => groups.slice(indexOfFirst, indexOfLast),
-    [groups, indexOfFirst, indexOfLast],
+    () => filteredGroups.slice(indexOfFirst, indexOfLast),
+    [filteredGroups, indexOfFirst, indexOfLast],
   );
-  const totalPages = Math.max(1, Math.ceil(groups.length / itemsPerPage));
+  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / itemsPerPage));
 
   const toggleCompany = (name: string) =>
     setOpenCompanies((prev) => ({ ...prev, [name]: !prev[name] }));
+  useEffect(() => {
+    if (!focusCompany) return;
+    setSearchQuery(focusCompany);
+    setCurrentPage(1);
+    setOpenCompanies((prev) => ({ ...prev, [focusCompany]: true }));
+    const t = setTimeout(() => {
+      const el = document.getElementById(
+        `company-${encodeURIComponent(focusCompany)}`,
+      );
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [focusCompany, groups]);
 
   const openModal = (po: any) => {
     const productNames = po.Items?.map((i: any) => i.Product?.name) || [];
@@ -149,7 +186,20 @@ export default function TestingPage() {
             Monitoring daftar PO per company
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+          <div className="relative w-full sm:w-80">
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search nama company / No PO / inisial..."
+              className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-slate-200"
+            />
+          </div>
+          <div className="flex items-center gap-2">
           <button
             onClick={() => setIsBulkOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 border-slate-200 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all shadow-sm active:scale-95"
@@ -164,6 +214,7 @@ export default function TestingPage() {
             <Plus size={18} />
             Add PO
           </Link>
+          </div>
         </div>
       </div>
 
@@ -182,6 +233,7 @@ export default function TestingPage() {
                 return (
                   <li
                     key={g.company}
+                    id={`company-${encodeURIComponent(g.company)}`}
                     className="rounded-2xl border border-slate-200 overflow-hidden"
                   >
                     <button
@@ -307,13 +359,10 @@ export default function TestingPage() {
                                   )}
                                   {selectedAlias && (
                                     <div className="mt-3 border-t border-slate-100 pt-3">
-                                      <div className="text-xs font-bold text-slate-600 mb-2">
-                                        Daftar PO untuk inisial: {selectedAlias}
-                                      </div>
                                       {(() => {
                                         const key = `${g.company}|${selectedAlias}`;
                                         const pp = poPage[key] || 1;
-                                        const perPo = 15;
+                                        const perPo = poRowsPerPage[key] || 10;
                                         const list =
                                           groupsByInisial[selectedAlias];
                                         const totalPoPages = Math.max(
@@ -327,108 +376,201 @@ export default function TestingPage() {
                                         );
                                         return (
                                           <>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                              {slice.map((po: any) => {
-                                                const items = Array.isArray(
-                                                  po?.Items,
-                                                )
-                                                  ? po.Items
-                                                  : [];
-                                                const sum = (
-                                                  arr: any[],
-                                                  f: (x: any) => number,
-                                                ) =>
-                                                  arr.reduce(
-                                                    (acc, it) =>
-                                                      acc + (f(it) || 0),
-                                                    0,
-                                                  );
-                                                const kgKirim = sum(
-                                                  items,
-                                                  (it) =>
-                                                    Number(it?.pcsKirim) *
-                                                    (Number(
-                                                      it?.Product?.satuanKg,
-                                                    ) || 1),
-                                                );
-                                                const kgPesan = sum(
-                                                  items,
-                                                  (it) =>
-                                                    Number(it?.pcs) *
-                                                    (Number(
-                                                      it?.Product?.satuanKg,
-                                                    ) || 1),
-                                                );
-                                                const totalKg =
-                                                  kgKirim || kgPesan || 0;
-                                                const rpTagih = sum(
-                                                  items,
-                                                  (it) => Number(it?.rpTagih),
-                                                );
-                                                const rpNominal = sum(
-                                                  items,
-                                                  (it) => Number(it?.nominal),
-                                                );
-                                                const totalRpTagih =
-                                                  rpTagih || rpNominal || 0;
-                                                const n = (v: number) =>
-                                                  v.toLocaleString("id-ID");
-                                                return (
-                                                  <div
-                                                    key={po.id}
-                                                    className="py-2 px-3 rounded-xl border border-slate-200 flex items-center justify-between"
-                                                  >
-                                                    <div className="min-w-0 mr-3">
-                                                      <div className="text-sm text-slate-700 font-medium truncate">
-                                                        {po.noPo} —{" "}
-                                                        {po.tujuanDetail || "-"}
-                                                      </div>
-                                                      <div className="text-sm md:text-[15px] text-slate-700 font-bold">
-                                                        {n(Math.round(totalKg))}{" "}
-                                                        kg / Rp{" "}
-                                                        {n(totalRpTagih)}
-                                                      </div>
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                      <button
-                                                        title="Extend"
-                                                        className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                                                      >
-                                                        <CalendarClock
-                                                          size={16}
-                                                        />
-                                                      </button>
-                                                      <Link
-                                                        href={`/po?noPo=${encodeURIComponent(po.noPo)}&company=${encodeURIComponent(po?.RitelModern?.namaPt || "")}`}
-                                                        title="Edit"
-                                                        className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
-                                                      >
-                                                        <Pencil size={16} />
-                                                      </Link>
-                                                      <button
-                                                        title="Delete"
-                                                        onClick={() =>
-                                                          setConfirmDelete(
-                                                            po.noPo,
-                                                          )
-                                                        }
-                                                        className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
-                                                      >
-                                                        <Trash2 size={16} />
-                                                      </button>
-                                                      <button
-                                                        title="View Detail"
-                                                        onClick={() =>
-                                                          openModal(po)
-                                                        }
-                                                        className="p-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors"
-                                                      >
-                                                        <Eye size={16} />
-                                                      </button>
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })}
+                                            <div className="flex items-center justify-between gap-3 mb-2">
+                                              <div className="text-xs font-bold text-slate-600">
+                                                Daftar PO untuk inisial:{" "}
+                                                {selectedAlias}
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-xs text-slate-500">
+                                                  Tampilkan
+                                                </span>
+                                                <select
+                                                  value={perPo}
+                                                  onChange={(e) => {
+                                                    const next = Number(
+                                                      e.target.value,
+                                                    );
+                                                    setPoRowsPerPage(
+                                                      (prev) => ({
+                                                        ...prev,
+                                                        [key]: next,
+                                                      }),
+                                                    );
+                                                    setPoPage((prev) => ({
+                                                      ...prev,
+                                                      [key]: 1,
+                                                    }));
+                                                  }}
+                                                  className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs"
+                                                >
+                                                  <option value={10}>10</option>
+                                                  <option value={25}>25</option>
+                                                  <option value={50}>50</option>
+                                                </select>
+                                                <span className="text-xs text-slate-500">
+                                                  data
+                                                </span>
+                                              </div>
+                                            </div>
+                                            <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                                              <div className="max-h-[360px] overflow-auto">
+                                                <table className="w-full min-w-[840px] text-left">
+                                                  <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
+                                                    <tr>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50">
+                                                        No PO
+                                                      </th>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50">
+                                                        Tujuan
+                                                      </th>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
+                                                        Kg
+                                                      </th>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
+                                                        Rp Tagih
+                                                      </th>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
+                                                        Aksi
+                                                      </th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody className="divide-y divide-slate-100 text-sm">
+                                                    {slice.map((po: any) => {
+                                                      const items =
+                                                        Array.isArray(po?.Items)
+                                                          ? po.Items
+                                                          : [];
+                                                      const sum = (
+                                                        arr: any[],
+                                                        f: (x: any) => number,
+                                                      ) =>
+                                                        arr.reduce(
+                                                          (acc, it) =>
+                                                            acc + (f(it) || 0),
+                                                          0,
+                                                        );
+                                                      const kgKirim = sum(
+                                                        items,
+                                                        (it) =>
+                                                          Number(it?.pcsKirim) *
+                                                          (Number(
+                                                            it?.Product
+                                                              ?.satuanKg,
+                                                          ) || 1),
+                                                      );
+                                                      const kgPesan = sum(
+                                                        items,
+                                                        (it) =>
+                                                          Number(it?.pcs) *
+                                                          (Number(
+                                                            it?.Product
+                                                              ?.satuanKg,
+                                                          ) || 1),
+                                                      );
+                                                      const totalKg =
+                                                        kgKirim || kgPesan || 0;
+                                                      const rpTagih = sum(
+                                                        items,
+                                                        (it) =>
+                                                          Number(it?.rpTagih),
+                                                      );
+                                                      const rpNominal = sum(
+                                                        items,
+                                                        (it) =>
+                                                          Number(it?.nominal),
+                                                      );
+                                                      const totalRpTagih =
+                                                        rpTagih ||
+                                                        rpNominal ||
+                                                        0;
+                                                      const n = (v: number) =>
+                                                        v.toLocaleString(
+                                                          "id-ID",
+                                                        );
+                                                      return (
+                                                        <tr
+                                                          key={po.id}
+                                                          className="hover:bg-slate-50/70 cursor-pointer"
+                                                          title="Klik baris untuk lihat detail"
+                                                          onClick={() =>
+                                                            openModal(po)
+                                                          }
+                                                        >
+                                                          <td className="px-4 py-3 font-mono font-bold text-slate-800">
+                                                            {po.noPo}
+                                                          </td>
+                                                          <td className="px-4 py-3 text-slate-700">
+                                                            {po.tujuanDetail ||
+                                                              "-"}
+                                                          </td>
+                                                          <td className="px-4 py-3 text-right text-slate-700 font-semibold">
+                                                            {n(
+                                                              Math.round(
+                                                                totalKg,
+                                                              ),
+                                                            )}
+                                                          </td>
+                                                          <td className="px-4 py-3 text-right text-slate-700 font-semibold">
+                                                            {n(totalRpTagih)}
+                                                          </td>
+                                                          <td className="px-4 py-3">
+                                                            <div className="flex justify-end gap-1">
+                                                              <button
+                                                                title="Extend"
+                                                                className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                                                                onClick={(
+                                                                  e,
+                                                                ) => {
+                                                                  e.stopPropagation();
+                                                                  // extend handler TODO (existing behaviour placeholder)
+                                                                }}
+                                                              >
+                                                                <CalendarClock
+                                                                  size={16}
+                                                                />
+                                                              </button>
+                                                              <Link
+                                                                href={`/po?noPo=${encodeURIComponent(po.noPo)}&company=${encodeURIComponent(po?.RitelModern?.namaPt || "")}`}
+                                                                title="Edit"
+                                                                className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                                                                onClick={(e) =>
+                                                                  e.stopPropagation()
+                                                                }
+                                                              >
+                                                                <Pencil
+                                                                  size={16}
+                                                                />
+                                                              </Link>
+                                                              <button
+                                                                title="Delete"
+                                                                className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                                                onMouseDown={(
+                                                                  e,
+                                                                ) =>
+                                                                  e.stopPropagation()
+                                                                }
+                                                                onClick={(
+                                                                  e,
+                                                                ) => {
+                                                                  e.stopPropagation();
+                                                                  setConfirmDelete(
+                                                                    po.noPo,
+                                                                  );
+                                                                }}
+                                                              >
+                                                                <Trash2
+                                                                  size={16}
+                                                                />
+                                                              </button>
+                                                            </div>
+                                                          </td>
+                                                        </tr>
+                                                      );
+                                                    })}
+                                                  </tbody>
+                                                </table>
+                                              </div>
                                             </div>
                                             {list.length > perPo ? (
                                               <div className="flex items-center justify-between mt-3">
@@ -492,11 +634,12 @@ export default function TestingPage() {
                 );
               })}
             </ul>
-            {groups.length > itemsPerPage ? (
+            {filteredGroups.length > itemsPerPage ? (
               <div className="flex items-center justify-between px-2 py-4 mt-2">
                 <p className="text-sm text-slate-500">
                   Showing {indexOfFirst + 1} -{" "}
-                  {Math.min(indexOfLast, groups.length)} of {groups.length}
+                  {Math.min(indexOfLast, filteredGroups.length)} of{" "}
+                  {filteredGroups.length}
                 </p>
                 <div className="flex gap-2">
                   <button

@@ -28,6 +28,9 @@ export default function Home() {
   const [regional, setRegional] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
   const [unitData, setUnitData] = useState<any[]>([]);
+  const [tableFocus, setTableFocus] = useState<"in_progress" | "completed" | null>(
+    null,
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -73,35 +76,45 @@ export default function Home() {
     const dt = new Date(d);
     return isNaN(dt.getTime()) ? null : dt;
   };
+  const isCompleted = (po: any) => {
+    const inv = po?.noInvoice;
+    return String(inv ?? "").trim().length > 0;
+  };
   const daysUntil = (d: Date | null) => {
     if (!d) return null;
     const ms = d.getTime() - Date.now();
     return Math.ceil(ms / (1000 * 60 * 60 * 24));
   };
 
-  const { activeCount, inProgressCount, almostExpiredCount, monthlyCounts } =
-    useMemo(() => {
-      const active = poData.filter((po) => !!po.statusPo).length;
-      const inProg = poData.filter((po) => !po.statusBayar).length;
-      const done = poData.filter((po) => !!po.statusBayar).length;
-      const almost = poData.filter((po) => {
-        const exp = toDate(po.expiredTgl);
-        const du = daysUntil(exp);
-        return du != null && du >= 0 && du <= 14 && !po.statusBayar;
-      }).length;
-      const months = Array(12).fill(0);
-      for (const po of poData) {
-        const dt = toDate(po.tglPo);
-        if (!dt) continue;
-        months[dt.getMonth()]++;
-      }
-      return {
-        activeCount: active,
-        inProgressCount: inProg,
-        almostExpiredCount: almost,
-        monthlyCounts: months,
-      };
-    }, [poData]);
+  const {
+    activeCount,
+    inProgressCount,
+    almostExpiredCount,
+    completedCount,
+    monthlyCounts,
+  } = useMemo(() => {
+    const active = poData.filter((po) => !!po.statusPo).length;
+    const inProg = poData.filter((po) => !isCompleted(po)).length;
+    const done = poData.filter((po) => isCompleted(po)).length;
+    const almost = poData.filter((po) => {
+      const exp = toDate(po.expiredTgl);
+      const du = daysUntil(exp);
+      return du != null && du >= 0 && du <= 14 && !isCompleted(po);
+    }).length;
+    const months = Array(12).fill(0);
+    for (const po of poData) {
+      const dt = toDate(po.tglPo);
+      if (!dt) continue;
+      months[dt.getMonth()]++;
+    }
+    return {
+      activeCount: active,
+      inProgressCount: inProg,
+      almostExpiredCount: almost,
+      completedCount: done,
+      monthlyCounts: months,
+    };
+  }, [poData]);
 
   if (!roleReady) {
     return (
@@ -112,6 +125,15 @@ export default function Home() {
       </main>
     );
   }
+
+  const focusTable = (group: "in_progress" | "completed") => {
+    setTableFocus(group);
+    setTimeout(() => {
+      document
+        .getElementById("po-table")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
 
   return (
     <main>
@@ -126,17 +148,19 @@ export default function Home() {
             color=""
             variant="blue"
             icon={<ListChecks size={20} />}
+            onClick={() => focusTable("in_progress")}
           />
           <StatCard
             title="PO Completed"
             value={String(
-              Math.max(poData.filter((po) => !!po.statusBayar).length, 0),
+              Math.max(poData.filter((po) => isCompleted(po)).length, 0),
             )}
             subValue={loading ? "Loading..." : `Selesai`}
             subLabel=""
             color=""
-            variant="amber"
+            variant="emerald"
             icon={<FileText size={20} />}
+            onClick={() => focusTable("completed")}
           />
         </div>
       ) : (
@@ -158,6 +182,7 @@ export default function Home() {
             color=""
             variant="blue"
             icon={<ListChecks size={20} />}
+            onClick={() => focusTable("in_progress")}
           />
           <StatCard
             title="PO Almost Expired"
@@ -167,8 +192,18 @@ export default function Home() {
             }
             subLabel=""
             color=""
-            variant="amber"
-            icon={<ListChecks size={20} />}
+            variant="rose"
+            icon={<ClockAlert size={20} />}
+          />
+          <StatCard
+            title="PO Completed"
+            value={String(completedCount)}
+            subValue={loading ? "Loading..." : `Selesai`}
+            subLabel=""
+            color=""
+            variant="emerald"
+            icon={<Check size={20} />}
+            onClick={() => focusTable("completed")}
           />
         </div>
       )}
@@ -179,13 +214,18 @@ export default function Home() {
         </div>
       )}
       {/* Table bawah chart - full width */}
-      <div className="mt-8 bg-white text-black rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div
+        id="po-table"
+        className="mt-8 bg-white text-black rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+      >
         <TableUnderChart
           poData={poData}
           setPoData={setPoData}
           role={role}
           regional={regional}
           units={unitData}
+          focusGroup={tableFocus}
+          onFocusApplied={() => setTableFocus(null)}
         />
       </div>
     </main>
@@ -198,16 +238,20 @@ function TableUnderChart({
   role,
   regional,
   units,
+  focusGroup,
+  onFocusApplied,
 }: {
   poData: any[];
   setPoData: React.Dispatch<React.SetStateAction<any[]>>;
   role: "pusat" | "rm" | null;
   regional: string | null;
   units: any[];
+  focusGroup: "in_progress" | "completed" | null;
+  onFocusApplied: () => void;
 }) {
   const [group, setGroup] = useState<
-    "new" | "in_progress" | "almost_expired" | "assign"
-  >(() => (role === "rm" ? "assign" : "new"));
+    "all" | "in_progress" | "almost_expired" | "completed" | "assign"
+  >(() => (role === "rm" ? "assign" : "in_progress"));
   const [visibleCols, setVisibleCols] = useState({
     company: true,
     nopo: true,
@@ -234,6 +278,10 @@ function TableUnderChart({
     const dt = new Date(d);
     return isNaN(dt.getTime()) ? null : dt;
   };
+  const isCompleted = (po: any) => {
+    const inv = po?.noInvoice;
+    return String(inv ?? "").trim().length > 0;
+  };
   const daysUntil = (d: Date | null) => {
     if (!d) return null;
     const ms = d.getTime() - Date.now();
@@ -241,7 +289,20 @@ function TableUnderChart({
   };
 
   useEffect(() => {
-    if (role === "rm" && group !== "assign" && group !== "in_progress") {
+    if (!focusGroup) return;
+    setPage(1);
+    setGroup(focusGroup);
+    onFocusApplied();
+  }, [focusGroup]);
+
+  useEffect(() => {
+    if (
+      role === "rm" &&
+      group !== "assign" &&
+      group !== "in_progress" &&
+      group !== "completed" &&
+      group !== "all"
+    ) {
       setGroup("assign");
     }
   }, [role]);
@@ -260,6 +321,12 @@ function TableUnderChart({
       }
       return true;
     };
+    if (group === "all") {
+      return arr.filter((po) => {
+        const dt = toDate(po.tglPo);
+        return !dateFrom && !dateTo ? true : inRange(dt);
+      });
+    }
     const needAssign = (p: any) =>
       !p?.unitProduksiId ||
       p?.unitProduksiId === "UNKNOWN" ||
@@ -271,18 +338,16 @@ function TableUnderChart({
         return needAssign(po) && (!dateFrom && !dateTo ? true : inRange(dt));
       });
     }
-    if (group === "new") {
-      return arr.filter((po) => {
-        const dt = toDate(po.tglPo);
-        if (!dt) return false;
-        const days = Math.ceil((Date.now() - dt.getTime()) / 86400000);
-        const isNew = days <= 7;
-        return isNew && (!dateFrom && !dateTo ? true : inRange(dt));
-      });
-    }
     if (group === "in_progress") {
       return arr.filter((po) => {
-        if (po.statusBayar) return false;
+        if (isCompleted(po)) return false;
+        const dt = toDate(po.tglPo);
+        return !dateFrom && !dateTo ? true : inRange(dt);
+      });
+    }
+    if (group === "completed") {
+      return arr.filter((po) => {
+        if (!isCompleted(po)) return false;
         const dt = toDate(po.tglPo);
         return !dateFrom && !dateTo ? true : inRange(dt);
       });
@@ -291,7 +356,7 @@ function TableUnderChart({
     return arr.filter((po) => {
       const exp = toDate(po.expiredTgl);
       const du = daysUntil(exp);
-      const isAlmost = du != null && du >= 0 && du <= 14 && !po.statusBayar;
+      const isAlmost = du != null && du >= 0 && du <= 14 && !isCompleted(po);
       if (!isAlmost) return false;
       const dt = toDate(po.tglPo);
       return !dateFrom && !dateTo ? true : inRange(dt);
@@ -302,8 +367,10 @@ function TableUnderChart({
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
-      const da = toDate(a?.tglPo);
-      const db = toDate(b?.tglPo);
+      const da =
+        group === "all" ? toDate(a?.updatedAt) || toDate(a?.tglPo) : toDate(a?.tglPo);
+      const db =
+        group === "all" ? toDate(b?.updatedAt) || toDate(b?.tglPo) : toDate(b?.tglPo);
       if (!da && !db) return 0;
       if (!da) return 1;
       if (!db) return -1;
@@ -312,7 +379,7 @@ function TableUnderChart({
         : da.getTime() - db.getTime();
     });
     return arr;
-  }, [filtered, sortDesc]);
+  }, [filtered, sortDesc, group]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / rowsPerPage));
   const start = (page - 1) * rowsPerPage;
@@ -357,7 +424,7 @@ function TableUnderChart({
   };
 
   const statusText = (po: any) => {
-    if (!po.statusBayar) {
+    if (!isCompleted(po)) {
       const du = daysUntil(toDate(po.expiredTgl));
       if (du != null && du >= 0 && du <= 14) return "Almost Expired";
       return "In Progress";
@@ -379,6 +446,10 @@ function TableUnderChart({
       }
       return true;
     };
+    const cAll = arr.filter((po) => {
+      const dt = toDate(po.tglPo);
+      return !dateFrom && !dateTo ? true : inRange(dt);
+    }).length;
     const cAssign = arr.filter((po) => {
       const dt = toDate(po.tglPo);
       if (!dt) return false;
@@ -388,26 +459,25 @@ function TableUnderChart({
         !po?.UnitProduksi?.siteArea;
       return na && (!dateFrom && !dateTo ? true : inRange(dt));
     }).length;
-    const cNew = arr.filter((po) => {
-      const dt = toDate(po.tglPo);
-      if (!dt) return false;
-      const days = Math.ceil((Date.now() - dt.getTime()) / 86400000);
-      return days <= 7 && (!dateFrom && !dateTo ? true : inRange(dt));
-    }).length;
     const cProgress = arr.filter((po) => {
-      if (po.statusBayar) return false;
+      if (isCompleted(po)) return false;
       const dt = toDate(po.tglPo);
       return !dateFrom && !dateTo ? true : inRange(dt);
     }).length;
     const cAlmost = arr.filter((po) => {
       const exp = toDate(po.expiredTgl);
       const du = daysUntil(exp);
-      const isAlmost = du != null && du >= 0 && du <= 14 && !po.statusBayar;
+      const isAlmost = du != null && du >= 0 && du <= 14 && !isCompleted(po);
       if (!isAlmost) return false;
       const dt = toDate(po.tglPo);
       return !dateFrom && !dateTo ? true : inRange(dt);
     }).length;
-    return { cAssign, cNew, cProgress, cAlmost };
+    const cCompleted = arr.filter((po) => {
+      if (!isCompleted(po)) return false;
+      const dt = toDate(po.tglPo);
+      return !dateFrom && !dateTo ? true : inRange(dt);
+    }).length;
+    return { cAll, cAssign, cProgress, cAlmost, cCompleted };
   }, [poData, dateFrom, dateTo]);
 
   const statusChipClass = (t: string) =>
@@ -419,7 +489,7 @@ function TableUnderChart({
 
   // New: flag jika due date mendekati real time (D-7 & D-3)
   const dueFlag = (po: any) => {
-    if (po?.statusBayar) return null;
+    if (isCompleted(po)) return null;
     const du = daysUntil(toDate(po?.expiredTgl));
     if (du == null) return null;
     if (du < 0) {
@@ -496,67 +566,89 @@ function TableUnderChart({
           {role === "rm" ? (
             <>
               <button
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "all" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                title={`All (${counts.cAll})`}
+                onClick={() => {
+                  setPage(1);
+                  setSortDesc(true);
+                  setGroup("all");
+                }}
+              >
+                All
+              </button>
+              <button
                 className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "assign" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                title={`Need Assign (${counts.cAssign})`}
                 onClick={() => {
                   setPage(1);
                   setGroup("assign");
                 }}
               >
-                Need Assign{" "}
-                <span className="ml-1 text-xs font-bold text-gray-500">
-                  ({counts.cAssign})
-                </span>
+                Need Assign
               </button>
               <button
                 className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "in_progress" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                title={`In Progress (${counts.cProgress})`}
                 onClick={() => {
                   setPage(1);
                   setGroup("in_progress");
                 }}
               >
-                In Progress{" "}
-                <span className="ml-1 text-xs font-bold text-gray-500">
-                  ({counts.cProgress})
-                </span>
+                In Progress
+              </button>
+              <button
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "completed" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                title={`Completed (${counts.cCompleted})`}
+                onClick={() => {
+                  setPage(1);
+                  setGroup("completed");
+                }}
+              >
+                Completed
               </button>
             </>
           ) : (
             <>
               <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "new" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "all" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                title={`All (${counts.cAll})`}
                 onClick={() => {
                   setPage(1);
-                  setGroup("new");
+                  setSortDesc(true);
+                  setGroup("all");
                 }}
               >
-                New{" "}
-                <span className="ml-1 text-xs font-bold text-gray-500">
-                  ({counts.cNew})
-                </span>
+                All
               </button>
               <button
                 className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "in_progress" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                title={`In Progress (${counts.cProgress})`}
                 onClick={() => {
                   setPage(1);
                   setGroup("in_progress");
                 }}
               >
-                In Progress{" "}
-                <span className="ml-1 text-xs font-bold text-gray-500">
-                  ({counts.cProgress})
-                </span>
+                In Progress
               </button>
               <button
                 className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "almost_expired" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                title={`Almost Expired (${counts.cAlmost})`}
                 onClick={() => {
                   setPage(1);
                   setGroup("almost_expired");
                 }}
               >
-                Almost Expired{" "}
-                <span className="ml-1 text-xs font-bold text-gray-500">
-                  ({counts.cAlmost})
-                </span>
+                Almost Expired
+              </button>
+              <button
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "completed" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                title={`Completed (${counts.cCompleted})`}
+                onClick={() => {
+                  setPage(1);
+                  setGroup("completed");
+                }}
+              >
+                Completed
               </button>
             </>
           )}
@@ -641,30 +733,44 @@ function TableUnderChart({
           </div>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-auto max-h-[70vh]">
         <table className="w-full text-left border-collapse table-auto text-sm">
           <thead>
             <tr className="text-gray-700 text-sm uppercase tracking-wider border-b border-gray-100">
               {visibleCols.company && (
-                <th className="px-6 py-3 font-semibold">Company</th>
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                  Company
+                </th>
               )}
               {visibleCols.nopo && (
-                <th className="px-6 py-3 font-semibold">No PO</th>
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                  No PO
+                </th>
               )}
               {visibleCols.submitDate && (
-                <th className="px-6 py-3 font-semibold">Submit Date</th>
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                  Submit Date
+                </th>
               )}
               {visibleCols.regional && (
-                <th className="px-6 py-3 font-semibold">Regional</th>
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                  Regional
+                </th>
               )}
               {visibleCols.dueDate && (
-                <th className="px-6 py-3 font-semibold">Due Date</th>
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                  Due Date
+                </th>
               )}
               {visibleCols.status && (
-                <th className="px-6 py-3 font-semibold">Status</th>
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                  Status
+                </th>
               )}
               {visibleCols.actions && (
-                <th className="px-6 py-3 font-semibold text-center">Actions</th>
+                <th className="px-6 py-3 font-semibold text-center sticky top-0 z-10 bg-white">
+                  Actions
+                </th>
               )}
             </tr>
           </thead>

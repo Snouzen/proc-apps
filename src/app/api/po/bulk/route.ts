@@ -19,8 +19,18 @@ export async function POST(req: Request) {
 
     let successCount = 0;
     let addedPoCount = 0;
+    let replacedPoCount = 0;
+    let duplicatePoCount = 0;
+    const MAX_LIST = 200;
+    const MAX_ERRORS = 200;
+    const addedPOs: string[] = [];
     const duplicatePOs: string[] = [];
+    const replacedPOs: string[] = [];
     const errors: string[] = [];
+    let addedPOsTruncated = false;
+    let duplicatePOsTruncated = false;
+    let replacedPOsTruncated = false;
+    let errorsTruncated = false;
     const missingCounts: Record<string, number> = {};
     const expectedHeaders = [
       "Nama Company",
@@ -161,69 +171,81 @@ export async function POST(req: Request) {
     const keyStatusTagih = findKey(sample, ["Tagih"]) || "Tagih";
     const keyStatusBayar = findKey(sample, ["Bayar", "Pembayaran"]) || "Bayar";
 
-    // 2. Group rows by No PO using detected key
     const poGroups = new Map<string, any[]>();
-    for (const row of body) {
-      const noPo = String(row[keyNoPo] || "").trim();
+    const poFirstIndex = new Map<string, number>();
+    for (let idx = 0; idx < body.length; idx++) {
+      const row = body[idx];
+      const noPo = String(row?.[keyNoPo] || "").trim();
       if (!noPo) continue;
       if (!poGroups.has(noPo)) {
         poGroups.set(noPo, []);
+        poFirstIndex.set(noPo, idx);
       }
       poGroups.get(noPo)?.push(row);
     }
 
-    // 3. Process each PO Group
-    for (const [noPo, rows] of poGroups) {
-      const firstRow = rows[0];
-      const rowNum = body.indexOf(firstRow) + 2; // Approximate row number
+    const capPush = (
+      arr: string[],
+      val: string,
+      kind: "added" | "dupe" | "replaced",
+    ) => {
+      if (arr.length < MAX_LIST) {
+        arr.push(val);
+        return;
+      }
+      if (kind === "added") addedPOsTruncated = true;
+      if (kind === "dupe") duplicatePOsTruncated = true;
+      if (kind === "replaced") replacedPOsTruncated = true;
+    };
 
-      try {
-        // Skip duplicate PO (do not update, only report)
-        const existing = await prisma.purchaseOrder.findUnique({
-          where: { noPo },
-          select: { id: true },
-        });
-        if (existing && !replaceDuplicates) {
-          duplicatePOs.push(noPo);
-          continue;
-        }
+    const capError = (msg: string) => {
+      if (errors.length < MAX_ERRORS) {
+        errors.push(msg);
+        return;
+      }
+      errorsTruncated = true;
+    };
 
-        // Extract Header Data from first row
-        const keyCompany =
-          findKey(sample, ["Nama Company", "Nama PT", "Company"]) ||
-          "Nama Company";
-        const keyInisial = findKey(sample, ["Inisial", "Initial"]) || "Inisial";
-        const companyName = String(firstRow[keyCompany] || "").trim();
-        const inisial =
-          firstRow[keyInisial] != null
-            ? String(firstRow[keyInisial]).trim() || null
-            : null;
-        const tglPoRaw = firstRow[keyTglPo];
-        const linkPo = firstRow[keyLinkPo]
-          ? String(firstRow[keyLinkPo]).trim()
-          : null;
-        const expiredPoRaw = firstRow[keyExpired];
-        const siteArea = String(firstRow[keySiteArea] || "").trim();
-        const noInvoice = firstRow[keyNoInvoice]
-          ? String(firstRow[keyNoInvoice]).trim()
-          : null;
-        const tujuan = firstRow[keyTujuan]
-          ? String(firstRow[keyTujuan]).trim()
-          : null;
+    const poNos = Array.from(poGroups.keys());
+    const existingPos = poNos.length
+      ? await prisma.purchaseOrder.findMany({
+          where: { noPo: { in: poNos } },
+          select: { id: true, noPo: true },
+        })
+      : [];
+    const existingMap = new Map(existingPos.map((p) => [p.noPo, p.id]));
 
-        // Validation
-        if (!companyName) {
-          throw new Error("Missing required field: Nama PT/Company");
-        }
+    const ritelCache = new Map<string, Promise<{ id: string }>>();
+    const productCache = new Map<
+      string,
+      Promise<{ id: string; satuanKg?: number | null }>
+    >();
+    const poIdsToReplace: string[] = [];
+    const itemsToCreateAll: Array<{
+      id: string;
+      purchaseOrderId: string;
+      productId: string;
+      pcs: number;
+      pcsKirim: number;
+      hargaKg: number;
+      hargaPcs: number;
+      nominal: number;
+      rpTagih: number;
+    }> = [];
 
-        // 1. Handle RitelModern (Upsert by combination Nama PT + Inisial)
-        let ritel: any = null;
+    const getRitel = (companyName: string, inisial: string | null) => {
+      const ritelKey = `${norm(companyName)}|${norm(inisial || "")}`;
+      const cached = ritelCache.get(ritelKey);
+      if (cached) return cached;
+      const p = (async () => {
+        let ritel: { id: string } | null = null;
         if (inisial && inisial.trim()) {
           ritel = await prisma.ritelModern.findFirst({
             where: {
               namaPt: { equals: companyName, mode: "insensitive" },
               inisial: { equals: inisial, mode: "insensitive" },
             },
+            select: { id: true },
           });
         } else {
           ritel = await prisma.ritelModern.findFirst({
@@ -231,89 +253,137 @@ export async function POST(req: Request) {
               namaPt: { equals: companyName, mode: "insensitive" },
               OR: [{ inisial: null }, { inisial: { equals: "" } }],
             },
+            select: { id: true },
           });
         }
-        if (!ritel) {
-          ritel = await prisma.ritelModern.create({
-            data: {
-              id: randomUUID(),
-              namaPt: companyName,
-              inisial: inisial || null,
-              updatedAt: new Date(),
-            },
-          });
-        }
-
-        // 2. Handle UnitProduksi (Optional now)
-        const unit = siteArea
-          ? unitMap.get(siteArea.toLowerCase()) || undefined
-          : undefined;
-        const unitToUse = unit ?? fallbackUnit;
-
-        // Date Parsing
-        const parseDate = (d: any) => {
-          if (!d) return new Date();
-          if (typeof d === "number") {
-            const date = new Date(Math.round((d - 25569) * 86400 * 1000));
-            return date;
-          }
-          const date = new Date(d);
-          return isNaN(date.getTime()) ? new Date() : date;
-        };
-
-        const tglPo = parseDate(tglPoRaw);
-        const expiredTgl = expiredPoRaw ? parseDate(expiredPoRaw) : null;
-
-        // Status (take from first row, assume same for all items in PO)
-        const parseBool = (val: any) => String(val).toUpperCase() === "TRUE";
-        const statusKirim = parseBool(firstRow[keyKirim]);
-        const statusSdif = parseBool(firstRow[keySdif]);
-        const statusPo = parseBool(firstRow[keyStatusPo]);
-        const statusFp = parseBool(firstRow[keyStatusFp]);
-        const statusKwi = parseBool(firstRow[keyStatusKwi]);
-        const statusInv = parseBool(firstRow[keyStatusInv]);
-        const statusTagih = parseBool(firstRow[keyStatusTagih]);
-        const statusBayar = parseBool(firstRow[keyStatusBayar]);
-
-        // Upsert PO Header
-        const poData = {
-          ritelId: ritel.id,
-          unitProduksiId: (unitToUse?.idRegional ??
-            fallbackUnit?.idRegional ??
-            "UNKNOWN") as string,
-          tglPo,
-          expiredTgl,
-          linkPo,
-          noInvoice,
-          tujuanDetail: tujuan,
-          regional: unitToUse?.namaRegional ?? null,
-          statusKirim,
-          statusSdif,
-          statusPo,
-          statusFp,
-          statusKwi,
-          statusInv,
-          statusTagih,
-          statusBayar,
-          updatedAt: new Date(),
-        };
-
-        const po = await prisma.purchaseOrder.upsert({
-          where: { noPo },
-          update: poData,
-          create: {
+        if (ritel) return { id: ritel.id };
+        const created = await prisma.ritelModern.create({
+          data: {
             id: randomUUID(),
-            noPo,
-            // gunakan nested relation untuk menghindari error "Argument `RitelModern` is missing"
-            RitelModern: { connect: { id: ritel.id } },
-            // Always connect UnitProduksi (use fallback when missing)
-            UnitProduksi: {
-              connect: {
-                idRegional: (unitToUse?.idRegional ??
-                  fallbackUnit?.idRegional ??
-                  "UNKNOWN") as string,
-              },
-            },
+            namaPt: companyName,
+            inisial: inisial || null,
+            updatedAt: new Date(),
+          },
+          select: { id: true },
+        });
+        return { id: created.id };
+      })().catch((e) => {
+        ritelCache.delete(ritelKey);
+        throw e;
+      });
+      ritelCache.set(ritelKey, p);
+      return p;
+    };
+
+    const getProduct = (productName: string) => {
+      const productKey = norm(productName);
+      const cached = productCache.get(productKey);
+      if (cached) return cached;
+      const p = (async () => {
+        const found = await prisma.product.findFirst({
+          where: { name: { equals: productName, mode: "insensitive" } },
+          select: { id: true, satuanKg: true },
+        });
+        if (found) return { id: found.id, satuanKg: found.satuanKg ?? null };
+        const created = await prisma.product.create({
+          data: {
+            id: randomUUID(),
+            name: productName,
+            updatedAt: new Date(),
+          },
+          select: { id: true, satuanKg: true },
+        });
+        return { id: created.id, satuanKg: created.satuanKg ?? null };
+      })().catch((e) => {
+        productCache.delete(productKey);
+        throw e;
+      });
+      productCache.set(productKey, p);
+      return p;
+    };
+
+    const keyCompany =
+      findKey(sample, ["Nama Company", "Nama PT", "Company"]) || "Nama Company";
+    const keyInisial = findKey(sample, ["Inisial", "Initial"]) || "Inisial";
+    const parseDate = (d: any) => {
+      if (!d) return new Date();
+      if (typeof d === "number") {
+        return new Date(Math.round((d - 25569) * 86400 * 1000));
+      }
+      const date = new Date(d);
+      return isNaN(date.getTime()) ? new Date() : date;
+    };
+    const parseBool = (val: any) => String(val).toUpperCase() === "TRUE";
+
+    const entries = Array.from(poGroups.entries());
+    const CONCURRENCY = entries.length > 200 ? 5 : 8;
+    let cursor = 0;
+
+    const workers = Array.from({ length: CONCURRENCY }, async () => {
+      while (!req.signal.aborted) {
+        const current = cursor++;
+        if (current >= entries.length) break;
+        const [noPo, rows] = entries[current];
+        const firstRow = rows[0];
+        const rowNum = (poFirstIndex.get(noPo) ?? 0) + 2;
+        try {
+          const isExisting = existingMap.has(noPo);
+          if (isExisting && !replaceDuplicates) {
+            duplicatePoCount += 1;
+            capPush(duplicatePOs, noPo, "dupe");
+            continue;
+          }
+          if (isExisting && replaceDuplicates) {
+            replacedPoCount += 1;
+            capPush(replacedPOs, noPo, "replaced");
+          }
+
+          const companyName = String(firstRow?.[keyCompany] || "").trim();
+          const inisial =
+            firstRow?.[keyInisial] != null
+              ? String(firstRow[keyInisial]).trim() || null
+              : null;
+          const tglPoRaw = firstRow?.[keyTglPo];
+          const linkPo = firstRow?.[keyLinkPo]
+            ? String(firstRow[keyLinkPo]).trim()
+            : null;
+          const expiredPoRaw = firstRow?.[keyExpired];
+          const siteArea = String(firstRow?.[keySiteArea] || "").trim();
+          const noInvoice = firstRow?.[keyNoInvoice]
+            ? String(firstRow[keyNoInvoice]).trim()
+            : null;
+          const tujuan = firstRow?.[keyTujuan]
+            ? String(firstRow[keyTujuan]).trim()
+            : null;
+
+          if (!companyName) {
+            throw new Error("Missing required field: Nama PT/Company");
+          }
+
+          const ritel = await getRitel(companyName, inisial);
+
+          const unit = siteArea
+            ? unitMap.get(siteArea.toLowerCase().trim()) || undefined
+            : undefined;
+          const unitToUse = unit ?? fallbackUnit;
+
+          const tglPo = parseDate(tglPoRaw);
+          const expiredTgl = expiredPoRaw ? parseDate(expiredPoRaw) : null;
+
+          const statusKirim = parseBool(firstRow?.[keyKirim]);
+          const statusSdif = parseBool(firstRow?.[keySdif]);
+          const statusPo = parseBool(firstRow?.[keyStatusPo]);
+          const statusFp = parseBool(firstRow?.[keyStatusFp]);
+          const statusKwi = parseBool(firstRow?.[keyStatusKwi]);
+          const statusInv = parseBool(firstRow?.[keyStatusInv]);
+          const statusTagih = parseBool(firstRow?.[keyStatusTagih]);
+          const statusBayar = parseBool(firstRow?.[keyStatusBayar]);
+
+          const poData = {
+            ritelId: ritel.id,
+            unitProduksiId: (unitToUse?.idRegional ??
+              fallbackUnit?.idRegional ??
+              "UNKNOWN") as string,
             tglPo,
             expiredTgl,
             linkPo,
@@ -329,62 +399,73 @@ export async function POST(req: Request) {
             statusTagih,
             statusBayar,
             updatedAt: new Date(),
-            createdAt: new Date(),
-          },
-        });
-        if (existing) {
-          // treat as replacement
-          // delete and recreate items below will refresh all items
-        } else {
-          addedPoCount += 1;
-        }
+          };
 
-        // Delete existing items to replace with new ones (Full Replacement Strategy)
-        await prisma.purchaseOrderItem.deleteMany({
-          where: { purchaseOrderId: po.id },
-        });
-
-        // Create Items
-        for (const row of rows) {
-          const productName = String(row[keyNamaProduk] || "").trim();
-          if (!productName) continue;
-
-          // Handle Product (Upsert)
-          let product = await prisma.product.findFirst({
-            where: { name: { equals: productName, mode: "insensitive" } },
+          const po = await prisma.purchaseOrder.upsert({
+            where: { noPo },
+            update: poData,
+            create: {
+              id: randomUUID(),
+              noPo,
+              RitelModern: { connect: { id: ritel.id } },
+              UnitProduksi: {
+                connect: {
+                  idRegional: (unitToUse?.idRegional ??
+                    fallbackUnit?.idRegional ??
+                    "UNKNOWN") as string,
+                },
+              },
+              tglPo,
+              expiredTgl,
+              linkPo,
+              noInvoice,
+              tujuanDetail: tujuan,
+              regional: unitToUse?.namaRegional ?? null,
+              statusKirim,
+              statusSdif,
+              statusPo,
+              statusFp,
+              statusKwi,
+              statusInv,
+              statusTagih,
+              statusBayar,
+              updatedAt: new Date(),
+              createdAt: new Date(),
+            },
           });
 
-          if (!product) {
-            product = await prisma.product.create({
-              data: {
-                id: randomUUID(),
-                name: productName,
-                updatedAt: new Date(),
-              },
-            });
+          if (!isExisting) {
+            addedPoCount += 1;
+            capPush(addedPOs, noPo, "added");
           }
+          poIdsToReplace.push(po.id);
 
-          const satuan = Number((product as any).satuanKg ?? 1) || 1;
-          let pcs = Number(row[keyPcs]) || 0;
-          let hargaPcs = Number(row[keyHargaPcs]) || 0;
-          const kgRaw = Number(row[keyKg]) || 0;
-          const hargaKgRaw = Number(row[keyHargaKg]) || 0;
-          if (!pcs && kgRaw && satuan > 0) {
-            pcs = kgRaw / satuan;
-          }
-          if (!hargaPcs && hargaKgRaw && satuan > 0) {
-            hargaPcs = hargaKgRaw * satuan;
-          }
-          pcs = Math.round(pcs);
-          const pcsKirim = Math.round(Number(row[keyPcsKirim]) || 0);
-          const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
-          const nominal = hargaPcs * pcs;
-          const rpTagih =
-            Number(row[keyRpTagih]) ||
-            (hargaPcs && pcsKirim ? hargaPcs * pcsKirim : 0);
+          for (const row of rows) {
+            if (req.signal.aborted) break;
+            const productName = String(row?.[keyNamaProduk] || "").trim();
+            if (!productName) continue;
+            const product = await getProduct(productName);
 
-          await prisma.purchaseOrderItem.create({
-            data: {
+            const satuan = Number(product.satuanKg ?? 1) || 1;
+            let pcs = Number(row?.[keyPcs]) || 0;
+            let hargaPcs = Number(row?.[keyHargaPcs]) || 0;
+            const kgRaw = Number(row?.[keyKg]) || 0;
+            const hargaKgRaw = Number(row?.[keyHargaKg]) || 0;
+            if (!pcs && kgRaw && satuan > 0) {
+              pcs = kgRaw / satuan;
+            }
+            if (!hargaPcs && hargaKgRaw && satuan > 0) {
+              hargaPcs = hargaKgRaw * satuan;
+            }
+            pcs = Math.round(pcs);
+            const pcsKirim = Math.round(Number(row?.[keyPcsKirim]) || 0);
+            const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
+            const nominal = hargaPcs * pcs;
+            const rpTagih =
+              Number(row?.[keyRpTagih]) ||
+              (hargaPcs && pcsKirim ? hargaPcs * pcsKirim : 0);
+
+            itemsToCreateAll.push({
               id: randomUUID(),
               purchaseOrderId: po.id,
               productId: product.id,
@@ -394,14 +475,29 @@ export async function POST(req: Request) {
               hargaPcs,
               nominal,
               rpTagih,
-            },
-          });
+            });
+          }
+        } catch (err: any) {
+          console.error(`PO ${noPo} error:`, err.message);
+          capError(`PO ${noPo} (Row ~${rowNum}): ${err.message}`);
         }
+      }
+    });
+    await Promise.all(workers);
 
-        successCount += rows.length;
-      } catch (err: any) {
-        console.error(`PO ${noPo} error:`, err.message);
-        errors.push(`PO ${noPo} (Row ~${rowNum}): ${err.message}`);
+    if (!req.signal.aborted && poIdsToReplace.length) {
+      await prisma.purchaseOrderItem.deleteMany({
+        where: { purchaseOrderId: { in: poIdsToReplace } },
+      });
+    }
+    if (!req.signal.aborted && itemsToCreateAll.length) {
+      const CHUNK = 2000;
+      for (let i = 0; i < itemsToCreateAll.length; i += CHUNK) {
+        const part = itemsToCreateAll.slice(i, i + CHUNK);
+        const created = await prisma.purchaseOrderItem.createMany({
+          data: part,
+        });
+        successCount += created.count;
       }
     }
 
@@ -410,9 +506,16 @@ export async function POST(req: Request) {
       errors,
       message: `Processed ${successCount} item records.`,
       addedPoCount,
+      addedPOs,
       duplicatePOs,
+      duplicatePoCount,
       missingCounts,
-      replacedPoCount: replaceDuplicates ? duplicatePOs.length : 0,
+      replacedPoCount,
+      replacedPOs,
+      addedPOsTruncated,
+      duplicatePOsTruncated,
+      replacedPOsTruncated,
+      errorsTruncated,
     });
   } catch (error: any) {
     console.error("Bulk upload error:", error);

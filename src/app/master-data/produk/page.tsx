@@ -665,7 +665,7 @@ export default function ProdukPage() {
                   className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all text-sm font-semibold shadow-sm"
                 />
                 <p className="mt-2 text-[11px] text-gray-400 italic font-medium">
-                  * Gunakan nama SKU resmi (satu kolom 'Produk' untuk bulk) *
+                  * Gunakan nama SKU resmi (satu kolom &apos;Produk&apos; untuk bulk) *
                 </p>
               </div>
               <div>
