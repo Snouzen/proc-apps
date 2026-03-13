@@ -305,15 +305,125 @@ export async function POST(req: Request) {
     const keyCompany =
       findKey(sample, ["Nama Company", "Nama PT", "Company"]) || "Nama Company";
     const keyInisial = findKey(sample, ["Inisial", "Initial"]) || "Inisial";
+    const dateOnlyUtcNoon = (y: number, m0: number, d1: number) =>
+      new Date(Date.UTC(y, m0, d1, 12, 0, 0, 0));
+    const tzOffsetHours = 7;
+    const normalizeToUtcNoonFromOffset = (date: Date) => {
+      const shifted = new Date(date.getTime() + tzOffsetHours * 3600 * 1000);
+      return dateOnlyUtcNoon(
+        shifted.getUTCFullYear(),
+        shifted.getUTCMonth(),
+        shifted.getUTCDate(),
+      );
+    };
     const parseDate = (d: any) => {
       if (d === undefined || d === null) return null;
       if (typeof d === "string" && d.trim() === "") return null;
+
       if (typeof d === "number") {
-        const dt = new Date(Math.round((d - 25569) * 86400 * 1000));
-        return isNaN(dt.getTime()) ? null : dt;
+        const days = Math.floor(d);
+        const utc = new Date((days - 25569) * 86400 * 1000);
+        if (isNaN(utc.getTime())) return null;
+        return dateOnlyUtcNoon(
+          utc.getUTCFullYear(),
+          utc.getUTCMonth(),
+          utc.getUTCDate(),
+        );
       }
-      const date = new Date(d);
-      return isNaN(date.getTime()) ? null : date;
+
+      if (d instanceof Date) {
+        if (isNaN(d.getTime())) return null;
+        return dateOnlyUtcNoon(d.getFullYear(), d.getMonth(), d.getDate());
+      }
+
+      if (typeof d === "string") {
+        const s = d.trim();
+
+        const dmY = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+        if (dmY) {
+          const da = Number(dmY[1]);
+          const mo = Number(dmY[2]) - 1;
+          const y = Number(dmY[3]);
+          if (
+            !Number.isFinite(y) ||
+            !Number.isFinite(mo) ||
+            !Number.isFinite(da)
+          ) {
+            return null;
+          }
+          return dateOnlyUtcNoon(y, mo, da);
+        }
+
+        const dMonY = s.match(/^(\d{1,2})[\-\s]([A-Za-z]{3,})[\-\s](\d{2,4})$/);
+        if (dMonY) {
+          const da = Number(dMonY[1]);
+          const monRaw = String(dMonY[2] || "").toLowerCase();
+          const yRaw = Number(dMonY[3]);
+          const y = yRaw < 100 ? 2000 + yRaw : yRaw;
+          const monMap: Record<string, number> = {
+            jan: 0,
+            january: 0,
+            feb: 1,
+            february: 1,
+            mar: 2,
+            march: 2,
+            apr: 3,
+            april: 3,
+            may: 4,
+            mei: 4,
+            jun: 5,
+            june: 5,
+            jul: 6,
+            july: 6,
+            aug: 7,
+            agu: 7,
+            august: 7,
+            sep: 8,
+            sept: 8,
+            september: 8,
+            oct: 9,
+            october: 9,
+            oktober: 9,
+            nov: 10,
+            november: 10,
+            dec: 11,
+            december: 11,
+            desember: 11,
+          };
+          const mo = monMap[monRaw];
+          if (
+            !Number.isFinite(y) ||
+            !Number.isFinite(da) ||
+            !Number.isFinite(mo)
+          ) {
+            return null;
+          }
+          return dateOnlyUtcNoon(y, mo, da);
+        }
+
+        const yMd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (yMd) {
+          const y = Number(yMd[1]);
+          const mo = Number(yMd[2]) - 1;
+          const da = Number(yMd[3]);
+          if (
+            !Number.isFinite(y) ||
+            !Number.isFinite(mo) ||
+            !Number.isFinite(da)
+          ) {
+            return null;
+          }
+          return dateOnlyUtcNoon(y, mo, da);
+        }
+
+        const parsed = new Date(s);
+        if (isNaN(parsed.getTime())) return null;
+        return normalizeToUtcNoonFromOffset(parsed);
+      }
+
+      const parsed = new Date(d);
+      if (isNaN(parsed.getTime())) return null;
+      return normalizeToUtcNoonFromOffset(parsed);
     };
     const parseBool = (val: any) => String(val).toUpperCase() === "TRUE";
 

@@ -83,7 +83,17 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     inisial: string | null;
     product: string | null;
     total: string | null;
-  }>({ noPo: null, company: null, inisial: null, product: null, total: null });
+    tglPo: string | null;
+    expiredTgl: string | null;
+  }>({
+    noPo: null,
+    company: null,
+    inisial: null,
+    product: null,
+    total: null,
+    tglPo: null,
+    expiredTgl: null,
+  });
 
   const uniquePoNos = useMemo(() => {
     const key = headerKeys.noPo;
@@ -139,12 +149,24 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
         "Product",
       ]);
       const totalKey = findColumnKey(first, ["rp tagih", "RP TAGIH", "Total"]);
+      const tglPoKey = findColumnKey(first, [
+        "Tanggal PO",
+        "TGL PO",
+        "TanggalPO",
+      ]);
+      const expiredKey = findColumnKey(first, [
+        "Tanggal Expired PO",
+        "TGL EXP",
+        "Expired PO",
+      ]);
       setHeaderKeys({
         noPo: noPoKey,
         company: companyKey,
         inisial: inisialKey,
         product: productKey,
         total: totalKey,
+        tglPo: tglPoKey,
+        expiredTgl: expiredKey,
       });
       await validateDuplicates(data);
     } catch (err: any) {
@@ -388,7 +410,31 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
           allErrors.push("Upload dibatalkan.");
           break;
         }
-        const batch = previewData.slice(i * CHUNK, (i + 1) * CHUNK);
+        const toYMD = (d: Date) => {
+          const y = d.getFullYear();
+          const m = `${d.getMonth() + 1}`.padStart(2, "0");
+          const day = `${d.getDate()}`.padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+        const normalizeBatch = (rows: any[]) => {
+          const kTglPo = headerKeys.tglPo;
+          const kExp = headerKeys.expiredTgl;
+          if (!kTglPo && !kExp) return rows;
+          return rows.map((r) => {
+            if (!r || typeof r !== "object") return r;
+            const next: any = { ...r };
+            if (kTglPo && next[kTglPo] instanceof Date) {
+              next[kTglPo] = toYMD(next[kTglPo]);
+            }
+            if (kExp && next[kExp] instanceof Date) {
+              next[kExp] = toYMD(next[kExp]);
+            }
+            return next;
+          });
+        };
+        const batch = normalizeBatch(
+          previewData.slice(i * CHUNK, (i + 1) * CHUNK),
+        );
         const batchLabel =
           planned > 0
             ? `Uploading PO ${poDoneLocal}/${planned} • Batch ${i + 1}/${batchTotal}`

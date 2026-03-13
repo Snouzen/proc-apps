@@ -10,6 +10,7 @@ import {
   Pencil,
   Trash2,
   CalendarClock,
+  ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
 import PODetailModal from "@/components/po-detail-modal";
@@ -22,7 +23,7 @@ type GroupedPO = {
   pos: any[];
 };
 
-export default function TestingPage({
+export default function CompanyList({
   focusCompany,
 }: { focusCompany?: string } = {}) {
   const [loading, setLoading] = useState(true);
@@ -85,7 +86,7 @@ export default function TestingPage({
   }, []);
 
   const handlePOCreated = () => {
-    fetchData(); // Reload
+    fetchData();
   };
 
   const handleDelete = async (noPo: string) => {
@@ -339,7 +340,7 @@ export default function TestingPage({
                             mode === "expired"
                               ? "Klik untuk lihat PO Expired"
                               : mode === "active"
-                                ? "Klik untuk lihat PO Active (In Progress)"
+                                ? "Klik untuk lihat PO In Progress"
                                 : mode === "almost"
                                   ? "Klik untuk lihat PO Almost Expired (H-3)"
                                   : "Klik untuk lihat PO Completed",
@@ -373,6 +374,18 @@ export default function TestingPage({
                         });
                         return (
                           <div className="flex items-center gap-3 shrink-0">
+                            <Link
+                              href={`/company/${encodeURIComponent(g.company)}`}
+                              title="View all PO"
+                              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 hover:bg-white/15 hover:border-white/25"
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              <span className="text-[10px] font-black uppercase tracking-widest text-white/80 whitespace-nowrap">
+                                View all
+                              </span>
+                              <ArrowUpRight size={14} />
+                            </Link>
                             <div className="hidden md:flex flex-wrap justify-end gap-2 max-w-[640px]">
                               <div {...makeBadgeHandlers("active", active)}>
                                 <span className={labelClass}>Active</span>
@@ -729,7 +742,6 @@ export default function TestingPage({
                         ) : (
                           <>
                             {(() => {
-                              // Group POs by inisial
                               const groupsByInisial: Record<string, any[]> = {};
                               g.pos.forEach((po: any) => {
                                 const alias =
@@ -1050,13 +1062,14 @@ export default function TestingPage({
                                                             },
                                                           )
                                                         : "-";
-                                                      const productNames: string[] = items
-                                                        .map(
-                                                          (it: any) =>
-                                                            it?.Product?.name,
-                                                        )
-                                                        .filter(Boolean)
-                                                        .map(String);
+                                                      const productNames: string[] =
+                                                        items
+                                                          .map(
+                                                            (it: any) =>
+                                                              it?.Product?.name,
+                                                          )
+                                                          .filter(Boolean)
+                                                          .map(String);
                                                       const uniqueProducts: string[] =
                                                         Array.from(
                                                           new Set(productNames),
@@ -1122,7 +1135,6 @@ export default function TestingPage({
                                                                   e,
                                                                 ) => {
                                                                   e.stopPropagation();
-                                                                  // extend handler TODO (existing behaviour placeholder)
                                                                 }}
                                                               >
                                                                 <CalendarClock

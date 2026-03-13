@@ -258,9 +258,12 @@ function TableUnderChart({
   const [visibleCols, setVisibleCols] = useState({
     company: true,
     nopo: true,
-    regional: true,
+    pcsPo: true,
+    nominal: true,
     submitDate: true,
+    tglPo: true,
     dueDate: true,
+    regional: true,
     status: true,
     actions: true,
   });
@@ -272,6 +275,8 @@ function TableUnderChart({
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [sortDesc, setSortDesc] = useState(false);
+  const [alphaSort, setAlphaSort] = useState<"none" | "asc" | "desc">("none");
+  const [searchQuery, setSearchQuery] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
   const [assignOpenId, setAssignOpenId] = useState<string | null>(null);
@@ -366,18 +371,88 @@ function TableUnderChart({
     });
   }, [poData, group, dateFrom, dateTo]);
 
-  // Default sort: submit date (tglPo) oldest -> newest
+  const companySortKey = (po: any) => {
+    const name =
+      po?.RitelModern?.namaPt ||
+      po?.company ||
+      po?.companyName ||
+      po?.company_name ||
+      po?.namaPt ||
+      po?.nama_pt ||
+      po?.namaPT ||
+      po?.nama_perusahaan ||
+      po?.namaPerusahaan ||
+      po?.namaRitel ||
+      po?.namaRetail ||
+      po?.vendor ||
+      po?.vendorName ||
+      po?.supplier ||
+      po?.supplierName ||
+      po?.customer ||
+      po?.customerName ||
+      po?.name ||
+      po?.title ||
+      po?.judul ||
+      "-";
+    return String(name || "-")
+      .trim()
+      .toLowerCase();
+  };
+
+  const searched = useMemo(() => {
+    const q = String(searchQuery || "")
+      .trim()
+      .toLowerCase();
+    if (!q) return filtered;
+    return filtered.filter((po: any) => {
+      const fields: string[] = [
+        companySortKey(po),
+        String(po?.noPo || po?.nopo || po?.poNumber || "")
+          .trim()
+          .toLowerCase(),
+        String(po?.RitelModern?.inisial || "")
+          .trim()
+          .toLowerCase(),
+        String(po?.tujuanDetail || "")
+          .trim()
+          .toLowerCase(),
+        String(po?.UnitProduksi?.siteArea || "")
+          .trim()
+          .toLowerCase(),
+        String(po?.regional || po?.UnitProduksi?.namaRegional || "")
+          .trim()
+          .toLowerCase(),
+        String(po?.noInvoice || "")
+          .trim()
+          .toLowerCase(),
+      ];
+      const items = Array.isArray(po?.Items) ? po.Items : [];
+      if (items.length > 0) {
+        fields.push(
+          items
+            .map((it: any) => it?.Product?.name || it?.namaProduk || "")
+            .filter(Boolean)
+            .map((s: any) => String(s).trim().toLowerCase())
+            .join(" "),
+        );
+      }
+      return fields.some((f) => f.includes(q));
+    });
+  }, [filtered, searchQuery]);
+
   const sorted = useMemo(() => {
-    const arr = [...filtered];
+    const arr = [...searched];
+    const poDate = (po: any) => toDate(po?.tglPo);
     arr.sort((a, b) => {
-      const da =
-        group === "all"
-          ? toDate(a?.updatedAt) || toDate(a?.tglPo)
-          : toDate(a?.tglPo);
-      const db =
-        group === "all"
-          ? toDate(b?.updatedAt) || toDate(b?.tglPo)
-          : toDate(b?.tglPo);
+      const ca = companySortKey(a);
+      const cb = companySortKey(b);
+      if (alphaSort !== "none" && ca !== cb) {
+        return alphaSort === "asc"
+          ? ca.localeCompare(cb)
+          : cb.localeCompare(ca);
+      }
+      const da = poDate(a);
+      const db = poDate(b);
       if (!da && !db) return 0;
       if (!da) return 1;
       if (!db) return -1;
@@ -386,7 +461,7 @@ function TableUnderChart({
         : da.getTime() - db.getTime();
     });
     return arr;
-  }, [filtered, sortDesc, group]);
+  }, [searched, sortDesc, alphaSort]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / rowsPerPage));
   const start = (page - 1) * rowsPerPage;
@@ -672,6 +747,26 @@ function TableUnderChart({
           >
             Newest First
           </button>
+          <button
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${
+              alphaSort !== "none"
+                ? "bg-black text-white border-black"
+                : "bg-white text-black border-gray-300 hover:bg-gray-50"
+            }`}
+            onClick={() => {
+              setPage(1);
+              setAlphaSort((v) =>
+                v === "none" ? "asc" : v === "asc" ? "desc" : "none",
+              );
+            }}
+            title="Toggle alphabet sort (Company)"
+          >
+            {alphaSort === "asc"
+              ? "Company A-Z"
+              : alphaSort === "desc"
+                ? "Company Z-A"
+                : "Company Sort"}
+          </button>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Date</span>
             <input
@@ -708,6 +803,21 @@ function TableUnderChart({
             )}
           </div>
           <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search..."
+              className="w-64 pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-slate-200"
+            />
+          </div>
+          <div className="relative">
             <button
               className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold bg-white hover:bg-gray-50"
               onClick={() => setColsOpen((o) => !o)}
@@ -719,9 +829,12 @@ function TableUnderChart({
                 {[
                   { key: "company", label: "Company" },
                   { key: "nopo", label: "No PO" },
-                  { key: "regional", label: "Regional" },
+                  { key: "pcsPo", label: "PCS PO" },
+                  { key: "nominal", label: "Nominal" },
                   { key: "submitDate", label: "Submit Date" },
-                  { key: "dueDate", label: "Due Date" },
+                  { key: "tglPo", label: "Tgl PO" },
+                  { key: "dueDate", label: "Tgl Expired" },
+                  { key: "regional", label: "Regional" },
                   { key: "status", label: "Status" },
                   { key: "actions", label: "Actions" },
                 ].map((c) => (
@@ -757,19 +870,34 @@ function TableUnderChart({
                   No PO
                 </th>
               )}
+              {visibleCols.pcsPo && (
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white text-right">
+                  PCS PO
+                </th>
+              )}
+              {visibleCols.nominal && (
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white text-right">
+                  Nominal
+                </th>
+              )}
               {visibleCols.submitDate && (
                 <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
                   Submit Date
                 </th>
               )}
-              {visibleCols.regional && (
+              {visibleCols.tglPo && (
                 <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
-                  Regional
+                  Tgl PO
                 </th>
               )}
               {visibleCols.dueDate && (
                 <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
-                  Due Date
+                  Tgl Expired
+                </th>
+              )}
+              {visibleCols.regional && (
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                  Regional
                 </th>
               )}
               {visibleCols.status && (
@@ -806,13 +934,70 @@ function TableUnderChart({
                     </span>
                   </td>
                 )}
+                {visibleCols.pcsPo && (
+                  <td className="px-6 py-4 text-right">
+                    <span className="text-base font-bold text-slate-700 tabular-nums">
+                      {(() => {
+                        const items = Array.isArray(po?.Items) ? po.Items : [];
+                        const total = items.reduce(
+                          (acc: number, it: any) =>
+                            acc + (Number(it?.pcs) || 0),
+                          0,
+                        );
+                        return total.toLocaleString("id-ID");
+                      })()}
+                    </span>
+                  </td>
+                )}
+                {visibleCols.nominal && (
+                  <td className="px-6 py-4 text-right">
+                    <span className="text-base font-bold text-slate-700 tabular-nums">
+                      {(() => {
+                        const items = Array.isArray(po?.Items) ? po.Items : [];
+                        const total = items.reduce(
+                          (acc: number, it: any) =>
+                            acc + (Number(it?.nominal) || 0),
+                          0,
+                        );
+                        return `Rp ${total.toLocaleString("id-ID")}`;
+                      })()}
+                    </span>
+                  </td>
+                )}
                 {visibleCols.submitDate && (
                   <td className="px-6 py-4">
                     <span className="block text-xs text-gray-500 uppercase font-semibold">
                       Submitted
                     </span>
                     <span className="block text-sm font-bold text-slate-700">
-                      {toDate(po.tglPo)?.toLocaleDateString() || "-"}
+                      {(() => {
+                        const dt =
+                          toDate(po?.createdAt) ||
+                          toDate(po?.updatedAt) ||
+                          toDate(po?.tglPo);
+                        return dt ? dt.toLocaleDateString("id-ID") : "-";
+                      })()}
+                    </span>
+                  </td>
+                )}
+                {visibleCols.tglPo && (
+                  <td className="px-6 py-4">
+                    <span className="block text-xs text-gray-500 uppercase font-semibold">
+                      Tgl PO
+                    </span>
+                    <span className="block text-sm font-bold text-slate-700">
+                      {toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}
+                    </span>
+                  </td>
+                )}
+                {visibleCols.dueDate && (
+                  <td className="px-6 py-4">
+                    <span className="block text-xs text-gray-500 uppercase font-semibold">
+                      Tgl Expired
+                    </span>
+                    <span className="block text-sm font-bold text-red-500">
+                      {toDate(po.expiredTgl)?.toLocaleDateString("id-ID") ||
+                        "-"}
                     </span>
                   </td>
                 )}
@@ -820,16 +1005,6 @@ function TableUnderChart({
                   <td className="px-6 py-4">
                     <span className="text-sm font-semibold text-slate-700">
                       {po?.regional || po?.UnitProduksi?.namaRegional || "-"}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.dueDate && (
-                  <td className="px-6 py-4">
-                    <span className="block text-xs text-gray-500 uppercase font-semibold">
-                      Expired
-                    </span>
-                    <span className="block text-sm font-bold text-red-500">
-                      {toDate(po.expiredTgl)?.toLocaleDateString() || "-"}
                     </span>
                   </td>
                 )}
@@ -941,7 +1116,10 @@ function TableUnderChart({
             ))}
             {pageRows.length === 0 && (
               <tr>
-                <td className="px-6 py-6 text-sm text-gray-500" colSpan={6}>
+                <td
+                  className="px-6 py-6 text-sm text-gray-500"
+                  colSpan={Object.values(visibleCols).filter(Boolean).length}
+                >
                   Tidak ada data untuk filter ini.
                 </td>
               </tr>

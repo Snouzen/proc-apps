@@ -199,9 +199,12 @@ function InputPODetailPageInner() {
     if (!noPo) return;
     const loadPo = async () => {
       try {
-        const res = await fetch(`/api/po?noPo=${encodeURIComponent(noPo)}`, {
+        const res = await fetch(
+          `/api/po?includeUnknown=true&noPo=${encodeURIComponent(noPo)}`,
+          {
           cache: "no-store",
-        });
+          },
+        );
         const data = await res.json();
         const po = Array.isArray(data) ? data[0] : data?.[0] || data;
         if (!po) return;

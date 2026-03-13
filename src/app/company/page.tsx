@@ -1,7 +1,7 @@
 "use client";
 
-import TestingPage from "@/app/testing/page";
+import CompanyList from "@/app/company/_components/company-list";
 
 export default function CompanyPage() {
-  return <TestingPage />;
+  return <CompanyList />;
 }

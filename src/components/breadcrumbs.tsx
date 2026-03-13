@@ -8,11 +8,10 @@ import { Fragment } from "react";
 const routeNameMap: Record<string, string> = {
   "master-data": "Master Data",
   "unit-produksi": "Unit Produksi",
-  "produk": "Produk",
+  produk: "Produk",
   "ritel-modern": "Ritel Modern",
-  "company": "Company",
-  "testing": "Testing",
-  "po": "Purchase Order",
+  company: "Company",
+  po: "Purchase Order",
 };
 
 export default function Breadcrumbs() {
