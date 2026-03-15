@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/db";
+import { canonicalProductName, dedupeKey } from "@/lib/text";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -28,16 +29,33 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const name: string | undefined = body?.name;
+    const nameRaw: string | undefined = body?.name;
     const satuanKgRaw = body?.satuanKg;
     const satuanKg =
       satuanKgRaw === undefined || satuanKgRaw === null
         ? undefined
         : Number(satuanKgRaw);
+    const name = canonicalProductName(nameRaw);
     if (!name || !name.trim()) {
       return NextResponse.json(
         { error: "Nama produk wajib diisi" },
         { status: 400 },
+      );
+    }
+    const key = dedupeKey(name);
+    const dup: Array<{ id: string; name: string }> =
+      (await prisma.$queryRawUnsafe(
+        `SELECT id, name FROM "Product"
+         WHERE regexp_replace(upper(name), '[^A-Z0-9]', '', 'g') = $1
+         ORDER BY "createdAt" ASC
+         LIMIT 1`,
+        key,
+      )) as any;
+    const firstDup = Array.isArray(dup) ? dup[0] : null;
+    if (firstDup && String(firstDup.name) !== name) {
+      return NextResponse.json(
+        { error: `Produk sudah ada: ${String(firstDup.name)}` },
+        { status: 409 },
       );
     }
     let result: any = null;
@@ -99,17 +117,36 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const id: string | undefined = body?.id;
-    const name: string | undefined = body?.name;
+    const nameRaw: string | undefined = body?.name;
     const satuanKgRaw = body?.satuanKg;
     const satuanKg =
       satuanKgRaw === undefined || satuanKgRaw === null
         ? undefined
         : Number(satuanKgRaw);
+    const name = nameRaw === undefined ? undefined : canonicalProductName(nameRaw);
     if (!id && !name) {
       return NextResponse.json(
         { error: "Wajib menyertakan id atau name" },
         { status: 400 },
       );
+    }
+    if (name && name.trim()) {
+      const key = dedupeKey(name);
+      const dup: Array<{ id: string; name: string }> =
+        (await prisma.$queryRawUnsafe(
+          `SELECT id, name FROM "Product"
+           WHERE regexp_replace(upper(name), '[^A-Z0-9]', '', 'g') = $1
+           ORDER BY "createdAt" ASC
+           LIMIT 1`,
+          key,
+        )) as any;
+      const firstDup = Array.isArray(dup) ? dup[0] : null;
+      if (firstDup && String(firstDup.id) !== String(id || "")) {
+        return NextResponse.json(
+          { error: `Produk sudah ada: ${String(firstDup.name)}` },
+          { status: 409 },
+        );
+      }
     }
     const where: any = id ? { id } : { name: name as string };
     let updated: any = null;

@@ -2,20 +2,18 @@
 
 import {
   CalendarDays,
-  CheckCircle2,
-  ClipboardCheck,
-  FileText,
+  Check,
+  Eye,
   LinkIcon,
   MapPin,
-  MessageSquare,
-  Package,
   Pencil,
   Plus,
   Save,
   Tag,
   Trash2,
+  X,
 } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useState } from "react";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -38,6 +36,29 @@ function InputPODetailPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
+  const INITIAL_FORM = {
+    company: "",
+    inisial: "",
+    regional: "",
+    noPo: "",
+    tglPo: "",
+    linkPo: "",
+    expiredTgl: "",
+    siteArea: "",
+    noInvoice: "",
+    tujuan: "",
+    status: {
+      kirim: false,
+      sdif: false,
+      po: false,
+      fp: false,
+      kwi: false,
+      inv: false,
+      tagih: false,
+      bayar: false,
+    },
+    remarks: "",
+  };
   const [poDrafts, setPoDrafts] = useState<
     Array<{
       noPo: string;
@@ -52,29 +73,7 @@ function InputPODetailPageInner() {
     }>
   >([]);
   const [formData, setFormData] = useState({
-    //Data Utama
-    company: "",
-    inisial: "",
-    regional: "",
-    noPo: "",
-    tglPo: "",
-    linkPo: "",
-    expiredTgl: "",
-    siteArea: "",
-    noInvoice: "",
-    tujuan: "",
-    //Checklist status dokumen
-    status: {
-      kirim: false,
-      sdif: false,
-      po: false,
-      fp: false,
-      kwi: false,
-      inv: false,
-      tagih: false,
-      bayar: false,
-    },
-    remarks: "",
+    ...INITIAL_FORM,
   });
 
   // State for Items
@@ -84,6 +83,13 @@ function InputPODetailPageInner() {
     pcs: "" as number | string,
     pcsKirim: "" as number | string,
     hargaPcs: "" as number | string,
+  });
+  const [previewItemId, setPreviewItemId] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItem, setEditItem] = useState({
+    pcs: "",
+    pcsKirim: "",
+    hargaPcs: "",
   });
   const [toast, setToast] = useState<{
     type: "success" | "error" | "info";
@@ -100,13 +106,15 @@ function InputPODetailPageInner() {
 
   // Persist to localStorage to avoid data loss (AFK/crash)
   useEffect(() => {
+    const noPo = searchParams?.get("noPo");
+    if (noPo) return;
     try {
       const savedForm = localStorage.getItem("po.current.form");
       const savedItems = localStorage.getItem("po.current.items");
       const savedDrafts = localStorage.getItem("po.drafts");
       if (savedForm) {
         const f = JSON.parse(savedForm);
-        setFormData((prev) => ({ ...prev, ...f }));
+        setFormData({ ...INITIAL_FORM, ...f });
       }
       if (savedItems) {
         const it = JSON.parse(savedItems);
@@ -114,10 +122,10 @@ function InputPODetailPageInner() {
       }
       if (savedDrafts) {
         const d = JSON.parse(savedDrafts);
-        if (Array.isArray(d)) setPoDrafts(d);
+        if (Array.isArray(d)) setPoDrafts(d.slice(0, 1));
       }
     } catch {}
-  }, []);
+  }, [searchParams]);
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -168,6 +176,95 @@ function InputPODetailPageInner() {
 
   const totalRpTagihAll = items.reduce((acc, item) => acc + item.rpTagih, 0);
 
+  const getSatuanKg = (namaProduk: string) => {
+    const satuan =
+      (Array.isArray(productData)
+        ? productData.find((p: any) => p?.name === namaProduk)?.satuanKg
+        : undefined) || 0;
+    const n = Number(satuan);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const computeDerived = (
+    namaProduk: string,
+    pcsRaw: any,
+    pcsKirimRaw: any,
+    hargaPcsRaw: any,
+  ) => {
+    const satuan = getSatuanKg(namaProduk);
+    const pcs = Number(pcsRaw) || 0;
+    const pcsKirim = Number(pcsKirimRaw) || 0;
+    const hargaPcs = Number(hargaPcsRaw) || 0;
+    const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
+    const nominal = hargaPcs * pcs;
+    const rpTagih = hargaPcs * pcsKirim;
+    const kg = pcs * satuan;
+    const kgKirim = pcsKirim * satuan;
+    return {
+      pcs,
+      pcsKirim,
+      hargaPcs,
+      satuan,
+      hargaKg,
+      nominal,
+      rpTagih,
+      kg,
+      kgKirim,
+    };
+  };
+
+  const handleTogglePreviewItem = (id: string) => {
+    setPreviewItemId((prev) => (prev === id ? null : id));
+  };
+  const handleStartEditItem = (item: ItemPO) => {
+    setEditingItemId(item.id);
+    setPreviewItemId(item.id);
+    setEditItem({
+      pcs: String(item.pcs ?? ""),
+      pcsKirim: String(item.pcsKirim ?? ""),
+      hargaPcs: String(item.hargaPcs ?? ""),
+    });
+  };
+  const handleCancelEditItem = () => {
+    setEditingItemId(null);
+    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "" });
+  };
+  const handleSaveEditItem = (item: ItemPO) => {
+    if (!editItem.pcs || !editItem.hargaPcs) {
+      showToast("error", "Lengkapi PCS dan Harga/Pcs");
+      return;
+    }
+    const d = computeDerived(
+      item.namaProduk,
+      editItem.pcs,
+      editItem.pcsKirim,
+      editItem.hargaPcs,
+    );
+    if (d.pcs <= 0 || d.hargaPcs <= 0) {
+      showToast("error", "PCS dan Harga/Pcs harus lebih dari 0");
+      return;
+    }
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === item.id
+          ? {
+              ...it,
+              pcs: d.pcs,
+              pcsKirim: d.pcsKirim,
+              hargaPcs: d.hargaPcs,
+              kg: d.kg,
+              kgKirim: d.kgKirim,
+              hargaKg: d.hargaKg,
+              nominal: d.nominal,
+              rpTagih: d.rpTagih,
+            }
+          : it,
+      ),
+    );
+    setEditingItemId(null);
+    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "" });
+    showToast("success", "Item berhasil diupdate");
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -199,10 +296,18 @@ function InputPODetailPageInner() {
     if (!noPo) return;
     const loadPo = async () => {
       try {
+        setItems([]);
+        setPoDrafts([]);
+        setFormData({ ...INITIAL_FORM });
+        try {
+          localStorage.removeItem("po.current.form");
+          localStorage.removeItem("po.current.items");
+          localStorage.removeItem("po.drafts");
+        } catch {}
         const res = await fetch(
           `/api/po?includeUnknown=true&noPo=${encodeURIComponent(noPo)}`,
           {
-          cache: "no-store",
+            cache: "no-store",
           },
         );
         const data = await res.json();
@@ -216,8 +321,8 @@ function InputPODetailPageInner() {
           const day = `${dt.getDate()}`.padStart(2, "0");
           return `${dt.getFullYear()}-${m}-${day}`;
         };
-        setFormData((prev) => ({
-          ...prev,
+        setFormData({
+          ...INITIAL_FORM,
           company: po.RitelModern?.namaPt || "",
           regional: po.regional || "",
           noPo: po.noPo || "",
@@ -242,7 +347,7 @@ function InputPODetailPageInner() {
             bayar: !!po.statusBayar,
           },
           remarks: po.remarks || "",
-        }));
+        });
         const mappedItems: ItemPO[] = (po.Items || []).map((it: any) => {
           const satuan = Number(it?.Product?.satuanKg || 0) || 0;
           const pcsNum = Number(it?.pcs || 0);
@@ -283,14 +388,29 @@ function InputPODetailPageInner() {
       .toLowerCase()
       .replace(/\s+/g, " ");
 
+  const inisialUsedAsCompany = new Set(
+    (Array.isArray(ritelData) ? ritelData : [])
+      .filter(
+        (r: any) =>
+          r?.inisial && r?.namaPt && norm(r.inisial) !== norm(r.namaPt),
+      )
+      .map((r: any) => norm(r.inisial)),
+  );
+
   const companyOptions = Array.from(
     new Set(
       (Array.isArray(ritelData) ? ritelData : [])
         .map((r: any) => String(r?.namaPt || "").trim())
-        .filter(Boolean),
+        .filter(Boolean)
+        .filter((nama: string) => !inisialUsedAsCompany.has(norm(nama))),
     ),
   ).sort();
-  const inisialOptions = formData.company
+
+  const isKnownCompany =
+    !!formData.company &&
+    companyOptions.some((o) => norm(o) === norm(formData.company));
+
+  const inisialOptions = isKnownCompany
     ? Array.from(
         new Set(
           (Array.isArray(ritelData) ? ritelData : [])
@@ -300,14 +420,11 @@ function InputPODetailPageInner() {
             .map(String),
         ),
       ).sort()
-    : Array.from(
-        new Set(
-          (Array.isArray(ritelData) ? ritelData : [])
-            .map((r: any) => String(r?.inisial || "").trim())
-            .filter(Boolean)
-            .map(String),
-        ),
-      ).sort();
+    : [];
+  const isKnownInisial =
+    isKnownCompany &&
+    !!formData.inisial &&
+    inisialOptions.some((o) => norm(o) === norm(formData.inisial));
   const allTujuan = Array.from(
     new Set(
       (Array.isArray(ritelData) ? ritelData : [])
@@ -315,16 +432,22 @@ function InputPODetailPageInner() {
         .filter(Boolean),
     ),
   ).sort();
-  const tujuanOptions = formData.company
+  const tujuanOptions = isKnownInisial
     ? Array.from(
         new Set(
           (Array.isArray(ritelData) ? ritelData : [])
-            .filter((r: any) => norm(r?.namaPt) === norm(formData.company))
+            .filter(
+              (r: any) =>
+                norm(r?.namaPt) === norm(formData.company) &&
+                norm(r?.inisial) === norm(formData.inisial),
+            )
             .map((r: any) => String(r?.tujuan || "").trim())
             .filter(Boolean),
         ),
       ).sort()
-    : allTujuan;
+    : isKnownCompany
+      ? []
+      : allTujuan;
   const siteAreaOptions = Array.from(
     new Set(
       (Array.isArray(unitData) ? unitData : [])
@@ -349,11 +472,15 @@ function InputPODetailPageInner() {
     ),
   ).sort();
 
-  const invalidCompany =
-    !!formData.company &&
-    !companyOptions.some((o) => norm(o) === norm(formData.company));
+  const companyLooksLikeInisial =
+    !!formData.company && inisialUsedAsCompany.has(norm(formData.company));
+  const invalidCompany = !!formData.company && !isKnownCompany;
+  const invalidInisial =
+    !!formData.inisial &&
+    !inisialOptions.some((o) => norm(o) === norm(formData.inisial));
   const invalidTujuan =
     !!formData.tujuan &&
+    isKnownInisial &&
     !tujuanOptions.some((o) => norm(o) === norm(formData.tujuan));
   const invalidProduct =
     !!currentItem.namaProduk &&
@@ -407,6 +534,18 @@ function InputPODetailPageInner() {
   };
 
   const handleSaveCurrentPODraft = () => {
+    if (!isKnownCompany) {
+      showToast("error", "Nama company tidak ada di daftar");
+      return;
+    }
+    if (!formData.inisial || !formData.inisial.trim()) {
+      showToast("error", "Inisial wajib diisi");
+      return;
+    }
+    if (!inisialOptions.some((o) => norm(o) === norm(formData.inisial || ""))) {
+      showToast("error", "Inisial tidak ada di daftar");
+      return;
+    }
     if (!formData.noPo || !formData.noPo.trim()) {
       showToast("error", "Nomor PO wajib diisi");
       return;
@@ -423,12 +562,15 @@ function InputPODetailPageInner() {
       showToast("error", "Tujuan (Toko/DC) wajib diisi");
       return;
     }
+    if (invalidTujuan) {
+      showToast("error", "Tujuan tidak ada di daftar");
+      return;
+    }
     if (items.length === 0) {
       showToast("error", "Minimal harus ada 1 produk");
       return;
     }
-    setPoDrafts((prev) => [
-      ...prev,
+    setPoDrafts([
       {
         noPo: formData.noPo,
         tglPo: formData.tglPo,
@@ -441,25 +583,7 @@ function InputPODetailPageInner() {
         items,
       },
     ]);
-    setItems([]);
-    setFormData((f) => ({
-      ...f,
-      noPo: "",
-      tglPo: "",
-      expiredTgl: "",
-      linkPo: "",
-      noInvoice: "",
-      tujuan: "",
-      status: { ...f.status },
-      remarks: "",
-    }));
-    setCurrentItem({
-      namaProduk: "",
-      pcs: "",
-      pcsKirim: "",
-      hargaPcs: "",
-    });
-    showToast("success", `PO ${formData.noPo} ditambahkan ke daftar`);
+    showToast("success", `Draft PO ${formData.noPo} disiapkan`);
   };
 
   const removeDraft = (noPo: string) => {
@@ -468,10 +592,11 @@ function InputPODetailPageInner() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (invalidCompany || invalidTujuan) {
+    if (companyLooksLikeInisial) {
       const msgs = [
-        invalidCompany ? "Nama company tidak ada di daftar" : null,
-        invalidTujuan ? "Tujuan tidak ada di daftar" : null,
+        companyLooksLikeInisial
+          ? "Nama company tidak boleh berupa inisial"
+          : null,
       ]
         .filter(Boolean)
         .join("\n");
@@ -482,75 +607,107 @@ function InputPODetailPageInner() {
       showToast("error", "Nama company wajib diisi");
       return;
     }
+    if (invalidCompany) {
+      showToast("error", "Nama company tidak ada di daftar");
+      return;
+    }
     if (!formData.inisial || !formData.inisial.trim()) {
       showToast("error", "Inisial wajib diisi");
       return;
     }
-    // Kirim hanya draft yang ada di daftar
-    const queue = [...poDrafts];
-    if (queue.length === 0) {
-      showToast("error", "Minimal tambahkan 1 PO ke daftar");
+    if (invalidInisial) {
+      showToast("error", "Inisial tidak ada di daftar");
       return;
     }
-    // Validasi draft satu per satu
-    const invalids: string[] = [];
-    for (const d of queue) {
-      if (!d.noPo || !d.noPo.trim()) invalids.push("No PO kosong");
-      if (!d.tglPo || !d.tglPo.trim())
-        invalids.push(`Tgl PO kosong (${d.noPo})`);
-      if (!d.expiredTgl || !d.expiredTgl.trim())
-        invalids.push(`Expired PO kosong (${d.noPo})`);
-      if (!d.tujuan || !d.tujuan.trim())
-        invalids.push(`Tujuan kosong (${d.noPo})`);
-      if (!Array.isArray(d.items) || d.items.length === 0)
-        invalids.push(`Items kosong (${d.noPo})`);
+    if (!formData.noPo || !formData.noPo.trim()) {
+      showToast("error", "Nomor PO wajib diisi");
+      return;
     }
-    if (invalids.length > 0) {
-      showToast("error", `Periksa draft: ${invalids.join(" | ")}`);
+    if (!formData.tglPo || !formData.tglPo.trim()) {
+      showToast("error", "Tanggal PO wajib diisi");
+      return;
+    }
+    if (!formData.expiredTgl || !formData.expiredTgl.trim()) {
+      showToast("error", "Expired PO wajib diisi");
+      return;
+    }
+    if (!formData.tujuan || !formData.tujuan.trim()) {
+      showToast("error", "Tujuan (Toko/DC) wajib diisi");
+      return;
+    }
+    if (invalidTujuan) {
+      showToast("error", "Tujuan tidak ada di daftar");
+      return;
+    }
+    if (items.length === 0) {
+      showToast("error", "Minimal harus ada 1 produk");
       return;
     }
     if (submitting) return;
     setSubmitting(true);
     Promise.resolve()
       .then(async () => {
-        const { savePurchaseOrder } = await import("@/lib/api");
-        for (const draft of queue) {
-          const payload = {
-            company: formData.company,
-            inisial: formData.inisial,
-            regional: formData.regional,
-            noPo: draft.noPo,
-            tglPo: draft.tglPo,
-            linkPo: draft.linkPo,
-            expiredTgl: draft.expiredTgl,
-            siteArea: formData.siteArea,
-            noInvoice: draft.noInvoice,
-            tujuan: draft.tujuan,
-            items: draft.items.map(
-              ({ namaProduk, pcs, pcsKirim, hargaPcs }) => ({
-                namaProduk,
-                pcs,
-                pcsKirim,
-                hargaPcs,
-              }),
-            ),
-            remarks: draft.remarks,
-            status: draft.status,
-          };
-          await savePurchaseOrder(payload);
+        const isEditMode = !!searchParams.get("noPo");
+        if (!isEditMode) {
+          const res = await fetch("/api/po/check-dupes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ noPoList: [String(formData.noPo).trim()] }),
+          });
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            const exists: string[] = Array.isArray(data?.exists)
+              ? data.exists.map(String)
+              : [];
+            if (exists.length > 0) {
+              throw new Error(
+                `No PO sudah ada: ${exists.slice(0, 5).join(", ")}${exists.length > 5 ? " ..." : ""}`,
+              );
+            }
+          }
         }
+        const { savePurchaseOrder } = await import("@/lib/api");
+        const payload = {
+          company: formData.company,
+          inisial: formData.inisial,
+          regional: formData.regional,
+          noPo: formData.noPo,
+          tglPo: formData.tglPo,
+          linkPo: formData.linkPo,
+          expiredTgl: formData.expiredTgl,
+          siteArea: formData.siteArea,
+          noInvoice: formData.noInvoice,
+          tujuan: formData.tujuan,
+          items: items.map(({ namaProduk, pcs, pcsKirim, hargaPcs }) => ({
+            namaProduk,
+            pcs,
+            pcsKirim,
+            hargaPcs,
+          })),
+          remarks: formData.remarks,
+          status: formData.status,
+        };
+        await savePurchaseOrder(payload);
       })
       .then(() => {
         showToast(
           "success",
-          `Berhasil menyimpan ${poDrafts.length} PO untuk ${formData.company}`,
+          `Berhasil menyimpan PO ${formData.noPo} untuk ${formData.company}`,
         );
+        setPoDrafts([]);
+        setItems([]);
+        setFormData({ ...INITIAL_FORM });
+        try {
+          localStorage.removeItem("po.current.form");
+          localStorage.removeItem("po.current.items");
+          localStorage.removeItem("po.drafts");
+        } catch {}
         router.push(`/company`);
       })
       .catch((err) => {
         const msg =
           err instanceof Error ? err.message : "Gagal menyimpan data PO";
-        showToast("error", `${msg}. Draft dipertahankan.`);
+        showToast("error", `${msg}. Data dipertahankan.`);
       })
       .finally(() => {
         setSubmitting(false);
@@ -602,12 +759,12 @@ function InputPODetailPageInner() {
   const [editPickerOpen, setEditPickerOpen] = useState(false);
   const [editPickerSelected, setEditPickerSelected] = useState<string>("");
   const [deletePickerOpen, setDeletePickerOpen] = useState(false);
-  const [deleteSelection, setDeleteSelection] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [deleteSelection, setDeleteSelection] = useState<
+    Record<string, boolean>
+  >({});
 
   return (
-    <div className="max-w-6xl mx-auto pb-20 animate-in fade-in duration-500">
+    <div className="w-full pb-20 animate-in fade-in duration-500">
       {toast && (
         <div
           className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-xl shadow-lg text-sm font-bold ${
@@ -632,492 +789,709 @@ function InputPODetailPageInner() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-5 lg:col-span-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                <FileText size={20} />
-              </div>
-              <h2 className="font-bold text-slate-800 text-lg">
-                Data Referensi PO
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Nama Company
-                </label>
-                <Combobox
-                  options={companyOptions}
-                  value={formData.company}
-                  onChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      company: v,
-                      inisial: "",
-                      tujuan: "",
-                    })
-                  }
-                  placeholder="Ketik/cari company..."
-                  inputClassName={
-                    invalidCompany
-                      ? "border border-rose-300 bg-rose-50 focus:ring-rose-200"
-                      : undefined
-                  }
-                />
-                {invalidCompany && (
-                  <p className="text-[11px] text-rose-600 mt-1">
-                    Nama company tidak ada di daftar
-                  </p>
-                )}
+          <div className="lg:col-span-8 space-y-6">
+            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
+                  1
+                </div>
+                <h2 className="font-bold text-slate-800 text-lg">
+                  Data Referensi PO
+                </h2>
               </div>
 
-              <div className="md:col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Inisial
-                </label>
-                <Combobox
-                  options={inisialOptions}
-                  value={formData.inisial}
-                  onChange={(v) => setFormData({ ...formData, inisial: v })}
-                  placeholder="Ketik/cari inisial..."
-                />
-              </div>
-
-              <div className="md:col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Regional
-                </label>
-                <Select
-                  options={regionalOptions}
-                  value={formData.regional}
-                  onChange={(v) => setFormData({ ...formData, regional: v })}
-                  placeholder="Pilih Regional"
-                  leftIcon={<MapPin size={16} />}
-                />
-              </div>
-
-              <div className="md:col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Tujuan (Toko/DC)
-                </label>
-                <Combobox
-                  options={tujuanOptions}
-                  value={formData.tujuan}
-                  onChange={(v) => setFormData({ ...formData, tujuan: v })}
-                  placeholder="Ketik/cari tujuan..."
-                  inputClassName={
-                    invalidTujuan
-                      ? "border border-rose-300 bg-rose-50 focus:ring-rose-200"
-                      : undefined
-                  }
-                />
-                {invalidTujuan && (
-                  <p className="text-[11px] text-rose-600 mt-1">
-                    Tujuan tidak ada di daftar
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Tanggal PO
-                </label>
-                <input
-                  type="date"
-                  value={formData.tglPo}
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                  onChange={(e) =>
-                    setFormData({ ...formData, tglPo: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppecase ml-">
-                  Tanggal Expired
-                </label>
-                <div className="relative">
-                  <CalendarDays
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400"
-                    size={16}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Nama Company
+                  </label>
+                  <Combobox
+                    options={companyOptions}
+                    value={formData.company}
+                    onChange={(v) =>
+                      setFormData({
+                        ...formData,
+                        company: v,
+                        inisial: "",
+                        tujuan: "",
+                      })
+                    }
+                    placeholder="Ketik/cari company..."
+                    inputClassName={
+                      invalidCompany || companyLooksLikeInisial
+                        ? "border border-rose-300 bg-rose-50 focus:ring-rose-200"
+                        : undefined
+                    }
                   />
+                  {invalidCompany && (
+                    <p className="text-[11px] text-rose-600 mt-1">
+                      Nama company tidak ada di daftar
+                    </p>
+                  )}
+                  {companyLooksLikeInisial && (
+                    <p className="text-[11px] text-rose-600 mt-1">
+                      Nama company tidak valid (terdeteksi nilai inisial)
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Inisial
+                  </label>
+                  <Combobox
+                    options={inisialOptions}
+                    value={formData.inisial}
+                    onChange={(v) =>
+                      setFormData({ ...formData, inisial: v, tujuan: "" })
+                    }
+                    placeholder="Ketik/cari inisial..."
+                    inputClassName={
+                      invalidInisial
+                        ? "border border-rose-300 bg-rose-50 focus:ring-rose-200"
+                        : undefined
+                    }
+                  />
+                  {isKnownCompany && inisialOptions.length === 0 && (
+                    <p className="text-[11px] text-rose-600 mt-1">
+                      Inisial belum tersedia untuk company ini
+                    </p>
+                  )}
+                  {invalidInisial && (
+                    <p className="text-[11px] text-rose-600 mt-1">
+                      Inisial tidak ada di daftar
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Tujuan (Toko/DC)
+                  </label>
+                  <Combobox
+                    options={tujuanOptions}
+                    value={formData.tujuan}
+                    onChange={(v) => setFormData({ ...formData, tujuan: v })}
+                    placeholder="Ketik/cari tujuan..."
+                    inputClassName={
+                      invalidTujuan
+                        ? "border border-rose-300 bg-rose-50 focus:ring-rose-200"
+                        : undefined
+                    }
+                  />
+                  {isKnownCompany && !isKnownInisial && (
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Pilih inisial dulu untuk melihat tujuan
+                    </p>
+                  )}
+                  {invalidTujuan && (
+                    <p className="text-[11px] text-rose-600 mt-1">
+                      Tujuan tidak ada di daftar
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Tanggal PO
+                  </label>
                   <input
                     type="date"
-                    value={formData.expiredTgl}
-                    className="w-full pl-11 pr-4 py-3 bg-red-50/30 rounded-2xl text-sm font-semibold border border-red-100"
+                    value={formData.tglPo}
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
                     onChange={(e) =>
-                      setFormData({ ...formData, expiredTgl: e.target.value })
+                      setFormData({ ...formData, tglPo: e.target.value })
                     }
                   />
                 </div>
-              </div>
 
-              <div className="md:col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Link PO (GDrive)
-                </label>
-                <div className="relative">
-                  <LinkIcon
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={16}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Tanggal Expired
+                  </label>
+                  <div className="relative">
+                    <CalendarDays
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400"
+                      size={16}
+                    />
+                    <input
+                      type="date"
+                      value={formData.expiredTgl}
+                      className="w-full pl-11 pr-4 py-3 bg-red-50/30 rounded-2xl text-sm font-semibold border border-red-100"
+                      onChange={(e) =>
+                        setFormData({ ...formData, expiredTgl: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="hidden md:block" />
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Regional
+                  </label>
+                  <Select
+                    options={regionalOptions}
+                    value={formData.regional}
+                    onChange={(v) => setFormData({ ...formData, regional: v })}
+                    placeholder="Pilih Regional"
+                    leftIcon={<MapPin size={16} />}
                   />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Site Area
+                  </label>
+                  <Combobox
+                    options={siteAreaOptions}
+                    value={formData.siteArea}
+                    onChange={(v) => setFormData({ ...formData, siteArea: v })}
+                    placeholder="Ketik/cari site area..."
+                    leftIcon={<MapPin size={16} />}
+                    inputClassName="pl-11 pr-4"
+                  />
+                </div>
+
+                <div className="hidden md:block" />
+
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Link PO (GDrive)
+                  </label>
+                  <div className="relative">
+                    <LinkIcon
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      size={16}
+                    />
+                    <input
+                      type="url"
+                      placeholder="https://..."
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                      onChange={(e) =>
+                        setFormData({ ...formData, linkPo: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    No Invoice
+                  </label>
                   <input
-                    type="url"
-                    placeholder="https://..."
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                    type="text"
+                    placeholder="INV-202X"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
                     onChange={(e) =>
-                      setFormData({ ...formData, linkPo: e.target.value })
+                      setFormData({ ...formData, noInvoice: e.target.value })
                     }
                   />
                 </div>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Site Area
-                </label>
-                <Combobox
-                  options={siteAreaOptions}
-                  value={formData.siteArea}
-                  onChange={(v) => setFormData({ ...formData, siteArea: v })}
-                  placeholder="Ketik/cari site area..."
-                  leftIcon={<MapPin size={16} />}
-                  inputClassName="pl-11 pr-4"
-                />
+            </section>
+            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
+                  2
+                </div>
+                <h2 className="font-bold text-slate-800 text-lg">PO Detail</h2>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  No Invoice
-                </label>
-                <input
-                  type="text"
-                  placeholder="INV-202X"
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                  onChange={(e) =>
-                    setFormData({ ...formData, noInvoice: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-          </section>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="md:col-span-3 space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Nomor PO
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Masukkan Nomor PO..."
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                    value={formData.noPo}
+                    onChange={(e) =>
+                      setFormData({ ...formData, noPo: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="md:col-span-3 space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Nama Produk
+                  </label>
+                  <Combobox
+                    options={productOptions}
+                    value={currentItem.namaProduk}
+                    onChange={(v) =>
+                      setCurrentItem(() => ({
+                        namaProduk: v,
+                        pcs: "",
+                        pcsKirim: "",
+                        hargaPcs: "",
+                      }))
+                    }
+                    placeholder="Ketik/cari produk..."
+                    leftIcon={<Tag size={16} />}
+                    inputClassName={`pl-11 pr-4 ${invalidProduct ? "border border-rose-300 bg-rose-50 focus:ring-rose-200" : ""}`}
+                  />
+                  {invalidProduct && (
+                    <p className="text-[11px] text-rose-600 mt-1">
+                      Nama produk tidak ada di daftar
+                    </p>
+                  )}
+                </div>
 
-          <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-5 lg:col-span-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-                <Package size={20} />
-              </div>
-              <h2 className="font-bold text-slate-800 text-lg">PO Detail</h2>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="md:col-span-3 space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Nomor PO
-                </label>
-                <input
-                  type="text"
-                  placeholder="Masukkan Nomor PO..."
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                  value={formData.noPo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, noPo: e.target.value })
-                  }
-                />
-              </div>
-              <div className="md:col-span-3 space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Nama Produk
-                </label>
-                <Combobox
-                  options={productOptions}
-                  value={currentItem.namaProduk}
-                  onChange={(v) =>
-                    setCurrentItem(() => ({
-                      namaProduk: v,
-                      pcs: "",
-                      pcsKirim: "",
-                      hargaPcs: "",
-                    }))
-                  }
-                  placeholder="Ketik/cari produk..."
-                  leftIcon={<Tag size={16} />}
-                  inputClassName={`pl-11 pr-4 ${invalidProduct ? "border border-rose-300 bg-rose-50 focus:ring-rose-200" : ""}`}
-                />
-                {invalidProduct && (
-                  <p className="text-[11px] text-rose-600 mt-1">
-                    Nama produk tidak ada di daftar
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  PCS
-                </label>
-                <input
-                  type="number"
-                  value={currentItem.pcs}
-                  placeholder="Input Pcs"
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
-                  onChange={
-                    (e) =>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    PCS
+                  </label>
+                  <input
+                    type="number"
+                    value={currentItem.pcs}
+                    placeholder="Input Pcs"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                    onChange={
+                      (e) =>
+                        setCurrentItem((prev) => ({
+                          ...prev,
+                          pcs: e.target.value,
+                        })) // Harus ke 'pcs'
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Harga /Pcs
+                  </label>
+                  <input
+                    type="number"
+                    value={currentItem.hargaPcs}
+                    placeholder="Input Harga"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                    onChange={(e) =>
                       setCurrentItem((prev) => ({
                         ...prev,
-                        pcs: e.target.value,
-                      })) // Harus ke 'pcs'
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Pcs Kirim
-                </label>
-                <input
-                  type="number"
-                  value={currentItem.pcsKirim}
-                  placeholder="Input Pcs Kirim"
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
-                  onChange={
-                    (e) =>
-                      setCurrentItem((prev) => ({
-                        ...prev,
-                        pcsKirim: e.target.value,
-                      })) // Harus ke 'pcsKirim'
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <label
-                  className="text-[10px] font-black text-slate-400 uppercase ml-1"
-                  title="Rumus: KG = PCS × (kg/pcs produk)"
-                >
-                  KG (pcs × satuan)
-                </label>
-                <div
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
-                  title="KG = PCS × kg/pcs"
-                >
-                  {formatNumber(currentKg)}
+                        hargaPcs: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
-              </div>
-              <div className="space-y-1">
-                <label
-                  className="text-[10px] font-black text-slate-400 uppercase ml-1"
-                  title="Rumus: KG Kirim = PCS Kirim × (kg/pcs produk)"
-                >
-                  KG Kirim (pcs × satuan)
-                </label>
-                <div
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
-                  title="KG Kirim = PCS Kirim × kg/pcs"
-                >
-                  {formatNumber(currentKgKirim)}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    PCS Kirim
+                  </label>
+                  <input
+                    type="number"
+                    value={currentItem.pcsKirim}
+                    placeholder="Input Pcs Kirim"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                    onChange={
+                      (e) =>
+                        setCurrentItem((prev) => ({
+                          ...prev,
+                          pcsKirim: e.target.value,
+                        })) // Harus ke 'pcsKirim'
+                    }
+                  />
                 </div>
-              </div>
-              <div className="space-y-1">
-                <label
-                  className="text-[10px] font-black text-slate-400 uppercase ml-1"
-                  title="Rumus: Harga/Kg = Harga/Pcs ÷ (kg/pcs produk)"
-                >
-                  Harga /Kg
-                </label>
-                <div
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
-                  title="Harga/Kg = Harga/Pcs ÷ kg/pcs"
-                >
-                  {formatCurrency(currentHargaKg)}
+                <div className="space-y-1">
+                  <label
+                    className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                    title="Rumus: Harga/Kg = Harga/Pcs ÷ (kg/pcs produk)"
+                  >
+                    Harga /Kg
+                  </label>
+                  <div
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                    title="Harga/Kg = Harga/Pcs ÷ kg/pcs"
+                  >
+                    {formatCurrency(currentHargaKg)}
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Harga /Pcs
-                </label>
-                <input
-                  type="number"
-                  value={currentItem.hargaPcs}
-                  placeholder="Input Harga"
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
-                  onChange={(e) =>
-                    setCurrentItem((prev) => ({
-                      ...prev,
-                      hargaPcs: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <label
-                  className="text-[10px] font-black text-slate-400 uppercase ml-1"
-                  title="Rumus: Nominal = Harga/Pcs × PCS"
-                >
-                  Nominal
-                </label>
-                <div
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
-                  title="Nominal = Harga/Pcs × PCS"
-                >
-                  {formatCurrency(currentNominal)}
+                <div className="space-y-1">
+                  <label
+                    className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                    title="Rumus: KG = PCS × (kg/pcs produk)"
+                  >
+                    KG (pcs × satuan)
+                  </label>
+                  <div
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                    title="KG = PCS × kg/pcs"
+                  >
+                    {formatNumber(currentKg)}
+                  </div>
                 </div>
-              </div>
-              <div className="col-span-full pt-2">
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-700 active:scale-95 transition-all"
-                >
-                  <Plus size={18} />
-                  Tambah Produk
-                </button>
-              </div>
-            </div>
-
-            {/* Table Preview */}
-            {items.length > 0 && (
-              <div className="mt-6 border border-slate-100 rounded-2xl overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                    <tr>
-                      <th className="px-4 py-3">Produk</th>
-                      <th className="px-4 py-3 text-right" title="Input PCS">
-                        Pcs
-                      </th>
-                      <th className="px-4 py-3 text-right" title="PCS × kg/pcs">
-                        Kg
-                      </th>
-                      <th
-                        className="px-4 py-3 text-right"
-                        title="Harga Per Pcs"
-                      >
-                        Harga/Pcs
-                      </th>
-                      <th
-                        className="px-4 py-3 text-right"
-                        title="Rp Tagih = PCS Kirim × Harga/Pcs"
-                      >
-                        Rp Tagih
-                      </th>
-                      <th className="px-4 py-3 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {items.map((item) => (
-                      <tr key={item.id} className="group hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-medium text-slate-700">
-                          {item.namaProduk}
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-600">
-                          {item.pcs}
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-600">
-                          {formatNumber(Number(item.kg || 0))}
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-600">
-                          {formatNumber(Number(item.hargaPcs))}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-800">
-                          {formatNumber(item.rpTagih)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteItem(item.id)}
-                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-50 border-t border-slate-200">
-                    <tr>
-                      <td
-                        colSpan={4}
-                        className="px-4 py-3 text-right font-black text-slate-500 uppercase tracking-wider text-xs"
-                      >
-                        Total Tagihan
-                      </td>
-                      <td className="px-4 py-3 text-right font-black text-slate-800 text-base">
-                        {formatCurrency(totalRpTagihAll)}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-                <div className="flex items-center justify-end p-4 border-t border-slate-100 bg-white">
+                <div className="space-y-1">
+                  <label
+                    className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                    title="Rumus: KG Kirim = PCS Kirim × (kg/pcs produk)"
+                  >
+                    KG Kirim (pcs × satuan)
+                  </label>
+                  <div
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                    title="KG Kirim = PCS Kirim × kg/pcs"
+                  >
+                    {formatNumber(currentKgKirim)}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label
+                    className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                    title="Rumus: Nominal = Harga/Pcs × PCS"
+                  >
+                    Nominal
+                  </label>
+                  <div
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                    title="Nominal = Harga/Pcs × PCS"
+                  >
+                    {formatCurrency(currentNominal)}
+                  </div>
+                </div>
+                <div className="col-span-full pt-2">
                   <button
                     type="button"
-                    onClick={handleSaveCurrentPODraft}
-                    className="px-10 py-3 bg-[#004a87] text-white rounded-[16px] font-black flex items-center gap-2 shadow-2xl shadow-blue-900/30 hover:bg-[#003d6e] active:scale-95 transition-all"
+                    onClick={handleAddItem}
+                    className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-700 active:scale-95 transition-all"
                   >
-                    <Save size={18} />
-                    Simpan PO ke Daftar
+                    <Plus size={18} />
+                    Tambah Produk
                   </button>
                 </div>
               </div>
-            )}
-          </section>
-          <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm lg:col-span-12">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-                <ClipboardCheck size={20} />
+            </section>
+            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
+                  5
+                </div>
+                <h2 className="font-bold text-slate-800 text-lg">Preview</h2>
               </div>
-              <h2 className="font-bold text-slate-800 text-lg">
-                Checklist Document
-              </h2>
-            </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4">
-              {Object.keys(formData.status).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleChecklist(key)}
-                  className={`flex flex-col items-center justify-center p-5 rounded-[24px] border-2 transition-all duration-300 gap-2 ${
-                    formData.status[key as keyof typeof formData.status]
-                      ? "bg-emerald-600 border-emerald-600 text-white shadow-xl shadow-emerald-100 -translate-y-1"
-                      : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100"
-                  }`}
-                >
-                  <div
-                    className={`p-1.5 rounded-full ${
-                      formData.status[key as keyof typeof formData.status]
-                        ? "bg-white/20 text-white"
-                        : "bg-slate-200"
-                    }`}
-                  >
-                    <CheckCircle2 size={14} />
+              {items.length > 0 ? (
+                <div className="border border-slate-100 rounded-2xl overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3">Produk</th>
+                        <th className="px-4 py-3 text-right" title="Input PCS">
+                          Pcs
+                        </th>
+                        <th
+                          className="px-4 py-3 text-right"
+                          title="PCS × kg/pcs"
+                        >
+                          Kg
+                        </th>
+                        <th
+                          className="px-4 py-3 text-right"
+                          title="Harga Per Pcs"
+                        >
+                          Harga/Pcs
+                        </th>
+                        <th
+                          className="px-4 py-3 text-right"
+                          title="Rp Tagih = PCS Kirim × Harga/Pcs"
+                        >
+                          Rp Tagih
+                        </th>
+                        <th className="px-4 py-3 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {items.map((item) => {
+                        const isEditing = editingItemId === item.id;
+                        const isPreview =
+                          previewItemId === item.id || isEditing;
+                        const derived = isEditing
+                          ? computeDerived(
+                              item.namaProduk,
+                              editItem.pcs,
+                              editItem.pcsKirim,
+                              editItem.hargaPcs,
+                            )
+                          : computeDerived(
+                              item.namaProduk,
+                              item.pcs,
+                              item.pcsKirim,
+                              item.hargaPcs,
+                            );
+                        return (
+                          <Fragment key={item.id}>
+                            <tr className="group hover:bg-slate-50/50">
+                              <td className="px-4 py-3 font-medium text-slate-700">
+                                {item.namaProduk}
+                              </td>
+                              <td className="px-4 py-3 text-right text-slate-600">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={editItem.pcs}
+                                    onChange={(e) =>
+                                      setEditItem((p) => ({
+                                        ...p,
+                                        pcs: e.target.value,
+                                      }))
+                                    }
+                                    className="w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                                  />
+                                ) : (
+                                  formatNumber(Number(item.pcs || 0))
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right text-slate-600">
+                                {formatNumber(Number(derived.kg || 0))}
+                              </td>
+                              <td className="px-4 py-3 text-right text-slate-600">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={editItem.hargaPcs}
+                                    onChange={(e) =>
+                                      setEditItem((p) => ({
+                                        ...p,
+                                        hargaPcs: e.target.value,
+                                      }))
+                                    }
+                                    className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                                  />
+                                ) : (
+                                  formatNumber(Number(item.hargaPcs || 0))
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-slate-800">
+                                {formatCurrency(Number(derived.rpTagih || 0))}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {isEditing ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveEditItem(item)}
+                                      className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                      title="Simpan"
+                                    >
+                                      <Check size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEditItem}
+                                      className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                      title="Batal"
+                                    >
+                                      <X size={16} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleTogglePreviewItem(item.id)
+                                      }
+                                      className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                      title="Preview"
+                                    >
+                                      <Eye size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditItem(item)}
+                                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                      title="Edit"
+                                    >
+                                      <Pencil size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteItem(item.id)}
+                                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                      title="Hapus"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                            {isPreview && (
+                              <tr className="bg-slate-50/50">
+                                <td colSpan={6} className="px-4 py-3">
+                                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
+                                    <div>
+                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                        PCS Kirim
+                                      </div>
+                                      {isEditing ? (
+                                        <input
+                                          type="number"
+                                          value={editItem.pcsKirim}
+                                          onChange={(e) =>
+                                            setEditItem((p) => ({
+                                              ...p,
+                                              pcsKirim: e.target.value,
+                                            }))
+                                          }
+                                          className="mt-1 w-full px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                                        />
+                                      ) : (
+                                        <div className="mt-1 font-bold text-slate-700 text-right">
+                                          {formatNumber(
+                                            Number(item.pcsKirim || 0),
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                        KG Kirim
+                                      </div>
+                                      <div className="mt-1 font-bold text-slate-700 text-right">
+                                        {formatNumber(
+                                          Number(derived.kgKirim || 0),
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                        Harga/KG
+                                      </div>
+                                      <div className="mt-1 font-bold text-slate-700 text-right">
+                                        {formatCurrency(
+                                          Number(derived.hargaKg || 0),
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                        Nominal
+                                      </div>
+                                      <div className="mt-1 font-bold text-slate-700 text-right">
+                                        {formatCurrency(
+                                          Number(derived.nominal || 0),
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                        Rp Tagih
+                                      </div>
+                                      <div className="mt-1 font-black text-slate-900 text-right">
+                                        {formatCurrency(
+                                          Number(derived.rpTagih || 0),
+                                        )}
+                                      </div>
+                                    </div>
+                                    {!isEditing && (
+                                      <div className="flex items-end justify-end">
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewItemId(null)}
+                                          className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50"
+                                        >
+                                          Tutup
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-slate-50 border-t border-slate-200">
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-4 py-3 text-right font-black text-slate-500 uppercase tracking-wider text-xs"
+                        >
+                          Total Tagihan
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-slate-800 text-base">
+                          {formatCurrency(totalRpTagihAll)}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                  <div className="flex items-center justify-end p-4 border-t border-slate-100 bg-white">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="px-10 py-3 bg-[#004a87] text-white rounded-[16px] font-black flex items-center gap-2 shadow-2xl shadow-blue-900/30 hover:bg-[#003d6e] active:scale-95 transition-all"
+                    >
+                      <Save size={18} />
+                      Simpan PO ke Daftar
+                    </button>
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest">
-                    {key === "sdif" ? "SDI/F" : key}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm lg:col-span-12">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-slate-100 text-slate-600 rounded-xl">
-                <MessageSquare size={20} />
+                </div>
+              ) : (
+                <div className="p-6 rounded-2xl bg-slate-50 text-slate-500 text-sm font-semibold">
+                  Belum ada produk. Tambahkan produk dari Section 2.
+                </div>
+              )}
+            </section>
+          </div>
+          <div className="lg:col-span-4 space-y-6">
+            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
+                  3
+                </div>
+                <h2 className="font-bold text-slate-800 text-lg">
+                  Checklist Dokumen
+                </h2>
               </div>
-              <h2 className="font-bold text-slate-800 text-lg">Remarks</h2>
-            </div>
-            <textarea
-              rows={3}
-              placeholder="Tambahkan Jika Ada Keterangan..."
-              className="w-full px-6 py-4 bg-slate-50 rounded-[24px] focus:ring-2 focus:ring-slate-200 outline-none text-sm font-medium transition-all"
-              onChange={(e) =>
-                setFormData({ ...formData, remarks: e.target.value })
-              }
-            ></textarea>
-          </section>
+
+              <div className="space-y-3">
+                {Object.keys(formData.status).map((key) => {
+                  const checked =
+                    formData.status[key as keyof typeof formData.status];
+                  const label = key === "sdif" ? "SDI/F" : key.toUpperCase();
+                  return (
+                    <label
+                      key={key}
+                      className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => handleChecklist(key)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-bold text-slate-700">
+                        {label}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
+                  4
+                </div>
+                <h2 className="font-bold text-slate-800 text-lg">Remarks</h2>
+              </div>
+              <textarea
+                rows={4}
+                placeholder="Tambahkan Jika Ada Keterangan..."
+                className="w-full px-6 py-4 bg-slate-50 rounded-[24px] focus:ring-2 focus:ring-slate-200 outline-none text-sm font-medium transition-all"
+                onChange={(e) =>
+                  setFormData({ ...formData, remarks: e.target.value })
+                }
+              ></textarea>
+            </section>
+          </div>
         </div>
 
         {/* Draft List & Submit All */}
-        {poDrafts.length > 0 && (
+        {false && poDrafts.length > 0 && (
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 lg:col-span-2">
             <h3 className="font-bold text-slate-800 mb-3">
               Daftar PO untuk Company Ini
@@ -1130,7 +1504,7 @@ function InputPODetailPageInner() {
                     <th className="px-4 py-3">Nama Produk</th>
                     <th className="px-4 py-3 text-right">PCS PO</th>
                     <th className="px-4 py-3 text-right">Harga/PCS</th>
-                    <th className="px-4 py-3 text-right">Harga</th>
+                    <th className="px-4 py-3 text-right">Nominal</th>
                     <th className="px-4 py-3 text-right">Jumlah Produk</th>
                     <th className="px-4 py-3 text-right">Total Tagihan</th>
                   </tr>
@@ -1265,7 +1639,9 @@ function InputPODetailPageInner() {
                           checked={editPickerSelected === d.noPo}
                           onChange={() => setEditPickerSelected(d.noPo)}
                         />
-                        <span className="font-mono font-semibold">{d.noPo}</span>
+                        <span className="font-mono font-semibold">
+                          {d.noPo}
+                        </span>
                         <span className="text-slate-500 text-xs">
                           • {d.items.length} produk
                         </span>
@@ -1307,9 +1683,8 @@ function InputPODetailPageInner() {
                   <div className="p-4">
                     {(() => {
                       const total = poDrafts.length;
-                      const selectedItemCount = Object.values(deleteSelection).filter(
-                        Boolean,
-                      ).length;
+                      const selectedItemCount =
+                        Object.values(deleteSelection).filter(Boolean).length;
                       const selectedPoCount = (() => {
                         const set = new Set<string>();
                         for (const k of Object.keys(deleteSelection)) {
@@ -1319,9 +1694,11 @@ function InputPODetailPageInner() {
                         }
                         return set.size;
                       })();
-                      const totalItemCount = Object.keys(deleteSelection).length;
+                      const totalItemCount =
+                        Object.keys(deleteSelection).length;
                       const allChecked =
-                        totalItemCount > 0 && selectedItemCount === totalItemCount;
+                        totalItemCount > 0 &&
+                        selectedItemCount === totalItemCount;
                       return (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                           <div className="text-sm text-slate-600">
@@ -1396,7 +1773,9 @@ function InputPODetailPageInner() {
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {poDrafts.map((d) => {
-                              const rows = Array.isArray(d.items) ? d.items : [];
+                              const rows = Array.isArray(d.items)
+                                ? d.items
+                                : [];
                               const span = Math.max(rows.length, 1);
                               const tgl = d.tglPo || "-";
                               const exp = d.expiredTgl || "-";
@@ -1410,7 +1789,9 @@ function InputPODetailPageInner() {
                                   const nominal =
                                     Number(it?.nominal) || hargaPcs * pcs || 0;
                                   const rpTagih =
-                                    Number(it?.rpTagih) || hargaPcs * pcsKirim || 0;
+                                    Number(it?.rpTagih) ||
+                                    hargaPcs * pcsKirim ||
+                                    0;
                                   return (
                                     <tr key={`${d.noPo}-${it?.id || idx}`}>
                                       <td className="px-4 py-3 align-top">
@@ -1509,7 +1890,10 @@ function InputPODetailPageInner() {
                                   <td className="px-4 py-3 text-slate-700">
                                     {tuj}
                                   </td>
-                                  <td className="px-4 py-3 text-slate-500" colSpan={6}>
+                                  <td
+                                    className="px-4 py-3 text-slate-500"
+                                    colSpan={6}
+                                  >
                                     Tidak ada item
                                   </td>
                                 </tr>
@@ -1531,9 +1915,9 @@ function InputPODetailPageInner() {
                     <button
                       type="button"
                       onClick={() => {
-                        const selectedItemKeys = Object.keys(deleteSelection).filter(
-                          (k) => deleteSelection[k],
-                        );
+                        const selectedItemKeys = Object.keys(
+                          deleteSelection,
+                        ).filter((k) => deleteSelection[k]);
                         if (selectedItemKeys.length === 0) return;
                         const setByPo = new Map<string, Set<string>>();
                         for (const k of selectedItemKeys) {
@@ -1547,22 +1931,29 @@ function InputPODetailPageInner() {
                             .map((d) => {
                               const toRemove = setByPo.get(d.noPo);
                               if (!toRemove) return d;
-                              const items = Array.isArray(d.items) ? d.items : [];
-                              const kept = items.filter((it: any, idx: number) => {
-                                const id = String(it?.id || idx);
-                                return !toRemove.has(id);
-                              });
+                              const items = Array.isArray(d.items)
+                                ? d.items
+                                : [];
+                              const kept = items.filter(
+                                (it: any, idx: number) => {
+                                  const id = String(it?.id || idx);
+                                  return !toRemove.has(id);
+                                },
+                              );
                               return { ...d, items: kept };
                             })
-                            .filter((d) => Array.isArray(d.items) && d.items.length > 0),
+                            .filter(
+                              (d) =>
+                                Array.isArray(d.items) && d.items.length > 0,
+                            ),
                         );
                         setDeletePickerOpen(false);
                         setDeleteSelection({});
                       }}
                       className="px-5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold disabled:opacity-50"
                       disabled={
-                        Object.values(deleteSelection).filter(Boolean).length ===
-                        0
+                        Object.values(deleteSelection).filter(Boolean)
+                          .length === 0
                       }
                     >
                       Hapus Terpilih
@@ -1571,204 +1962,220 @@ function InputPODetailPageInner() {
                 </div>
               </div>
             )}
-            {editDraft && (
-              <div className="fixed inset-0 z-[60] bg-black/30 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div className="font-bold text-slate-800">
-                      Edit Draft PO • {editDraft.noPo}
+            {(() => {
+              if (!editDraft) return null;
+              const d = editDraft!;
+              return (
+                <div className="fixed inset-0 z-[60] bg-black/30 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                      <div className="font-bold text-slate-800">
+                        Edit Draft PO • {d.noPo}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={closeEditDraft}
+                        className="px-3 py-1.5 text-sm rounded-lg bg-slate-100 hover:bg-slate-200"
+                      >
+                        Tutup
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={closeEditDraft}
-                      className="px-3 py-1.5 text-sm rounded-lg bg-slate-100 hover:bg-slate-200"
-                    >
-                      Tutup
-                    </button>
-                  </div>
-                  <div className="p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                          Tanggal PO
-                        </label>
-                        <input
-                          type="date"
-                          value={editDraft.tglPo}
-                          onChange={(e) =>
-                            setEditDraft({ ...editDraft, tglPo: e.target.value })
-                          }
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
-                        />
+                    <div className="p-6 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                            Tanggal PO
+                          </label>
+                          <input
+                            type="date"
+                            value={d.tglPo}
+                            onChange={(e) =>
+                              setEditDraft({
+                                ...d,
+                                tglPo: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                            Expired PO
+                          </label>
+                          <input
+                            type="date"
+                            value={d.expiredTgl}
+                            onChange={(e) =>
+                              setEditDraft({
+                                ...d,
+                                expiredTgl: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                            Tujuan
+                          </label>
+                          <input
+                            type="text"
+                            value={d.tujuan}
+                            onChange={(e) =>
+                              setEditDraft({
+                                ...d,
+                                tujuan: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                          Expired PO
-                        </label>
-                        <input
-                          type="date"
-                          value={editDraft.expiredTgl}
-                          onChange={(e) =>
-                            setEditDraft({
-                              ...editDraft,
-                              expiredTgl: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                          Tujuan
-                        </label>
-                        <input
-                          type="text"
-                          value={editDraft.tujuan}
-                          onChange={(e) =>
-                            setEditDraft({
-                              ...editDraft,
-                              tujuan: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
-                        />
+                      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                        <div className="max-h-[360px] overflow-auto">
+                          <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 text-[11px] font-black uppercase text-slate-500 tracking-widest">
+                              <tr>
+                                <th className="px-4 py-3">Produk</th>
+                                <th className="px-4 py-3 text-right">PCS PO</th>
+                                <th className="px-4 py-3 text-right">
+                                  PCS Kirim
+                                </th>
+                                <th className="px-4 py-3 text-right">
+                                  Harga/PCS
+                                </th>
+                                <th className="px-4 py-3 text-right">
+                                  Nominal
+                                </th>
+                                <th className="px-4 py-3 text-right">Tagih</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {d.items.map((it, idx) => {
+                                const pcs = Number(it.pcs) || 0;
+                                const pcsKirim = Number(it.pcsKirim) || 0;
+                                const hargaPcs = Number(it.hargaPcs) || 0;
+                                const nominal = hargaPcs * pcs;
+                                const rpTagih = hargaPcs * pcsKirim;
+                                return (
+                                  <tr key={it.id || idx}>
+                                    <td className="px-4 py-2">
+                                      <input
+                                        type="text"
+                                        value={it.namaProduk}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          const arr = [...d.items];
+                                          arr[idx] = {
+                                            ...arr[idx],
+                                            namaProduk: v,
+                                          };
+                                          setEditDraft({
+                                            ...d,
+                                            items: arr,
+                                          });
+                                        }}
+                                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      <input
+                                        type="number"
+                                        value={pcs}
+                                        onChange={(e) => {
+                                          const v = Number(e.target.value) || 0;
+                                          const arr = [...d.items];
+                                          arr[idx] = {
+                                            ...arr[idx],
+                                            pcs: v,
+                                            nominal:
+                                              v * (Number(it.hargaPcs) || 0),
+                                          };
+                                          setEditDraft({
+                                            ...d,
+                                            items: arr,
+                                          });
+                                        }}
+                                        className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      <input
+                                        type="number"
+                                        value={pcsKirim}
+                                        onChange={(e) => {
+                                          const v = Number(e.target.value) || 0;
+                                          const arr = [...d.items];
+                                          arr[idx] = {
+                                            ...arr[idx],
+                                            pcsKirim: v,
+                                            rpTagih:
+                                              v * (Number(it.hargaPcs) || 0),
+                                          };
+                                          setEditDraft({
+                                            ...d,
+                                            items: arr,
+                                          });
+                                        }}
+                                        className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      <input
+                                        type="number"
+                                        value={hargaPcs}
+                                        onChange={(e) => {
+                                          const v = Number(e.target.value) || 0;
+                                          const arr = [...d.items];
+                                          arr[idx] = {
+                                            ...arr[idx],
+                                            hargaPcs: v,
+                                            nominal: v * (Number(it.pcs) || 0),
+                                            rpTagih:
+                                              v * (Number(it.pcsKirim) || 0),
+                                          };
+                                          setEditDraft({
+                                            ...d,
+                                            items: arr,
+                                          });
+                                        }}
+                                        className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      {formatCurrency(nominal)}
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      {formatCurrency(rpTagih)}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                      <div className="max-h-[360px] overflow-auto">
-                        <table className="w-full text-left text-sm">
-                          <thead className="bg-slate-50 text-[11px] font-black uppercase text-slate-500 tracking-widest">
-                            <tr>
-                              <th className="px-4 py-3">Produk</th>
-                              <th className="px-4 py-3 text-right">PCS PO</th>
-                              <th className="px-4 py-3 text-right">PCS Kirim</th>
-                              <th className="px-4 py-3 text-right">
-                                Harga/PCS
-                              </th>
-                              <th className="px-4 py-3 text-right">Nominal</th>
-                              <th className="px-4 py-3 text-right">Tagih</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {editDraft.items.map((it, idx) => {
-                              const pcs = Number(it.pcs) || 0;
-                              const pcsKirim = Number(it.pcsKirim) || 0;
-                              const hargaPcs = Number(it.hargaPcs) || 0;
-                              const nominal = hargaPcs * pcs;
-                              const rpTagih = hargaPcs * pcsKirim;
-                              return (
-                                <tr key={it.id || idx}>
-                                  <td className="px-4 py-2">
-                                    <input
-                                      type="text"
-                                      value={it.namaProduk}
-                                      onChange={(e) => {
-                                        const v = e.target.value;
-                                        const arr = [...editDraft.items];
-                                        arr[idx] = { ...arr[idx], namaProduk: v };
-                                        setEditDraft({
-                                          ...editDraft,
-                                          items: arr,
-                                        });
-                                      }}
-                                      className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-2 text-right">
-                                    <input
-                                      type="number"
-                                      value={pcs}
-                                      onChange={(e) => {
-                                        const v = Number(e.target.value) || 0;
-                                        const arr = [...editDraft.items];
-                                        arr[idx] = {
-                                          ...arr[idx],
-                                          pcs: v,
-                                          nominal: v * (Number(it.hargaPcs) || 0),
-                                        };
-                                        setEditDraft({
-                                          ...editDraft,
-                                          items: arr,
-                                        });
-                                      }}
-                                      className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-2 text-right">
-                                    <input
-                                      type="number"
-                                      value={pcsKirim}
-                                      onChange={(e) => {
-                                        const v = Number(e.target.value) || 0;
-                                        const arr = [...editDraft.items];
-                                        arr[idx] = {
-                                          ...arr[idx],
-                                          pcsKirim: v,
-                                          rpTagih:
-                                            v * (Number(it.hargaPcs) || 0),
-                                        };
-                                        setEditDraft({
-                                          ...editDraft,
-                                          items: arr,
-                                        });
-                                      }}
-                                      className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-2 text-right">
-                                    <input
-                                      type="number"
-                                      value={hargaPcs}
-                                      onChange={(e) => {
-                                        const v = Number(e.target.value) || 0;
-                                        const arr = [...editDraft.items];
-                                        arr[idx] = {
-                                          ...arr[idx],
-                                          hargaPcs: v,
-                                          nominal: v * (Number(it.pcs) || 0),
-                                          rpTagih: v * (Number(it.pcsKirim) || 0),
-                                        };
-                                        setEditDraft({
-                                          ...editDraft,
-                                          items: arr,
-                                        });
-                                      }}
-                                      className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-2 text-right">
-                                    {formatCurrency(nominal)}
-                                  </td>
-                                  <td className="px-4 py-2 text-right">
-                                    {formatCurrency(rpTagih)}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                    <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={closeEditDraft}
+                        className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-bold"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={saveEditDraft}
+                        className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold"
+                      >
+                        Simpan Perubahan
+                      </button>
                     </div>
-                  </div>
-                  <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={closeEditDraft}
-                      className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-bold"
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={saveEditDraft}
-                      className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold"
-                    >
-                      Simpan Perubahan
-                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
       </form>

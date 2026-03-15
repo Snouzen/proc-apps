@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { randomUUID } from "crypto";
+import {
+  canonicalProductName,
+  dedupeKey,
+  upperClean,
+  upperCleanOrNull,
+} from "@/lib/text";
 
 export async function POST(req: Request) {
   try {
@@ -32,6 +38,15 @@ export async function POST(req: Request) {
     let replacedPOsTruncated = false;
     let errorsTruncated = false;
     const missingCounts: Record<string, number> = {};
+    const debugSamples: Array<{
+      noPo: string;
+      tglPoRawType: string;
+      tglPoRaw: any;
+      tglPoParsed: string | null;
+      expiredRawType: string;
+      expiredRaw: any;
+      expiredParsed: string | null;
+    }> = [];
     const expectedHeaders = [
       "Nama Company",
       "Inisial",
@@ -234,34 +249,77 @@ export async function POST(req: Request) {
     }> = [];
 
     const getRitel = (companyName: string, inisial: string | null) => {
-      const ritelKey = `${norm(companyName)}|${norm(inisial || "")}`;
+      const companyUpper = upperClean(companyName);
+      const inisialUpper = upperCleanOrNull(inisial);
+      const ritelKey = `${norm(companyUpper)}|${norm(inisialUpper || "")}`;
       const cached = ritelCache.get(ritelKey);
       if (cached) return cached;
       const p = (async () => {
+        const kNama = dedupeKey(companyUpper);
+        const kIni = dedupeKey(inisialUpper || "");
+        try {
+          const hit: Array<{ id: string }> = (await prisma.$queryRawUnsafe(
+            `SELECT id FROM "ritel_modern"
+             WHERE regexp_replace(upper("namaPt"), '[^A-Z0-9]', '', 'g') = $1
+             AND regexp_replace(upper(COALESCE("inisial", '')), '[^A-Z0-9]', '', 'g') = $2
+             ORDER BY "createdAt" ASC
+             LIMIT 1`,
+            kNama,
+            kIni,
+          )) as any;
+          const first = Array.isArray(hit) ? hit[0] : null;
+          if (first?.id) {
+            prisma.ritelModern
+              .update({
+                where: { id: first.id },
+                data: {
+                  namaPt: companyUpper,
+                  inisial: inisialUpper,
+                  updatedAt: new Date(),
+                },
+                select: { id: true },
+              })
+              .catch(() => {});
+            return { id: first.id };
+          }
+        } catch {}
         let ritel: { id: string } | null = null;
-        if (inisial && inisial.trim()) {
+        if (inisialUpper) {
           ritel = await prisma.ritelModern.findFirst({
             where: {
-              namaPt: { equals: companyName, mode: "insensitive" },
-              inisial: { equals: inisial, mode: "insensitive" },
+              namaPt: { equals: companyUpper, mode: "insensitive" },
+              inisial: { equals: inisialUpper, mode: "insensitive" },
             },
             select: { id: true },
           });
         } else {
           ritel = await prisma.ritelModern.findFirst({
             where: {
-              namaPt: { equals: companyName, mode: "insensitive" },
+              namaPt: { equals: companyUpper, mode: "insensitive" },
               OR: [{ inisial: null }, { inisial: { equals: "" } }],
             },
             select: { id: true },
           });
         }
-        if (ritel) return { id: ritel.id };
+        if (ritel) {
+          prisma.ritelModern
+            .update({
+              where: { id: ritel.id },
+              data: {
+                namaPt: companyUpper,
+                inisial: inisialUpper,
+                updatedAt: new Date(),
+              },
+              select: { id: true },
+            })
+            .catch(() => {});
+          return { id: ritel.id };
+        }
         const created = await prisma.ritelModern.create({
           data: {
             id: randomUUID(),
-            namaPt: companyName,
-            inisial: inisial || null,
+            namaPt: companyUpper,
+            inisial: inisialUpper,
             updatedAt: new Date(),
           },
           select: { id: true },
@@ -276,19 +334,50 @@ export async function POST(req: Request) {
     };
 
     const getProduct = (productName: string) => {
-      const productKey = norm(productName);
+      const productUpper = canonicalProductName(productName);
+      const productKey = dedupeKey(productUpper);
       const cached = productCache.get(productKey);
       if (cached) return cached;
       const p = (async () => {
+        try {
+          const hit: Array<{ id: string; satuanKg: number | null }> =
+            (await prisma.$queryRawUnsafe(
+              `SELECT id, "satuanKg" FROM "Product"
+               WHERE regexp_replace(upper(name), '[^A-Z0-9]', '', 'g') = $1
+               ORDER BY "createdAt" ASC
+               LIMIT 1`,
+              productKey,
+            )) as any;
+          const first = Array.isArray(hit) ? hit[0] : null;
+          if (first?.id) {
+            prisma.product
+              .update({
+                where: { id: first.id },
+                data: { name: productUpper, updatedAt: new Date() },
+                select: { id: true, satuanKg: true },
+              })
+              .catch(() => {});
+            return { id: first.id, satuanKg: first.satuanKg ?? null };
+          }
+        } catch {}
         const found = await prisma.product.findFirst({
-          where: { name: { equals: productName, mode: "insensitive" } },
+          where: { name: { equals: productUpper, mode: "insensitive" } },
           select: { id: true, satuanKg: true },
         });
-        if (found) return { id: found.id, satuanKg: found.satuanKg ?? null };
+        if (found) {
+          prisma.product
+            .update({
+              where: { id: found.id },
+              data: { name: productUpper, updatedAt: new Date() },
+              select: { id: true, satuanKg: true },
+            })
+            .catch(() => {});
+          return { id: found.id, satuanKg: found.satuanKg ?? null };
+        }
         const created = await prisma.product.create({
           data: {
             id: randomUUID(),
-            name: productName,
+            name: productUpper,
             updatedAt: new Date(),
           },
           select: { id: true, satuanKg: true },
@@ -338,6 +427,13 @@ export async function POST(req: Request) {
 
       if (typeof d === "string") {
         const s = d.trim();
+        if (/^\d{4}-\d{2}-\d{2}t/i.test(s)) {
+          const parsedIso = new Date(s);
+          if (!isNaN(parsedIso.getTime())) {
+            return normalizeToUtcNoonFromOffset(parsedIso);
+          }
+        }
+        const token = s.split(/\s+/)[0];
 
         const dmY = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
         if (dmY) {
@@ -354,11 +450,16 @@ export async function POST(req: Request) {
           return dateOnlyUtcNoon(y, mo, da);
         }
 
-        const dMonY = s.match(/^(\d{1,2})[\-\s]([A-Za-z]{3,})[\-\s](\d{2,4})$/);
+        const dMonY =
+          token.match(
+            /^(\d{1,2})[\/\-\s]([A-Za-z]{3,}\.?)([\/\-\s])(\d{2,4})$/,
+          ) || token.match(/^(\d{1,2})[\-\s]([A-Za-z]{3,}\.?)[\-\s](\d{2,4})$/);
         if (dMonY) {
           const da = Number(dMonY[1]);
-          const monRaw = String(dMonY[2] || "").toLowerCase();
-          const yRaw = Number(dMonY[3]);
+          const monRaw = String(dMonY[2] || "")
+            .toLowerCase()
+            .replace(/[^a-z]/g, "");
+          const yRaw = Number(dMonY[dMonY.length - 1]);
           const y = yRaw < 100 ? 2000 + yRaw : yRaw;
           const monMap: Record<string, number> = {
             jan: 0,
@@ -401,7 +502,7 @@ export async function POST(req: Request) {
           return dateOnlyUtcNoon(y, mo, da);
         }
 
-        const yMd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const yMd = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
         if (yMd) {
           const y = Number(yMd[1]);
           const mo = Number(yMd[2]) - 1;
@@ -450,19 +551,19 @@ export async function POST(req: Request) {
             capPush(replacedPOs, noPo, "replaced");
           }
 
-          const companyName = String(firstRow?.[keyCompany] || "").trim();
-          const inisial = String(firstRow?.[keyInisial] || "").trim();
+          const companyName = upperClean(String(firstRow?.[keyCompany] || ""));
+          const inisial = upperClean(String(firstRow?.[keyInisial] || ""));
           const tglPoRaw = firstRow?.[keyTglPo];
           const linkPo = firstRow?.[keyLinkPo]
             ? String(firstRow[keyLinkPo]).trim()
             : null;
           const expiredPoRaw = firstRow?.[keyExpired];
-          const siteArea = String(firstRow?.[keySiteArea] || "").trim();
+          const siteArea = upperClean(String(firstRow?.[keySiteArea] || ""));
           const noInvoice = firstRow?.[keyNoInvoice]
-            ? String(firstRow[keyNoInvoice]).trim()
+            ? upperClean(String(firstRow[keyNoInvoice]))
             : null;
           const tujuan = firstRow?.[keyTujuan]
-            ? String(firstRow[keyTujuan]).trim()
+            ? upperClean(String(firstRow[keyTujuan]))
             : null;
 
           if (!companyName) {
@@ -491,6 +592,32 @@ export async function POST(req: Request) {
             throw new Error(
               "Missing/invalid required field: Tanggal Expired PO",
             );
+          }
+          if (debugSamples.length < 5) {
+            const safeVal = (v: any) => {
+              if (v === null || v === undefined) return v;
+              if (typeof v === "string") return v.slice(0, 120);
+              if (typeof v === "number" || typeof v === "boolean") return v;
+              if (v instanceof Date) return v.toISOString();
+              try {
+                return JSON.parse(
+                  JSON.stringify(v, (_k, vv) =>
+                    vv instanceof Date ? vv.toISOString() : vv,
+                  ),
+                );
+              } catch {
+                return String(v);
+              }
+            };
+            debugSamples.push({
+              noPo,
+              tglPoRawType: typeof tglPoRaw,
+              tglPoRaw: safeVal(tglPoRaw),
+              tglPoParsed: tglPo.toISOString(),
+              expiredRawType: typeof expiredPoRaw,
+              expiredRaw: safeVal(expiredPoRaw),
+              expiredParsed: expiredTgl.toISOString(),
+            });
           }
 
           const statusKirim = parseBool(firstRow?.[keyKirim]);
@@ -565,7 +692,9 @@ export async function POST(req: Request) {
 
           for (const row of rows) {
             if (req.signal.aborted) break;
-            const productName = String(row?.[keyNamaProduk] || "").trim();
+            const productName = canonicalProductName(
+              String(row?.[keyNamaProduk] || ""),
+            );
             if (!productName) continue;
             const product = await getProduct(productName);
 
@@ -639,6 +768,7 @@ export async function POST(req: Request) {
       duplicatePOsTruncated,
       replacedPOsTruncated,
       errorsTruncated,
+      debugSamples,
     });
   } catch (error: any) {
     console.error("Bulk upload error:", error);

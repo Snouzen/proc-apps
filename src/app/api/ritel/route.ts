@@ -14,7 +14,23 @@ export async function GET() {
     const data = await prisma.ritelModern.findMany({
       orderBy: { createdAt: "desc" },
     });
-    return NextResponse.json(data);
+    const norm = (s: unknown) =>
+      String(s ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+    const inisialUsed = new Set(
+      data
+        .map((r: any) => ({ namaPt: r?.namaPt, inisial: r?.inisial }))
+        .filter((r: any) => r?.inisial && norm(r.inisial) !== norm(r.namaPt))
+        .map((r: any) => norm(r.inisial)),
+    );
+    const cleaned = data.filter((r: any) => {
+      const nama = norm(r?.namaPt);
+      if (!nama) return false;
+      return !inisialUsed.has(nama);
+    });
+    return NextResponse.json(cleaned);
   } catch (error) {
     console.error("GET /api/ritel error:", error);
     const message = getErrorMessage(error);

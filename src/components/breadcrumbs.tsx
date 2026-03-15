@@ -12,6 +12,7 @@ const routeNameMap: Record<string, string> = {
   "ritel-modern": "Ritel Modern",
   company: "Company",
   po: "Purchase Order",
+  report: "Report",
 };
 
 export default function Breadcrumbs() {

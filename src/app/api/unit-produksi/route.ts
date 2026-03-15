@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const data = await db.unitProduksi.findMany({
-      orderBy: { namaRegional: "asc" },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     });
     return NextResponse.json(data);
   } catch (error) {

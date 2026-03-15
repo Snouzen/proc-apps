@@ -42,6 +42,7 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     Record<string, number[]>
   >({});
   const [replaceDupes, setReplaceDupes] = useState<boolean>(false);
+  const [replaceTouched, setReplaceTouched] = useState<boolean>(false);
   const [readMeta, setReadMeta] = useState<{
     totalRows: number;
     parsedRows: number;
@@ -64,6 +65,15 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     totalItemRows: number;
     errors: string[];
     listTruncated?: boolean;
+    debugSamples?: Array<{
+      noPo: string;
+      tglPoRawType: string;
+      tglPoRaw: any;
+      tglPoParsed: string | null;
+      expiredRawType: string;
+      expiredRaw: any;
+      expiredParsed: string | null;
+    }>;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -199,10 +209,13 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
       reader.onload = (e) => {
         try {
           const data = e.target?.result;
-          const workbook = XLSX.read(data, { type: "array", cellDates: true });
+          const workbook = XLSX.read(data, { type: "array", cellDates: false });
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(sheet);
+          const jsonData = XLSX.utils.sheet_to_json(sheet, {
+            defval: "",
+            raw: true,
+          });
 
           const allRows = XLSX.utils.sheet_to_json(sheet, {
             header: 1,
@@ -337,6 +350,9 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
       }
       const dupes = nos.filter((n) => found.has(n));
       setDuplicateNos(dupes);
+      if (!replaceTouched) {
+        setReplaceDupes(dupes.length > 0);
+      }
       const dupeSet = new Set(dupes);
       const map: Record<string, number[]> = {};
       for (let i = 0; i < rows.length; i++) {
@@ -388,6 +404,15 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
       let skippedDuplicatePoCount = 0;
       const addedPOs: string[] = [];
       const replacedPOs: string[] = [];
+      const debugAgg: Array<{
+        noPo: string;
+        tglPoRawType: string;
+        tglPoRaw: any;
+        tglPoParsed: string | null;
+        expiredRawType: string;
+        expiredRaw: any;
+        expiredParsed: string | null;
+      }> = [];
       let addedPoCount = 0;
       let replacedPoCount = 0;
       let poDoneLocal = 0;
@@ -410,11 +435,104 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
           allErrors.push("Upload dibatalkan.");
           break;
         }
-        const toYMD = (d: Date) => {
-          const y = d.getFullYear();
-          const m = `${d.getMonth() + 1}`.padStart(2, "0");
-          const day = `${d.getDate()}`.padStart(2, "0");
+        const toYMDJakarta = (d: Date) => {
+          const tzOffsetHours = 7;
+          const shifted = new Date(d.getTime() + tzOffsetHours * 3600 * 1000);
+          const y = shifted.getUTCFullYear();
+          const m = `${shifted.getUTCMonth() + 1}`.padStart(2, "0");
+          const day = `${shifted.getUTCDate()}`.padStart(2, "0");
           return `${y}-${m}-${day}`;
+        };
+        const parseGuessToDate = (v: unknown): Date | null => {
+          if (v === null || v === undefined) return null;
+          if (v instanceof Date && !isNaN(v.getTime())) return v;
+          if (typeof v === "number" && Number.isFinite(v)) {
+            const days = Math.floor(v);
+            const utc = new Date((days - 25569) * 86400 * 1000);
+            if (!isNaN(utc.getTime())) return utc;
+          }
+          if (typeof v === "string") {
+            const s = v.trim();
+            if (/^\d{4}-\d{2}-\d{2}T/i.test(s)) {
+              const d = new Date(s);
+              if (!isNaN(d.getTime())) return d;
+            }
+            const token = s.split(/\s+/)[0];
+            const ymd = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (ymd) {
+              const y = Number(ymd[1]);
+              const mo = Number(ymd[2]) - 1;
+              const da = Number(ymd[3]);
+              if (
+                Number.isFinite(y) &&
+                Number.isFinite(mo) &&
+                Number.isFinite(da)
+              ) {
+                return new Date(Date.UTC(y, mo, da, 12, 0, 0, 0));
+              }
+            }
+            const dMonY =
+              token.match(
+                /^(\d{1,2})[\/\-\s]([A-Za-z]{3,}\.?)([\/\-\s])(\d{2,4})$/,
+              ) ||
+              token.match(/^(\d{1,2})[\-\s]([A-Za-z]{3,}\.?)[\-\s](\d{2,4})$/);
+            if (dMonY) {
+              const da = Number(dMonY[1]);
+              const monRaw = String(dMonY[2] || "")
+                .toLowerCase()
+                .replace(/[^a-z]/g, "");
+              const yRaw = Number(dMonY[dMonY.length - 1]);
+              const y = yRaw < 100 ? 2000 + yRaw : yRaw;
+              const monMap: Record<string, number> = {
+                jan: 0,
+                january: 0,
+                januari: 0,
+                feb: 1,
+                february: 1,
+                februari: 1,
+                mar: 2,
+                march: 2,
+                maret: 2,
+                apr: 3,
+                april: 3,
+                may: 4,
+                mei: 4,
+                jun: 5,
+                june: 5,
+                juni: 5,
+                jul: 6,
+                july: 6,
+                juli: 6,
+                aug: 7,
+                august: 7,
+                agustus: 7,
+                sep: 8,
+                sept: 8,
+                september: 8,
+                oct: 9,
+                october: 9,
+                oktober: 9,
+                nov: 10,
+                november: 10,
+                dec: 11,
+                december: 11,
+                desember: 11,
+              };
+              const mo = monMap[monRaw];
+              if (
+                Number.isFinite(y) &&
+                Number.isFinite(mo) &&
+                Number.isFinite(da)
+              ) {
+                return new Date(
+                  Date.UTC(y as number, mo as number, da, 12, 0, 0, 0),
+                );
+              }
+            }
+            const d = new Date(s);
+            if (!isNaN(d.getTime())) return d;
+          }
+          return null;
         };
         const normalizeBatch = (rows: any[]) => {
           const kTglPo = headerKeys.tglPo;
@@ -423,11 +541,13 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
           return rows.map((r) => {
             if (!r || typeof r !== "object") return r;
             const next: any = { ...r };
-            if (kTglPo && next[kTglPo] instanceof Date) {
-              next[kTglPo] = toYMD(next[kTglPo]);
+            if (kTglPo) {
+              const d = parseGuessToDate(next[kTglPo]);
+              if (d) next[kTglPo] = toYMDJakarta(d);
             }
-            if (kExp && next[kExp] instanceof Date) {
-              next[kExp] = toYMD(next[kExp]);
+            if (kExp) {
+              const d = parseGuessToDate(next[kExp]);
+              if (d) next[kExp] = toYMDJakarta(d);
             }
             return next;
           });
@@ -518,6 +638,16 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
           if (Array.isArray(result?.replacedPOs)) {
             replacedPOs.push(...result.replacedPOs.map(String));
           }
+          if (Array.isArray(result?.debugSamples)) {
+            for (const s of result.debugSamples as any[]) {
+              if (!s || typeof s !== "object") continue;
+              const noPo = String((s as any).noPo || "");
+              if (!noPo) continue;
+              if (debugAgg.some((x) => x.noPo === noPo)) continue;
+              debugAgg.push(s as any);
+              if (debugAgg.length >= 5) break;
+            }
+          }
           if (result?.duplicatePOsTruncated) listDupeTruncated = true;
           if (result?.addedPOsTruncated) listAddedTruncated = true;
           if (result?.replacedPOsTruncated) listReplacedTruncated = true;
@@ -562,6 +692,7 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
         uploadedItemRows: totalSuccess,
         totalItemRows: previewData.length,
         errors: allErrors,
+        debugSamples: debugAgg.slice(0, 5),
         listTruncated:
           listDupeTruncated ||
           listAddedTruncated ||
@@ -597,6 +728,7 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
     setDuplicateNos([]);
     setDuplicateRowMap({});
     setReplaceDupes(false);
+    setReplaceTouched(false);
     setShowDuplicateRows(false);
     setReadMeta(null);
     setShowReadMeta(false);
@@ -781,7 +913,10 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
                     <input
                       type="checkbox"
                       checked={replaceDupes}
-                      onChange={(e) => setReplaceDupes(e.target.checked)}
+                      onChange={(e) => {
+                        setReplaceTouched(true);
+                        setReplaceDupes(e.target.checked);
+                      }}
                     />
                     Replace data duplikat
                   </label>
@@ -1129,6 +1264,44 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
                   </div>
                 </div>
               )}
+
+              {Array.isArray(resultSummary.debugSamples) &&
+                resultSummary.debugSamples.length > 0 && (
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                    <div className="font-bold text-slate-800">
+                      Debug tanggal (sample)
+                    </div>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="min-w-full text-xs">
+                        <thead className="text-slate-500 uppercase tracking-wider">
+                          <tr>
+                            <th className="text-left py-1 pr-3">No PO</th>
+                            <th className="text-left py-1 pr-3">Raw</th>
+                            <th className="text-left py-1 pr-3">Parsed</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-slate-700">
+                          {resultSummary.debugSamples.map((s) => (
+                            <tr
+                              key={s.noPo}
+                              className="border-t border-slate-100"
+                            >
+                              <td className="py-1 pr-3 font-mono">{s.noPo}</td>
+                              <td className="py-1 pr-3 font-mono">
+                                {String(s.tglPoRaw ?? "")} /{" "}
+                                {String(s.expiredRaw ?? "")}
+                              </td>
+                              <td className="py-1 pr-3 font-mono">
+                                {String(s.tglPoParsed ?? "")} /{" "}
+                                {String(s.expiredParsed ?? "")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button

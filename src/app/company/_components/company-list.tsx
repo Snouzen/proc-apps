@@ -17,6 +17,7 @@ import PODetailModal from "@/components/po-detail-modal";
 import { LoaderThree } from "@/components/ui/loader";
 import { getMe } from "@/lib/me";
 import BulkUploadModal from "@/components/bulk-upload-modal";
+import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 type GroupedPO = {
   company: string;
@@ -26,6 +27,7 @@ type GroupedPO = {
 export default function CompanyList({
   focusCompany,
 }: { focusCompany?: string } = {}) {
+  const refreshTick = useAutoRefreshTick();
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<GroupedPO[]>([]);
   const [openCompanies, setOpenCompanies] = useState<Record<string, boolean>>(
@@ -49,13 +51,22 @@ export default function CompanyList({
   const [inisialPoSearch, setInisialPoSearch] = useState<
     Record<string, string>
   >({});
+  const [inisialPoDateFrom, setInisialPoDateFrom] = useState<
+    Record<string, string>
+  >({});
+  const [inisialPoDateTo, setInisialPoDateTo] = useState<
+    Record<string, string>
+  >({});
+  const [inisialPoSort, setInisialPoSort] = useState<
+    Record<string, "newest" | "oldest">
+  >({});
   const [poPage, setPoPage] = useState<Record<string, number>>({});
   const [poRowsPerPage, setPoRowsPerPage] = useState<Record<string, number>>(
     {},
   );
 
   const fetchData = async () => {
-    setLoading(true);
+    setLoading((v) => v || groups.length === 0);
     try {
       const me = await getMe();
       let url = "/api/po";
@@ -83,7 +94,7 @@ export default function CompanyList({
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [refreshTick]);
 
   const handlePOCreated = () => {
     fetchData();
@@ -161,6 +172,18 @@ export default function CompanyList({
     });
   }, [groups, searchQuery]);
 
+  const totalUniquePo = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of filteredGroups) {
+      const list = Array.isArray(g.pos) ? g.pos : [];
+      for (const po of list) {
+        const noPo = String(po?.noPo || "").trim();
+        if (noPo) set.add(noPo);
+      }
+    }
+    return set.size;
+  }, [filteredGroups]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, itemsPerPage]);
@@ -208,6 +231,8 @@ export default function CompanyList({
     setSelectedPO({
       ...po,
       company: po?.RitelModern?.namaPt || "Unknown",
+      createdAt: po?.createdAt || null,
+      updatedAt: po?.updatedAt || null,
       productName: productDisplay,
       regional: po?.regional || po?.UnitProduksi?.namaRegional || null,
       siteArea:
@@ -530,11 +555,14 @@ export default function CompanyList({
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 overflow-hidden">
                                   <div className="max-h-[360px] overflow-auto">
-                                    <table className="w-full min-w-[1180px] text-left">
+                                    <table className="w-full min-w-[1280px] text-left">
                                       <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
                                         <tr>
                                           <th className="px-4 py-3 sticky top-0 bg-slate-50">
                                             No PO
+                                          </th>
+                                          <th className="px-4 py-3 sticky top-0 bg-slate-50">
+                                            Tgl PO
                                           </th>
                                           <th className="px-4 py-3 sticky top-0 bg-slate-50">
                                             Due Date
@@ -559,7 +587,7 @@ export default function CompanyList({
                                           </th>
                                         </tr>
                                       </thead>
-                                      <tbody className="divide-y divide-slate-100 text-sm">
+                                      <tbody className="divide-y divide-slate-100 text-sm uppercase">
                                         {slice.map((po: any) => {
                                           const items = Array.isArray(po?.Items)
                                             ? po.Items
@@ -601,6 +629,17 @@ export default function CompanyList({
                                           const pcsKirim = sum(items, (it) =>
                                             Number(it?.pcsKirim),
                                           );
+                                          const tglPoDate = toDate(po?.tglPo);
+                                          const tglPoText = tglPoDate
+                                            ? tglPoDate.toLocaleDateString(
+                                                "id-ID",
+                                                {
+                                                  day: "2-digit",
+                                                  month: "short",
+                                                  year: "numeric",
+                                                },
+                                              )
+                                            : "-";
                                           const due = toDate(po?.expiredTgl);
                                           const dueText = due
                                             ? due.toLocaleDateString("id-ID", {
@@ -630,6 +669,9 @@ export default function CompanyList({
                                             >
                                               <td className="px-4 py-3 font-mono font-bold text-slate-800">
                                                 {po.noPo}
+                                              </td>
+                                              <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
+                                                {tglPoText}
                                               </td>
                                               <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
                                                 {dueText}
@@ -853,6 +895,14 @@ export default function CompanyList({
                                         )
                                           .trim()
                                           .toLowerCase();
+                                        const fromYMD = String(
+                                          inisialPoDateFrom[key] || "",
+                                        ).trim();
+                                        const toYMD = String(
+                                          inisialPoDateTo[key] || "",
+                                        ).trim();
+                                        const sortMode: "newest" | "oldest" =
+                                          inisialPoSort[key] || "newest";
                                         const filteredList = q
                                           ? list.filter((po: any) => {
                                               const noPo = String(
@@ -885,14 +935,55 @@ export default function CompanyList({
                                               );
                                             })
                                           : list;
+                                        const filteredByDate =
+                                          fromYMD || toYMD
+                                            ? filteredList.filter((po: any) => {
+                                                const d = toDate(po?.tglPo);
+                                                if (!d) return false;
+                                                const t = d.getTime();
+                                                if (fromYMD) {
+                                                  const from = new Date(
+                                                    `${fromYMD}T00:00:00`,
+                                                  ).getTime();
+                                                  if (t < from) return false;
+                                                }
+                                                if (toYMD) {
+                                                  const to = new Date(
+                                                    `${toYMD}T23:59:59`,
+                                                  ).getTime();
+                                                  if (t > to) return false;
+                                                }
+                                                return true;
+                                              })
+                                            : filteredList;
+                                        const sortedList = [
+                                          ...filteredByDate,
+                                        ].sort((a: any, b: any) => {
+                                          const da =
+                                            toDate(a?.tglPo)?.getTime() ||
+                                            toDate(a?.createdAt)?.getTime() ||
+                                            0;
+                                          const db =
+                                            toDate(b?.tglPo)?.getTime() ||
+                                            toDate(b?.createdAt)?.getTime() ||
+                                            0;
+                                          if (da !== db) {
+                                            return sortMode === "newest"
+                                              ? db - da
+                                              : da - db;
+                                          }
+                                          return String(
+                                            a?.noPo || "",
+                                          ).localeCompare(
+                                            String(b?.noPo || ""),
+                                          );
+                                        });
                                         const totalPoPages = Math.max(
                                           1,
-                                          Math.ceil(
-                                            filteredList.length / perPo,
-                                          ),
+                                          Math.ceil(sortedList.length / perPo),
                                         );
                                         const startPo = (pp - 1) * perPo;
-                                        const slice = filteredList.slice(
+                                        const slice = sortedList.slice(
                                           startPo,
                                           startPo + perPo,
                                         );
@@ -929,6 +1020,78 @@ export default function CompanyList({
                                                     className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200"
                                                   />
                                                 </div>
+                                                <input
+                                                  type="date"
+                                                  value={
+                                                    inisialPoDateFrom[key] || ""
+                                                  }
+                                                  onChange={(e) => {
+                                                    setInisialPoDateFrom(
+                                                      (prev) => ({
+                                                        ...prev,
+                                                        [key]: e.target.value,
+                                                      }),
+                                                    );
+                                                    setPoPage((prev) => ({
+                                                      ...prev,
+                                                      [key]: 1,
+                                                    }));
+                                                  }}
+                                                  className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
+                                                  title="Filter dari Tgl PO"
+                                                />
+                                                <input
+                                                  type="date"
+                                                  value={
+                                                    inisialPoDateTo[key] || ""
+                                                  }
+                                                  onChange={(e) => {
+                                                    setInisialPoDateTo(
+                                                      (prev) => ({
+                                                        ...prev,
+                                                        [key]: e.target.value,
+                                                      }),
+                                                    );
+                                                    setPoPage((prev) => ({
+                                                      ...prev,
+                                                      [key]: 1,
+                                                    }));
+                                                  }}
+                                                  className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
+                                                  title="Filter sampai Tgl PO"
+                                                />
+                                                <select
+                                                  value={
+                                                    inisialPoSort[key] ||
+                                                    "newest"
+                                                  }
+                                                  onChange={(e) => {
+                                                    const v =
+                                                      e.target.value ===
+                                                      "oldest"
+                                                        ? "oldest"
+                                                        : "newest";
+                                                    setInisialPoSort(
+                                                      (prev) => ({
+                                                        ...prev,
+                                                        [key]: v,
+                                                      }),
+                                                    );
+                                                    setPoPage((prev) => ({
+                                                      ...prev,
+                                                      [key]: 1,
+                                                    }));
+                                                  }}
+                                                  className="px-2 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
+                                                  title="Urutkan berdasarkan Tgl PO"
+                                                >
+                                                  <option value="newest">
+                                                    Newest
+                                                  </option>
+                                                  <option value="oldest">
+                                                    Oldest
+                                                  </option>
+                                                </select>
                                                 <span className="text-xs text-slate-500">
                                                   Tampilkan
                                                 </span>
@@ -962,11 +1125,14 @@ export default function CompanyList({
                                             </div>
                                             <div className="rounded-2xl border border-slate-200 overflow-hidden">
                                               <div className="max-h-[360px] overflow-auto">
-                                                <table className="w-full min-w-[1180px] text-left">
+                                                <table className="w-full min-w-[1280px] text-left">
                                                   <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
                                                     <tr>
                                                       <th className="px-4 py-3 sticky top-0 bg-slate-50">
                                                         No PO
+                                                      </th>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50">
+                                                        Tgl PO
                                                       </th>
                                                       <th className="px-4 py-3 sticky top-0 bg-slate-50">
                                                         Due Date
@@ -991,7 +1157,7 @@ export default function CompanyList({
                                                       </th>
                                                     </tr>
                                                   </thead>
-                                                  <tbody className="divide-y divide-slate-100 text-sm">
+                                                  <tbody className="divide-y divide-slate-100 text-sm uppercase">
                                                     {slice.map((po: any) => {
                                                       const items =
                                                         Array.isArray(po?.Items)
@@ -1049,6 +1215,20 @@ export default function CompanyList({
                                                         (it) =>
                                                           Number(it?.pcsKirim),
                                                       );
+                                                      const tglPoDate = toDate(
+                                                        po?.tglPo,
+                                                      );
+                                                      const tglPoText =
+                                                        tglPoDate
+                                                          ? tglPoDate.toLocaleDateString(
+                                                              "id-ID",
+                                                              {
+                                                                day: "2-digit",
+                                                                month: "short",
+                                                                year: "numeric",
+                                                              },
+                                                            )
+                                                          : "-";
                                                       const due = toDate(
                                                         po?.expiredTgl,
                                                       );
@@ -1093,6 +1273,9 @@ export default function CompanyList({
                                                         >
                                                           <td className="px-4 py-3 font-mono font-bold text-slate-800">
                                                             {po.noPo}
+                                                          </td>
+                                                          <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
+                                                            {tglPoText}
                                                           </td>
                                                           <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
                                                             {dueText}
@@ -1183,15 +1366,15 @@ export default function CompanyList({
                                                 </table>
                                               </div>
                                             </div>
-                                            {filteredList.length > perPo ? (
+                                            {sortedList.length > perPo ? (
                                               <div className="flex items-center justify-between mt-3">
                                                 <p className="text-xs text-slate-500">
                                                   Showing {startPo + 1}-
                                                   {Math.min(
                                                     startPo + perPo,
-                                                    filteredList.length,
+                                                    sortedList.length,
                                                   )}{" "}
-                                                  of {filteredList.length} PO
+                                                  of {sortedList.length} PO
                                                 </p>
                                                 <div className="flex gap-2">
                                                   <button
@@ -1250,7 +1433,7 @@ export default function CompanyList({
                 <p className="text-sm text-slate-500">
                   Showing {indexOfFirst + 1} -{" "}
                   {Math.min(indexOfLast, filteredGroups.length)} of{" "}
-                  {filteredGroups.length}
+                  {filteredGroups.length} • Total PO: {totalUniquePo}
                 </p>
                 <div className="flex gap-2">
                   <button

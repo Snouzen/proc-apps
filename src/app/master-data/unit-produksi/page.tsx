@@ -16,8 +16,10 @@ import React, { useEffect, useState } from "react";
 import { saveUnitProduksi } from "@/lib/api"; // Pastikan fungsi ini ada di api.ts
 import { StatefulButton } from "@/components/ui/stateful-button";
 import ExcelBulkModal from "@/components/excel-bulk-modal";
+import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 export default function UnitProduksiPage() {
+  const refreshTick = useAutoRefreshTick();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -103,16 +105,19 @@ export default function UnitProduksiPage() {
   // 2. Load Data (Opsional, sesuaikan dengan endpoint lu)
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading((v) => v || dataUnit.length === 0);
       try {
         const res = await fetch("/api/unit-produksi");
         const result = await res.json();
         setDataUnit(Array.isArray(result) ? result : result.data || []);
       } catch (err) {
         console.error("Gagal load unit produksi:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadData();
-  }, []);
+  }, [refreshTick]);
 
   // 3. Logic Pengelompokan Data (Regional -> Sites)
   const safeDataUnit = Array.isArray(dataUnit) ? dataUnit : [];

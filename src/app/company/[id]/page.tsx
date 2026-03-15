@@ -7,10 +7,12 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PODetailModal from "@/components/po-detail-modal";
 import { LoaderThree } from "@/components/ui/loader";
+import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 export default function CompanyDetail() {
   const params = useParams<{ id: string }>();
   const company = decodeURIComponent(params.id);
+  const refreshTick = useAutoRefreshTick();
   const [loading, setLoading] = useState(true);
   const [poData, setPoData] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -41,7 +43,7 @@ export default function CompanyDetail() {
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
+      setLoading((v) => v || poData.length === 0);
       try {
         const res = await fetch(
           `/api/po?company=${encodeURIComponent(company)}`,
@@ -63,7 +65,7 @@ export default function CompanyDetail() {
       }
     };
     load();
-  }, [company]);
+  }, [company, refreshTick]);
 
   useEffect(() => {
     setPage(1);
@@ -190,6 +192,8 @@ export default function CompanyDetail() {
     setSelectedPO({
       ...po,
       company: po?.RitelModern?.namaPt || "Unknown",
+      createdAt: po?.createdAt || null,
+      updatedAt: po?.updatedAt || null,
       productName: productDisplay,
       regional: po?.regional || po?.UnitProduksi?.namaRegional || null,
       siteArea:

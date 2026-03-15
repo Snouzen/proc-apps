@@ -16,8 +16,10 @@ import { useEffect, useState } from "react";
 import { saveProduct } from "@/lib/api";
 import { StatefulButton } from "@/components/ui/stateful-button";
 import ExcelBulkModal from "@/components/excel-bulk-modal";
+import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 export default function ProdukPage() {
+  const refreshTick = useAutoRefreshTick();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProductName, setNewProductName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -75,6 +77,7 @@ export default function ProdukPage() {
   };
   useEffect(() => {
     const load = async () => {
+      setIsLoading((v) => v || products.length === 0);
       try {
         const res = await fetch("/api/product");
         const data = await res.json();
@@ -88,7 +91,7 @@ export default function ProdukPage() {
       }
     };
     load();
-  }, []);
+  }, [refreshTick]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,6 +184,8 @@ export default function ProdukPage() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+  const showingFrom = filtered.length === 0 ? 0 : indexOfFirstItem + 1;
+  const showingTo = Math.min(indexOfLastItem, filtered.length);
 
   const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -599,9 +604,8 @@ export default function ProdukPage() {
         {filtered.length > itemsPerPage && (
           <div className="flex items-center justify-between px-2 py-4">
             <p className="text-sm text-slate-500">
-              Showing {indexOfFirstItem + 1} to{" "}
-              {Math.min(indexOfLastItem, filtered.length)} of {filtered.length}{" "}
-              entries
+              Showing {showingFrom} to {showingTo} of {filtered.length} entries •
+              Total products: {products.length}
             </p>
             <div className="flex gap-2">
               <button
@@ -665,7 +669,8 @@ export default function ProdukPage() {
                   className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all text-sm font-semibold shadow-sm"
                 />
                 <p className="mt-2 text-[11px] text-gray-400 italic font-medium">
-                  * Gunakan nama SKU resmi (satu kolom &apos;Produk&apos; untuk bulk) *
+                  * Gunakan nama SKU resmi (satu kolom &apos;Produk&apos; untuk
+                  bulk) *
                 </p>
               </div>
               <div>

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { randomUUID } from "crypto";
+import {
+  canonicalProductName,
+  dedupeKey,
+  upperClean,
+  upperCleanOrNull,
+} from "@/lib/text";
 
 function parseDate(v?: string | null) {
   if (!v) return null;
@@ -53,7 +59,6 @@ export async function POST(request: Request) {
 
     if (
       !company ||
-      !inisial ||
       !noPo ||
       !tglPo ||
       !expiredTgl ||
@@ -64,7 +69,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "company, inisial, noPo, tglPo, expiredTgl, tujuan, dan items wajib diisi",
+            "company, noPo, tglPo, expiredTgl, tujuan, dan items wajib diisi",
         },
         { status: 400 },
       );
@@ -75,6 +80,11 @@ export async function POST(request: Request) {
     const tujuanTrim = String(tujuan).trim();
     const noPoTrim = String(noPo).trim();
     const siteAreaTrim = String(siteArea || "").trim();
+
+    const companyUpper = upperClean(companyTrim);
+    const inisialUpper = upperCleanOrNull(inisialTrim);
+    const tujuanUpper = upperClean(tujuanTrim);
+    const siteAreaUpper = upperCleanOrNull(siteAreaTrim);
 
     const tglPoParsed = parseDate(tglPo);
     const expiredParsed = parseDate(expiredTgl);
@@ -88,27 +98,60 @@ export async function POST(request: Request) {
       );
     }
 
-    const ritel =
+    let ritel =
       (await prisma.ritelModern.findFirst({
-        where: {
-          namaPt: { equals: companyTrim, mode: "insensitive" },
-          inisial: { equals: inisialTrim, mode: "insensitive" },
-        },
-      })) ??
-      (await prisma.ritelModern.create({
+        where: inisialUpper
+          ? {
+              namaPt: { equals: companyUpper, mode: "insensitive" },
+              inisial: { equals: inisialUpper, mode: "insensitive" },
+            }
+          : {
+              namaPt: { equals: companyUpper, mode: "insensitive" },
+            },
+      })) || null;
+    if (!ritel) {
+      const kNama = dedupeKey(companyUpper);
+      const kIni = dedupeKey(inisialUpper || "");
+      try {
+        const hit: Array<{ id: string }> = (await prisma.$queryRawUnsafe(
+          `SELECT id FROM "ritel_modern"
+           WHERE regexp_replace(upper("namaPt"), '[^A-Z0-9]', '', 'g') = $1
+           AND regexp_replace(upper(COALESCE("inisial", '')), '[^A-Z0-9]', '', 'g') = $2
+           ORDER BY "createdAt" ASC
+           LIMIT 1`,
+          kNama,
+          kIni,
+        )) as any;
+        const first = Array.isArray(hit) ? hit[0] : null;
+        if (first?.id) {
+          ritel = await prisma.ritelModern.update({
+            where: { id: first.id },
+            data: {
+              namaPt: companyUpper,
+              inisial: inisialUpper,
+              tujuan: tujuanUpper || null,
+              updatedAt: new Date(),
+            },
+          });
+        }
+      } catch {}
+    }
+    if (!ritel) {
+      ritel = await prisma.ritelModern.create({
         data: {
           id: randomUUID(),
-          namaPt: companyTrim,
-          inisial: inisialTrim,
-          tujuan: tujuanTrim || null,
+          namaPt: companyUpper,
+          inisial: inisialUpper,
+          tujuan: tujuanUpper || null,
           updatedAt: new Date(),
         },
-      }));
+      });
+    }
 
     let unit: any = null;
-    if (siteAreaTrim) {
+    if (siteAreaUpper) {
       unit = await prisma.unitProduksi.findFirst({
-        where: { siteArea: { equals: siteAreaTrim, mode: "insensitive" } },
+        where: { siteArea: { equals: siteAreaUpper, mode: "insensitive" } },
       });
       if (!unit) {
         return NextResponse.json(
@@ -152,8 +195,8 @@ export async function POST(request: Request) {
       expiredTgl: expiredParsed,
       linkPo: linkPo || null,
       noInvoice: noInvoice || null,
-      tujuanDetail: tujuanTrim || null,
-      regional: regional || null,
+      tujuanDetail: tujuanUpper || null,
+      regional: upperCleanOrNull(regional) || null,
       statusKirim: !!status?.kirim,
       statusSdif: !!status?.sdif,
       statusPo: !!status?.po,
@@ -186,11 +229,51 @@ export async function POST(request: Request) {
       for (const item of items) {
         const { namaProduk, pcs, pcsKirim, hargaPcs } = item;
 
-        const product = await tx.product.upsert({
-          where: { name: namaProduk },
-          update: { name: namaProduk, updatedAt: new Date() },
-          create: { id: randomUUID(), name: namaProduk, updatedAt: new Date() },
-        });
+        const namaProdukUpper = canonicalProductName(namaProduk);
+        const productKey = dedupeKey(namaProdukUpper);
+        let product: any = null;
+        try {
+          const hit: Array<{ id: string }> = (await tx.$queryRawUnsafe(
+            `SELECT id FROM "Product"
+             WHERE regexp_replace(upper(name), '[^A-Z0-9]', '', 'g') = $1
+             ORDER BY "createdAt" ASC
+             LIMIT 1`,
+            productKey,
+          )) as any;
+          const first = Array.isArray(hit) ? hit[0] : null;
+          if (first?.id) {
+            product = await tx.product.update({
+              where: { id: first.id },
+              data: { name: namaProdukUpper, updatedAt: new Date() },
+            });
+          }
+        } catch {}
+        if (!product) {
+          product = await tx.product.findFirst({
+            where: { name: { equals: namaProdukUpper, mode: "insensitive" } },
+          });
+        }
+        if (product) {
+          try {
+            product = await tx.product.update({
+              where: { id: product.id },
+              data: { name: namaProdukUpper, updatedAt: new Date() },
+            });
+          } catch {
+            product = await tx.product.findFirst({
+              where: { name: namaProdukUpper },
+            });
+          }
+        }
+        if (!product) {
+          product = await tx.product.create({
+            data: {
+              id: randomUUID(),
+              name: namaProdukUpper,
+              updatedAt: new Date(),
+            },
+          });
+        }
 
         const satuan = Number((product as any).satuanKg ?? 1) || 1;
         const pcsNum = Number(pcs) || 0;
@@ -292,7 +375,7 @@ export async function GET(request: Request) {
     const company = searchParams.get("company") || undefined;
     const noPo = searchParams.get("noPo") || undefined;
     const includeUnknown =
-      (searchParams.get("includeUnknown") || "false") === "true";
+      (searchParams.get("includeUnknown") || "true") === "true";
     const regionalParam = searchParams.get("regional") || undefined;
     const noPoListRaw = searchParams.get("noPoList") || undefined;
     let noPoList: string[] | undefined = undefined;

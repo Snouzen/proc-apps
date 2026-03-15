@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   BookOpen,
   ChevronDown,
   ChevronRight,
@@ -73,6 +74,7 @@ export default function Sidebar({
 
   const baseMenu = [
     { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" },
+    { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
   ];
   const pusatExtras = [
     { name: "Company", icon: <BookOpen size={20} />, path: "/company" },

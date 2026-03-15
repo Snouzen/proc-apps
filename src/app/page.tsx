@@ -22,8 +22,10 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import PODetailModal from "@/components/po-detail-modal";
 import { useRouter } from "next/navigation";
+import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 export default function Home() {
+  const refreshTick = useAutoRefreshTick();
   const [poData, setPoData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<"pusat" | "rm" | null>(null);
@@ -71,7 +73,7 @@ export default function Home() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [refreshTick]);
 
   const toDate = (d: any) => {
     if (!d) return null;
@@ -274,7 +276,7 @@ function TableUnderChart({
     setVisibleCols((v) => ({ ...v, [key]: !v[key] }));
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
-  const [sortDesc, setSortDesc] = useState(false);
+  const [sortDesc, setSortDesc] = useState(true);
   const [alphaSort, setAlphaSort] = useState<"none" | "asc" | "desc">("none");
   const [searchQuery, setSearchQuery] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
@@ -618,6 +620,8 @@ function TableUnderChart({
       id: po?.id || "",
       noPo: po?.noPo || po?.nopo || "-",
       company: getCompanyName(po),
+      createdAt: po?.createdAt || null,
+      updatedAt: po?.updatedAt || null,
       tglPo: po?.tglPo || null,
       expiredTgl: po?.expiredTgl || null,
       linkPo: po?.linkPo || null,

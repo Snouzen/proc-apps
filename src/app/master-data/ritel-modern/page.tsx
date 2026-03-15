@@ -20,8 +20,10 @@ import { saveRitel } from "@/lib/api";
 import { StatefulButton } from "@/components/ui/stateful-button";
 import Combobox from "@/components/combobox";
 import ExcelBulkModal from "@/components/excel-bulk-modal";
+import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 export default function RitelModernPage() {
+  const refreshTick = useAutoRefreshTick();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [bulkDialog, setBulkDialog] = useState<{
@@ -115,6 +117,7 @@ export default function RitelModernPage() {
 
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading((v) => v || dataRitel.length === 0);
       setLoadError(null);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 detik timeout
@@ -166,7 +169,7 @@ export default function RitelModernPage() {
       }
     };
     loadData();
-  }, []);
+  }, [refreshTick]);
 
   const toggleRow = (id: string) => {
     setExpandedRows((prev) =>

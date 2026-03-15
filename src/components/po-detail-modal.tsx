@@ -8,6 +8,8 @@ type POData = {
   id: string;
   noPo: string;
   company: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   tglPo: string;
   expiredTgl: string | null;
   linkPo: string | null;
@@ -60,6 +62,18 @@ export default function PODetailModal({ open, onClose, data }: Props) {
       year: "numeric",
     });
   };
+  const formatDateTime = (d: string | null | undefined) => {
+    if (!d) return "-";
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return "-";
+    return date.toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -82,7 +96,9 @@ export default function PODetailModal({ open, onClose, data }: Props) {
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Company
             </p>
-            <h2 className="text-lg font-bold text-slate-800">{data.company}</h2>
+            <h2 className="text-lg font-bold text-slate-800 uppercase">
+              {data.company}
+            </h2>
           </div>
           <button
             type="button"
@@ -108,21 +124,33 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 <p className="text-xs text-slate-400 font-semibold uppercase">
                   No PO
                 </p>
-                <p className="font-medium text-slate-800">{data.noPo}</p>
+                <p className="font-medium text-slate-800 uppercase">
+                  {data.noPo}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-slate-400 font-semibold uppercase">
                   No Invoice
                 </p>
-                <p className="font-medium text-slate-800">
+                <p className="font-medium text-slate-800 uppercase">
                   {data.noInvoice || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-semibold uppercase">
+                  Submit Date
+                </p>
+                <p className="font-medium text-slate-800 uppercase">
+                  {formatDateTime(
+                    data.createdAt || data.updatedAt || data.tglPo,
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-slate-400 font-semibold uppercase">
                   Tgl PO
                 </p>
-                <p className="font-medium text-slate-800">
+                <p className="font-medium text-slate-800 uppercase">
                   {formatDate(data.tglPo)}
                 </p>
               </div>
@@ -130,7 +158,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 <p className="text-xs text-slate-400 font-semibold uppercase">
                   Expired
                 </p>
-                <p className="font-medium text-red-600">
+                <p className="font-medium text-red-600 uppercase">
                   {formatDate(data.expiredTgl)}
                 </p>
               </div>
@@ -138,13 +166,15 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 <p className="text-xs text-slate-400 font-semibold uppercase">
                   Site Area
                 </p>
-                <p className="font-medium text-slate-800">{data.siteArea}</p>
+                <p className="font-medium text-slate-800 uppercase">
+                  {data.siteArea}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-slate-400 font-semibold uppercase">
                   Regional
                 </p>
-                <p className="font-medium text-slate-800">
+                <p className="font-medium text-slate-800 uppercase">
                   {data.regional || "-"}
                 </p>
               </div>
@@ -152,7 +182,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 <p className="text-xs text-slate-400 font-semibold uppercase">
                   Tujuan
                 </p>
-                <p className="font-medium text-slate-800">
+                <p className="font-medium text-slate-800 uppercase">
                   {data.tujuanDetail || "-"}
                 </p>
               </div>
@@ -221,18 +251,20 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                         colSpan={4}
                         className="px-4 py-3 text-center bg-slate-50/50"
                       >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          router.push(`/company/${encodeURIComponent(data.company)}`);
-                        }}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1"
-                        title="Lihat semua PO untuk company ini"
-                      >
-                        View All ({data.Items.length - 5} more items){" "}
-                        <ExternalLink size={12} />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            router.push(
+                              `/company/${encodeURIComponent(data.company)}`,
+                            );
+                          }}
+                          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1"
+                          title="Lihat semua PO untuk company ini"
+                        >
+                          View All ({data.Items.length - 5} more items){" "}
+                          <ExternalLink size={12} />
+                        </button>
                       </td>
                     </tr>
                   )}
