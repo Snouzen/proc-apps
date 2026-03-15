@@ -104,59 +104,27 @@ function InputPODetailPageInner() {
   const [unitData, setUnitData] = useState<any[]>([]);
   const [productData, setProductData] = useState<any[]>([]);
 
-  // Persist to localStorage to avoid data loss (AFK/crash)
   useEffect(() => {
     const noPo = searchParams?.get("noPo");
     if (noPo) return;
+    setFormData({ ...INITIAL_FORM });
+    setItems([]);
+    setPoDrafts([]);
+    setCurrentItem({
+      namaProduk: "",
+      pcs: "",
+      pcsKirim: "",
+      hargaPcs: "",
+    });
+    setPreviewItemId(null);
+    setEditingItemId(null);
+    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "" });
     try {
-      const savedForm = localStorage.getItem("po.current.form");
-      const savedItems = localStorage.getItem("po.current.items");
-      const savedDrafts = localStorage.getItem("po.drafts");
-      if (savedForm) {
-        const f = JSON.parse(savedForm);
-        setFormData({ ...INITIAL_FORM, ...f });
-      }
-      if (savedItems) {
-        const it = JSON.parse(savedItems);
-        if (Array.isArray(it)) setItems(it);
-      }
-      if (savedDrafts) {
-        const d = JSON.parse(savedDrafts);
-        if (Array.isArray(d)) setPoDrafts(d.slice(0, 1));
-      }
+      localStorage.removeItem("po.current.form");
+      localStorage.removeItem("po.current.items");
+      localStorage.removeItem("po.drafts");
     } catch {}
   }, [searchParams]);
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "po.current.form",
-        JSON.stringify({
-          company: formData.company,
-          inisial: formData.inisial,
-          regional: formData.regional,
-          noPo: formData.noPo,
-          tglPo: formData.tglPo,
-          linkPo: formData.linkPo,
-          expiredTgl: formData.expiredTgl,
-          siteArea: formData.siteArea,
-          noInvoice: formData.noInvoice,
-          tujuan: formData.tujuan,
-          status: formData.status,
-          remarks: formData.remarks,
-        }),
-      );
-    } catch {}
-  }, [formData]);
-  useEffect(() => {
-    try {
-      localStorage.setItem("po.current.items", JSON.stringify(items));
-    } catch {}
-  }, [items]);
-  useEffect(() => {
-    try {
-      localStorage.setItem("po.drafts", JSON.stringify(poDrafts));
-    } catch {}
-  }, [poDrafts]);
 
   // Computed values for current item form (after productData is declared)
   const currentPcsNum = parseFloat(currentItem.pcs.toString()) || 0;
@@ -299,6 +267,15 @@ function InputPODetailPageInner() {
         setItems([]);
         setPoDrafts([]);
         setFormData({ ...INITIAL_FORM });
+        setCurrentItem({
+          namaProduk: "",
+          pcs: "",
+          pcsKirim: "",
+          hargaPcs: "",
+        });
+        setPreviewItemId(null);
+        setEditingItemId(null);
+        setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "" });
         try {
           localStorage.removeItem("po.current.form");
           localStorage.removeItem("po.current.items");
