@@ -1,14 +1,26 @@
 import db from "@/lib/db"; // Sesuaikan dengan path prisma lu
 import { NextResponse } from "next/server";
+import {
+  cacheClearPrefix,
+  cacheGet,
+  cacheSet,
+  singleFlight,
+} from "@/lib/ttl-cache";
 
 export async function GET() {
+  const cacheKey = "unit_produksi:list";
+  const cached = cacheGet<any>(cacheKey);
   try {
-    const data = await db.unitProduksi.findMany({
-      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-    });
+    const data = await singleFlight(cacheKey, () =>
+      db.unitProduksi.findMany({
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      }),
+    );
+    cacheSet(cacheKey, data, 15000);
     return NextResponse.json(data);
   } catch (error) {
     console.error("GET /api/unit-produksi error:", error);
+    if (cached) return NextResponse.json(cached);
     // Jangan pecahkan UI di sisi client: kembalikan array kosong
     return NextResponse.json([]);
   }
@@ -54,6 +66,7 @@ export async function POST(req: Request) {
       },
     });
 
+    cacheClearPrefix("unit_produksi:");
     return NextResponse.json(newUnit);
   } catch (error) {
     // Tangani duplicate unique constraint (jika ada index unik di DB)
@@ -91,6 +104,7 @@ export async function DELETE(req: Request) {
           AND: [namaRegional ? { namaRegional } : {}, { siteArea }] as any,
         },
       });
+      cacheClearPrefix("unit_produksi:");
       return NextResponse.json({ ok: true });
     }
     // Jika hanya namaRegional: hapus semua site di regional tsb
@@ -98,6 +112,7 @@ export async function DELETE(req: Request) {
       await db.unitProduksi.deleteMany({
         where: { namaRegional: namaRegional! },
       });
+      cacheClearPrefix("unit_produksi:");
       return NextResponse.json({ ok: true });
     } catch (e: any) {
       // Foreign key constraint (terpakai di PO)
@@ -135,6 +150,7 @@ export async function PATCH(req: Request) {
       where: { namaRegional, siteArea },
       data: { siteArea: String(newSiteArea).trim(), updatedAt: new Date() },
     });
+    cacheClearPrefix("unit_produksi:");
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("PATCH /api/unit-produksi error:", error);

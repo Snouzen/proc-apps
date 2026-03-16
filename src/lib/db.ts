@@ -25,6 +25,8 @@ function createPrisma(): PrismaClient {
   const poolConfig = {
     connectionString,
     ssl: { rejectUnauthorized: false },
+    max: 1,
+    idleTimeoutMillis: 1_000,
   };
   const adapter = new PrismaPg(poolConfig);
   return new PrismaClient({ adapter });
@@ -35,8 +37,6 @@ const globalForPrisma = globalThis as unknown as {
 };
 // Note: If you add columns to schema, you might need to restart dev server or rename this key temporarily
 const prisma = globalForPrisma.prisma ?? createPrisma();
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+globalForPrisma.prisma = prisma;
 
 export default prisma;

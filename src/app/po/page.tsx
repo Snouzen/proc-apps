@@ -17,6 +17,7 @@ import { Fragment, Suspense, useEffect, useState } from "react";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PO_FORM_LABELS } from "@/lib/po-form-labels";
 
 type ItemPO = {
   id: string;
@@ -24,6 +25,7 @@ type ItemPO = {
   pcs: number | string;
   pcsKirim: number | string;
   hargaPcs: number | string;
+  discount: number;
   // Computed for display
   kg?: number;
   kgKirim?: number;
@@ -83,6 +85,7 @@ function InputPODetailPageInner() {
     pcs: "" as number | string,
     pcsKirim: "" as number | string,
     hargaPcs: "" as number | string,
+    discount: "" as number | string,
   });
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -90,6 +93,7 @@ function InputPODetailPageInner() {
     pcs: "",
     pcsKirim: "",
     hargaPcs: "",
+    discount: "",
   });
   const [toast, setToast] = useState<{
     type: "success" | "error" | "info";
@@ -115,10 +119,11 @@ function InputPODetailPageInner() {
       pcs: "",
       pcsKirim: "",
       hargaPcs: "",
+      discount: "",
     });
     setPreviewItemId(null);
     setEditingItemId(null);
-    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "" });
+    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
     try {
       localStorage.removeItem("po.current.form");
       localStorage.removeItem("po.current.items");
@@ -130,6 +135,9 @@ function InputPODetailPageInner() {
   const currentPcsNum = parseFloat(currentItem.pcs.toString()) || 0;
   const currentHargaPcsNum = parseFloat(currentItem.hargaPcs.toString()) || 0;
   const currentPcsKirimNum = parseFloat(currentItem.pcsKirim.toString()) || 0;
+  const parseRupiah = (v: any) =>
+    Math.max(0, Number(String(v ?? "").replace(/[^0-9]/g, "")) || 0);
+  const currentDiscountNum = parseRupiah(currentItem.discount);
   const satuanKgSelected =
     (Array.isArray(productData)
       ? productData.find((p: any) => p?.name === currentItem.namaProduk)
@@ -137,8 +145,14 @@ function InputPODetailPageInner() {
       : undefined) || 0;
   const currentHargaKg =
     satuanKgSelected > 0 ? currentHargaPcsNum / satuanKgSelected : 0;
-  const currentNominal = currentHargaPcsNum * currentPcsNum;
-  const currentRpTagih = currentHargaPcsNum * currentPcsKirimNum;
+  const currentNominal = Math.max(
+    0,
+    currentHargaPcsNum * currentPcsNum - currentDiscountNum,
+  );
+  const currentRpTagih = Math.max(
+    0,
+    currentHargaPcsNum * currentPcsKirimNum - currentDiscountNum,
+  );
   const currentKg = currentPcsNum * (satuanKgSelected || 0);
   const currentKgKirim = currentPcsKirimNum * (satuanKgSelected || 0);
 
@@ -157,20 +171,23 @@ function InputPODetailPageInner() {
     pcsRaw: any,
     pcsKirimRaw: any,
     hargaPcsRaw: any,
+    discountRaw: any,
   ) => {
     const satuan = getSatuanKg(namaProduk);
     const pcs = Number(pcsRaw) || 0;
     const pcsKirim = Number(pcsKirimRaw) || 0;
     const hargaPcs = Number(hargaPcsRaw) || 0;
+    const discount = parseRupiah(discountRaw);
     const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
-    const nominal = hargaPcs * pcs;
-    const rpTagih = hargaPcs * pcsKirim;
+    const nominal = Math.max(0, hargaPcs * pcs - discount);
+    const rpTagih = Math.max(0, hargaPcs * pcsKirim - discount);
     const kg = pcs * satuan;
     const kgKirim = pcsKirim * satuan;
     return {
       pcs,
       pcsKirim,
       hargaPcs,
+      discount,
       satuan,
       hargaKg,
       nominal,
@@ -190,11 +207,14 @@ function InputPODetailPageInner() {
       pcs: String(item.pcs ?? ""),
       pcsKirim: String(item.pcsKirim ?? ""),
       hargaPcs: String(item.hargaPcs ?? ""),
+      discount: String(
+        item.discount ? item.discount.toLocaleString("id-ID") : "",
+      ),
     });
   };
   const handleCancelEditItem = () => {
     setEditingItemId(null);
-    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "" });
+    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
   };
   const handleSaveEditItem = (item: ItemPO) => {
     if (!editItem.pcs || !editItem.hargaPcs) {
@@ -206,6 +226,7 @@ function InputPODetailPageInner() {
       editItem.pcs,
       editItem.pcsKirim,
       editItem.hargaPcs,
+      editItem.discount,
     );
     if (d.pcs <= 0 || d.hargaPcs <= 0) {
       showToast("error", "PCS dan Harga/Pcs harus lebih dari 0");
@@ -219,6 +240,7 @@ function InputPODetailPageInner() {
               pcs: d.pcs,
               pcsKirim: d.pcsKirim,
               hargaPcs: d.hargaPcs,
+              discount: d.discount,
               kg: d.kg,
               kgKirim: d.kgKirim,
               hargaKg: d.hargaKg,
@@ -229,7 +251,7 @@ function InputPODetailPageInner() {
       ),
     );
     setEditingItemId(null);
-    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "" });
+    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
     showToast("success", "Item berhasil diupdate");
   };
 
@@ -272,10 +294,11 @@ function InputPODetailPageInner() {
           pcs: "",
           pcsKirim: "",
           hargaPcs: "",
+          discount: "",
         });
         setPreviewItemId(null);
         setEditingItemId(null);
-        setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "" });
+        setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
         try {
           localStorage.removeItem("po.current.form");
           localStorage.removeItem("po.current.items");
@@ -342,6 +365,7 @@ function InputPODetailPageInner() {
             pcs: pcsNum,
             pcsKirim: pcsKirimNum,
             hargaPcs: hargaPcsNum,
+            discount: Number(it?.discount || 0),
             kg: pcsNum * satuan,
             kgKirim: pcsKirimNum * satuan,
             hargaKg: hargaKgNum,
@@ -441,13 +465,25 @@ function InputPODetailPageInner() {
   )
     .sort()
     .map((r) => ({ label: r, value: r }));
+  const pinnedProducts = ["punokawan 5 kg", "befood setra ramos 5 kg"].map(
+    (s) => norm(s),
+  );
   const productOptions = Array.from(
     new Set(
       (Array.isArray(productData) ? productData : [])
-        .map((p: any) => p?.name)
+        .map((p: any) => String(p?.name || "").trim())
         .filter(Boolean),
     ),
-  ).sort();
+  ).sort((a, b) => {
+    const ai = pinnedProducts.indexOf(norm(a));
+    const bi = pinnedProducts.indexOf(norm(b));
+    if (ai !== -1 || bi !== -1) {
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    }
+    return a.localeCompare(b);
+  });
 
   const companyLooksLikeInisial =
     !!formData.company && inisialUsedAsCompany.has(norm(formData.company));
@@ -461,7 +497,7 @@ function InputPODetailPageInner() {
     !tujuanOptions.some((o) => norm(o) === norm(formData.tujuan));
   const invalidProduct =
     !!currentItem.namaProduk &&
-    !productOptions.includes(currentItem.namaProduk);
+    !productOptions.some((o) => norm(o) === norm(currentItem.namaProduk));
 
   const handleChecklist = (field: string) => {
     setFormData((prev) => ({
@@ -489,6 +525,7 @@ function InputPODetailPageInner() {
       pcs: currentItem.pcs,
       pcsKirim: currentItem.pcsKirim,
       hargaPcs: currentItem.hargaPcs,
+      discount: currentDiscountNum,
       kg: currentKg,
       kgKirim: currentKgKirim,
       hargaKg: currentHargaKg,
@@ -503,6 +540,7 @@ function InputPODetailPageInner() {
       pcs: "",
       pcsKirim: "",
       hargaPcs: "",
+      discount: "",
     });
   };
 
@@ -655,12 +693,15 @@ function InputPODetailPageInner() {
           siteArea: formData.siteArea,
           noInvoice: formData.noInvoice,
           tujuan: formData.tujuan,
-          items: items.map(({ namaProduk, pcs, pcsKirim, hargaPcs }) => ({
-            namaProduk,
-            pcs,
-            pcsKirim,
-            hargaPcs,
-          })),
+          items: items.map(
+            ({ namaProduk, pcs, pcsKirim, hargaPcs, discount }) => ({
+              namaProduk,
+              pcs,
+              pcsKirim,
+              hargaPcs,
+              discount,
+            }),
+          ),
           remarks: formData.remarks,
           status: formData.status,
         };
@@ -780,7 +821,7 @@ function InputPODetailPageInner() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Nama Company
+                    {PO_FORM_LABELS.company}
                   </label>
                   <Combobox
                     options={companyOptions}
@@ -814,7 +855,7 @@ function InputPODetailPageInner() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Inisial
+                    {PO_FORM_LABELS.inisial}
                   </label>
                   <Combobox
                     options={inisialOptions}
@@ -843,7 +884,7 @@ function InputPODetailPageInner() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Tujuan (Toko/DC)
+                    {PO_FORM_LABELS.tujuan}
                   </label>
                   <Combobox
                     options={tujuanOptions}
@@ -870,21 +911,32 @@ function InputPODetailPageInner() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Tanggal PO
+                    {PO_FORM_LABELS.tglPo}
                   </label>
                   <input
                     type="date"
                     value={formData.tglPo}
                     className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                    onChange={(e) =>
-                      setFormData({ ...formData, tglPo: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const nextTglPo = e.target.value;
+                      setFormData((prev) => {
+                        const next = { ...prev, tglPo: nextTglPo };
+                        if (
+                          nextTglPo &&
+                          next.expiredTgl &&
+                          next.expiredTgl < nextTglPo
+                        ) {
+                          next.expiredTgl = nextTglPo;
+                        }
+                        return next;
+                      });
+                    }}
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Tanggal Expired
+                    {PO_FORM_LABELS.expiredTgl}
                   </label>
                   <div className="relative">
                     <CalendarDays
@@ -894,6 +946,7 @@ function InputPODetailPageInner() {
                     <input
                       type="date"
                       value={formData.expiredTgl}
+                      min={formData.tglPo || undefined}
                       className="w-full pl-11 pr-4 py-3 bg-red-50/30 rounded-2xl text-sm font-semibold border border-red-100"
                       onChange={(e) =>
                         setFormData({ ...formData, expiredTgl: e.target.value })
@@ -906,7 +959,7 @@ function InputPODetailPageInner() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Regional
+                    {PO_FORM_LABELS.regional}
                   </label>
                   <Select
                     options={regionalOptions}
@@ -919,7 +972,7 @@ function InputPODetailPageInner() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Site Area
+                    {PO_FORM_LABELS.siteArea}
                   </label>
                   <Combobox
                     options={siteAreaOptions}
@@ -935,7 +988,7 @@ function InputPODetailPageInner() {
 
                 <div className="md:col-span-2 space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Link PO (GDrive)
+                    {PO_FORM_LABELS.linkPo}
                   </label>
                   <div className="relative">
                     <LinkIcon
@@ -955,7 +1008,7 @@ function InputPODetailPageInner() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    No Invoice
+                    {PO_FORM_LABELS.noInvoice}
                   </label>
                   <input
                     type="text"
@@ -976,8 +1029,8 @@ function InputPODetailPageInner() {
                 <h2 className="font-bold text-slate-800 text-lg">PO Detail</h2>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="md:col-span-3 space-y-1">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="md:col-span-4 space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     Nomor PO
                   </label>
@@ -991,7 +1044,7 @@ function InputPODetailPageInner() {
                     }
                   />
                 </div>
-                <div className="md:col-span-3 space-y-1">
+                <div className="md:col-span-4 space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     Nama Produk
                   </label>
@@ -1004,6 +1057,7 @@ function InputPODetailPageInner() {
                         pcs: "",
                         pcsKirim: "",
                         hargaPcs: "",
+                        discount: "",
                       }))
                     }
                     placeholder="Ketik/cari produk..."
@@ -1071,6 +1125,33 @@ function InputPODetailPageInner() {
                   />
                 </div>
                 <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Discount
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={currentItem.discount}
+                    placeholder="0"
+                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                    onChange={(e) =>
+                      setCurrentItem((prev) => ({
+                        ...prev,
+                        discount: e.target.value,
+                      }))
+                    }
+                    onBlur={() =>
+                      setCurrentItem((prev) => {
+                        const n = parseRupiah(prev.discount);
+                        return {
+                          ...prev,
+                          discount: n ? n.toLocaleString("id-ID") : "",
+                        };
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
                   <label
                     className="text-[10px] font-black text-slate-400 uppercase ml-1"
                     title="Rumus: Harga/Kg = Harga/Pcs ÷ (kg/pcs produk)"
@@ -1112,18 +1193,20 @@ function InputPODetailPageInner() {
                     {formatNumber(currentKgKirim)}
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label
-                    className="text-[10px] font-black text-slate-400 uppercase ml-1"
-                    title="Rumus: Nominal = Harga/Pcs × PCS"
-                  >
-                    Nominal
-                  </label>
-                  <div
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
-                    title="Nominal = Harga/Pcs × PCS"
-                  >
-                    {formatCurrency(currentNominal)}
+                <div className="md:col-span-4">
+                  <div className="space-y-1 max-w-[320px]">
+                    <label
+                      className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                      title="Rumus: Nominal = (Harga/Pcs × PCS) - Discount"
+                    >
+                      Nominal
+                    </label>
+                    <div
+                      className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                      title="Nominal = (Harga/Pcs × PCS) - Discount"
+                    >
+                      {formatCurrency(currentNominal)}
+                    </div>
                   </div>
                 </div>
                 <div className="col-span-full pt-2">
@@ -1169,7 +1252,19 @@ function InputPODetailPageInner() {
                         </th>
                         <th
                           className="px-4 py-3 text-right"
-                          title="Rp Tagih = PCS Kirim × Harga/Pcs"
+                          title="Discount rupiah"
+                        >
+                          Discount
+                        </th>
+                        <th
+                          className="px-4 py-3 text-right"
+                          title="Nominal = (PCS × Harga/Pcs) - Discount"
+                        >
+                          Nominal
+                        </th>
+                        <th
+                          className="px-4 py-3 text-right"
+                          title="Rp Tagih = (PCS Kirim × Harga/Pcs) - Discount"
                         >
                           Rp Tagih
                         </th>
@@ -1187,12 +1282,14 @@ function InputPODetailPageInner() {
                               editItem.pcs,
                               editItem.pcsKirim,
                               editItem.hargaPcs,
+                              editItem.discount,
                             )
                           : computeDerived(
                               item.namaProduk,
                               item.pcs,
                               item.pcsKirim,
                               item.hargaPcs,
+                              item.discount,
                             );
                         return (
                           <Fragment key={item.id}>
@@ -1236,6 +1333,38 @@ function InputPODetailPageInner() {
                                 ) : (
                                   formatNumber(Number(item.hargaPcs || 0))
                                 )}
+                              </td>
+                              <td className="px-4 py-3 text-right text-slate-600">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={editItem.discount}
+                                    onChange={(e) =>
+                                      setEditItem((p) => ({
+                                        ...p,
+                                        discount: e.target.value,
+                                      }))
+                                    }
+                                    onBlur={() =>
+                                      setEditItem((p) => {
+                                        const n = parseRupiah(p.discount);
+                                        return {
+                                          ...p,
+                                          discount: n
+                                            ? n.toLocaleString("id-ID")
+                                            : "",
+                                        };
+                                      })
+                                    }
+                                    className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                                  />
+                                ) : (
+                                  formatCurrency(Number(item.discount || 0))
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-slate-800">
+                                {formatCurrency(Number(derived.nominal || 0))}
                               </td>
                               <td className="px-4 py-3 text-right font-bold text-slate-800">
                                 {formatCurrency(Number(derived.rpTagih || 0))}
@@ -1966,12 +2095,21 @@ function InputPODetailPageInner() {
                           <input
                             type="date"
                             value={d.tglPo}
-                            onChange={(e) =>
-                              setEditDraft({
-                                ...d,
-                                tglPo: e.target.value,
-                              })
-                            }
+                            onChange={(e) => {
+                              const nextTglPo = e.target.value;
+                              setEditDraft((prev: any) => {
+                                if (!prev) return prev;
+                                const next = { ...prev, tglPo: nextTglPo };
+                                if (
+                                  nextTglPo &&
+                                  next.expiredTgl &&
+                                  next.expiredTgl < nextTglPo
+                                ) {
+                                  next.expiredTgl = nextTglPo;
+                                }
+                                return next;
+                              });
+                            }}
                             className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
                           />
                         </div>
@@ -1982,6 +2120,7 @@ function InputPODetailPageInner() {
                           <input
                             type="date"
                             value={d.expiredTgl}
+                            min={d.tglPo || undefined}
                             onChange={(e) =>
                               setEditDraft({
                                 ...d,
@@ -2022,6 +2161,9 @@ function InputPODetailPageInner() {
                                   Harga/PCS
                                 </th>
                                 <th className="px-4 py-3 text-right">
+                                  Discount
+                                </th>
+                                <th className="px-4 py-3 text-right">
                                   Nominal
                                 </th>
                                 <th className="px-4 py-3 text-right">Tagih</th>
@@ -2032,8 +2174,15 @@ function InputPODetailPageInner() {
                                 const pcs = Number(it.pcs) || 0;
                                 const pcsKirim = Number(it.pcsKirim) || 0;
                                 const hargaPcs = Number(it.hargaPcs) || 0;
-                                const nominal = hargaPcs * pcs;
-                                const rpTagih = hargaPcs * pcsKirim;
+                                const disc = parseRupiah((it as any)?.discount);
+                                const nominal = Math.max(
+                                  0,
+                                  hargaPcs * pcs - disc,
+                                );
+                                const rpTagih = Math.max(
+                                  0,
+                                  hargaPcs * pcsKirim - disc,
+                                );
                                 return (
                                   <tr key={it.id || idx}>
                                     <td className="px-4 py-2">
@@ -2062,11 +2211,17 @@ function InputPODetailPageInner() {
                                         onChange={(e) => {
                                           const v = Number(e.target.value) || 0;
                                           const arr = [...d.items];
+                                          const discNow = parseRupiah(
+                                            (arr[idx] as any)?.discount,
+                                          );
                                           arr[idx] = {
                                             ...arr[idx],
                                             pcs: v,
-                                            nominal:
-                                              v * (Number(it.hargaPcs) || 0),
+                                            nominal: Math.max(
+                                              0,
+                                              v * (Number(it.hargaPcs) || 0) -
+                                                discNow,
+                                            ),
                                           };
                                           setEditDraft({
                                             ...d,
@@ -2083,11 +2238,17 @@ function InputPODetailPageInner() {
                                         onChange={(e) => {
                                           const v = Number(e.target.value) || 0;
                                           const arr = [...d.items];
+                                          const discNow = parseRupiah(
+                                            (arr[idx] as any)?.discount,
+                                          );
                                           arr[idx] = {
                                             ...arr[idx],
                                             pcsKirim: v,
-                                            rpTagih:
-                                              v * (Number(it.hargaPcs) || 0),
+                                            rpTagih: Math.max(
+                                              0,
+                                              v * (Number(it.hargaPcs) || 0) -
+                                                discNow,
+                                            ),
                                           };
                                           setEditDraft({
                                             ...d,
@@ -2104,12 +2265,67 @@ function InputPODetailPageInner() {
                                         onChange={(e) => {
                                           const v = Number(e.target.value) || 0;
                                           const arr = [...d.items];
+                                          const discNow = parseRupiah(
+                                            (arr[idx] as any)?.discount,
+                                          );
                                           arr[idx] = {
                                             ...arr[idx],
                                             hargaPcs: v,
-                                            nominal: v * (Number(it.pcs) || 0),
-                                            rpTagih:
-                                              v * (Number(it.pcsKirim) || 0),
+                                            nominal: Math.max(
+                                              0,
+                                              v * (Number(it.pcs) || 0) -
+                                                discNow,
+                                            ),
+                                            rpTagih: Math.max(
+                                              0,
+                                              v * (Number(it.pcsKirim) || 0) -
+                                                discNow,
+                                            ),
+                                          };
+                                          setEditDraft({
+                                            ...d,
+                                            items: arr,
+                                          });
+                                        }}
+                                        className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={
+                                          Number((it as any)?.discount || 0)
+                                            ? Number(
+                                                (it as any)?.discount || 0,
+                                              ).toLocaleString("id-ID")
+                                            : ""
+                                        }
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          const discNow = parseRupiah(v);
+                                          const arr = [...d.items];
+                                          const hargaNow =
+                                            Number(
+                                              (arr[idx] as any)?.hargaPcs,
+                                            ) || 0;
+                                          const pcsNow =
+                                            Number((arr[idx] as any)?.pcs) || 0;
+                                          const pcsKirimNow =
+                                            Number(
+                                              (arr[idx] as any)?.pcsKirim,
+                                            ) || 0;
+                                          arr[idx] = {
+                                            ...arr[idx],
+                                            discount: discNow,
+                                            nominal: Math.max(
+                                              0,
+                                              hargaNow * pcsNow - discNow,
+                                            ),
+                                            rpTagih: Math.max(
+                                              0,
+                                              hargaNow * pcsKirimNow - discNow,
+                                            ),
                                           };
                                           setEditDraft({
                                             ...d,

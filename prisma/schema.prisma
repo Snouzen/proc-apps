@@ -57,6 +57,7 @@ model PurchaseOrderItem {
   hargaPcs       Float
   nominal        Float
   rpTagih        Float
+  discount       Float         @default(0)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

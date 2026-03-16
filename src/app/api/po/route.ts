@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { randomUUID } from "crypto";
 import {
+  cacheClearPrefix,
+  cacheGet,
+  cacheSet,
+  singleFlight,
+} from "@/lib/ttl-cache";
+import {
   canonicalProductName,
   dedupeKey,
   upperClean,
@@ -79,6 +85,9 @@ export async function POST(request: Request) {
     const inisialTrim = String(inisial).trim();
     const tujuanTrim = String(tujuan).trim();
     const noPoTrim = String(noPo).trim();
+    const originalNoPoTrim = String(
+      (body as any)?.originalNoPo ?? noPoTrim,
+    ).trim();
     const siteAreaTrim = String(siteArea || "").trim();
 
     const companyUpper = upperClean(companyTrim);
@@ -112,29 +121,39 @@ export async function POST(request: Request) {
     if (!ritel) {
       const kNama = dedupeKey(companyUpper);
       const kIni = dedupeKey(inisialUpper || "");
-      try {
-        const hit: Array<{ id: string }> = (await prisma.$queryRawUnsafe(
-          `SELECT id FROM "ritel_modern"
-           WHERE regexp_replace(upper("namaPt"), '[^A-Z0-9]', '', 'g') = $1
-           AND regexp_replace(upper(COALESCE("inisial", '')), '[^A-Z0-9]', '', 'g') = $2
-           ORDER BY "createdAt" ASC
-           LIMIT 1`,
-          kNama,
-          kIni,
-        )) as any;
-        const first = Array.isArray(hit) ? hit[0] : null;
-        if (first?.id) {
-          ritel = await prisma.ritelModern.update({
-            where: { id: first.id },
-            data: {
-              namaPt: companyUpper,
-              inisial: inisialUpper,
-              tujuan: tujuanUpper || null,
-              updatedAt: new Date(),
-            },
-          });
-        }
-      } catch {}
+      const namaToken =
+        companyUpper.split(/\s+/).filter(Boolean)[0] || companyUpper;
+      const iniToken =
+        (inisialUpper || "").split(/\s+/).filter(Boolean)[0] ||
+        inisialUpper ||
+        "";
+      const candidates = await prisma.ritelModern.findMany({
+        where: {
+          namaPt: { contains: namaToken, mode: "insensitive" },
+          ...(inisialUpper
+            ? { inisial: { contains: iniToken, mode: "insensitive" } }
+            : {}),
+        } as any,
+        orderBy: { createdAt: "asc" },
+        take: 50,
+      });
+      const match =
+        candidates.find((r) => {
+          const n = upperClean(r?.namaPt);
+          const i = upperCleanOrNull(r?.inisial);
+          return dedupeKey(n) === kNama && dedupeKey(i || "") === kIni;
+        }) || null;
+      if (match?.id) {
+        ritel = await prisma.ritelModern.update({
+          where: { id: match.id },
+          data: {
+            namaPt: companyUpper,
+            inisial: inisialUpper,
+            tujuan: tujuanUpper || null,
+            updatedAt: new Date(),
+          },
+        });
+      }
     }
     if (!ritel) {
       ritel = await prisma.ritelModern.create({
@@ -210,44 +229,64 @@ export async function POST(request: Request) {
     };
 
     const updatedPO = await prisma.$transaction(async (tx: any) => {
-      const po = await tx.purchaseOrder.upsert({
-        where: { noPo: noPoTrim },
-        create: {
-          id: randomUUID(),
-          noPo: noPoTrim,
-          ...poData,
-          createdAt: new Date(),
-        },
-        update: poData,
+      const existing = await tx.purchaseOrder.findUnique({
+        where: { noPo: originalNoPoTrim },
+        select: { id: true, noPo: true },
       });
+      if (existing && noPoTrim !== existing.noPo) {
+        const conflict = await tx.purchaseOrder.findUnique({
+          where: { noPo: noPoTrim },
+          select: { id: true },
+        });
+        if (conflict && conflict.id !== existing.id) {
+          throw new Error("Nomor PO sudah dipakai");
+        }
+      }
+
+      const po = existing
+        ? await tx.purchaseOrder.update({
+            where: { id: existing.id },
+            data: { ...poData, noPo: noPoTrim },
+          })
+        : await tx.purchaseOrder.create({
+            data: {
+              id: randomUUID(),
+              noPo: noPoTrim,
+              ...poData,
+              createdAt: new Date(),
+            },
+          });
 
       // Handle Items: Delete existing and recreate
       await tx.purchaseOrderItem.deleteMany({
         where: { purchaseOrderId: po.id },
       });
 
+      let supportsDiscount = true;
       for (const item of items) {
         const { namaProduk, pcs, pcsKirim, hargaPcs } = item;
 
         const namaProdukUpper = canonicalProductName(namaProduk);
         const productKey = dedupeKey(namaProdukUpper);
         let product: any = null;
-        try {
-          const hit: Array<{ id: string }> = (await tx.$queryRawUnsafe(
-            `SELECT id FROM "Product"
-             WHERE regexp_replace(upper(name), '[^A-Z0-9]', '', 'g') = $1
-             ORDER BY "createdAt" ASC
-             LIMIT 1`,
-            productKey,
-          )) as any;
-          const first = Array.isArray(hit) ? hit[0] : null;
-          if (first?.id) {
-            product = await tx.product.update({
-              where: { id: first.id },
-              data: { name: namaProdukUpper, updatedAt: new Date() },
-            });
-          }
-        } catch {}
+        const token =
+          namaProdukUpper.split(/\s+/).filter(Boolean)[0] || namaProdukUpper;
+        const candidates = await tx.product.findMany({
+          where: { name: { contains: token, mode: "insensitive" } },
+          select: { id: true, name: true, createdAt: true, satuanKg: true },
+          orderBy: { createdAt: "asc" },
+          take: 50,
+        });
+        const match =
+          candidates.find(
+            (p: any) => dedupeKey(canonicalProductName(p?.name)) === productKey,
+          ) || null;
+        if (match?.id) {
+          product = await tx.product.update({
+            where: { id: match.id },
+            data: { name: namaProdukUpper, updatedAt: new Date() },
+          });
+        }
         if (!product) {
           product = await tx.product.findFirst({
             where: { name: { equals: namaProdukUpper, mode: "insensitive" } },
@@ -279,75 +318,41 @@ export async function POST(request: Request) {
         const pcsNum = Number(pcs) || 0;
         const pcsKirimNum = Number(pcsKirim) || 0;
         const hargaPcsNum = Number(hargaPcs) || 0;
+        const discountNum = Math.max(0, Number((item as any)?.discount) || 0);
         const hargaKg = satuan > 0 ? hargaPcsNum / satuan : 0;
-        const nominal = hargaPcsNum * pcsNum;
-        const rpTagih = hargaPcsNum * pcsKirimNum;
+        const nominal = Math.max(0, hargaPcsNum * pcsNum - discountNum);
+        const rpTagih = Math.max(0, hargaPcsNum * pcsKirimNum - discountNum);
 
-        const itemId = randomUUID();
+        const baseData: any = {
+          id: randomUUID(),
+          purchaseOrderId: po.id,
+          productId: product.id,
+          pcs: Math.round(pcsNum),
+          pcsKirim: Math.round(pcsKirimNum),
+          hargaKg,
+          hargaPcs: hargaPcsNum,
+          nominal,
+          rpTagih,
+        };
+
         try {
           await tx.purchaseOrderItem.create({
-            data: {
-              id: itemId,
-              purchaseOrderId: po.id,
-              productId: product.id,
-              pcs: Math.round(pcsNum),
-              pcsKirim: Math.round(pcsKirimNum),
-              hargaKg,
-              hargaPcs: hargaPcsNum,
-              nominal,
-              rpTagih,
-            },
+            data: supportsDiscount
+              ? { ...baseData, discount: discountNum }
+              : baseData,
           });
         } catch (e: any) {
-          // Fallback universal: detect existing columns and insert accordingly
-          console.warn(
-            "purchaseOrderItem.create failed; applying dynamic fallback:",
-            e?.message,
-          );
-          // Read columns for dynamic insert
-          const columns: Array<{ column_name: string; is_nullable: string }> =
-            (await tx.$queryRawUnsafe(
-              `SELECT column_name, is_nullable
-               FROM information_schema.columns
-               WHERE table_schema = 'public' AND table_name = 'PurchaseOrderItem'`,
-            )) as any;
-          const cols = columns.map((c) => c.column_name);
-          const insertCols: string[] = [];
-          const vals: any[] = [];
-          const push = (name: string, value: any) => {
-            if (cols.includes(name)) {
-              insertCols.push(`"${name}"`);
-              vals.push(value);
-            }
-          };
-          push("id", itemId);
-          push("purchaseOrderId", po.id);
-          push("productId", product.id);
-          push("pcs", Math.round(pcsNum));
-          push("pcsKirim", Math.round(pcsKirimNum));
-          push("hargaKg", hargaKg);
-          push("hargaPcs", hargaPcsNum);
-          push("nominal", nominal);
-          push("rpTagih", rpTagih);
-          // createdAt/updatedAt if exist
-          const now = new Date();
-          if (cols.includes("createdAt")) {
-            insertCols.push(`"createdAt"`);
-            vals.push(now);
-          }
-          if (cols.includes("updatedAt")) {
-            insertCols.push(`"updatedAt"`);
-            vals.push(now);
-          }
-          const placeholders = vals.map((_, i) => `$${i + 1}`).join(", ");
-          const colList = insertCols.join(", ");
-          if (insertCols.length === 0) {
+          const msg = String(e?.message || "");
+          if (
+            supportsDiscount &&
+            msg.includes("Unknown argument") &&
+            msg.includes("discount")
+          ) {
+            supportsDiscount = false;
+            await tx.purchaseOrderItem.create({ data: baseData });
+          } else {
             throw e;
           }
-          await tx.$executeRawUnsafe(
-            `INSERT INTO "PurchaseOrderItem" (${colList}) VALUES (${placeholders})`,
-            ...vals,
-          );
         }
       }
 
@@ -355,6 +360,7 @@ export async function POST(request: Request) {
       return { id: po.id, noPo: po.noPo };
     });
 
+    cacheClearPrefix("po:");
     return NextResponse.json(updatedPO, { status: 201 });
   } catch (error) {
     const e: any = error;
@@ -370,6 +376,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const cacheKey = `po:${request.url}`;
+  const cached = cacheGet<any>(cacheKey);
   try {
     const { searchParams } = new URL(request.url);
     const company = searchParams.get("company") || undefined;
@@ -377,6 +385,12 @@ export async function GET(request: Request) {
     const includeUnknown =
       (searchParams.get("includeUnknown") || "true") === "true";
     const regionalParam = searchParams.get("regional") || undefined;
+    const q = (searchParams.get("q") || "").trim();
+    const tglFrom = parseDate(searchParams.get("tglFrom"));
+    const tglTo = parseDate(searchParams.get("tglTo"));
+    const submitFrom = parseDate(searchParams.get("submitFrom"));
+    const submitTo = parseDate(searchParams.get("submitTo"));
+    const group = (searchParams.get("group") || "all").trim();
     const noPoListRaw = searchParams.get("noPoList") || undefined;
     let noPoList: string[] | undefined = undefined;
     if (noPoListRaw) {
@@ -393,221 +407,389 @@ export async function GET(request: Request) {
         if (parts.length > 0) noPoList = parts;
       }
     }
-    try {
-      const where: any = {};
-      if (noPo) where.noPo = noPo;
-      if (noPoList && noPoList.length > 0) where.noPo = { in: noPoList };
-      if (regionalParam && regionalParam.trim()) {
-        const rp = regionalParam.trim().toLowerCase();
-        const syn = (() => {
-          if (
-            rp.includes("bandung") ||
-            rp.includes("reg 1") ||
-            rp.includes("regional 1") ||
-            rp.includes(" i")
-          ) {
-            return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
-          }
-          if (
-            rp.includes("surabaya") ||
-            rp.includes("reg 2") ||
-            rp.includes("regional 2") ||
-            rp.includes(" ii")
-          ) {
-            return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
-          }
-          if (
-            rp.includes("makassar") ||
-            rp.includes("reg 3") ||
-            rp.includes("regional 3") ||
-            rp.includes(" iii")
-          ) {
-            return [
-              "reg 3",
-              "regional 3",
-              "reg iii",
-              "regional iii",
-              "makassar",
-            ];
-          }
-          return [regionalParam.trim()];
-        })();
-        where.OR = [
-          ...syn.map((s) => ({
-            regional: { contains: s, mode: "insensitive" as const },
-          })),
-          {
-            UnitProduksi: {
-              is: {
-                OR: syn.map((s) => ({
-                  namaRegional: { contains: s, mode: "insensitive" as const },
-                })),
-              },
+    const summary = (searchParams.get("summary") || "false") === "true";
+    const includeItems =
+      !summary && (searchParams.get("includeItems") || "true") === "true";
+    const limitRaw = searchParams.get("limit");
+    const offsetRaw = searchParams.get("offset");
+    const limit =
+      limitRaw == null
+        ? null
+        : Math.max(1, Math.min(500, Number(limitRaw) || 0));
+    const offset =
+      offsetRaw == null ? null : Math.max(0, Number(offsetRaw) || 0);
+    const paged = limit != null || offset != null;
+    const sort = (searchParams.get("sort") || "createdAt_desc").trim();
+
+    const where: any = {};
+    if (noPo) where.noPo = noPo;
+    if (noPoList && noPoList.length > 0) where.noPo = { in: noPoList };
+    if (tglFrom || tglTo) {
+      where.tglPo = {
+        ...(tglFrom ? { gte: tglFrom } : {}),
+        ...(tglTo ? { lte: tglTo } : {}),
+      };
+    }
+    if (submitFrom || submitTo) {
+      where.createdAt = {
+        ...(submitFrom ? { gte: submitFrom } : {}),
+        ...(submitTo ? { lte: submitTo } : {}),
+      };
+    }
+    if (regionalParam && regionalParam.trim()) {
+      const rp = regionalParam.trim().toLowerCase();
+      const syn = (() => {
+        if (
+          rp.includes("bandung") ||
+          rp.includes("reg 1") ||
+          rp.includes("regional 1") ||
+          rp.includes(" i")
+        ) {
+          return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
+        }
+        if (
+          rp.includes("surabaya") ||
+          rp.includes("reg 2") ||
+          rp.includes("regional 2") ||
+          rp.includes(" ii")
+        ) {
+          return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
+        }
+        if (
+          rp.includes("makassar") ||
+          rp.includes("reg 3") ||
+          rp.includes("regional 3") ||
+          rp.includes(" iii")
+        ) {
+          return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
+        }
+        return [regionalParam.trim()];
+      })();
+      where.OR = [
+        ...syn.map((s) => ({
+          regional: { contains: s, mode: "insensitive" as const },
+        })),
+        {
+          UnitProduksi: {
+            is: {
+              OR: syn.map((s) => ({
+                namaRegional: { contains: s, mode: "insensitive" as const },
+              })),
             },
           },
-        ];
-      }
-      if (company && company.trim()) {
-        where.RitelModern = {
-          is: {
-            namaPt: {
-              equals: company.trim(),
-              mode: "insensitive",
-            },
+        },
+      ];
+    }
+    if (company && company.trim()) {
+      where.RitelModern = {
+        is: {
+          namaPt: {
+            equals: company.trim(),
+            mode: "insensitive",
           },
-        };
-      }
-      if (!includeUnknown) {
-        where.NOT = [
-          {
-            OR: [
-              { unitProduksiId: "UNKNOWN" },
-              { unitProduksiId: null },
-              { tujuanDetail: null },
-              { tujuanDetail: { in: ["", "-", "Unknown"] } },
-              {
-                RitelModern: {
-                  is: { namaPt: { in: ["", "-", "Unknown"] } },
+        },
+      };
+    }
+    if (q) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [
+            { noPo: { contains: q, mode: "insensitive" as const } },
+            { noInvoice: { contains: q, mode: "insensitive" as const } },
+            { tujuanDetail: { contains: q, mode: "insensitive" as const } },
+            { regional: { contains: q, mode: "insensitive" as const } },
+            {
+              RitelModern: {
+                is: {
+                  OR: [
+                    { namaPt: { contains: q, mode: "insensitive" as const } },
+                    { inisial: { contains: q, mode: "insensitive" as const } },
+                    { tujuan: { contains: q, mode: "insensitive" as const } },
+                  ],
                 },
               },
-            ],
-          },
-        ];
-      }
-      const data = await prisma.purchaseOrder.findMany({
-        where,
-        include: {
-          Items: { include: { Product: true } },
-          RitelModern: true,
-          UnitProduksi: true,
+            },
+            {
+              UnitProduksi: {
+                is: {
+                  OR: [
+                    { siteArea: { contains: q, mode: "insensitive" as const } },
+                    {
+                      namaRegional: {
+                        contains: q,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              Items: {
+                some: {
+                  Product: {
+                    is: {
+                      name: { contains: q, mode: "insensitive" as const },
+                    },
+                  },
+                },
+              },
+            },
+          ],
         },
-        orderBy: { createdAt: "desc" },
-      });
-      return NextResponse.json(data);
-    } catch (e: any) {
-      // Fallback raw SQL when Prisma Client has column mismatch
-      const params: any[] = [];
-      let whereSql = "";
-      if (company && company.trim()) {
-        params.push(`%${company.trim()}%`);
-        whereSql += ` WHERE rm."namaPt" ILIKE $${params.length} `;
-      }
-      if (regionalParam && regionalParam.trim()) {
-        const rp = regionalParam.trim().toLowerCase();
-        const syn = (() => {
-          if (
-            rp.includes("bandung") ||
-            rp.includes("reg 1") ||
-            rp.includes("regional 1") ||
-            rp.includes(" i")
-          ) {
-            return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
-          }
-          if (
-            rp.includes("surabaya") ||
-            rp.includes("reg 2") ||
-            rp.includes("regional 2") ||
-            rp.includes(" ii")
-          ) {
-            return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
-          }
-          if (
-            rp.includes("makassar") ||
-            rp.includes("reg 3") ||
-            rp.includes("regional 3") ||
-            rp.includes(" iii")
-          ) {
-            return [
-              "reg 3",
-              "regional 3",
-              "reg iii",
-              "regional iii",
-              "makassar",
-            ];
-          }
-          return [regionalParam.trim()];
-        })();
-        const conds: string[] = [];
-        syn.forEach((s) => {
-          params.push(`%${s}%`);
-          conds.push(`po."regional" ILIKE $${params.length}`);
-        });
-        syn.forEach((s) => {
-          params.push(`%${s}%`);
-          conds.push(`up."namaRegional" ILIKE $${params.length}`);
-        });
-        const orBlock = conds.length ? `(${conds.join(" OR ")})` : "";
-        if (orBlock) {
-          whereSql += whereSql ? ` AND ${orBlock} ` : ` WHERE ${orBlock} `;
-        }
-      }
-      if (noPo) {
-        params.push(noPo);
-        whereSql += whereSql
-          ? ` AND po."noPo" = $${params.length} `
-          : ` WHERE po."noPo" = $${params.length} `;
-      }
-      if (noPoList && noPoList.length > 0) {
-        params.push(noPoList);
-        whereSql += whereSql
-          ? ` AND po."noPo" = ANY($${params.length}::text[]) `
-          : ` WHERE po."noPo" = ANY($${params.length}::text[]) `;
-      }
-      if (!includeUnknown) {
-        whereSql += whereSql
-          ? ` AND po."unitProduksiId" <> 'UNKNOWN'
-              AND COALESCE(po."tujuanDetail", '') NOT IN ('', '-', 'Unknown')
-              AND COALESCE(rm."namaPt", '') NOT IN ('', '-', 'Unknown') `
-          : ` WHERE po."unitProduksiId" <> 'UNKNOWN'
-              AND COALESCE(po."tujuanDetail", '') NOT IN ('', '-', 'Unknown')
-              AND COALESCE(rm."namaPt", '') NOT IN ('', '-', 'Unknown') `;
-      }
-      const sql = `
-        SELECT
-          po.id,
-          po."noPo",
-          po."createdAt",
-          po."updatedAt",
-          po."tglPo",
-          po."expiredTgl",
-          po."linkPo",
-          po."noInvoice",
-          po."tujuanDetail",
-          po."regional",
-          po."statusKirim",
-          po."statusSdif",
-          po."statusPo",
-          po."statusFp",
-          po."statusKwi",
-          po."statusInv",
-          po."statusTagih",
-          po."statusBayar",
-          json_build_object('namaPt', rm."namaPt", 'inisial', rm."inisial") AS "RitelModern",
-          json_build_object('siteArea', up."siteArea", 'namaRegional', up."namaRegional") AS "UnitProduksi",
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'pcs', i."pcs",
-              'pcsKirim', i."pcsKirim",
-              'hargaKg', i."hargaKg",
-              'hargaPcs', i."hargaPcs",
-              'nominal', i."nominal",
-              'rpTagih', i."rpTagih",
-              'Product', json_build_object('name', p."name", 'satuanKg', p."satuanKg")
-            ))
-            FROM "PurchaseOrderItem" i
-            JOIN "Product" p ON p.id = i."productId"
-            WHERE i."purchaseOrderId" = po.id
-          ), '[]'::json) AS "Items"
-        FROM "PurchaseOrder" po
-        JOIN "ritel_modern" rm ON rm.id = po."ritelId"
-        LEFT JOIN "UnitProduksi" up ON up."idRegional" = po."unitProduksiId"
-        ${whereSql}
-        ORDER BY po."createdAt" DESC
-      `;
-      const data = await prisma.$queryRawUnsafe(sql, ...params);
-      return NextResponse.json(data);
+      ];
     }
+    const emptyInvoiceValues = ["", "-", "Unknown"];
+    if (group === "completed") {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        { noInvoice: { not: null } },
+        { noInvoice: { notIn: emptyInvoiceValues } },
+      ];
+    } else if (group === "in_progress") {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+      ];
+    } else if (group === "almost_expired") {
+      const now = new Date();
+      const startOfToday = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          0,
+          0,
+          0,
+          0,
+        ),
+      );
+      const endOfSoon = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate() + 14,
+          23,
+          59,
+          59,
+          999,
+        ),
+      );
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        { expiredTgl: { not: null } },
+        { expiredTgl: { gte: startOfToday, lte: endOfSoon } },
+      ];
+    } else if (group === "assign") {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [
+            { unitProduksiId: "UNKNOWN" },
+            {
+              UnitProduksi: {
+                is: {
+                  siteArea: { in: ["UNKNOWN", ""] },
+                },
+              },
+            },
+          ],
+        },
+      ];
+    }
+    if (!includeUnknown) {
+      where.NOT = [
+        {
+          OR: [
+            { unitProduksiId: "UNKNOWN" },
+            { tujuanDetail: null },
+            { tujuanDetail: { in: ["", "-", "Unknown"] } },
+            {
+              RitelModern: {
+                is: { namaPt: { in: ["", "-", "Unknown"] } },
+              },
+            },
+          ],
+        },
+      ];
+    }
+
+    const orderBy =
+      sort === "createdAt_asc"
+        ? ({ createdAt: "asc" } as const)
+        : sort === "company_asc"
+          ? ({ RitelModern: { namaPt: "asc" } } as const)
+          : sort === "company_desc"
+            ? ({ RitelModern: { namaPt: "desc" } } as const)
+            : sort === "tglPo_desc"
+              ? ({ tglPo: "desc" } as const)
+              : sort === "tglPo_asc"
+                ? ({ tglPo: "asc" } as const)
+                : ({ createdAt: "desc" } as const);
+
+    const attachSummary = async (rows: any[]) => {
+      const ids = rows.map((r) => r.id).filter(Boolean);
+      if (ids.length === 0) return rows;
+      const agg = await prisma.purchaseOrderItem.groupBy({
+        by: ["purchaseOrderId"],
+        where: { purchaseOrderId: { in: ids } },
+        _sum: {
+          nominal: true,
+          rpTagih: true,
+          pcs: true,
+          pcsKirim: true,
+        },
+        _count: { _all: true },
+      });
+      const byId = new Map(
+        agg.map((a) => [
+          a.purchaseOrderId,
+          {
+            itemsCount: a._count?._all ?? 0,
+            totalNominal: a._sum?.nominal ?? 0,
+            totalTagihan: a._sum?.rpTagih ?? 0,
+            pcsTotal: a._sum?.pcs ?? 0,
+            pcsKirimTotal: a._sum?.pcsKirim ?? 0,
+          },
+        ]),
+      );
+      return rows.map((r) => {
+        const s = byId.get(r.id) || {
+          itemsCount: 0,
+          totalNominal: 0,
+          totalTagihan: 0,
+          pcsTotal: 0,
+          pcsKirimTotal: 0,
+        };
+        return { ...r, ...s };
+      });
+    };
+
+    if (!paged) {
+      const data = await singleFlight(cacheKey, () =>
+        prisma.purchaseOrder.findMany(
+          summary
+            ? ({
+                where,
+                select: {
+                  id: true,
+                  noPo: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  tglPo: true,
+                  expiredTgl: true,
+                  linkPo: true,
+                  noInvoice: true,
+                  tujuanDetail: true,
+                  regional: true,
+                  unitProduksiId: true,
+                  statusKirim: true,
+                  statusSdif: true,
+                  statusPo: true,
+                  statusFp: true,
+                  statusKwi: true,
+                  statusInv: true,
+                  statusTagih: true,
+                  statusBayar: true,
+                  RitelModern: {
+                    select: { namaPt: true, inisial: true, tujuan: true },
+                  },
+                  UnitProduksi: {
+                    select: { siteArea: true, namaRegional: true },
+                  },
+                },
+                orderBy,
+              } as any)
+            : ({
+                where,
+                include: {
+                  ...(includeItems
+                    ? { Items: { include: { Product: true } } }
+                    : {}),
+                  RitelModern: true,
+                  UnitProduksi: true,
+                } as any,
+                orderBy,
+              } as any),
+        ),
+      );
+      return NextResponse.json(
+        summary ? await attachSummary(data as any) : data,
+      );
+    }
+
+    const take = limit ?? 50;
+    const skip = offset ?? 0;
+    const [total, data] = await singleFlight(cacheKey, () =>
+      prisma.$transaction([
+        prisma.purchaseOrder.count({ where }),
+        prisma.purchaseOrder.findMany(
+          summary
+            ? ({
+                where,
+                select: {
+                  id: true,
+                  noPo: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  tglPo: true,
+                  expiredTgl: true,
+                  linkPo: true,
+                  noInvoice: true,
+                  tujuanDetail: true,
+                  regional: true,
+                  unitProduksiId: true,
+                  statusKirim: true,
+                  statusSdif: true,
+                  statusPo: true,
+                  statusFp: true,
+                  statusKwi: true,
+                  statusInv: true,
+                  statusTagih: true,
+                  statusBayar: true,
+                  RitelModern: {
+                    select: { namaPt: true, inisial: true, tujuan: true },
+                  },
+                  UnitProduksi: {
+                    select: { siteArea: true, namaRegional: true },
+                  },
+                },
+                orderBy,
+                take,
+                skip,
+              } as any)
+            : ({
+                where,
+                include: {
+                  ...(includeItems
+                    ? { Items: { include: { Product: true } } }
+                    : {}),
+                  RitelModern: true,
+                  UnitProduksi: true,
+                } as any,
+                orderBy,
+                take,
+                skip,
+              } as any),
+        ),
+      ]),
+    );
+    const payload = {
+      total,
+      data: summary ? await attachSummary(data as any) : data,
+      limit: take,
+      offset: skip,
+    };
+    cacheSet(cacheKey, payload, 15000);
+    return NextResponse.json(payload);
   } catch (error) {
+    if (cached) return NextResponse.json(cached);
     const message =
       error instanceof Error ? error.message : String(error ?? "Unknown error");
     return NextResponse.json({ error: message }, { status: 500 });
@@ -640,6 +822,7 @@ export async function DELETE(request: Request) {
       });
       await tx.purchaseOrder.delete({ where: { id: po.id } });
     });
+    cacheClearPrefix("po:");
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message =

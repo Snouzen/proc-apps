@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import {
+  cacheClearPrefix,
+  cacheGet,
+  cacheSet,
+  singleFlight,
+} from "@/lib/ttl-cache";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -8,30 +14,65 @@ function getErrorMessage(err: unknown): string {
   return "Gagal mengambil data ritel";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const cacheKey = `ritel:${request.url}`;
+  const cached = cacheGet<any>(cacheKey);
   try {
-    const { default: prisma } = await import("@/lib/db");
-    const data = await prisma.ritelModern.findMany({
-      orderBy: { createdAt: "desc" },
+    const payload = await singleFlight(cacheKey, async () => {
+      const { default: prisma } = await import("@/lib/db");
+      const { searchParams } = new URL(request.url);
+      const limitRaw = searchParams.get("limit");
+      const offsetRaw = searchParams.get("offset");
+      const limit =
+        limitRaw == null
+          ? null
+          : Math.max(1, Math.min(500, Number(limitRaw) || 0));
+      const offset =
+        offsetRaw == null ? null : Math.max(0, Number(offsetRaw) || 0);
+      const paged = limit != null || offset != null;
+      const q = (searchParams.get("q") || "").trim();
+      const where = q
+        ? {
+            OR: [
+              { namaPt: { contains: q, mode: "insensitive" as const } },
+              { inisial: { contains: q, mode: "insensitive" as const } },
+              { tujuan: { contains: q, mode: "insensitive" as const } },
+            ],
+          }
+        : undefined;
+
+      const [total, data] = paged
+        ? await prisma.$transaction([
+            prisma.ritelModern.count({ where }),
+            prisma.ritelModern.findMany({
+              where,
+              orderBy: { createdAt: "desc" },
+              take: limit ?? 50,
+              skip: offset ?? 0,
+            }),
+          ])
+        : [
+            null,
+            await prisma.ritelModern.findMany({
+              where,
+              orderBy: { createdAt: "desc" },
+            }),
+          ];
+
+      const out = paged
+        ? {
+            total: total ?? (Array.isArray(data) ? data.length : 0),
+            data,
+            limit: limit ?? 50,
+            offset: offset ?? 0,
+          }
+        : data;
+      cacheSet(cacheKey, out, 15000);
+      return out;
     });
-    const norm = (s: unknown) =>
-      String(s ?? "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, " ");
-    const inisialUsed = new Set(
-      data
-        .map((r: any) => ({ namaPt: r?.namaPt, inisial: r?.inisial }))
-        .filter((r: any) => r?.inisial && norm(r.inisial) !== norm(r.namaPt))
-        .map((r: any) => norm(r.inisial)),
-    );
-    const cleaned = data.filter((r: any) => {
-      const nama = norm(r?.namaPt);
-      if (!nama) return false;
-      return !inisialUsed.has(nama);
-    });
-    return NextResponse.json(cleaned);
+    return NextResponse.json(payload);
   } catch (error) {
+    if (cached) return NextResponse.json(cached);
     console.error("GET /api/ritel error:", error);
     const message = getErrorMessage(error);
     return NextResponse.json({ error: message }, { status: 500 });
@@ -58,6 +99,7 @@ export async function POST(request: Request) {
         updatedAt: new Date(),
       },
     });
+    cacheClearPrefix("ritel:");
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error("POST /api/ritel error:", error);
@@ -81,6 +123,7 @@ export async function PATCH(request: Request) {
       where: { namaPt: { equals: namaPt, mode: "insensitive" } },
       data: { inisial: inisial ?? null, updatedAt: new Date() },
     });
+    cacheClearPrefix("ritel:");
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("PATCH /api/ritel error:", error);
@@ -104,6 +147,7 @@ export async function PUT(request: Request) {
       where: { id },
       data: { tujuan: String(tujuan).trim(), updatedAt: new Date() },
     });
+    cacheClearPrefix("ritel:");
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("PUT /api/ritel error:", error);
@@ -124,11 +168,13 @@ export async function DELETE(request: Request) {
     }
     if (id) {
       await prisma.ritelModern.delete({ where: { id } });
+      cacheClearPrefix("ritel:");
       return NextResponse.json({ ok: true });
     }
     await prisma.ritelModern.deleteMany({
       where: { namaPt: { equals: namaPt!, mode: "insensitive" } },
     });
+    cacheClearPrefix("ritel:");
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("DELETE /api/ritel error:", error);

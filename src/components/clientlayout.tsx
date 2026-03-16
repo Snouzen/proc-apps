@@ -21,24 +21,21 @@ export default function ClientLayout({
   const isLogin = pathname === "/login";
   const isFullWidthPage = pathname === "/po" || pathname.startsWith("/po/");
 
-  // Try to initialize state from sync cache to prevent "slow" feeling
-  const [profileRole, setProfileRole] = useState<"pusat" | "rm" | null>(() => {
-    if (typeof window !== "undefined") {
-      const s = getMeSync();
-      if (s?.authenticated && s.role) return s.role;
-    }
-    return null;
-  });
-  const [profileRegional, setProfileRegional] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      const s = getMeSync();
-      if (s?.authenticated && s.regional) return s.regional;
-    }
-    return null;
-  });
+  const [profileRole, setProfileRole] = useState<"pusat" | "rm" | null>(null);
+  const [profileRegional, setProfileRegional] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
+    const cached = getMeSync();
+    if (mounted && cached?.authenticated && cached.role) {
+      if (cached.role === "rm") {
+        setProfileRole("rm");
+        setProfileRegional(cached.regional || null);
+      } else {
+        setProfileRole("pusat");
+        setProfileRegional(null);
+      }
+    }
     getMe()
       .then((data) => {
         if (!mounted) return;

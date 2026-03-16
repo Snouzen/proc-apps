@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import PODetailModal from "@/components/po-detail-modal";
+import POEditModal from "@/components/po-edit-modal";
 import { LoaderThree } from "@/components/ui/loader";
 import { getMe } from "@/lib/me";
 import BulkUploadModal from "@/components/bulk-upload-modal";
@@ -41,6 +42,8 @@ export default function CompanyList({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editNoPo, setEditNoPo] = useState<string | null>(null);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -74,9 +77,19 @@ export default function CompanyList({
         url += `?regional=${encodeURIComponent(me.regional)}`;
       }
       const res = await fetch(url, { cache: "no-store" });
-      const json = await res.json();
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          (json as any)?.error || res.statusText || "Gagal mengambil data PO";
+        throw new Error(msg);
+      }
+      const list = Array.isArray(json)
+        ? json
+        : Array.isArray((json as any)?.data)
+          ? (json as any).data
+          : [];
       const byCompany: Record<string, any[]> = {};
-      for (const po of json) {
+      for (const po of list) {
         const company = po?.RitelModern?.namaPt || "Unknown";
         if (!byCompany[company]) byCompany[company] = [];
         byCompany[company].push(po);
@@ -580,7 +593,10 @@ export default function CompanyList({
                                             Kg
                                           </th>
                                           <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
-                                            Rp Tagih
+                                            Discount
+                                          </th>
+                                          <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
+                                            Nominal
                                           </th>
                                           <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
                                             Aksi
@@ -616,14 +632,12 @@ export default function CompanyList({
                                           });
                                           const totalKg =
                                             kgKirim || kgPesan || 0;
-                                          const rpTagih = sum(items, (it) =>
-                                            Number(it?.rpTagih),
+                                          const rpDiscount = sum(items, (it) =>
+                                            Number(it?.discount),
                                           );
                                           const rpNominal = sum(items, (it) =>
                                             Number(it?.nominal),
                                           );
-                                          const totalRpTagih =
-                                            rpTagih || rpNominal || 0;
                                           const n = (v: number) =>
                                             v.toLocaleString("id-ID");
                                           const pcsKirim = sum(items, (it) =>
@@ -694,7 +708,10 @@ export default function CompanyList({
                                                 {n(Math.round(totalKg))}
                                               </td>
                                               <td className="px-4 py-3 text-right text-slate-700 font-semibold">
-                                                {n(totalRpTagih)}
+                                                {n(rpDiscount || 0)}
+                                              </td>
+                                              <td className="px-4 py-3 text-right text-slate-700 font-semibold">
+                                                {n(rpNominal || 0)}
                                               </td>
                                               <td className="px-4 py-3">
                                                 <div className="flex justify-end gap-1">
@@ -707,16 +724,18 @@ export default function CompanyList({
                                                   >
                                                     <CalendarClock size={16} />
                                                   </button>
-                                                  <Link
-                                                    href={`/po?noPo=${encodeURIComponent(po.noPo)}&company=${encodeURIComponent(po?.RitelModern?.namaPt || "")}`}
+                                                  <button
+                                                    type="button"
                                                     title="Edit"
-                                                    onClick={(e) =>
-                                                      e.stopPropagation()
-                                                    }
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setEditNoPo(po.noPo);
+                                                      setEditOpen(true);
+                                                    }}
                                                     className="p-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition-colors"
                                                   >
                                                     <Pencil size={16} />
-                                                  </Link>
+                                                  </button>
                                                   <button
                                                     title="Delete"
                                                     onClick={(e) => {
@@ -1150,7 +1169,10 @@ export default function CompanyList({
                                                         Kg
                                                       </th>
                                                       <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
-                                                        Rp Tagih
+                                                        Discount
+                                                      </th>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
+                                                        Nominal
                                                       </th>
                                                       <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
                                                         Aksi
@@ -1192,20 +1214,16 @@ export default function CompanyList({
                                                       );
                                                       const totalKg =
                                                         kgKirim || kgPesan || 0;
-                                                      const rpTagih = sum(
+                                                      const rpDiscount = sum(
                                                         items,
                                                         (it) =>
-                                                          Number(it?.rpTagih),
+                                                          Number(it?.discount),
                                                       );
                                                       const rpNominal = sum(
                                                         items,
                                                         (it) =>
                                                           Number(it?.nominal),
                                                       );
-                                                      const totalRpTagih =
-                                                        rpTagih ||
-                                                        rpNominal ||
-                                                        0;
                                                       const n = (v: number) =>
                                                         v.toLocaleString(
                                                           "id-ID",
@@ -1307,7 +1325,10 @@ export default function CompanyList({
                                                             )}
                                                           </td>
                                                           <td className="px-4 py-3 text-right text-slate-700 font-semibold">
-                                                            {n(totalRpTagih)}
+                                                            {n(rpDiscount || 0)}
+                                                          </td>
+                                                          <td className="px-4 py-3 text-right text-slate-700 font-semibold">
+                                                            {n(rpNominal || 0)}
                                                           </td>
                                                           <td className="px-4 py-3">
                                                             <div className="flex justify-end gap-1">
@@ -1324,18 +1345,26 @@ export default function CompanyList({
                                                                   size={16}
                                                                 />
                                                               </button>
-                                                              <Link
-                                                                href={`/po?noPo=${encodeURIComponent(po.noPo)}&company=${encodeURIComponent(po?.RitelModern?.namaPt || "")}`}
+                                                              <button
+                                                                type="button"
                                                                 title="Edit"
                                                                 className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
-                                                                onClick={(e) =>
-                                                                  e.stopPropagation()
-                                                                }
+                                                                onClick={(
+                                                                  e,
+                                                                ) => {
+                                                                  e.stopPropagation();
+                                                                  setEditNoPo(
+                                                                    po.noPo,
+                                                                  );
+                                                                  setEditOpen(
+                                                                    true,
+                                                                  );
+                                                                }}
                                                               >
                                                                 <Pencil
                                                                   size={16}
                                                                 />
-                                                              </Link>
+                                                              </button>
                                                               <button
                                                                 title="Delete"
                                                                 className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
@@ -1463,6 +1492,42 @@ export default function CompanyList({
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         data={selectedPO}
+      />
+      <POEditModal
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setEditNoPo(null);
+        }}
+        noPo={editNoPo}
+        returnMode="full"
+        onSaved={(updated) => {
+          const updatedNo = String(updated?.noPo || "").trim();
+          const originalNo = String(updated?.__originalNoPo || "").trim();
+          if (!updatedNo) return;
+          const companyKey = String(updated?.RitelModern?.namaPt || "").trim();
+          setGroups((prev) =>
+            prev.map((g) => {
+              if (!companyKey || g.company !== companyKey) return g;
+              return {
+                ...g,
+                pos: (Array.isArray(g.pos) ? g.pos : []).map((p) =>
+                  String(p?.noPo || "").trim() === updatedNo ||
+                  (originalNo && String(p?.noPo || "").trim() === originalNo)
+                    ? updated
+                    : p,
+                ),
+              };
+            }),
+          );
+          setSelectedPO((prev: any) =>
+            prev &&
+            (String(prev?.noPo || "").trim() === updatedNo ||
+              (originalNo && String(prev?.noPo || "").trim() === originalNo))
+              ? updated
+              : prev,
+          );
+        }}
       />
 
       <BulkUploadModal

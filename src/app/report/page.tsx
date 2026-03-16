@@ -82,6 +82,7 @@ const norm = (s: any) =>
 
 export default function ReportPage() {
   const [raw, setRaw] = useState<any[]>([]);
+  const [serverTotal, setServerTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -258,16 +259,31 @@ export default function ReportPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/po?includeUnknown=true", {
+      const params = new URLSearchParams();
+      params.set("includeUnknown", "true");
+      params.set("summary", "true");
+      params.set("limit", String(rowsPerPage));
+      params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
+      if (query.trim()) params.set("q", query.trim());
+      if (tglFrom) params.set("tglFrom", tglFrom);
+      if (tglTo) params.set("tglTo", tglTo);
+      if (submitFrom) params.set("submitFrom", submitFrom);
+      if (submitTo) params.set("submitTo", submitTo);
+      params.set("sort", "createdAt_desc");
+
+      const res = await fetch(`/api/po?${params.toString()}`, {
         cache: "no-store",
       });
       const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
+      const list = Array.isArray(data?.data) ? data.data : [];
+      const total = Number(data?.total) || 0;
       setRaw(list);
+      setServerTotal(total);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal load data";
       setError(msg);
       setRaw([]);
+      setServerTotal(0);
     } finally {
       setLoading(false);
     }
@@ -275,20 +291,25 @@ export default function ReportPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [page, rowsPerPage, query, tglFrom, tglTo, submitFrom, submitTo]);
 
   const rows: Row[] = useMemo(() => {
     const arr = Array.isArray(raw) ? raw : [];
     return arr.map((po: any) => {
       const items = Array.isArray(po?.Items) ? po.Items : [];
-      const totalTagihan = items.reduce(
-        (acc: number, it: any) => acc + (Number(it?.rpTagih) || 0),
-        0,
-      );
-      const totalNominal = items.reduce(
-        (acc: number, it: any) => acc + (Number(it?.nominal) || 0),
-        0,
-      );
+      const totalTagihan =
+        Number(po?.totalTagihan) ||
+        items.reduce(
+          (acc: number, it: any) => acc + (Number(it?.rpTagih) || 0),
+          0,
+        );
+      const totalNominal =
+        Number(po?.totalNominal) ||
+        items.reduce(
+          (acc: number, it: any) => acc + (Number(it?.nominal) || 0),
+          0,
+        );
+      const itemsCount = Number(po?.itemsCount) || items.length;
       return {
         id: String(po?.id || po?.noPo || crypto.randomUUID()),
         noPo: upperClean(po?.noPo || "-"),
@@ -307,7 +328,7 @@ export default function ReportPage() {
         ),
         noInvoice: upperClean(po?.noInvoice || ""),
         linkPo: String(po?.linkPo || ""),
-        itemsCount: items.length,
+        itemsCount,
         totalNominal,
         totalTagihan,
         statusKirim: !!po?.statusKirim,
@@ -320,7 +341,7 @@ export default function ReportPage() {
         statusBayar: !!po?.statusBayar,
         updatedAt: toYMD(po?.updatedAt || null),
         createdAt: toYMD(po?.createdAt || null),
-        submitDate: toYMD(po?.createdAt || null),
+        submitDate: toYMD(po?.createdAt || po?.updatedAt || po?.tglPo || null),
       };
     });
   }, [raw]);
@@ -455,11 +476,8 @@ export default function ReportPage() {
     setPage(1);
   }, [query, tglFrom, tglTo, rowsPerPage, colFilters, visibleCols]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
-  const pageRows = filteredRows.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage,
-  );
+  const totalPages = Math.max(1, Math.ceil(serverTotal / rowsPerPage));
+  const pageRows = filteredRows;
 
   const exportExcel = () => {
     const cols = visibleColumns;
@@ -660,7 +678,7 @@ export default function ReportPage() {
               ? "Loading..."
               : error
                 ? `Error: ${error}`
-                : `Menampilkan ${pageRows.length} dari ${filteredRows.length} baris`}
+                : `Menampilkan ${pageRows.length} dari ${serverTotal} baris`}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-600">Rows</span>

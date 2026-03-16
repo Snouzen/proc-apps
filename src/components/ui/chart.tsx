@@ -36,11 +36,13 @@ export function ChartContainer({
 
 export function ChartTooltipContent(props: {
   labelFormatter?: (v: any) => string;
+  valueFormatter?: (v: any) => string;
+  config?: ChartConfig;
   active?: boolean;
   label?: any;
   payload?: Array<{ dataKey?: string; value?: number; name?: string }>;
 }) {
-  const { labelFormatter, active, label, payload } = props;
+  const { labelFormatter, valueFormatter, config, active, label, payload } = props;
   if (!active || !payload || payload.length === 0) return null;
   const labelText =
     labelFormatter != null ? labelFormatter(label) : String(label ?? "");
@@ -54,11 +56,12 @@ export function ChartTooltipContent(props: {
         ? "var(--color-mobile)"
         : "#999",
     label:
-      p?.dataKey === "desktop"
+      (p?.dataKey && config?.[p.dataKey]?.label) ||
+      (p?.dataKey === "desktop"
         ? "In Progress"
         : p?.dataKey === "mobile"
-        ? "New PO"
-        : p?.name || "",
+          ? "Mobile"
+          : p?.name || ""),
   }));
   return (
     <div className="rounded-xl bg-black text-white px-3 py-2 text-xs shadow-2xl">
@@ -73,7 +76,13 @@ export function ChartTooltipContent(props: {
               />
               {e.label}
             </span>
-            <span className="font-bold">{e.value}</span>
+            <span className="font-bold">
+              {valueFormatter
+                ? valueFormatter(e.value)
+                : typeof e.value === "number"
+                  ? e.value.toLocaleString("id-ID")
+                  : String(e.value ?? "")}
+            </span>
           </div>
         ))}
       </div>

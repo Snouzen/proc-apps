@@ -1,0 +1,994 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Modal from "@/components/modal";
+import Combobox from "@/components/combobox";
+import Select from "@/components/select";
+import { LinkIcon, MapPin, Minus, Plus } from "lucide-react";
+import { PO_FORM_LABELS } from "@/lib/po-form-labels";
+
+type ReturnMode = "full" | "summary";
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  noPo: string | null;
+  returnMode?: ReturnMode;
+  onSaved?: (updated: any) => void;
+};
+
+type EditItem = {
+  id: string;
+  namaProduk: string;
+  pcs: number | string;
+  pcsKirim: number | string;
+  hargaPcs: number | string;
+  discount: number | string;
+};
+
+export default function POEditModal({
+  open,
+  onClose,
+  noPo,
+  returnMode = "full",
+  onSaved,
+}: Props) {
+  const norm = (s: any) =>
+    String(s ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{
+    type: "success" | "error" | "info";
+    message: string;
+  } | null>(null);
+
+  const [po, setPo] = useState<any | null>(null);
+  const [productData, setProductData] = useState<any[]>([]);
+  const [ritelData, setRitelData] = useState<any[]>([]);
+  const [unitData, setUnitData] = useState<any[]>([]);
+
+  const [inisial, setInisial] = useState("");
+  const [regional, setRegional] = useState("");
+  const [siteArea, setSiteArea] = useState("");
+  const [noPoValue, setNoPoValue] = useState("");
+  const [tglPo, setTglPo] = useState("");
+  const [expiredTgl, setExpiredTgl] = useState("");
+  const [tujuan, setTujuan] = useState("");
+  const [noInvoice, setNoInvoice] = useState("");
+  const [linkPo, setLinkPo] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [status, setStatus] = useState({
+    kirim: false,
+    sdif: false,
+    po: false,
+    fp: false,
+    kwi: false,
+    inv: false,
+    tagih: false,
+    bayar: false,
+  });
+
+  const [items, setItems] = useState<EditItem[]>([]);
+  const [currentItem, setCurrentItem] = useState<{
+    namaProduk: string;
+    pcs: number | string;
+    pcsKirim: number | string;
+    hargaPcs: number | string;
+    discount: number | string;
+  }>({
+    namaProduk: "",
+    pcs: "",
+    pcsKirim: "",
+    hargaPcs: "",
+    discount: "",
+  });
+
+  const showToast = (type: "success" | "error" | "info", message: string) => {
+    setToast({ type, message });
+    window.setTimeout(() => setToast(null), 3500);
+  };
+
+  const toYMD = (d: any) => {
+    if (!d) return "";
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return "";
+    const m = `${dt.getMonth() + 1}`.padStart(2, "0");
+    const day = `${dt.getDate()}`.padStart(2, "0");
+    return `${dt.getFullYear()}-${m}-${day}`;
+  };
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(val);
+
+  const parseRupiah = (v: any) =>
+    Math.max(0, Number(String(v ?? "").replace(/[^0-9]/g, "")) || 0);
+
+  const getSatuanKg = (namaProduk: string) => {
+    const pick = (Array.isArray(productData) ? productData : []).find(
+      (p: any) =>
+        String(p?.name || "")
+          .trim()
+          .toLowerCase() ===
+        String(namaProduk || "")
+          .trim()
+          .toLowerCase(),
+    );
+    const s = Number(pick?.satuanKg ?? 1);
+    return Number.isFinite(s) && s > 0 ? s : 1;
+  };
+
+  const computeDerived = (it: EditItem) => {
+    const pcs = Number(it.pcs) || 0;
+    const pcsKirim = Number(it.pcsKirim) || 0;
+    const hargaPcs = Number(it.hargaPcs) || 0;
+    const discount = parseRupiah(it.discount);
+    const satuan = getSatuanKg(it.namaProduk);
+    const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
+    const kg = pcs * satuan;
+    const kgKirim = pcsKirim * satuan;
+    const nominal = Math.max(0, hargaPcs * pcs - discount);
+    const rpTagih = Math.max(0, hargaPcs * pcsKirim - discount);
+    return {
+      pcs,
+      pcsKirim,
+      hargaPcs,
+      discount,
+      hargaKg,
+      kg,
+      kgKirim,
+      nominal,
+      rpTagih,
+    };
+  };
+
+  const productOptions = useMemo(() => {
+    const pinnedProducts = ["punokawan 5 kg", "befood setra ramos 5 kg"].map(
+      (s) => norm(s),
+    );
+    const list = (Array.isArray(productData) ? productData : [])
+      .map((p: any) => String(p?.name || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set(list)).sort((a, b) => {
+      const ai = pinnedProducts.indexOf(norm(a));
+      const bi = pinnedProducts.indexOf(norm(b));
+      if (ai !== -1 || bi !== -1) {
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      }
+      return a.localeCompare(b);
+    });
+  }, [productData]);
+
+  const companyName = String(
+    po?.RitelModern?.namaPt || po?.company || "",
+  ).trim();
+  const companyRitelRows = useMemo(() => {
+    if (!companyName) return [];
+    return (Array.isArray(ritelData) ? ritelData : []).filter(
+      (r: any) => norm(r?.namaPt) === norm(companyName),
+    );
+  }, [ritelData, companyName]);
+  const inisialOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        companyRitelRows
+          .map((r: any) => String(r?.inisial || "").trim())
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [companyRitelRows]);
+  const isKnownInisial =
+    !!inisial && inisialOptions.some((o) => norm(o) === norm(inisial));
+  const tujuanOptions = useMemo(() => {
+    const base = isKnownInisial
+      ? companyRitelRows.filter((r: any) => norm(r?.inisial) === norm(inisial))
+      : companyRitelRows;
+    return Array.from(
+      new Set(
+        base.map((r: any) => String(r?.tujuan || "").trim()).filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [companyRitelRows, isKnownInisial, inisial]);
+  const siteAreaOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        (Array.isArray(unitData) ? unitData : [])
+          .map((u: any) => String(u?.siteArea || "").trim())
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [unitData]);
+  const regionalOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        (Array.isArray(unitData) ? unitData : [])
+          .map((u: any) => String(u?.namaRegional || "").trim())
+          .filter(Boolean),
+      ),
+    )
+      .sort((a, b) => a.localeCompare(b))
+      .map((r) => ({ label: r, value: r }));
+  }, [unitData]);
+
+  useEffect(() => {
+    if (!open || !noPo) return;
+    let active = true;
+    const run = async () => {
+      setLoading(true);
+      try {
+        const resPo = await fetch(
+          `/api/po?includeUnknown=true&noPo=${encodeURIComponent(noPo)}`,
+          {
+            cache: "no-store",
+          },
+        );
+        const poJson = await resPo.json();
+        const poRow = Array.isArray(poJson) ? poJson[0] : poJson?.[0] || poJson;
+        const cName = String(
+          poRow?.RitelModern?.namaPt || poRow?.company || "",
+        ).trim();
+
+        const [prodJson, unitJson, ritelJson] = await Promise.all([
+          fetch(`/api/product?limit=500&offset=0`, { cache: "no-store" }).then(
+            (r) => r.json(),
+          ),
+          fetch(`/api/unit-produksi`, { cache: "no-store" }).then((r) =>
+            r.json(),
+          ),
+          cName
+            ? fetch(`/api/ritel?q=${encodeURIComponent(cName)}`, {
+                cache: "no-store",
+              }).then((r) => r.json())
+            : Promise.resolve([]),
+        ]);
+
+        const prods = Array.isArray(prodJson)
+          ? prodJson
+          : Array.isArray((prodJson as any)?.data)
+            ? (prodJson as any).data
+            : [];
+        const units = Array.isArray(unitJson)
+          ? unitJson
+          : Array.isArray((unitJson as any)?.data)
+            ? (unitJson as any).data
+            : [];
+        const ritels = Array.isArray(ritelJson)
+          ? ritelJson
+          : Array.isArray((ritelJson as any)?.data)
+            ? (ritelJson as any).data
+            : [];
+
+        if (!active) return;
+        setPo(poRow || null);
+        setProductData(prods);
+        setUnitData(units);
+        setRitelData(ritels);
+        setInisial(String(poRow?.RitelModern?.inisial || ""));
+        setRegional(
+          String(poRow?.regional || poRow?.UnitProduksi?.namaRegional || ""),
+        );
+        setSiteArea(
+          poRow?.UnitProduksi?.siteArea &&
+            poRow.UnitProduksi.siteArea !== "UNKNOWN"
+            ? String(poRow.UnitProduksi.siteArea)
+            : "",
+        );
+        setNoPoValue(String(poRow?.noPo || noPo || ""));
+        setTglPo(toYMD(poRow?.tglPo));
+        setExpiredTgl(toYMD(poRow?.expiredTgl));
+        setTujuan(String(poRow?.tujuanDetail || ""));
+        setNoInvoice(String(poRow?.noInvoice || ""));
+        setLinkPo(String(poRow?.linkPo || ""));
+        setRemarks(String(poRow?.remarks || ""));
+        setStatus({
+          kirim: !!poRow?.statusKirim,
+          sdif: !!poRow?.statusSdif,
+          po: !!poRow?.statusPo,
+          fp: !!poRow?.statusFp,
+          kwi: !!poRow?.statusKwi,
+          inv: !!poRow?.statusInv,
+          tagih: !!poRow?.statusTagih,
+          bayar: !!poRow?.statusBayar,
+        });
+
+        const mapped: EditItem[] = (
+          Array.isArray(poRow?.Items) ? poRow.Items : []
+        ).map((x: any, idx: number) => ({
+          id: String(x?.id || `${idx}-${crypto.randomUUID()}`),
+          namaProduk: String(x?.Product?.name || x?.namaProduk || "").trim(),
+          pcs: Number(x?.pcs) || 0,
+          pcsKirim: Number(x?.pcsKirim) || 0,
+          hargaPcs: Number(x?.hargaPcs) || 0,
+          discount: Number(x?.discount) || 0,
+        }));
+        setItems(mapped);
+        setCurrentItem({
+          namaProduk: "",
+          pcs: "",
+          pcsKirim: "",
+          hargaPcs: "",
+          discount: "",
+        });
+      } catch (e) {
+        if (!active) return;
+        setPo(null);
+        setItems([]);
+        showToast("error", "Gagal memuat detail PO");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      active = false;
+    };
+  }, [open, noPo]);
+
+  useEffect(() => {
+    if (!open) return;
+    setToast(null);
+  }, [open]);
+
+  const handleChecklist = (field: string) => {
+    setStatus((prev) => ({
+      ...prev,
+      [field]: !prev[field as keyof typeof prev],
+    }));
+  };
+
+  const invalidCurrentProduct =
+    !!currentItem.namaProduk &&
+    productOptions.length > 0 &&
+    !productOptions.some((o) => norm(o) === norm(currentItem.namaProduk));
+
+  const handleAddItem = () => {
+    const nama = String(currentItem.namaProduk || "").trim();
+    if (!nama || !currentItem.pcs || !currentItem.hargaPcs) {
+      showToast("error", "Lengkapi Nama Produk, PCS, dan Harga/Pcs");
+      return;
+    }
+    if (
+      productOptions.length > 0 &&
+      !productOptions.some((o) => norm(o) === norm(nama))
+    ) {
+      showToast("error", "Nama produk tidak ada di daftar");
+      return;
+    }
+    const newItem: EditItem = {
+      id: crypto.randomUUID(),
+      namaProduk: nama,
+      pcs: currentItem.pcs,
+      pcsKirim: currentItem.pcsKirim,
+      hargaPcs: currentItem.hargaPcs,
+      discount: parseRupiah(currentItem.discount),
+    };
+    setItems((prev) => [...prev, newItem]);
+    setCurrentItem({
+      namaProduk: "",
+      pcs: "",
+      pcsKirim: "",
+      hargaPcs: "",
+      discount: "",
+    });
+  };
+
+  const canSubmit =
+    !!companyName.trim() &&
+    !!noPoValue.trim() &&
+    !!tglPo &&
+    !!expiredTgl &&
+    !!tujuan.trim() &&
+    items.length > 0;
+
+  const handleSave = async () => {
+    if (!po) return;
+    if (!canSubmit) {
+      showToast(
+        "error",
+        "Lengkapi Tgl PO, Expired, Tujuan, dan minimal 1 item",
+      );
+      return;
+    }
+    setSaving(true);
+    try {
+      const originalNoPo = String(po?.noPo || noPo || "").trim();
+      const payload = {
+        company: companyName,
+        inisial: String(inisial || "").trim(),
+        regional: String(regional || "").trim(),
+        siteArea: String(siteArea || "").trim(),
+        originalNoPo,
+        noPo: noPoValue.trim(),
+        tglPo,
+        expiredTgl,
+        linkPo: linkPo || null,
+        noInvoice: noInvoice || null,
+        tujuan: tujuan.trim(),
+        remarks: remarks || null,
+        status,
+        items: items.map((it) => ({
+          namaProduk: String(it.namaProduk || "").trim(),
+          pcs: Number(it.pcs) || 0,
+          pcsKirim: Number(it.pcsKirim) || 0,
+          hargaPcs: Number(it.hargaPcs) || 0,
+          discount: parseRupiah(it.discount),
+        })),
+      };
+
+      const res = await fetch("/api/po", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        let msg = "Gagal menyimpan PO";
+        try {
+          const err = await res.json();
+          msg = err?.error || msg;
+        } catch {}
+        throw new Error(msg);
+      }
+
+      const finalNoPo = noPoValue.trim() || String(noPo || "").trim();
+      const url =
+        returnMode === "summary"
+          ? `/api/po?includeUnknown=true&summary=true&includeItems=false&noPo=${encodeURIComponent(finalNoPo)}`
+          : `/api/po?includeUnknown=true&noPo=${encodeURIComponent(finalNoPo)}`;
+      const ref = await fetch(url, { cache: "no-store" }).then((r) => r.json());
+      const updated = Array.isArray(ref)
+        ? ref[0]
+        : ref?.data?.[0] || ref?.[0] || ref;
+      if (updated && onSaved)
+        onSaved({ ...updated, __originalNoPo: originalNoPo });
+      showToast("success", "PO berhasil diupdate");
+      onClose();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal menyimpan PO";
+      showToast("error", msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const totals = useMemo(() => {
+    let nominal = 0;
+    let tagih = 0;
+    for (const it of items) {
+      const d = computeDerived(it);
+      nominal += d.nominal;
+      tagih += d.rpTagih;
+    }
+    return { nominal, tagih };
+  }, [items, productData]);
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={noPo ? `Edit PO - ${noPo}` : "Edit PO"}
+      className="max-w-6xl"
+    >
+      {toast && (
+        <div
+          className={`mb-4 rounded-xl px-4 py-3 text-sm font-semibold ${
+            toast.type === "success"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+              : toast.type === "error"
+                ? "bg-rose-50 text-rose-700 border border-rose-100"
+                : "bg-blue-50 text-blue-700 border border-blue-100"
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-14 text-center text-sm text-slate-500">
+          Loading...
+        </div>
+      ) : !po ? (
+        <div className="py-10 text-sm text-slate-600">
+          Data PO tidak ditemukan.
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.company}
+                </label>
+                <input
+                  value={companyName}
+                  disabled
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold uppercase opacity-80"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.inisial}
+                </label>
+                <Combobox
+                  options={inisialOptions}
+                  value={inisial}
+                  onChange={(v) => setInisial(v)}
+                  placeholder="Ketik/cari inisial..."
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.tujuan}
+                </label>
+                <Combobox
+                  options={tujuanOptions}
+                  value={tujuan}
+                  onChange={(v) => setTujuan(v)}
+                  placeholder="Ketik/cari tujuan..."
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.tglPo}
+                </label>
+                <input
+                  type="date"
+                  value={tglPo}
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setTglPo(next);
+                    if (expiredTgl && next && expiredTgl < next)
+                      setExpiredTgl(next);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.expiredTgl}
+                </label>
+                <input
+                  type="date"
+                  value={expiredTgl}
+                  min={tglPo || undefined}
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                  onChange={(e) => setExpiredTgl(e.target.value)}
+                />
+              </div>
+
+              <div className="hidden md:block" />
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.regional}
+                </label>
+                <Select
+                  options={regionalOptions}
+                  value={regional}
+                  onChange={(v) => setRegional(v)}
+                  placeholder="Pilih Regional"
+                  leftIcon={<MapPin size={16} />}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.siteArea}
+                </label>
+                <Combobox
+                  options={siteAreaOptions}
+                  value={siteArea}
+                  onChange={(v) => setSiteArea(v)}
+                  placeholder="Ketik/cari site area..."
+                  leftIcon={<MapPin size={16} />}
+                  inputClassName="pl-11 pr-4"
+                />
+              </div>
+
+              <div className="hidden md:block" />
+
+              <div className="md:col-span-2 space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.linkPo}
+                </label>
+                <div className="relative">
+                  <LinkIcon
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={16}
+                  />
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={linkPo}
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                    onChange={(e) => setLinkPo(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.noInvoice}
+                </label>
+                <input
+                  type="text"
+                  placeholder="INV-202X"
+                  value={noInvoice}
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                  onChange={(e) => setNoInvoice(e.target.value)}
+                />
+              </div>
+
+              <div className="md:col-span-3 space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.noPo}
+                </label>
+                <input
+                  value={noPoValue}
+                  onChange={(e) => setNoPoValue(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                />
+              </div>
+            </div>
+          </section>
+
+          <div className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h4 className="font-bold text-slate-800">
+                {PO_FORM_LABELS.tambahItem}
+              </h4>
+            </div>
+            <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="md:col-span-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.namaProduk}
+                </label>
+                <Combobox
+                  options={productOptions}
+                  value={String(currentItem.namaProduk || "")}
+                  onChange={(v) =>
+                    setCurrentItem((prev) => ({ ...prev, namaProduk: v }))
+                  }
+                  placeholder="Ketik/cari produk..."
+                  inputClassName={
+                    invalidCurrentProduct
+                      ? "border border-rose-300 bg-rose-50 focus:ring-rose-200"
+                      : ""
+                  }
+                />
+                {invalidCurrentProduct && (
+                  <p className="text-[11px] text-rose-600 mt-1">
+                    Nama produk tidak ada di daftar
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.pcs}
+                </label>
+                <input
+                  type="number"
+                  value={currentItem.pcs}
+                  onChange={(e) =>
+                    setCurrentItem((p) => ({ ...p, pcs: e.target.value }))
+                  }
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.hargaPcs}
+                </label>
+                <input
+                  type="number"
+                  value={currentItem.hargaPcs}
+                  onChange={(e) =>
+                    setCurrentItem((p) => ({ ...p, hargaPcs: e.target.value }))
+                  }
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.pcsKirim}
+                </label>
+                <input
+                  type="number"
+                  value={currentItem.pcsKirim}
+                  onChange={(e) =>
+                    setCurrentItem((p) => ({ ...p, pcsKirim: e.target.value }))
+                  }
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.discount}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={currentItem.discount}
+                  onChange={(e) =>
+                    setCurrentItem((p) => ({ ...p, discount: e.target.value }))
+                  }
+                  onBlur={() =>
+                    setCurrentItem((prev) => {
+                      const n = parseRupiah(prev.discount);
+                      return {
+                        ...prev,
+                        discount: n ? n.toLocaleString("id-ID") : "",
+                      };
+                    })
+                  }
+                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                />
+              </div>
+              <div className="col-span-full">
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-700 active:scale-95 transition-all"
+                >
+                  <Plus size={18} />
+                  Tambah Item
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h4 className="font-bold text-slate-800">
+                {PO_FORM_LABELS.preview}
+              </h4>
+              <div className="text-sm font-bold text-slate-700">
+                {formatCurrency(totals.nominal)} /{" "}
+                {formatCurrency(totals.tagih)}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left min-w-[1200px]">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">{PO_FORM_LABELS.namaProduk}</th>
+                    <th className="px-4 py-3 text-right">
+                      {PO_FORM_LABELS.pcs}
+                    </th>
+                    <th className="px-4 py-3 text-right">
+                      {PO_FORM_LABELS.hargaPcs}
+                    </th>
+                    <th className="px-4 py-3 text-right">
+                      {PO_FORM_LABELS.pcsKirim}
+                    </th>
+                    <th className="px-4 py-3 text-right">
+                      {PO_FORM_LABELS.discount}
+                    </th>
+                    <th className="px-4 py-3 text-right">
+                      {PO_FORM_LABELS.nominal}
+                    </th>
+                    <th className="px-4 py-3 text-right">
+                      {PO_FORM_LABELS.rpTagih}
+                    </th>
+                    <th className="px-4 py-3 text-center">
+                      {PO_FORM_LABELS.aksi}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {items.map((it) => {
+                    const d = computeDerived(it);
+                    return (
+                      <tr key={it.id} className="hover:bg-slate-50/50">
+                        <td className="px-4 py-3 font-medium text-slate-700 uppercase">
+                          {it.namaProduk || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <input
+                            type="number"
+                            value={it.pcs}
+                            onChange={(e) =>
+                              setItems((prev) =>
+                                prev.map((x) =>
+                                  x.id === it.id
+                                    ? { ...x, pcs: e.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className="w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <input
+                            type="number"
+                            value={it.hargaPcs}
+                            onChange={(e) =>
+                              setItems((prev) =>
+                                prev.map((x) =>
+                                  x.id === it.id
+                                    ? { ...x, hargaPcs: e.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <input
+                            type="number"
+                            value={it.pcsKirim}
+                            onChange={(e) =>
+                              setItems((prev) =>
+                                prev.map((x) =>
+                                  x.id === it.id
+                                    ? { ...x, pcsKirim: e.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className="w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={
+                              parseRupiah(it.discount)
+                                ? parseRupiah(it.discount).toLocaleString(
+                                    "id-ID",
+                                  )
+                                : ""
+                            }
+                            onChange={(e) =>
+                              setItems((prev) =>
+                                prev.map((x) =>
+                                  x.id === it.id
+                                    ? { ...x, discount: e.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                            onBlur={() =>
+                              setItems((prev) =>
+                                prev.map((x) => {
+                                  if (x.id !== it.id) return x;
+                                  const n = parseRupiah(x.discount);
+                                  return {
+                                    ...x,
+                                    discount: n
+                                      ? n.toLocaleString("id-ID")
+                                      : "",
+                                  };
+                                }),
+                              )
+                            }
+                            className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-slate-800 tabular-nums">
+                          {formatCurrency(d.nominal)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-slate-800 tabular-nums">
+                          {formatCurrency(d.rpTagih)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setItems((prev) =>
+                                prev.filter((x) => x.id !== it.id),
+                              )
+                            }
+                            className="inline-flex items-center justify-center p-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700"
+                            title="Hapus"
+                          >
+                            <Minus size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {items.length === 0 && (
+                    <tr>
+                      <td
+                        className="px-4 py-6 text-sm text-slate-500"
+                        colSpan={8}
+                      >
+                        Belum ada item.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="font-bold text-slate-800 text-lg">
+                  {PO_FORM_LABELS.checklistDokumen}
+                </h2>
+              </div>
+
+              <div className="space-y-3">
+                {Object.keys(status).map((key) => {
+                  const checked = status[key as keyof typeof status];
+                  const label = key === "sdif" ? "SDI/F" : key.toUpperCase();
+                  return (
+                    <label
+                      key={key}
+                      className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => handleChecklist(key)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-bold text-slate-700">
+                        {label}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="font-bold text-slate-800 text-lg">
+                  {PO_FORM_LABELS.remarks}
+                </h2>
+              </div>
+              <textarea
+                rows={4}
+                value={remarks}
+                placeholder="Tambahkan Jika Ada Keterangan..."
+                className="w-full px-6 py-4 bg-slate-50 rounded-[24px] focus:ring-2 focus:ring-slate-200 outline-none text-sm font-medium transition-all"
+                onChange={(e) => setRemarks(e.target.value)}
+              />
+            </section>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold"
+              disabled={saving}
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!canSubmit || saving}
+              className={`px-6 py-3 rounded-xl text-sm font-bold text-white ${
+                !canSubmit || saving
+                  ? "bg-slate-300"
+                  : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
+            >
+              {saving ? "Menyimpan..." : "Simpan Perubahan"}
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}

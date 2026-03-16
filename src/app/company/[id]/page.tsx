@@ -2,10 +2,10 @@
 
 import * as XLSX from "xlsx";
 import { Download, Pencil, Search } from "lucide-react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PODetailModal from "@/components/po-detail-modal";
+import POEditModal from "@/components/po-edit-modal";
 import { LoaderThree } from "@/components/ui/loader";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 
@@ -15,11 +15,14 @@ export default function CompanyDetail() {
   const refreshTick = useAutoRefreshTick();
   const [loading, setLoading] = useState(true);
   const [poData, setPoData] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [page, setPage] = useState(1);
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [openDetail, setOpenDetail] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editNoPo, setEditNoPo] = useState<string | null>(null);
 
   const toDate = (d: any) => {
     if (!d) return null;
@@ -51,15 +54,27 @@ export default function CompanyDetail() {
             cache: "no-store",
           },
         );
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : [];
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg =
+            (data as any)?.error || res.statusText || "Gagal mengambil data PO";
+          throw new Error(msg);
+        }
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.data)
+            ? (data as any).data
+            : [];
         const filtered = list.filter(
-          (po) => norm(po?.RitelModern?.namaPt) === norm(company),
+          (po: any) => norm(po?.RitelModern?.namaPt) === norm(company),
         );
         setPoData(filtered);
+        setLoadError(null);
       } catch (e) {
         console.error(e);
-        setPoData([]);
+        const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
+        setLoadError(msg);
+        if (poData.length === 0) setPoData([]);
       } finally {
         setLoading(false);
       }
@@ -98,6 +113,7 @@ export default function CompanyDetail() {
           pcs: 0,
           pcsKirim: 0,
           hargaPcs: 0,
+          discount: 0,
           nominal: 0,
           rpTagih: 0,
         });
@@ -106,8 +122,15 @@ export default function CompanyDetail() {
           const pcs = Number(it?.pcs) || 0;
           const pcsKirim = Number(it?.pcsKirim) || 0;
           const hargaPcs = Number(it?.hargaPcs) || 0;
-          const nominal = Number(it?.nominal) || hargaPcs * pcs || 0;
-          const rpTagih = Number(it?.rpTagih) || hargaPcs * pcsKirim || 0;
+          const discount = Number(it?.discount) || 0;
+          const nominalFromDb = Number(it?.nominal);
+          const rpTagihFromDb = Number(it?.rpTagih);
+          const nominal = Number.isFinite(nominalFromDb)
+            ? nominalFromDb
+            : Math.max(0, hargaPcs * pcs - discount) || 0;
+          const rpTagih = Number.isFinite(rpTagihFromDb)
+            ? rpTagihFromDb
+            : Math.max(0, hargaPcs * pcsKirim - discount) || 0;
           out.push({
             ...base,
             key: `${po?.id || po?.noPo || "po"}-${it?.id || idx}`,
@@ -115,6 +138,7 @@ export default function CompanyDetail() {
             pcs,
             pcsKirim,
             hargaPcs,
+            discount,
             nominal,
             rpTagih,
           });
@@ -162,8 +186,8 @@ export default function CompanyDetail() {
       "PCS PO": r.pcs,
       "PCS Kirim": r.pcsKirim,
       "Harga/PCS": r.hargaPcs,
+      Discount: r.discount,
       Nominal: r.nominal,
-      "Rp Tagih": r.rpTagih,
       "No Invoice": r.noInvoice || "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
@@ -272,6 +296,11 @@ export default function CompanyDetail() {
             <span className="text-sm text-slate-500">data</span>
           </div>
         </div>
+        {loadError && (
+          <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            Gagal load data: {loadError}
+          </div>
+        )}
 
         {loading ? (
           <div className="py-16">
@@ -320,10 +349,10 @@ export default function CompanyDetail() {
                         Harga/PCS
                       </th>
                       <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
-                        Nominal
+                        Discount
                       </th>
                       <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
-                        Rp Tagih
+                        Nominal
                       </th>
                       <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
                         Aksi
@@ -380,21 +409,25 @@ export default function CompanyDetail() {
                             {n(r.hargaPcs)}
                           </td>
                           <td className="px-4 py-3 text-right text-slate-700 font-semibold">
-                            {n(r.nominal)}
+                            {n(r.discount || 0)}
                           </td>
-                          <td className="px-4 py-3 text-right font-black text-slate-800">
-                            {n(r.rpTagih)}
+                          <td className="px-4 py-3 text-right text-slate-700 font-semibold">
+                            {n(r.nominal)}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex justify-end">
-                              <Link
-                                href={`/po?noPo=${encodeURIComponent(r.noPo)}&company=${encodeURIComponent(company)}`}
-                                onClick={(e) => e.stopPropagation()}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditNoPo(r.noPo);
+                                  setEditOpen(true);
+                                }}
                                 className="p-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700"
                                 title="Edit"
                               >
                                 <Pencil size={16} />
-                              </Link>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -438,6 +471,35 @@ export default function CompanyDetail() {
         open={openDetail}
         onClose={() => setOpenDetail(false)}
         data={selectedPO}
+      />
+      <POEditModal
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setEditNoPo(null);
+        }}
+        noPo={editNoPo}
+        returnMode="full"
+        onSaved={(updated) => {
+          const updatedNo = String(updated?.noPo || "").trim();
+          const originalNo = String(updated?.__originalNoPo || "").trim();
+          if (!updatedNo) return;
+          setPoData((prev) =>
+            prev.map((x) =>
+              String(x?.noPo || "").trim() === updatedNo ||
+              (originalNo && String(x?.noPo || "").trim() === originalNo)
+                ? updated
+                : x,
+            ),
+          );
+          setSelectedPO((prev: any) =>
+            prev &&
+            (String(prev?.noPo || "").trim() === updatedNo ||
+              (originalNo && String(prev?.noPo || "").trim() === originalNo))
+              ? updated
+              : prev,
+          );
+        }}
       />
     </div>
   );

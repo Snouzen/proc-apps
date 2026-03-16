@@ -246,6 +246,7 @@ export async function POST(req: Request) {
       hargaPcs: number;
       nominal: number;
       rpTagih: number;
+      discount: number;
     }> = [];
 
     const getRitel = (companyName: string, inisial: string | null) => {
@@ -257,32 +258,43 @@ export async function POST(req: Request) {
       const p = (async () => {
         const kNama = dedupeKey(companyUpper);
         const kIni = dedupeKey(inisialUpper || "");
-        try {
-          const hit: Array<{ id: string }> = (await prisma.$queryRawUnsafe(
-            `SELECT id FROM "ritel_modern"
-             WHERE regexp_replace(upper("namaPt"), '[^A-Z0-9]', '', 'g') = $1
-             AND regexp_replace(upper(COALESCE("inisial", '')), '[^A-Z0-9]', '', 'g') = $2
-             ORDER BY "createdAt" ASC
-             LIMIT 1`,
-            kNama,
-            kIni,
-          )) as any;
-          const first = Array.isArray(hit) ? hit[0] : null;
-          if (first?.id) {
-            prisma.ritelModern
-              .update({
-                where: { id: first.id },
-                data: {
-                  namaPt: companyUpper,
-                  inisial: inisialUpper,
-                  updatedAt: new Date(),
-                },
-                select: { id: true },
-              })
-              .catch(() => {});
-            return { id: first.id };
-          }
-        } catch {}
+        const namaToken =
+          companyUpper.split(/\s+/).filter(Boolean)[0] || companyUpper;
+        const iniToken =
+          (inisialUpper || "").split(/\s+/).filter(Boolean)[0] ||
+          inisialUpper ||
+          "";
+        const candidates = await prisma.ritelModern.findMany({
+          where: {
+            namaPt: { contains: namaToken, mode: "insensitive" },
+            ...(inisialUpper
+              ? { inisial: { contains: iniToken, mode: "insensitive" } }
+              : {}),
+          } as any,
+          select: { id: true, namaPt: true, inisial: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+          take: 50,
+        });
+        const match =
+          candidates.find((r) => {
+            const n = upperClean(r?.namaPt);
+            const i = upperCleanOrNull(r?.inisial);
+            return dedupeKey(n) === kNama && dedupeKey(i || "") === kIni;
+          }) || null;
+        if (match?.id) {
+          prisma.ritelModern
+            .update({
+              where: { id: match.id },
+              data: {
+                namaPt: companyUpper,
+                inisial: inisialUpper,
+                updatedAt: new Date(),
+              },
+              select: { id: true },
+            })
+            .catch(() => {});
+          return { id: match.id };
+        }
         let ritel: { id: string } | null = null;
         if (inisialUpper) {
           ritel = await prisma.ritelModern.findFirst({
@@ -339,27 +351,28 @@ export async function POST(req: Request) {
       const cached = productCache.get(productKey);
       if (cached) return cached;
       const p = (async () => {
-        try {
-          const hit: Array<{ id: string; satuanKg: number | null }> =
-            (await prisma.$queryRawUnsafe(
-              `SELECT id, "satuanKg" FROM "Product"
-               WHERE regexp_replace(upper(name), '[^A-Z0-9]', '', 'g') = $1
-               ORDER BY "createdAt" ASC
-               LIMIT 1`,
-              productKey,
-            )) as any;
-          const first = Array.isArray(hit) ? hit[0] : null;
-          if (first?.id) {
-            prisma.product
-              .update({
-                where: { id: first.id },
-                data: { name: productUpper, updatedAt: new Date() },
-                select: { id: true, satuanKg: true },
-              })
-              .catch(() => {});
-            return { id: first.id, satuanKg: first.satuanKg ?? null };
-          }
-        } catch {}
+        const token =
+          productUpper.split(/\s+/).filter(Boolean)[0] || productUpper;
+        const candidates = await prisma.product.findMany({
+          where: { name: { contains: token, mode: "insensitive" } },
+          select: { id: true, name: true, satuanKg: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+          take: 50,
+        });
+        const match =
+          candidates.find(
+            (p) => dedupeKey(canonicalProductName(p?.name)) === productKey,
+          ) || null;
+        if (match?.id) {
+          prisma.product
+            .update({
+              where: { id: match.id },
+              data: { name: productUpper, updatedAt: new Date() },
+              select: { id: true, satuanKg: true },
+            })
+            .catch(() => {});
+          return { id: match.id, satuanKg: match.satuanKg ?? null };
+        }
         const found = await prisma.product.findFirst({
           where: { name: { equals: productUpper, mode: "insensitive" } },
           select: { id: true, satuanKg: true },
@@ -727,6 +740,7 @@ export async function POST(req: Request) {
               hargaPcs,
               nominal,
               rpTagih,
+              discount: 0,
             });
           }
         } catch (err: any) {

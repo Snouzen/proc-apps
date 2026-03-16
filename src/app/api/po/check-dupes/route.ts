@@ -9,25 +9,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ exists: [] });
     }
 
-    try {
-      const rows = await prisma.purchaseOrder.findMany({
-        where: { noPo: { in: list.map((s: any) => String(s)) } },
-        select: { noPo: true },
-      });
-      return NextResponse.json({
-        exists: rows.map((r: { noPo: string }) => r.noPo),
-      });
-    } catch (e: any) {
-      // Fallback raw SQL if Prisma client shape mismatches
-      const sql = `SELECT "noPo" FROM "PurchaseOrder" WHERE "noPo" = ANY($1::text[])`;
-      const rows: Array<{ noPo: string }> = (await prisma.$queryRawUnsafe(
-        sql,
-        list,
-      )) as any;
-      return NextResponse.json({
-        exists: rows.map((r: { noPo: string }) => r.noPo),
-      });
-    }
+    const rows = await prisma.purchaseOrder.findMany({
+      where: { noPo: { in: list.map((s: any) => String(s)) } },
+      select: { noPo: true },
+    });
+    return NextResponse.json({
+      exists: rows.map((r: { noPo: string }) => r.noPo),
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : String(error ?? "Unknown error");

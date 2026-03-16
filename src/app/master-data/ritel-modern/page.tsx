@@ -123,32 +123,64 @@ export default function RitelModernPage() {
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 detik timeout
 
       try {
-        const res = await fetch("/api/ritel", { signal: controller.signal });
-        clearTimeout(timeoutId);
+        const fetchOnce = async () => {
+          const res = await fetch("/api/ritel", {
+            signal: controller.signal,
+            cache: "no-store",
+          });
+          let result: unknown;
+          try {
+            result = await res.json();
+          } catch {
+            return {
+              ok: false,
+              statusText: res.statusText,
+              error: "Response bukan JSON. Cek API / server.",
+              data: null,
+            };
+          }
+          if (!res.ok) {
+            const msg =
+              (result as { error?: string })?.error ||
+              res.statusText ||
+              "Gagal mengambil data";
+            return {
+              ok: false,
+              statusText: res.statusText,
+              error: msg,
+              data: null,
+            };
+          }
+          const list = Array.isArray(result)
+            ? result
+            : ((result as { data?: unknown[] })?.data ?? []);
+          return {
+            ok: true,
+            statusText: res.statusText,
+            error: null,
+            data: list,
+          };
+        };
 
-        let result: unknown;
-        try {
-          result = await res.json();
-        } catch {
-          setLoadError("Response bukan JSON. Cek API / server.");
-          setDataRitel([]);
-          return;
+        let lastErr: string | null = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const out = await fetchOnce();
+          if (out.ok) {
+            setDataRitel(out.data as any[]);
+            lastErr = null;
+            break;
+          }
+          lastErr = out.error || "Gagal mengambil data";
+          const isMaxClient =
+            typeof lastErr === "string" &&
+            lastErr.toLowerCase().includes("maxclientsinsessionmode");
+          if (!isMaxClient || attempt === 2) break;
+          await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
         }
-
-        if (!res.ok) {
-          const msg =
-            (result as { error?: string })?.error ||
-            res.statusText ||
-            "Gagal mengambil data";
-          setLoadError(msg);
-          setDataRitel([]);
-          return;
+        if (lastErr) {
+          setLoadError(lastErr);
+          if (dataRitel.length === 0) setDataRitel([]);
         }
-
-        const list = Array.isArray(result)
-          ? result
-          : ((result as { data?: unknown[] })?.data ?? []);
-        setDataRitel(list);
       } catch (err) {
         clearTimeout(timeoutId);
         console.error("Gagal load data:", err);
@@ -163,8 +195,9 @@ export default function RitelModernPage() {
         } else {
           setLoadError("Tidak bisa connect ke server. Cek koneksi / database.");
         }
-        setDataRitel([]);
+        if (dataRitel.length === 0) setDataRitel([]);
       } finally {
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
@@ -293,68 +326,7 @@ export default function RitelModernPage() {
         inisials: {} as Record<string, { id: string; tujuan: string }[]>,
       });
     }
-    const normalizeIndogrosir = (
-      namaPt: string,
-      tujuan?: string,
-      raw?: string,
-    ) => {
-      const lowerPt = (namaPt || "").toLowerCase();
-      const isIC =
-        lowerPt.includes("inti cakrawala") || lowerPt.includes("indogrosir");
-      if (!isIC) return raw || "—";
-      const text = (tujuan || raw || "").toLowerCase();
-      const inAny = (arr: string[]) => arr.some((k) => text.includes(k));
-      const jabodetabek = [
-        "jakarta",
-        "bogor",
-        "depok",
-        "bekasi",
-        "tangerang",
-        "jabodetabek",
-      ];
-      const jabar = [
-        "bandung",
-        "cirebon",
-        "sukabumi",
-        "tasik",
-        "purwakarta",
-        "garut",
-        "jawa barat",
-      ];
-      const jatengDIY = [
-        "semarang",
-        "solo",
-        "surakarta",
-        "yogyakarta",
-        "magelang",
-        "pekalongan",
-        "cilacap",
-        "jawa tengah",
-        "diy",
-      ];
-      const jatimBali = [
-        "surabaya",
-        "malang",
-        "kediri",
-        "jember",
-        "banyuwangi",
-        "sidoarjo",
-        "gresik",
-        "denpasar",
-        "bali",
-        "jawa timur",
-      ];
-      if (inAny(jabodetabek)) return "INDOGROSIR JABODETABEK";
-      if (inAny(jabar)) return "INDOGROSIR JAWA BARAT";
-      if (inAny(jatengDIY)) return "INDOGROSIR JAWA TENGAH & DIY";
-      if (inAny(jatimBali)) return "INDOGROSIR JAWA TIMUR & BALI";
-      return "INDOGROSIR LAIN-LAIN";
-    };
-    const alias = normalizeIndogrosir(
-      item.namaPt,
-      item.tujuan,
-      String(item.inisial ?? "—"),
-    );
+    const alias = String(item.inisial ?? "—");
     const target = acc.find((g) => g.namaPt === item.namaPt)!;
     if (!target.inisials[alias]) target.inisials[alias] = [];
     if (item.tujuan && String(item.tujuan).trim().length > 0) {

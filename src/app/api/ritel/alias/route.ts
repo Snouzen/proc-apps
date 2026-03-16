@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cacheClearPrefix } from "@/lib/ttl-cache";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -32,6 +33,7 @@ export async function PATCH(request: Request) {
         updatedAt: new Date(),
       },
     });
+    cacheClearPrefix("ritel:");
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("PATCH /api/ritel/alias error:", error);

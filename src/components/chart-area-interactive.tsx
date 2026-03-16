@@ -20,17 +20,16 @@ import {
 export const description = "An interactive area chart";
 
 const chartConfig = {
-  mobile: { label: "New PO", color: "#38bdf8" },
+  mobile: { label: "Total KG", color: "#38bdf8" },
 } satisfies ChartConfig;
-
 export function ChartAreaInteractive({ poData }: { poData?: any[] }) {
   const [timeRange, setTimeRange] = React.useState("90d");
+  const [series, setSeries] = React.useState<
+    Array<{ date: string; mobile: number }>
+  >([]);
 
   const toYMD = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return d.toISOString().slice(0, 10);
   };
   const safeParseDate = (input: any): Date | null => {
     if (!input) return null;
@@ -65,31 +64,70 @@ export function ChartAreaInteractive({ poData }: { poData?: any[] }) {
     const d = new Date(input);
     return isNaN(d.getTime()) ? null : d;
   };
-  const today = new Date();
   const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
-  const dates: string[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    dates.push(toYMD(d));
-  }
-  const rows = Array.isArray(poData) ? poData : [];
-  const byDate = new Map<string, { new: number }>();
-  for (const d of dates) byDate.set(d, { new: 0 });
-  for (const po of rows) {
-    const dt = safeParseDate(po?.tglPo);
-    const t = dt ? toYMD(dt) : null;
-    if (!t || !byDate.has(t)) continue;
-    const rec = byDate.get(t)!;
-    rec.new += 1;
-  }
-  const filteredData = dates.map((d) => {
-    const rec = byDate.get(d)!;
-    return {
-      date: d,
-      mobile: rec.new,
+
+  React.useEffect(() => {
+    let active = true;
+    const run = async () => {
+      try {
+        const res = await fetch(
+          `/api/po/trend?includeUnknown=true&metric=kg&days=${days}`,
+          {
+            cache: "no-store",
+          },
+        );
+        const json = await res.json();
+        const rows = Array.isArray(json?.data) ? json.data : [];
+        const next = rows.map((r: any) => ({
+          date: String(r?.date || ""),
+          mobile: Number(r?.kg) || 0,
+        }));
+        if (active) setSeries(next);
+      } catch {
+        if (active) setSeries([]);
+      }
     };
-  });
+    run();
+    return () => {
+      active = false;
+    };
+  }, [days]);
+
+  const filteredData =
+    series.length > 0
+      ? series
+      : (() => {
+          const today = new Date();
+          const dates: string[] = [];
+          for (let i = days - 1; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            dates.push(toYMD(d));
+          }
+          const rows = Array.isArray(poData) ? poData : [];
+          const byDate = new Map<string, { kg: number }>();
+          for (const d of dates) byDate.set(d, { kg: 0 });
+          for (const po of rows) {
+            const dt = safeParseDate(po?.tglPo);
+            const t = dt ? toYMD(dt) : null;
+            if (!t || !byDate.has(t)) continue;
+            const items = Array.isArray(po?.Items) ? po.Items : [];
+            const kg = items.reduce((acc: number, it: any) => {
+              const pcs = Number(it?.pcs) || 0;
+              const satuan = Number(it?.Product?.satuanKg ?? 1) || 1;
+              return acc + pcs * satuan;
+            }, 0);
+            const rec = byDate.get(t)!;
+            rec.kg += kg;
+          }
+          return dates.map((d) => {
+            const rec = byDate.get(d)!;
+            return {
+              date: d,
+              mobile: rec.kg,
+            };
+          });
+        })();
 
   const rangeLabel =
     timeRange === "90d"
@@ -102,9 +140,9 @@ export function ChartAreaInteractive({ poData }: { poData?: any[] }) {
     <Card className="pt-0">
       <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
         <div className="grid flex-1 gap-1">
-          <CardTitle>New PO Overview</CardTitle>
+          <CardTitle>Total KG Overview</CardTitle>
           <CardDescription>
-            Showing New PO counts for the {rangeLabel}
+            Showing total KG for the {rangeLabel}
           </CardDescription>
         </div>
         <div className="sm:ml-auto">
@@ -164,7 +202,13 @@ export function ChartAreaInteractive({ poData }: { poData?: any[] }) {
             <ChartTooltip
               cursor={false}
               content={
-                <ChartTooltipContent labelFormatter={(v: any) => String(v)} />
+                <ChartTooltipContent
+                  labelFormatter={(v: any) => String(v)}
+                  config={chartConfig}
+                  valueFormatter={(v: any) =>
+                    `${Number(v || 0).toLocaleString("id-ID")} kg`
+                  }
+                />
               }
             />
             <Area
@@ -182,7 +226,7 @@ export function ChartAreaInteractive({ poData }: { poData?: any[] }) {
                       className="inline-block w-2 h-2 rounded-full"
                       style={{ background: "var(--color-mobile)" }}
                     />
-                    <span>New PO</span>
+                    <span>Total KG</span>
                   </div>
                 </div>
               }

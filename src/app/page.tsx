@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import PODetailModal from "@/components/po-detail-modal";
-import { useRouter } from "next/navigation";
+import POEditModal from "@/components/po-edit-modal";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 export default function Home() {
@@ -32,6 +32,12 @@ export default function Home() {
   const [regional, setRegional] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
   const [unitData, setUnitData] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    activeCount: 0,
+    inProgressCount: 0,
+    almostExpiredCount: 0,
+    completedCount: 0,
+  });
   const [tableFocus, setTableFocus] = useState<
     "in_progress" | "completed" | null
   >(null);
@@ -40,6 +46,7 @@ export default function Home() {
     let mounted = true;
     const load = async () => {
       try {
+        if (mounted) setLoading(true);
         const me = await fetch("/api/auth/me", { cache: "no-store" }).then(
           (r) => r.json(),
         );
@@ -50,21 +57,32 @@ export default function Home() {
           setRegional(reg);
           setRoleReady(true);
         }
-        const q =
+        const statsUrl =
           r === "rm" && reg
-            ? `/api/po?includeUnknown=true&regional=${encodeURIComponent(reg)}`
-            : `/api/po?includeUnknown=true`;
-        const [res, resUnits] = await Promise.all([
-          fetch(q, { cache: "no-store" }),
+            ? `/api/po/stats?includeUnknown=true&regional=${encodeURIComponent(reg)}`
+            : `/api/po/stats?includeUnknown=true`;
+        const [resStats, resUnits] = await Promise.all([
+          fetch(statsUrl, { cache: "no-store" }),
           fetch("/api/unit-produksi", { cache: "no-store" }),
         ]);
-        const data = await res.json();
+        const s = await resStats.json();
         const u = await resUnits.json();
         if (!mounted) return;
-        setPoData(Array.isArray(data) ? data : data?.data || []);
         setUnitData(Array.isArray(u) ? u : u?.data || []);
+        setStats({
+          activeCount: Number(s?.cAll) || 0,
+          inProgressCount: Number(s?.cProgress) || 0,
+          almostExpiredCount: Number(s?.cAlmost) || 0,
+          completedCount: Number(s?.cCompleted) || 0,
+        });
       } catch {
-        if (mounted) setPoData([]);
+        if (!mounted) return;
+        setStats({
+          activeCount: 0,
+          inProgressCount: 0,
+          almostExpiredCount: 0,
+          completedCount: 0,
+        });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -90,35 +108,8 @@ export default function Home() {
     return Math.ceil(ms / (1000 * 60 * 60 * 24));
   };
 
-  const {
-    activeCount,
-    inProgressCount,
-    almostExpiredCount,
-    completedCount,
-    monthlyCounts,
-  } = useMemo(() => {
-    const active = poData.filter((po) => !!po.statusPo).length;
-    const inProg = poData.filter((po) => !isCompleted(po)).length;
-    const done = poData.filter((po) => isCompleted(po)).length;
-    const almost = poData.filter((po) => {
-      const exp = toDate(po.expiredTgl);
-      const du = daysUntil(exp);
-      return du != null && du >= 0 && du <= 14 && !isCompleted(po);
-    }).length;
-    const months = Array(12).fill(0);
-    for (const po of poData) {
-      const dt = toDate(po.tglPo);
-      if (!dt) continue;
-      months[dt.getMonth()]++;
-    }
-    return {
-      activeCount: active,
-      inProgressCount: inProg,
-      almostExpiredCount: almost,
-      completedCount: done,
-      monthlyCounts: months,
-    };
-  }, [poData]);
+  const { activeCount, inProgressCount, almostExpiredCount, completedCount } =
+    stats;
 
   if (!roleReady) {
     return (
@@ -156,9 +147,7 @@ export default function Home() {
           />
           <StatCard
             title="PO Completed"
-            value={String(
-              Math.max(poData.filter((po) => isCompleted(po)).length, 0),
-            )}
+            value={String(completedCount)}
             subValue={loading ? "Loading..." : `Selesai`}
             subLabel=""
             color=""
@@ -223,6 +212,7 @@ export default function Home() {
         className="mt-8 bg-white text-black rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
       >
         <TableUnderChart
+          refreshTick={refreshTick}
           poData={poData}
           setPoData={setPoData}
           role={role}
@@ -237,6 +227,7 @@ export default function Home() {
 }
 
 function TableUnderChart({
+  refreshTick,
   poData,
   setPoData,
   role,
@@ -245,6 +236,7 @@ function TableUnderChart({
   focusGroup,
   onFocusApplied,
 }: {
+  refreshTick: number;
   poData: any[];
   setPoData: React.Dispatch<React.SetStateAction<any[]>>;
   role: "pusat" | "rm" | null;
@@ -253,7 +245,8 @@ function TableUnderChart({
   focusGroup: "in_progress" | "completed" | null;
   onFocusApplied: () => void;
 }) {
-  const router = useRouter();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editNoPo, setEditNoPo] = useState<string | null>(null);
   const [group, setGroup] = useState<
     "all" | "in_progress" | "almost_expired" | "completed" | "assign"
   >(() => (role === "rm" ? "assign" : "in_progress"));
@@ -272,6 +265,7 @@ function TableUnderChart({
   const [colsOpen, setColsOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [serverTotal, setServerTotal] = useState(0);
   const toggleCol = (key: keyof typeof visibleCols) =>
     setVisibleCols((v) => ({ ...v, [key]: !v[key] }));
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -279,6 +273,15 @@ function TableUnderChart({
   const [sortDesc, setSortDesc] = useState(true);
   const [alphaSort, setAlphaSort] = useState<"none" | "asc" | "desc">("none");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [poLoadError, setPoLoadError] = useState<string | null>(null);
+  const [counts, setCounts] = useState({
+    cAll: 0,
+    cAssign: 0,
+    cProgress: 0,
+    cAlmost: 0,
+    cCompleted: 0,
+  });
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
   const [assignOpenId, setAssignOpenId] = useState<string | null>(null);
@@ -306,6 +309,115 @@ function TableUnderChart({
   }, [focusGroup]);
 
   useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(String(searchQuery || "").trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!role) return;
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set("includeUnknown", "true");
+        if (role === "rm" && regional) params.set("regional", regional);
+        if (dateFrom) params.set("tglFrom", dateFrom);
+        if (dateTo) params.set("tglTo", dateTo);
+        const res = await fetch(`/api/po/stats?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const json = await res.json();
+        setCounts({
+          cAll: Number(json?.cAll) || 0,
+          cAssign: Number(json?.cAssign) || 0,
+          cProgress: Number(json?.cProgress) || 0,
+          cAlmost: Number(json?.cAlmost) || 0,
+          cCompleted: Number(json?.cCompleted) || 0,
+        });
+      } catch {
+        setCounts({
+          cAll: 0,
+          cAssign: 0,
+          cProgress: 0,
+          cAlmost: 0,
+          cCompleted: 0,
+        });
+      }
+    };
+    run();
+    return () => controller.abort();
+  }, [role, regional, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (!role) return;
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set("includeUnknown", "true");
+        params.set("summary", "true");
+        params.set("includeItems", "false");
+        params.set("group", group);
+        params.set("limit", String(rowsPerPage));
+        params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
+        if (role === "rm" && regional) params.set("regional", regional);
+        if (dateFrom) params.set("tglFrom", dateFrom);
+        if (dateTo) params.set("tglTo", dateTo);
+        if (debouncedSearch) params.set("q", debouncedSearch);
+        const sort =
+          alphaSort !== "none"
+            ? alphaSort === "asc"
+              ? "company_asc"
+              : "company_desc"
+            : sortDesc
+              ? "tglPo_desc"
+              : "tglPo_asc";
+        params.set("sort", sort);
+        const res = await fetch(`/api/po?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg =
+            (json as any)?.error || res.statusText || "Gagal mengambil data PO";
+          throw new Error(msg);
+        }
+        const list = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+            ? json
+            : [];
+        setPoData(list);
+        setServerTotal(Number(json?.total) || list.length);
+        setPoLoadError(null);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
+        setPoLoadError(msg);
+      }
+    };
+    run();
+    return () => controller.abort();
+  }, [
+    refreshTick,
+    role,
+    regional,
+    group,
+    dateFrom,
+    dateTo,
+    debouncedSearch,
+    page,
+    rowsPerPage,
+    sortDesc,
+    alphaSort,
+    setPoData,
+  ]);
+
+  useEffect(() => {
     if (
       role === "rm" &&
       group !== "assign" &&
@@ -317,157 +429,9 @@ function TableUnderChart({
     }
   }, [role]);
 
-  const filtered = useMemo(() => {
-    const arr = Array.isArray(poData) ? poData : [];
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
-    const inRange = (d: Date | null) => {
-      if (!d) return false;
-      if (from && d < from) return false;
-      if (to) {
-        const dt = new Date(to);
-        dt.setHours(23, 59, 59, 999);
-        if (d > dt) return false;
-      }
-      return true;
-    };
-    if (group === "all") {
-      return arr.filter((po) => {
-        const dt = toDate(po.tglPo);
-        return !dateFrom && !dateTo ? true : inRange(dt);
-      });
-    }
-    const needAssign = (p: any) =>
-      !p?.unitProduksiId ||
-      p?.unitProduksiId === "UNKNOWN" ||
-      !p?.UnitProduksi?.siteArea;
-    if (group === "assign") {
-      return arr.filter((po) => {
-        const dt = toDate(po.tglPo);
-        if (!dt) return false;
-        return needAssign(po) && (!dateFrom && !dateTo ? true : inRange(dt));
-      });
-    }
-    if (group === "in_progress") {
-      return arr.filter((po) => {
-        if (isCompleted(po)) return false;
-        const dt = toDate(po.tglPo);
-        return !dateFrom && !dateTo ? true : inRange(dt);
-      });
-    }
-    if (group === "completed") {
-      return arr.filter((po) => {
-        if (!isCompleted(po)) return false;
-        const dt = toDate(po.tglPo);
-        return !dateFrom && !dateTo ? true : inRange(dt);
-      });
-    }
-    // almost_expired
-    return arr.filter((po) => {
-      const exp = toDate(po.expiredTgl);
-      const du = daysUntil(exp);
-      const isAlmost = du != null && du >= 0 && du <= 14 && !isCompleted(po);
-      if (!isAlmost) return false;
-      const dt = toDate(po.tglPo);
-      return !dateFrom && !dateTo ? true : inRange(dt);
-    });
-  }, [poData, group, dateFrom, dateTo]);
-
-  const companySortKey = (po: any) => {
-    const name =
-      po?.RitelModern?.namaPt ||
-      po?.company ||
-      po?.companyName ||
-      po?.company_name ||
-      po?.namaPt ||
-      po?.nama_pt ||
-      po?.namaPT ||
-      po?.nama_perusahaan ||
-      po?.namaPerusahaan ||
-      po?.namaRitel ||
-      po?.namaRetail ||
-      po?.vendor ||
-      po?.vendorName ||
-      po?.supplier ||
-      po?.supplierName ||
-      po?.customer ||
-      po?.customerName ||
-      po?.name ||
-      po?.title ||
-      po?.judul ||
-      "-";
-    return String(name || "-")
-      .trim()
-      .toLowerCase();
-  };
-
-  const searched = useMemo(() => {
-    const q = String(searchQuery || "")
-      .trim()
-      .toLowerCase();
-    if (!q) return filtered;
-    return filtered.filter((po: any) => {
-      const fields: string[] = [
-        companySortKey(po),
-        String(po?.noPo || po?.nopo || po?.poNumber || "")
-          .trim()
-          .toLowerCase(),
-        String(po?.RitelModern?.inisial || "")
-          .trim()
-          .toLowerCase(),
-        String(po?.tujuanDetail || "")
-          .trim()
-          .toLowerCase(),
-        String(po?.UnitProduksi?.siteArea || "")
-          .trim()
-          .toLowerCase(),
-        String(po?.regional || po?.UnitProduksi?.namaRegional || "")
-          .trim()
-          .toLowerCase(),
-        String(po?.noInvoice || "")
-          .trim()
-          .toLowerCase(),
-      ];
-      const items = Array.isArray(po?.Items) ? po.Items : [];
-      if (items.length > 0) {
-        fields.push(
-          items
-            .map((it: any) => it?.Product?.name || it?.namaProduk || "")
-            .filter(Boolean)
-            .map((s: any) => String(s).trim().toLowerCase())
-            .join(" "),
-        );
-      }
-      return fields.some((f) => f.includes(q));
-    });
-  }, [filtered, searchQuery]);
-
-  const sorted = useMemo(() => {
-    const arr = [...searched];
-    const poDate = (po: any) => toDate(po?.tglPo);
-    arr.sort((a, b) => {
-      const ca = companySortKey(a);
-      const cb = companySortKey(b);
-      if (alphaSort !== "none" && ca !== cb) {
-        return alphaSort === "asc"
-          ? ca.localeCompare(cb)
-          : cb.localeCompare(ca);
-      }
-      const da = poDate(a);
-      const db = poDate(b);
-      if (!da && !db) return 0;
-      if (!da) return 1;
-      if (!db) return -1;
-      return sortDesc
-        ? db.getTime() - da.getTime()
-        : da.getTime() - db.getTime();
-    });
-    return arr;
-  }, [searched, sortDesc, alphaSort]);
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / rowsPerPage));
+  const totalPages = Math.max(1, Math.ceil(serverTotal / rowsPerPage));
   const start = (page - 1) * rowsPerPage;
-  const pageRows = sorted.slice(start, start + rowsPerPage);
+  const pageRows = Array.isArray(poData) ? poData : [];
 
   const getCompanyName = (po: any) => {
     const candidates = [
@@ -516,54 +480,6 @@ function TableUnderChart({
     return "Done";
   };
 
-  const counts = useMemo(() => {
-    const arr = Array.isArray(poData) ? poData : [];
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
-    const inRange = (d: Date | null) => {
-      if (!d) return false;
-      if (from && d < from) return false;
-      if (to) {
-        const dt = new Date(to);
-        dt.setHours(23, 59, 59, 999);
-        if (d > dt) return false;
-      }
-      return true;
-    };
-    const cAll = arr.filter((po) => {
-      const dt = toDate(po.tglPo);
-      return !dateFrom && !dateTo ? true : inRange(dt);
-    }).length;
-    const cAssign = arr.filter((po) => {
-      const dt = toDate(po.tglPo);
-      if (!dt) return false;
-      const na =
-        !po?.unitProduksiId ||
-        po?.unitProduksiId === "UNKNOWN" ||
-        !po?.UnitProduksi?.siteArea;
-      return na && (!dateFrom && !dateTo ? true : inRange(dt));
-    }).length;
-    const cProgress = arr.filter((po) => {
-      if (isCompleted(po)) return false;
-      const dt = toDate(po.tglPo);
-      return !dateFrom && !dateTo ? true : inRange(dt);
-    }).length;
-    const cAlmost = arr.filter((po) => {
-      const exp = toDate(po.expiredTgl);
-      const du = daysUntil(exp);
-      const isAlmost = du != null && du >= 0 && du <= 14 && !isCompleted(po);
-      if (!isAlmost) return false;
-      const dt = toDate(po.tglPo);
-      return !dateFrom && !dateTo ? true : inRange(dt);
-    }).length;
-    const cCompleted = arr.filter((po) => {
-      if (!isCompleted(po)) return false;
-      const dt = toDate(po.tglPo);
-      return !dateFrom && !dateTo ? true : inRange(dt);
-    }).length;
-    return { cAll, cAssign, cProgress, cAlmost, cCompleted };
-  }, [poData, dateFrom, dateTo]);
-
   const statusChipClass = (t: string) =>
     t === "Done"
       ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
@@ -597,8 +513,32 @@ function TableUnderChart({
     return null;
   };
 
-  const openDetail = (po: any) => {
-    const items: any[] = Array.isArray(po?.Items) ? po.Items : [];
+  const openDetail = async (po: any) => {
+    const nopo = String(po?.noPo || po?.nopo || po?.poNumber || "").trim();
+    let fullPo: any = po;
+    if (nopo) {
+      try {
+        const params = new URLSearchParams();
+        params.set("includeUnknown", "true");
+        params.set("noPo", nopo);
+        params.set("includeItems", "true");
+        params.set("limit", "1");
+        params.set("offset", "0");
+        if (role === "rm" && regional) params.set("regional", regional);
+        const res = await fetch(`/api/po?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        const first = Array.isArray(json?.data)
+          ? json.data[0]
+          : Array.isArray(json)
+            ? json[0]
+            : null;
+        if (first) fullPo = first;
+      } catch {}
+    }
+
+    const items: any[] = Array.isArray(fullPo?.Items) ? fullPo.Items : [];
     const mappedItems = items.map((it: any, idx: number) => ({
       id:
         it?.id ??
@@ -617,39 +557,45 @@ function TableUnderChart({
       },
     }));
     setDetailData({
-      id: po?.id || "",
-      noPo: po?.noPo || po?.nopo || "-",
-      company: getCompanyName(po),
-      createdAt: po?.createdAt || null,
-      updatedAt: po?.updatedAt || null,
-      tglPo: po?.tglPo || null,
-      expiredTgl: po?.expiredTgl || null,
-      linkPo: po?.linkPo || null,
-      noInvoice: po?.noInvoice || null,
+      id: fullPo?.id || "",
+      noPo: fullPo?.noPo || fullPo?.nopo || "-",
+      company: getCompanyName(fullPo),
+      createdAt: fullPo?.createdAt || null,
+      updatedAt: fullPo?.updatedAt || null,
+      tglPo: fullPo?.tglPo || null,
+      expiredTgl: fullPo?.expiredTgl || null,
+      linkPo: fullPo?.linkPo || null,
+      noInvoice: fullPo?.noInvoice || null,
       siteArea:
-        po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
-          ? po.UnitProduksi.siteArea
+        fullPo?.UnitProduksi?.siteArea &&
+        fullPo.UnitProduksi.siteArea !== "UNKNOWN"
+          ? fullPo.UnitProduksi.siteArea
           : "-",
-      tujuanDetail: po?.tujuanDetail || null,
-      regional: po?.regional || po?.UnitProduksi?.namaRegional || null,
+      tujuanDetail: fullPo?.tujuanDetail || null,
+      regional: fullPo?.regional || fullPo?.UnitProduksi?.namaRegional || null,
       Items: mappedItems,
       status: {
-        kirim: !!po?.statusKirim,
-        sdif: !!po?.statusSdif,
-        po: !!po?.statusPo,
-        fp: !!po?.statusFp,
-        kwi: !!po?.statusKwi,
-        inv: !!po?.statusInv,
-        tagih: !!po?.statusTagih,
-        bayar: !!po?.statusBayar,
+        kirim: !!fullPo?.statusKirim,
+        sdif: !!fullPo?.statusSdif,
+        po: !!fullPo?.statusPo,
+        fp: !!fullPo?.statusFp,
+        kwi: !!fullPo?.statusKwi,
+        inv: !!fullPo?.statusInv,
+        tagih: !!fullPo?.statusTagih,
+        bayar: !!fullPo?.statusBayar,
       },
-      remarks: po?.remarks || null,
+      remarks: fullPo?.remarks || null,
     });
     setDetailOpen(true);
   };
 
   return (
     <>
+      {poLoadError && (
+        <div className="mx-5 mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          Gagal load data: {poLoadError}
+        </div>
+      )}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
         <div className="flex items-center gap-2">
           {role === "rm" ? (
@@ -942,13 +888,15 @@ function TableUnderChart({
                   <td className="px-6 py-4 text-right">
                     <span className="text-base font-bold text-slate-700 tabular-nums">
                       {(() => {
-                        const items = Array.isArray(po?.Items) ? po.Items : [];
-                        const total = items.reduce(
-                          (acc: number, it: any) =>
-                            acc + (Number(it?.pcs) || 0),
-                          0,
-                        );
-                        return total.toLocaleString("id-ID");
+                        const total =
+                          typeof po?.pcsTotal === "number"
+                            ? po.pcsTotal
+                            : (Array.isArray(po?.Items) ? po.Items : []).reduce(
+                                (acc: number, it: any) =>
+                                  acc + (Number(it?.pcs) || 0),
+                                0,
+                              );
+                        return Number(total || 0).toLocaleString("id-ID");
                       })()}
                     </span>
                   </td>
@@ -957,13 +905,15 @@ function TableUnderChart({
                   <td className="px-6 py-4 text-right">
                     <span className="text-base font-bold text-slate-700 tabular-nums">
                       {(() => {
-                        const items = Array.isArray(po?.Items) ? po.Items : [];
-                        const total = items.reduce(
-                          (acc: number, it: any) =>
-                            acc + (Number(it?.nominal) || 0),
-                          0,
-                        );
-                        return `Rp ${total.toLocaleString("id-ID")}`;
+                        const total =
+                          typeof po?.totalNominal === "number"
+                            ? po.totalNominal
+                            : (Array.isArray(po?.Items) ? po.Items : []).reduce(
+                                (acc: number, it: any) =>
+                                  acc + (Number(it?.nominal) || 0),
+                                0,
+                              );
+                        return `Rp ${Number(total || 0).toLocaleString("id-ID")}`;
                       })()}
                     </span>
                   </td>
@@ -1087,7 +1037,8 @@ function TableUnderChart({
                               po?.noPo || po?.nopo || po?.poNumber || "",
                             ).trim();
                             if (!no) return;
-                            router.push(`/po?noPo=${encodeURIComponent(no)}`);
+                            setEditNoPo(no);
+                            setEditOpen(true);
                           }}
                         >
                           <Pencil size={14} />
@@ -1135,6 +1086,30 @@ function TableUnderChart({
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         data={detailData}
+      />
+      <POEditModal
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setEditNoPo(null);
+        }}
+        noPo={editNoPo}
+        returnMode="summary"
+        onSaved={(updated) => {
+          const updatedNo = String(updated?.noPo || "").trim();
+          const originalNo = String(updated?.__originalNoPo || "").trim();
+          if (!updatedNo) return;
+          setPoData((prev) =>
+            prev.map((x) => {
+              const xNo = String(
+                x?.noPo || x?.nopo || x?.poNumber || "",
+              ).trim();
+              return xNo === updatedNo || (originalNo && xNo === originalNo)
+                ? { ...x, ...updated, noPo: updatedNo }
+                : x;
+            }),
+          );
+        }}
       />
       <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white text-sm">
         <div className="text-sm text-gray-700 flex items-center gap-2">
