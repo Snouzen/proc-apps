@@ -17,7 +17,8 @@ type Row = {
   regional: string;
   noInvoice: string;
   linkPo: string;
-  itemsCount: number;
+  productList: string[];
+  products: string;
   totalNominal: number;
   totalTagihan: number;
   statusKirim: boolean;
@@ -169,11 +170,11 @@ export default function ReportPage() {
         value: (r) => r.linkPo,
       },
       {
-        id: "itemsCount",
-        label: "Jumlah Produk",
-        kind: "number",
+        id: "products",
+        label: "Nama Produk",
+        kind: "text",
         defaultVisible: true,
-        value: (r) => r.itemsCount,
+        value: (r) => r.products,
       },
       {
         id: "totalNominal",
@@ -261,7 +262,7 @@ export default function ReportPage() {
     try {
       const params = new URLSearchParams();
       params.set("includeUnknown", "true");
-      params.set("summary", "true");
+      params.set("includeItems", "true");
       params.set("limit", String(rowsPerPage));
       params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
       if (query.trim()) params.set("q", query.trim());
@@ -297,6 +298,9 @@ export default function ReportPage() {
     const arr = Array.isArray(raw) ? raw : [];
     return arr.map((po: any) => {
       const items = Array.isArray(po?.Items) ? po.Items : [];
+      const productList = items
+        .map((it: any) => upperClean(it?.Product?.name || ""))
+        .filter((s: string) => s.trim().length > 0);
       const totalTagihan =
         Number(po?.totalTagihan) ||
         items.reduce(
@@ -309,7 +313,6 @@ export default function ReportPage() {
           (acc: number, it: any) => acc + (Number(it?.nominal) || 0),
           0,
         );
-      const itemsCount = Number(po?.itemsCount) || items.length;
       return {
         id: String(po?.id || po?.noPo || crypto.randomUUID()),
         noPo: upperClean(po?.noPo || "-"),
@@ -328,7 +331,8 @@ export default function ReportPage() {
         ),
         noInvoice: upperClean(po?.noInvoice || ""),
         linkPo: String(po?.linkPo || ""),
-        itemsCount,
+        productList,
+        products: productList.join(", "),
         totalNominal,
         totalTagihan,
         statusKirim: !!po?.statusKirim,
@@ -449,6 +453,7 @@ export default function ReportPage() {
         r.company,
         r.inisial,
         r.tujuan,
+        r.products,
         r.siteArea,
         r.regional,
         r.noInvoice,
@@ -480,17 +485,31 @@ export default function ReportPage() {
   const pageRows = filteredRows;
 
   const exportExcel = () => {
-    const cols = visibleColumns;
-    const data = filteredRows.map((r) => {
-      const row: Record<string, any> = {};
-      cols.forEach((c) => {
-        const v = c.value(r);
-        if (c.kind === "number") row[c.label] = Number(v) || 0;
-        else if (c.kind === "bool") row[c.label] = !!v;
-        else if (c.kind === "date") row[c.label] = v ? formatDateId(v) : "-";
-        else row[c.label] = String(v ?? "");
+    const productCol = columns.find((c) => String(c.id) === "products");
+    const cols =
+      visibleColumns.some((c) => String(c.id) === "products") || !productCol
+        ? visibleColumns
+        : [...visibleColumns, productCol];
+    const data = filteredRows.flatMap((r) => {
+      const products =
+        Array.isArray(r.productList) && r.productList.length > 0
+          ? r.productList
+          : [""];
+      return products.map((p) => {
+        const row: Record<string, any> = {};
+        cols.forEach((c) => {
+          if (String(c.id) === "products") {
+            row[c.label] = String(p || "");
+            return;
+          }
+          const v = c.value(r);
+          if (c.kind === "number") row[c.label] = Number(v) || 0;
+          else if (c.kind === "bool") row[c.label] = !!v;
+          else if (c.kind === "date") row[c.label] = v ? formatDateId(v) : "-";
+          else row[c.label] = String(v ?? "");
+        });
+        return row;
       });
-      return row;
     });
     const ws = XLSX.utils.json_to_sheet(data);
     const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");

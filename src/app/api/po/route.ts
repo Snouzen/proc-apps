@@ -541,11 +541,44 @@ export async function GET(request: Request) {
       ];
     }
     const emptyInvoiceValues = ["", "-", "Unknown"];
+    const emptyRegionalValues = ["", "-", "Unknown", "UNKNOWN"];
+    const now = new Date();
+    const startOfToday = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const endOfSoon = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 14,
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
     if (group === "completed") {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         { noInvoice: { not: null } },
         { noInvoice: { notIn: emptyInvoiceValues } },
+      ];
+    } else if (group === "active") {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        { expiredTgl: { not: null } },
+        { expiredTgl: { gte: startOfToday } },
       ];
     } else if (group === "in_progress") {
       where.AND = [
@@ -555,29 +588,6 @@ export async function GET(request: Request) {
         },
       ];
     } else if (group === "almost_expired") {
-      const now = new Date();
-      const startOfToday = new Date(
-        Date.UTC(
-          now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate(),
-          0,
-          0,
-          0,
-          0,
-        ),
-      );
-      const endOfSoon = new Date(
-        Date.UTC(
-          now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate() + 14,
-          23,
-          59,
-          59,
-          999,
-        ),
-      );
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         {
@@ -586,16 +596,32 @@ export async function GET(request: Request) {
         { expiredTgl: { not: null } },
         { expiredTgl: { gte: startOfToday, lte: endOfSoon } },
       ];
+    } else if (group === "expired") {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        { expiredTgl: { not: null } },
+        { expiredTgl: { lt: startOfToday } },
+      ];
     } else if (group === "assign") {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         {
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        { expiredTgl: { not: null } },
+        { expiredTgl: { gte: startOfToday } },
+        {
           OR: [
+            { regional: null },
+            { regional: { in: emptyRegionalValues } },
             { unitProduksiId: "UNKNOWN" },
             {
               UnitProduksi: {
                 is: {
-                  siteArea: { in: ["UNKNOWN", ""] },
+                  namaRegional: { in: emptyRegionalValues },
                 },
               },
             },
@@ -726,8 +752,8 @@ export async function GET(request: Request) {
 
     const take = limit ?? 50;
     const skip = offset ?? 0;
-    const [total, data] = await singleFlight(cacheKey, () =>
-      prisma.$transaction([
+    const [total, data] = await singleFlight(cacheKey, async () => {
+      const [t, d] = await Promise.all([
         prisma.purchaseOrder.count({ where }),
         prisma.purchaseOrder.findMany(
           summary
@@ -778,8 +804,9 @@ export async function GET(request: Request) {
                 skip,
               } as any),
         ),
-      ]),
-    );
+      ]);
+      return [t, d] as const;
+    });
     const payload = {
       total,
       data: summary ? await attachSummary(data as any) : data,

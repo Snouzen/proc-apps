@@ -112,6 +112,7 @@ export async function GET(request: Request) {
     }
 
     const emptyInvoiceValues = ["", "-", "Unknown"];
+    const emptyRegionalValues = ["", "-", "Unknown", "UNKNOWN"];
     const now = new Date();
     const startOfToday = new Date(
       Date.UTC(
@@ -137,28 +138,47 @@ export async function GET(request: Request) {
     );
 
     const whereAll = baseWhere;
-    const whereAssign = {
+    const whereInProgress = {
       ...baseWhere,
       AND: [
         ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
-        {
-          OR: [
-            { unitProduksiId: "UNKNOWN" },
-            {
-              UnitProduksi: {
-                is: { siteArea: { in: ["UNKNOWN", ""] } },
-              },
-            },
-          ],
-        },
+        { noInvoice: { not: null } },
+        { noInvoice: { notIn: emptyInvoiceValues } },
+        { expiredTgl: { not: null } },
+        { expiredTgl: { gte: startOfToday } },
       ],
     };
-    const whereInProgress = {
+    const whereActive = {
       ...baseWhere,
       AND: [
         ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
         {
           OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        { expiredTgl: { not: null } },
+        { expiredTgl: { gte: startOfToday } },
+      ],
+    };
+    const whereAssign = {
+      ...baseWhere,
+      AND: [
+        ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
+        {
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        { expiredTgl: { not: null } },
+        { expiredTgl: { gte: startOfToday } },
+        {
+          OR: [
+            { regional: null },
+            { regional: { in: emptyRegionalValues } },
+            { unitProduksiId: "UNKNOWN" },
+            {
+              UnitProduksi: {
+                is: { namaRegional: { in: emptyRegionalValues } },
+              },
+            },
+          ],
         },
       ],
     };
@@ -181,24 +201,39 @@ export async function GET(request: Request) {
         { expiredTgl: { gte: startOfToday, lte: endOfSoon } },
       ],
     };
+    const whereExpired = {
+      ...baseWhere,
+      AND: [
+        ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
+        {
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        { expiredTgl: { not: null } },
+        { expiredTgl: { lt: startOfToday } },
+      ],
+    };
 
-    const [cAll, cAssign, cProgress, cAlmost, cCompleted] = await singleFlight(
-      cacheKey,
-      () =>
-        prisma.$transaction([
+    const [cAll, cProgress, cActive, cAssign, cAlmost, cExpired, cCompleted] =
+      await singleFlight(cacheKey, async () => {
+        const [a, b, c, d, e, f, g] = await Promise.all([
           prisma.purchaseOrder.count({ where: whereAll }),
-          prisma.purchaseOrder.count({ where: whereAssign }),
           prisma.purchaseOrder.count({ where: whereInProgress }),
+          prisma.purchaseOrder.count({ where: whereActive }),
+          prisma.purchaseOrder.count({ where: whereAssign }),
           prisma.purchaseOrder.count({ where: whereAlmostExpired }),
+          prisma.purchaseOrder.count({ where: whereExpired }),
           prisma.purchaseOrder.count({ where: whereCompleted }),
-        ]),
-    );
+        ]);
+        return [a, b, c, d, e, f, g] as const;
+      });
 
     const payload = {
       cAll,
-      cAssign,
       cProgress,
+      cActive,
+      cAssign,
       cAlmost,
+      cExpired,
       cCompleted,
     };
     cacheSet(cacheKey, payload, 15000);

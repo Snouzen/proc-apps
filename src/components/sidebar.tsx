@@ -74,21 +74,16 @@ export default function Sidebar({
 
   const baseMenu = [
     { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" },
+    { name: "Company", icon: <BookOpen size={20} />, path: "/company" },
+    {
+      name: "Need To Assign",
+      icon: <ClipboardList size={20} />,
+      path: "/need-assign",
+    },
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
   ];
-  const pusatExtras = [
-    { name: "Company", icon: <BookOpen size={20} />, path: "/company" },
-  ];
-  const rmExtras = [
-    { name: "Company", icon: <BookOpen size={20} />, path: "/company" },
-  ];
 
-  let menuItems = baseMenu;
-  if (role === "pusat") {
-    menuItems = [...baseMenu, ...pusatExtras];
-  } else if (role === "rm") {
-    menuItems = [...baseMenu, ...rmExtras];
-  }
+  const menuItems = baseMenu;
 
   const subItems =
     role === "rm" || !role

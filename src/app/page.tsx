@@ -11,6 +11,7 @@ import {
   Eye,
   Check,
   ClockAlert,
+  ChevronDown,
   Hourglass,
   ListChecks,
   Menu,
@@ -33,13 +34,16 @@ export default function Home() {
   const [roleReady, setRoleReady] = useState(false);
   const [unitData, setUnitData] = useState<any[]>([]);
   const [stats, setStats] = useState({
+    totalCount: 0,
     activeCount: 0,
     inProgressCount: 0,
+    needAssignCount: 0,
     almostExpiredCount: 0,
+    expiredCount: 0,
     completedCount: 0,
   });
   const [tableFocus, setTableFocus] = useState<
-    "in_progress" | "completed" | null
+    "active" | "assign" | "almost_expired" | "expired" | "completed" | null
   >(null);
 
   useEffect(() => {
@@ -70,17 +74,23 @@ export default function Home() {
         if (!mounted) return;
         setUnitData(Array.isArray(u) ? u : u?.data || []);
         setStats({
-          activeCount: Number(s?.cAll) || 0,
+          totalCount: Number(s?.cAll) || 0,
+          activeCount: Number(s?.cActive) || 0,
           inProgressCount: Number(s?.cProgress) || 0,
+          needAssignCount: Number(s?.cAssign) || 0,
           almostExpiredCount: Number(s?.cAlmost) || 0,
+          expiredCount: Number(s?.cExpired) || 0,
           completedCount: Number(s?.cCompleted) || 0,
         });
       } catch {
         if (!mounted) return;
         setStats({
+          totalCount: 0,
           activeCount: 0,
           inProgressCount: 0,
+          needAssignCount: 0,
           almostExpiredCount: 0,
+          expiredCount: 0,
           completedCount: 0,
         });
       } finally {
@@ -108,8 +118,15 @@ export default function Home() {
     return Math.ceil(ms / (1000 * 60 * 60 * 24));
   };
 
-  const { activeCount, inProgressCount, almostExpiredCount, completedCount } =
-    stats;
+  const {
+    totalCount,
+    activeCount,
+    inProgressCount,
+    needAssignCount,
+    almostExpiredCount,
+    expiredCount,
+    completedCount,
+  } = stats;
 
   if (!roleReady) {
     return (
@@ -121,7 +138,9 @@ export default function Home() {
     );
   }
 
-  const focusTable = (group: "in_progress" | "completed") => {
+  const focusTable = (
+    group: "active" | "assign" | "almost_expired" | "expired" | "completed",
+  ) => {
     setTableFocus(group);
     setTimeout(() => {
       document
@@ -133,73 +152,78 @@ export default function Home() {
   return (
     <main>
       {/* Stats Grid */}
-      {role === "rm" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <StatCard
-            title="PO In Progress"
-            value={String(inProgressCount)}
-            subValue={loading ? "Loading..." : `${inProgressCount} open`}
-            subLabel=""
-            color=""
-            variant="blue"
-            icon={<ListChecks size={20} />}
-            onClick={() => focusTable("in_progress")}
-          />
-          <StatCard
-            title="PO Completed"
-            value={String(completedCount)}
-            subValue={loading ? "Loading..." : `Selesai`}
-            subLabel=""
-            color=""
-            variant="emerald"
-            icon={<FileText size={20} />}
-            onClick={() => focusTable("completed")}
-          />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="PO Active"
-            value={String(activeCount)}
-            subValue={loading ? "Loading..." : `${activeCount} active`}
-            subLabel=""
-            color=""
-            variant="amber"
-            icon={<Briefcase size={20} />}
-          />
-          <StatCard
-            title="PO In Progress"
-            value={String(inProgressCount)}
-            subValue={loading ? "Loading..." : `${inProgressCount} open`}
-            subLabel=""
-            color=""
-            variant="blue"
-            icon={<ListChecks size={20} />}
-            onClick={() => focusTable("in_progress")}
-          />
-          <StatCard
-            title="PO Almost Expired"
-            value={String(almostExpiredCount)}
-            subValue={
-              loading ? "Loading..." : `${almostExpiredCount} within 14 days`
-            }
-            subLabel=""
-            color=""
-            variant="rose"
-            icon={<ClockAlert size={20} />}
-          />
-          <StatCard
-            title="PO Completed"
-            value={String(completedCount)}
-            subValue={loading ? "Loading..." : `Selesai`}
-            subLabel=""
-            color=""
-            variant="emerald"
-            icon={<Check size={20} />}
-            onClick={() => focusTable("completed")}
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-6">
+        <StatCard
+          title="PO Total"
+          value={String(totalCount)}
+          subValue={loading ? "Loading..." : `${totalCount} total`}
+          subLabel=""
+          color=""
+          variant="amber"
+          icon={<Briefcase size={20} />}
+        />
+        <StatCard
+          title="PO Active"
+          value={String(activeCount)}
+          subValue={loading ? "Loading..." : `${activeCount} active`}
+          subLabel=""
+          color=""
+          variant="blue"
+          icon={<Eye size={20} />}
+          onClick={() => focusTable("active")}
+        />
+        <StatCard
+          title="PO In Progress"
+          value={String(inProgressCount)}
+          subValue={loading ? "Loading..." : `${inProgressCount} open`}
+          subLabel=""
+          color=""
+          variant="blue"
+          icon={<ListChecks size={20} />}
+        />
+        <StatCard
+          title="PO Need To Assign"
+          value={String(needAssignCount)}
+          subValue={loading ? "Loading..." : `${needAssignCount} need assign`}
+          subLabel=""
+          color=""
+          variant="amber"
+          icon={<UserPlus size={20} />}
+          onClick={() => focusTable("assign")}
+        />
+        <StatCard
+          title="PO Almost Expired"
+          value={String(almostExpiredCount)}
+          subValue={
+            loading ? "Loading..." : `${almostExpiredCount} within 14 days`
+          }
+          subLabel=""
+          color=""
+          variant="rose"
+          icon={<ClockAlert size={20} />}
+          onClick={() => focusTable("almost_expired")}
+        />
+        <StatCard
+          title="PO Expired"
+          value={String(expiredCount)}
+          subValue={loading ? "Loading..." : `${expiredCount} expired`}
+          subLabel=""
+          color=""
+          variant="rose"
+          icon={<CalendarClock size={20} />}
+          onClick={() => focusTable("expired")}
+        />
+        <StatCard
+          title="PO Completed"
+          value={String(completedCount)}
+          subValue={loading ? "Loading..." : `Selesai`}
+          subLabel=""
+          color=""
+          variant="emerald"
+          icon={<Check size={20} />}
+          onClick={() => focusTable("completed")}
+        />
+      </div>
 
       {role === "pusat" && (
         <div className="mt-8">
@@ -242,14 +266,20 @@ function TableUnderChart({
   role: "pusat" | "rm" | null;
   regional: string | null;
   units: any[];
-  focusGroup: "in_progress" | "completed" | null;
+  focusGroup:
+    | "active"
+    | "assign"
+    | "almost_expired"
+    | "expired"
+    | "completed"
+    | null;
   onFocusApplied: () => void;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [editNoPo, setEditNoPo] = useState<string | null>(null);
   const [group, setGroup] = useState<
-    "all" | "in_progress" | "almost_expired" | "completed" | "assign"
-  >(() => (role === "rm" ? "assign" : "in_progress"));
+    "active" | "assign" | "almost_expired" | "expired" | "completed"
+  >(() => (role === "rm" ? "assign" : "active"));
   const [visibleCols, setVisibleCols] = useState({
     company: true,
     nopo: true,
@@ -277,9 +307,11 @@ function TableUnderChart({
   const [poLoadError, setPoLoadError] = useState<string | null>(null);
   const [counts, setCounts] = useState({
     cAll: 0,
+    cActive: 0,
     cAssign: 0,
     cProgress: 0,
     cAlmost: 0,
+    cExpired: 0,
     cCompleted: 0,
   });
   const [detailOpen, setDetailOpen] = useState(false);
@@ -333,17 +365,21 @@ function TableUnderChart({
         const json = await res.json();
         setCounts({
           cAll: Number(json?.cAll) || 0,
+          cActive: Number(json?.cActive) || 0,
           cAssign: Number(json?.cAssign) || 0,
           cProgress: Number(json?.cProgress) || 0,
           cAlmost: Number(json?.cAlmost) || 0,
+          cExpired: Number(json?.cExpired) || 0,
           cCompleted: Number(json?.cCompleted) || 0,
         });
       } catch {
         setCounts({
           cAll: 0,
+          cActive: 0,
           cAssign: 0,
           cProgress: 0,
           cAlmost: 0,
+          cExpired: 0,
           cCompleted: 0,
         });
       }
@@ -421,9 +457,9 @@ function TableUnderChart({
     if (
       role === "rm" &&
       group !== "assign" &&
-      group !== "in_progress" &&
+      group !== "active" &&
       group !== "completed" &&
-      group !== "all"
+      group !== "expired"
     ) {
       setGroup("assign");
     }
@@ -598,95 +634,26 @@ function TableUnderChart({
       )}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
         <div className="flex items-center gap-2">
-          {role === "rm" ? (
-            <>
-              <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "all" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-                title={`All (${counts.cAll})`}
-                onClick={() => {
-                  setPage(1);
-                  setSortDesc(true);
-                  setGroup("all");
-                }}
-              >
-                All
-              </button>
-              <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "assign" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-                title={`Need Assign (${counts.cAssign})`}
-                onClick={() => {
-                  setPage(1);
-                  setGroup("assign");
-                }}
-              >
-                Need Assign
-              </button>
-              <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "in_progress" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-                title={`In Progress (${counts.cProgress})`}
-                onClick={() => {
-                  setPage(1);
-                  setGroup("in_progress");
-                }}
-              >
-                In Progress
-              </button>
-              <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "completed" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-                title={`Completed (${counts.cCompleted})`}
-                onClick={() => {
-                  setPage(1);
-                  setGroup("completed");
-                }}
-              >
-                Completed
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "all" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-                title={`All (${counts.cAll})`}
-                onClick={() => {
-                  setPage(1);
-                  setSortDesc(true);
-                  setGroup("all");
-                }}
-              >
-                All
-              </button>
-              <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "in_progress" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-                title={`In Progress (${counts.cProgress})`}
-                onClick={() => {
-                  setPage(1);
-                  setGroup("in_progress");
-                }}
-              >
-                In Progress
-              </button>
-              <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "almost_expired" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-                title={`Almost Expired (${counts.cAlmost})`}
-                onClick={() => {
-                  setPage(1);
-                  setGroup("almost_expired");
-                }}
-              >
-                Almost Expired
-              </button>
-              <button
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${group === "completed" ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-                title={`Completed (${counts.cCompleted})`}
-                onClick={() => {
-                  setPage(1);
-                  setGroup("completed");
-                }}
-              >
-                Completed
-              </button>
-            </>
-          )}
+          <div className="relative">
+            <select
+              value={group}
+              onChange={(e) => {
+                setPage(1);
+                setGroup(e.target.value as any);
+              }}
+              className="h-10 pl-3 pr-10 rounded-xl text-sm font-semibold border border-gray-300 bg-white text-black hover:bg-gray-50 appearance-none"
+            >
+              <option value="active">Active</option>
+              <option value="assign">Need To Assign</option>
+              <option value="almost_expired">Almost Expired</option>
+              <option value="expired">Expired</option>
+              <option value="completed">Completed</option>
+            </select>
+            <ChevronDown
+              size={16}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+            />
+          </div>
           <button
             className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${sortDesc ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
             onClick={() => {
@@ -810,6 +777,9 @@ function TableUnderChart({
         <table className="w-full text-left border-collapse table-auto text-sm">
           <thead>
             <tr className="text-gray-700 text-sm uppercase tracking-wider border-b border-gray-100">
+              <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-[72px]">
+                No
+              </th>
               {visibleCols.company && (
                 <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
                   Company
@@ -870,23 +840,26 @@ function TableUnderChart({
                 onClick={() => openDetail(po)}
                 title="Lihat detail PO"
               >
+                <td className="px-6 py-4 align-top text-slate-600 font-semibold tabular-nums">
+                  {start + idx + 1}
+                </td>
                 {visibleCols.company && (
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 align-top">
                     <span className="text-base font-semibold text-slate-800 tracking-tight">
                       {getCompanyName(po)}
                     </span>
                   </td>
                 )}
                 {visibleCols.nopo && (
-                  <td className="px-6 py-4">
-                    <span className="text-base font-mono font-bold text-slate-800">
+                  <td className="px-6 py-4 align-top">
+                    <span className="text-base font-mono font-bold text-slate-800 whitespace-nowrap">
                       {po.noPo || po.nopo || po.poNumber || "-"}
                     </span>
                   </td>
                 )}
                 {visibleCols.pcsPo && (
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-base font-bold text-slate-700 tabular-nums">
+                  <td className="px-6 py-4 text-right align-top">
+                    <span className="text-base font-bold text-slate-700 tabular-nums whitespace-nowrap">
                       {(() => {
                         const total =
                           typeof po?.pcsTotal === "number"
@@ -902,8 +875,8 @@ function TableUnderChart({
                   </td>
                 )}
                 {visibleCols.nominal && (
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-base font-bold text-slate-700 tabular-nums">
+                  <td className="px-6 py-4 text-right align-top">
+                    <span className="text-base font-bold text-slate-700 tabular-nums whitespace-nowrap">
                       {(() => {
                         const total =
                           typeof po?.totalNominal === "number"
@@ -919,11 +892,11 @@ function TableUnderChart({
                   </td>
                 )}
                 {visibleCols.submitDate && (
-                  <td className="px-6 py-4">
-                    <span className="block text-xs text-gray-500 uppercase font-semibold">
+                  <td className="px-6 py-4 align-top">
+                    <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
                       Submitted
                     </span>
-                    <span className="block text-sm font-bold text-slate-700">
+                    <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap">
                       {(() => {
                         const dt =
                           toDate(po?.createdAt) ||
@@ -935,35 +908,35 @@ function TableUnderChart({
                   </td>
                 )}
                 {visibleCols.tglPo && (
-                  <td className="px-6 py-4">
-                    <span className="block text-xs text-gray-500 uppercase font-semibold">
+                  <td className="px-6 py-4 align-top">
+                    <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
                       Tgl PO
                     </span>
-                    <span className="block text-sm font-bold text-slate-700">
+                    <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap">
                       {toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}
                     </span>
                   </td>
                 )}
                 {visibleCols.dueDate && (
-                  <td className="px-6 py-4">
-                    <span className="block text-xs text-gray-500 uppercase font-semibold">
+                  <td className="px-6 py-4 align-top">
+                    <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
                       Tgl Expired
                     </span>
-                    <span className="block text-sm font-bold text-red-500">
+                    <span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap">
                       {toDate(po.expiredTgl)?.toLocaleDateString("id-ID") ||
                         "-"}
                     </span>
                   </td>
                 )}
                 {visibleCols.regional && (
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 align-top">
                     <span className="text-sm font-semibold text-slate-700">
                       {po?.regional || po?.UnitProduksi?.namaRegional || "-"}
                     </span>
                   </td>
                 )}
                 {visibleCols.status && (
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 align-top">
                     <div className="flex items-center gap-2">
                       <span
                         className={`inline-flex items-center gap-2 text-sm font-semibold px-2.5 py-1 rounded-full ${statusChipClass(
@@ -987,7 +960,7 @@ function TableUnderChart({
                   </td>
                 )}
                 {visibleCols.actions && (
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-4 text-center align-top">
                     {role === "rm" ? (
                       group === "assign" ? (
                         <AssignDropdown

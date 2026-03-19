@@ -49,7 +49,7 @@ export default function CompanyDetail() {
       setLoading((v) => v || poData.length === 0);
       try {
         const res = await fetch(
-          `/api/po?company=${encodeURIComponent(company)}`,
+          `/api/po?includeItems=false&company=${encodeURIComponent(company)}`,
           {
             cache: "no-store",
           },

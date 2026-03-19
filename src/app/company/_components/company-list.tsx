@@ -73,8 +73,9 @@ export default function CompanyList({
     try {
       const me = await getMe();
       let url = "/api/po";
+      url += `?includeItems=false`;
       if (me?.role === "rm" && me?.regional) {
-        url += `?regional=${encodeURIComponent(me.regional)}`;
+        url += `&regional=${encodeURIComponent(me.regional)}`;
       }
       const res = await fetch(url, { cache: "no-store" });
       const json = await res.json().catch(() => null);
@@ -166,7 +167,11 @@ export default function CompanyList({
         return du != null && du >= 0 && du <= 3;
       });
     }
-    return list.filter((po) => isInProgress(po));
+    return list.filter((po) => {
+      if (!isInProgress(po)) return false;
+      const du = daysUntil(toDate(po?.expiredTgl));
+      return du != null && du >= 0;
+    });
   };
 
   const filteredGroups = useMemo(() => {
