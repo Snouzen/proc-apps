@@ -43,74 +43,6 @@ export async function GET(request: Request) {
     const tglFrom = parseDate(searchParams.get("tglFrom"));
     const tglTo = parseDate(searchParams.get("tglTo"));
 
-    const baseWhere: any = {};
-    if (tglFrom || tglTo) {
-      baseWhere.tglPo = {
-        ...(tglFrom ? { gte: tglFrom } : {}),
-        ...(tglTo ? { lte: tglTo } : {}),
-      };
-    }
-    if (regionalParam && regionalParam.trim()) {
-      const rp = regionalParam.trim().toLowerCase();
-      const syn = (() => {
-        if (
-          rp.includes("bandung") ||
-          rp.includes("reg 1") ||
-          rp.includes("regional 1") ||
-          rp.includes(" i")
-        ) {
-          return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
-        }
-        if (
-          rp.includes("surabaya") ||
-          rp.includes("reg 2") ||
-          rp.includes("regional 2") ||
-          rp.includes(" ii")
-        ) {
-          return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
-        }
-        if (
-          rp.includes("makassar") ||
-          rp.includes("reg 3") ||
-          rp.includes("regional 3") ||
-          rp.includes(" iii")
-        ) {
-          return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
-        }
-        return [regionalParam.trim()];
-      })();
-      baseWhere.OR = [
-        ...syn.map((s) => ({
-          regional: { contains: s, mode: "insensitive" as const },
-        })),
-        {
-          UnitProduksi: {
-            is: {
-              OR: syn.map((s) => ({
-                namaRegional: { contains: s, mode: "insensitive" as const },
-              })),
-            },
-          },
-        },
-      ];
-    }
-    if (!includeUnknown) {
-      baseWhere.NOT = [
-        {
-          OR: [
-            { unitProduksiId: "UNKNOWN" },
-            { tujuanDetail: null },
-            { tujuanDetail: { in: ["", "-", "Unknown"] } },
-            {
-              RitelModern: {
-                is: { namaPt: { in: ["", "-", "Unknown"] } },
-              },
-            },
-          ],
-        },
-      ];
-    }
-
     const emptyInvoiceValues = ["", "-", "Unknown"];
     const emptyRegionalValues = ["", "-", "Unknown", "UNKNOWN"];
     const now = new Date();
@@ -137,111 +69,132 @@ export async function GET(request: Request) {
       ),
     );
 
-    const whereAll = baseWhere;
-    const whereInProgress = {
-      ...baseWhere,
-      AND: [
-        ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
-        { noInvoice: { not: null } },
-        { noInvoice: { notIn: emptyInvoiceValues } },
-        { expiredTgl: { not: null } },
-        { expiredTgl: { gte: startOfToday } },
-      ],
-    };
-    const whereActive = {
-      ...baseWhere,
-      AND: [
-        ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
-        {
-          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
-        },
-        { expiredTgl: { not: null } },
-        { expiredTgl: { gte: startOfToday } },
-      ],
-    };
-    const whereAssign = {
-      ...baseWhere,
-      AND: [
-        ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
-        {
-          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
-        },
-        { expiredTgl: { not: null } },
-        { expiredTgl: { gte: startOfToday } },
-        {
-          OR: [
-            { regional: null },
-            { regional: { in: emptyRegionalValues } },
-            { unitProduksiId: "UNKNOWN" },
-            {
-              UnitProduksi: {
-                is: { namaRegional: { in: emptyRegionalValues } },
-              },
-            },
-          ],
-        },
-      ],
-    };
-    const whereCompleted = {
-      ...baseWhere,
-      AND: [
-        ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
-        { noInvoice: { not: null } },
-        { noInvoice: { notIn: emptyInvoiceValues } },
-      ],
-    };
-    const whereAlmostExpired = {
-      ...baseWhere,
-      AND: [
-        ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
-        {
-          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
-        },
-        { expiredTgl: { not: null } },
-        { expiredTgl: { gte: startOfToday, lte: endOfSoon } },
-      ],
-    };
-    const whereExpired = {
-      ...baseWhere,
-      AND: [
-        ...(Array.isArray(baseWhere.AND) ? baseWhere.AND : []),
-        {
-          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
-        },
-        { expiredTgl: { not: null } },
-        { expiredTgl: { lt: startOfToday } },
-      ],
-    };
+    const syn = (() => {
+      const rp = String(regionalParam || "")
+        .trim()
+        .toLowerCase();
+      if (!rp) return [];
+      if (
+        rp.includes("bandung") ||
+        rp.includes("reg 1") ||
+        rp.includes("regional 1") ||
+        rp.includes(" i")
+      ) {
+        return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
+      }
+      if (
+        rp.includes("surabaya") ||
+        rp.includes("reg 2") ||
+        rp.includes("regional 2") ||
+        rp.includes(" ii")
+      ) {
+        return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
+      }
+      if (
+        rp.includes("makassar") ||
+        rp.includes("reg 3") ||
+        rp.includes("regional 3") ||
+        rp.includes(" iii")
+      ) {
+        return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
+      }
+      return [String(regionalParam || "").trim()];
+    })();
+    const regionalPatterns = syn.map((s) => `%${s}%`);
+    const hasRegional = regionalPatterns.length > 0;
+    const emptyText = ["", "-", "Unknown"];
 
-    const [cAll, cProgress, cActive, cAssign, cAlmost, cExpired, cCompleted] =
-      await singleFlight(cacheKey, async () => {
-        const [a, b, c, d, e, f, g] = await Promise.all([
-          prisma.purchaseOrder.count({ where: whereAll }),
-          prisma.purchaseOrder.count({ where: whereInProgress }),
-          prisma.purchaseOrder.count({ where: whereActive }),
-          prisma.purchaseOrder.count({ where: whereAssign }),
-          prisma.purchaseOrder.count({ where: whereAlmostExpired }),
-          prisma.purchaseOrder.count({ where: whereExpired }),
-          prisma.purchaseOrder.count({ where: whereCompleted }),
-        ]);
-        return [a, b, c, d, e, f, g] as const;
-      });
-
-    const payload = {
-      cAll,
-      cProgress,
-      cActive,
-      cAssign,
-      cAlmost,
-      cExpired,
-      cCompleted,
-    };
+    const payload = await singleFlight(cacheKey, async () => {
+      const rows = await prisma.$queryRaw<
+        Array<{
+          cAll: number;
+          cProgress: number;
+          cActive: number;
+          cAssign: number;
+          cAlmost: number;
+          cExpired: number;
+          cCompleted: number;
+        }>
+      >`
+        SELECT
+          COUNT(*)::int AS "cAll",
+          COUNT(*) FILTER (
+            WHERE
+              NOT (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
+              AND po."expiredTgl" IS NOT NULL
+              AND po."expiredTgl" >= ${startOfToday}
+          )::int AS "cProgress",
+          COUNT(*) FILTER (
+            WHERE
+              (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
+              AND po."expiredTgl" IS NOT NULL
+              AND po."expiredTgl" >= ${startOfToday}
+          )::int AS "cActive",
+          COUNT(*) FILTER (
+            WHERE
+              (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
+              AND po."expiredTgl" IS NOT NULL
+              AND po."expiredTgl" >= ${startOfToday}
+              AND (
+                COALESCE(trim(COALESCE(po."regional", '')), '') = ANY(${emptyRegionalValues})
+                OR po."unitProduksiId" = 'UNKNOWN'
+                OR COALESCE(trim(COALESCE(up."namaRegional", '')), '') = ANY(${emptyRegionalValues})
+              )
+          )::int AS "cAssign",
+          COUNT(*) FILTER (
+            WHERE
+              (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
+              AND po."expiredTgl" IS NOT NULL
+              AND po."expiredTgl" >= ${startOfToday}
+              AND po."expiredTgl" <= ${endOfSoon}
+          )::int AS "cAlmost",
+          COUNT(*) FILTER (
+            WHERE
+              (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
+              AND po."expiredTgl" IS NOT NULL
+              AND po."expiredTgl" < ${startOfToday}
+          )::int AS "cExpired",
+          COUNT(*) FILTER (
+            WHERE
+              NOT (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
+          )::int AS "cCompleted"
+        FROM "PurchaseOrder" po
+        LEFT JOIN "UnitProduksi" up ON up."idRegional" = po."unitProduksiId"
+        LEFT JOIN "ritel_modern" rm ON rm."id" = po."ritelId"
+        WHERE
+          (${tglFrom}::timestamptz IS NULL OR po."tglPo" >= ${tglFrom}::timestamptz)
+          AND (${tglTo}::timestamptz IS NULL OR po."tglPo" <= ${tglTo}::timestamptz)
+          AND (
+            ${includeUnknown} = true OR NOT (
+              po."unitProduksiId" = 'UNKNOWN'
+              OR COALESCE(trim(po."tujuanDetail"), '') = ANY(${emptyText})
+              OR COALESCE(trim(rm."namaPt"), '') = ANY(${emptyText})
+            )
+          )
+          AND (
+            ${hasRegional} = false OR (
+              COALESCE(po."regional", '') ILIKE ANY(${regionalPatterns})
+              OR COALESCE(up."namaRegional", '') ILIKE ANY(${regionalPatterns})
+            )
+          )
+      `;
+      return (
+        rows[0] || {
+          cAll: 0,
+          cProgress: 0,
+          cActive: 0,
+          cAssign: 0,
+          cAlmost: 0,
+          cExpired: 0,
+          cCompleted: 0,
+        }
+      );
+    });
     cacheSet(cacheKey, payload, 15000);
     return NextResponse.json(payload);
   } catch (error) {
     if (cached) return NextResponse.json(cached);
-    const message =
-      error instanceof Error ? error.message : String(error ?? "Unknown error");
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("GET /api/po/stats error:", error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

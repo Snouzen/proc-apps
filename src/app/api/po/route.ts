@@ -13,6 +13,8 @@ import {
   upperClean,
   upperCleanOrNull,
 } from "@/lib/text";
+import { POBodySchema } from "@/lib/schemas/po";
+import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
 
 function parseDate(v?: string | null) {
   if (!v) return null;
@@ -46,18 +48,27 @@ function parseDate(v?: string | null) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const raw = await request.json();
+    const parsed = POBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Payload tidak valid" },
+        { status: 400 },
+      );
+    }
+    const body = parsed.data;
     const {
       company,
       inisial,
       siteArea,
       tujuan,
       noPo,
+      originalNoPo,
       tglPo,
       expiredTgl,
       linkPo,
       noInvoice,
-      items, // Expecting array of { namaProduk, pcs, pcsKirim, hargaPcs }
+      items,
       remarks,
       status,
       regional,
@@ -85,9 +96,7 @@ export async function POST(request: Request) {
     const inisialTrim = String(inisial).trim();
     const tujuanTrim = String(tujuan).trim();
     const noPoTrim = String(noPo).trim();
-    const originalNoPoTrim = String(
-      (body as any)?.originalNoPo ?? noPoTrim,
-    ).trim();
+    const originalNoPoTrim = String(originalNoPo ?? noPoTrim).trim();
     const siteAreaTrim = String(siteArea || "").trim();
 
     const companyUpper = upperClean(companyTrim);
@@ -95,8 +104,8 @@ export async function POST(request: Request) {
     const tujuanUpper = upperClean(tujuanTrim);
     const siteAreaUpper = upperCleanOrNull(siteAreaTrim);
 
-    const tglPoParsed = parseDate(tglPo);
-    const expiredParsed = parseDate(expiredTgl);
+    const tglPoParsed = parseYmdOrIsoToUtcNoon(tglPo);
+    const expiredParsed = parseYmdOrIsoToUtcNoon(expiredTgl);
     if (!tglPoParsed) {
       return NextResponse.json({ error: "tglPo tidak valid" }, { status: 400 });
     }
@@ -248,13 +257,15 @@ export async function POST(request: Request) {
             where: { id: existing.id },
             data: { ...poData, noPo: noPoTrim },
           })
-        : await tx.purchaseOrder.create({
-            data: {
+        : await tx.purchaseOrder.upsert({
+            where: { noPo: noPoTrim },
+            create: {
               id: randomUUID(),
               noPo: noPoTrim,
               ...poData,
               createdAt: new Date(),
             },
+            update: { ...poData },
           });
 
       // Handle Items: Delete existing and recreate
@@ -262,68 +273,47 @@ export async function POST(request: Request) {
         where: { purchaseOrderId: po.id },
       });
 
-      let supportsDiscount = true;
-      for (const item of items) {
-        const { namaProduk, pcs, pcsKirim, hargaPcs } = item;
-
-        const namaProdukUpper = canonicalProductName(namaProduk);
-        const productKey = dedupeKey(namaProdukUpper);
-        let product: any = null;
-        const token =
-          namaProdukUpper.split(/\s+/).filter(Boolean)[0] || namaProdukUpper;
-        const candidates = await tx.product.findMany({
-          where: { name: { contains: token, mode: "insensitive" } },
-          select: { id: true, name: true, createdAt: true, satuanKg: true },
-          orderBy: { createdAt: "asc" },
-          take: 50,
+      const names = Array.from(
+        new Set(items.map((it: any) => canonicalProductName(it.namaProduk))),
+      );
+      const existingProducts = await tx.product.findMany({
+        where: { name: { in: names } },
+        select: { id: true, name: true, satuanKg: true },
+      });
+      type ProdLite = { id: string; name: string; satuanKg?: number };
+      const existingMap: Map<string, ProdLite> = new Map(
+        existingProducts.map((p: any) => [p.name, p as ProdLite]),
+      );
+      const missing = names.filter((n) => !existingMap.has(n));
+      if (missing.length > 0) {
+        await tx.product.createMany({
+          data: missing.map((n) => ({
+            id: randomUUID(),
+            name: n,
+            updatedAt: new Date(),
+          })),
+          skipDuplicates: true,
         });
-        const match =
-          candidates.find(
-            (p: any) => dedupeKey(canonicalProductName(p?.name)) === productKey,
-          ) || null;
-        if (match?.id) {
-          product = await tx.product.update({
-            where: { id: match.id },
-            data: { name: namaProdukUpper, updatedAt: new Date() },
-          });
-        }
-        if (!product) {
-          product = await tx.product.findFirst({
-            where: { name: { equals: namaProdukUpper, mode: "insensitive" } },
-          });
-        }
-        if (product) {
-          try {
-            product = await tx.product.update({
-              where: { id: product.id },
-              data: { name: namaProdukUpper, updatedAt: new Date() },
-            });
-          } catch {
-            product = await tx.product.findFirst({
-              where: { name: namaProdukUpper },
-            });
-          }
-        }
-        if (!product) {
-          product = await tx.product.create({
-            data: {
-              id: randomUUID(),
-              name: namaProdukUpper,
-              updatedAt: new Date(),
-            },
-          });
-        }
+        const created = await tx.product.findMany({
+          where: { name: { in: missing } },
+          select: { id: true, name: true, satuanKg: true },
+        });
+        for (const p of created) existingMap.set(p.name, p as ProdLite);
+      }
 
-        const satuan = Number((product as any).satuanKg ?? 1) || 1;
-        const pcsNum = Number(pcs) || 0;
-        const pcsKirimNum = Number(pcsKirim) || 0;
-        const hargaPcsNum = Number(hargaPcs) || 0;
-        const discountNum = Math.max(0, Number((item as any)?.discount) || 0);
+      const rows = items.map((item: any) => {
+        const nm = canonicalProductName(item.namaProduk);
+        const product = existingMap.get(nm)!;
+        const satuan =
+          Number((product?.satuanKg as number | undefined) ?? 1) || 1;
+        const pcsNum = Number(item.pcs) || 0;
+        const pcsKirimNum = Number(item.pcsKirim || 0) || 0;
+        const hargaPcsNum = Number(item.hargaPcs) || 0;
+        const discountNum = Math.max(0, Number(item.discount || 0) || 0);
         const hargaKg = satuan > 0 ? hargaPcsNum / satuan : 0;
         const nominal = Math.max(0, hargaPcsNum * pcsNum - discountNum);
         const rpTagih = Math.max(0, hargaPcsNum * pcsKirimNum - discountNum);
-
-        const baseData: any = {
+        return {
           id: randomUUID(),
           purchaseOrderId: po.id,
           productId: product.id,
@@ -333,27 +323,15 @@ export async function POST(request: Request) {
           hargaPcs: hargaPcsNum,
           nominal,
           rpTagih,
+          discount: discountNum,
         };
+      });
 
-        try {
-          await tx.purchaseOrderItem.create({
-            data: supportsDiscount
-              ? { ...baseData, discount: discountNum }
-              : baseData,
-          });
-        } catch (e: any) {
-          const msg = String(e?.message || "");
-          if (
-            supportsDiscount &&
-            msg.includes("Unknown argument") &&
-            msg.includes("discount")
-          ) {
-            supportsDiscount = false;
-            await tx.purchaseOrderItem.create({ data: baseData });
-          } else {
-            throw e;
-          }
-        }
+      try {
+        await tx.purchaseOrderItem.createMany({ data: rows });
+      } catch {
+        const rowsNoDisc = rows.map(({ discount, ...rest }) => rest);
+        await tx.purchaseOrderItem.createMany({ data: rowsNoDisc as any });
       }
 
       // Return minimal payload to avoid Prisma Client column mismatches
@@ -363,15 +341,10 @@ export async function POST(request: Request) {
     cacheClearPrefix("po:");
     return NextResponse.json(updatedPO, { status: 201 });
   } catch (error) {
-    const e: any = error;
-    const payload = {
-      error: e?.message ?? String(error ?? "Unknown error"),
-      code: e?.code ?? null,
-      meta: e?.meta ?? null,
-      name: e?.name ?? null,
-    };
-    console.error("POST /api/po error:", payload);
-    return NextResponse.json(payload, { status: 500 });
+    const msg =
+      error instanceof Error ? error.message : String(error ?? "Unknown error");
+    console.error("POST /api/po error:", msg);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
@@ -670,6 +643,7 @@ export async function GET(request: Request) {
           rpTagih: true,
           pcs: true,
           pcsKirim: true,
+          discount: true,
         },
         _count: { _all: true },
       });
@@ -682,9 +656,49 @@ export async function GET(request: Request) {
             totalTagihan: a._sum?.rpTagih ?? 0,
             pcsTotal: a._sum?.pcs ?? 0,
             pcsKirimTotal: a._sum?.pcsKirim ?? 0,
+            totalDiscount: a._sum?.discount ?? 0,
           },
         ]),
       );
+      const kgRows = await prisma.$queryRaw<
+        Array<{ purchaseOrderId: string; kg: number; kgKirim: number }>
+      >`
+        SELECT
+          i."purchaseOrderId" as "purchaseOrderId",
+          COALESCE(SUM(i."pcs" * p."satuanKg"), 0) as "kg",
+          COALESCE(SUM(i."pcsKirim" * p."satuanKg"), 0) as "kgKirim"
+        FROM "PurchaseOrderItem" i
+        JOIN "Product" p ON p."id" = i."productId"
+        WHERE i."purchaseOrderId" = ANY(${ids})
+        GROUP BY i."purchaseOrderId"
+      `;
+      const firstRows = await prisma.$queryRaw<
+        Array<{ purchaseOrderId: string; name: string }>
+      >`
+        SELECT DISTINCT ON (i."purchaseOrderId")
+          i."purchaseOrderId" as "purchaseOrderId",
+          p."name" as "name"
+        FROM "PurchaseOrderItem" i
+        JOIN "Product" p ON p."id" = i."productId"
+        WHERE i."purchaseOrderId" = ANY(${ids})
+        ORDER BY i."purchaseOrderId", i."createdAt" ASC
+      `;
+      const kgById = new Map<string, number>();
+      const kgKirimById = new Map<string, number>();
+      for (const r of kgRows) {
+        kgById.set(String(r.purchaseOrderId), Number((r as any).kg) || 0);
+        kgKirimById.set(
+          String(r.purchaseOrderId),
+          Number((r as any).kgKirim) || 0,
+        );
+      }
+      const firstProductById = new Map<string, string>();
+      for (const r of firstRows) {
+        const id = String(r.purchaseOrderId || "");
+        if (!id || firstProductById.has(id)) continue;
+        const nm = String((r as any).name || "").trim();
+        if (nm) firstProductById.set(id, nm);
+      }
       return rows.map((r) => {
         const s = byId.get(r.id) || {
           itemsCount: 0,
@@ -692,8 +706,15 @@ export async function GET(request: Request) {
           totalTagihan: 0,
           pcsTotal: 0,
           pcsKirimTotal: 0,
+          totalDiscount: 0,
         };
-        return { ...r, ...s };
+        return {
+          ...r,
+          ...s,
+          totalKg: kgById.get(r.id) || 0,
+          totalKgKirim: kgKirimById.get(r.id) || 0,
+          firstProductName: firstProductById.get(r.id) || null,
+        };
       });
     };
 

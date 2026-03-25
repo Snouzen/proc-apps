@@ -102,8 +102,9 @@ export default function NeedAssignPage() {
   useEffect(() => {
     if (!role) return;
     const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 10000);
     const run = async () => {
-      setLoading(true);
+      setLoading((v) => v || rows.length === 0);
       try {
         const params = new URLSearchParams();
         params.set("includeUnknown", "true");
@@ -140,7 +141,10 @@ export default function NeedAssignPage() {
       }
     };
     run();
-    return () => controller.abort();
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [role, regional, page, rowsPerPage, debouncedSearch]);
 
   const formatDate = (d: any) => {
@@ -153,36 +157,78 @@ export default function NeedAssignPage() {
     });
   };
 
-  const openModal = (po: any) => {
-    const items = Array.isArray(po?.Items) ? po.Items : [];
-    setDetailData({
-      id: po?.id || "",
-      noPo: po?.noPo || "-",
-      company: po?.RitelModern?.namaPt || po?.company || "Unknown",
-      createdAt: po?.createdAt || null,
-      updatedAt: po?.updatedAt || null,
-      tglPo: po?.tglPo || null,
-      expiredTgl: po?.expiredTgl || null,
-      linkPo: po?.linkPo || null,
-      noInvoice: po?.noInvoice || null,
-      siteArea:
-        po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
-          ? po.UnitProduksi.siteArea
-          : "-",
-      tujuanDetail: po?.tujuanDetail || null,
-      regional: po?.regional || po?.UnitProduksi?.namaRegional || null,
-      Items: items,
-      status: {
-        kirim: !!po?.statusKirim,
-        sdif: !!po?.statusSdif,
-        po: !!po?.statusPo,
-        fp: !!po?.statusFp,
-        kwi: !!po?.statusKwi,
-        inv: !!po?.statusInv,
-        tagih: !!po?.statusTagih,
-        bayar: !!po?.statusBayar,
+  const openModal = async (po: any) => {
+    const nopo = String(po?.noPo || "").trim();
+    let fullPo: any = po;
+    if (nopo) {
+      try {
+        const params = new URLSearchParams();
+        params.set("includeUnknown", "true");
+        params.set("noPo", nopo);
+        params.set("includeItems", "true");
+        params.set("limit", "1");
+        params.set("offset", "0");
+        if (role === "rm" && regional) params.set("regional", regional);
+        const res = await fetch(`/api/po?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => null);
+        const first = Array.isArray((json as any)?.data)
+          ? (json as any).data[0]
+          : Array.isArray(json)
+            ? (json as any)[0]
+            : null;
+        if (first) fullPo = first;
+      } catch {}
+    }
+
+    const items: any[] = Array.isArray(fullPo?.Items) ? fullPo.Items : [];
+    const mappedItems = items.map((it: any, idx: number) => ({
+      id:
+        it?.id ??
+        `${it?.Product?.name || "item"}-${it?.pcs || 0}-${it?.hargaPcs || 0}-${idx}`,
+      pcs: Number(it?.pcs || 0),
+      pcsKirim: Number(it?.pcsKirim || 0),
+      hargaPcs: Number(it?.hargaPcs || 0),
+      nominal: Number(it?.nominal || 0),
+      rpTagih: Number(it?.rpTagih || 0),
+      Product: {
+        name: String(it?.Product?.name || "-"),
+        satuanKg:
+          typeof it?.Product?.satuanKg === "number"
+            ? it.Product.satuanKg
+            : undefined,
       },
-      remarks: po?.remarks || null,
+    }));
+    setDetailData({
+      id: fullPo?.id || "",
+      noPo: fullPo?.noPo || "-",
+      company: fullPo?.RitelModern?.namaPt || fullPo?.company || "Unknown",
+      createdAt: fullPo?.createdAt || null,
+      updatedAt: fullPo?.updatedAt || null,
+      tglPo: fullPo?.tglPo || null,
+      expiredTgl: fullPo?.expiredTgl || null,
+      linkPo: fullPo?.linkPo || null,
+      noInvoice: fullPo?.noInvoice || null,
+      siteArea:
+        fullPo?.UnitProduksi?.siteArea &&
+        fullPo.UnitProduksi.siteArea !== "UNKNOWN"
+          ? fullPo.UnitProduksi.siteArea
+          : "-",
+      tujuanDetail: fullPo?.tujuanDetail || null,
+      regional: fullPo?.regional || fullPo?.UnitProduksi?.namaRegional || null,
+      Items: mappedItems,
+      status: {
+        kirim: !!fullPo?.statusKirim,
+        sdif: !!fullPo?.statusSdif,
+        po: !!fullPo?.statusPo,
+        fp: !!fullPo?.statusFp,
+        kwi: !!fullPo?.statusKwi,
+        inv: !!fullPo?.statusInv,
+        tagih: !!fullPo?.statusTagih,
+        bayar: !!fullPo?.statusBayar,
+      },
+      remarks: fullPo?.remarks || null,
     });
     setOpenDetail(true);
   };

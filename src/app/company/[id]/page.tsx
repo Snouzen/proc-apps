@@ -45,17 +45,21 @@ export default function CompanyDetail() {
       .replace(/\s+/g, " ");
 
   useEffect(() => {
-    const load = async () => {
+    let mounted = true;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
       setLoading((v) => v || poData.length === 0);
       try {
         const res = await fetch(
-          `/api/po?includeItems=false&company=${encodeURIComponent(company)}`,
+          `/api/po?summary=true&includeUnknown=true&company=${encodeURIComponent(company)}`,
           {
             cache: "no-store",
+            signal: controller.signal,
           },
         );
         const data = await res.json().catch(() => null);
-        if (!res.ok) {
+        if (!mounted) return;
+        if (!res.ok || !data) {
           const msg =
             (data as any)?.error || res.statusText || "Gagal mengambil data PO";
           throw new Error(msg);
@@ -65,21 +69,22 @@ export default function CompanyDetail() {
           : Array.isArray((data as any)?.data)
             ? (data as any).data
             : [];
-        const filtered = list.filter(
-          (po: any) => norm(po?.RitelModern?.namaPt) === norm(company),
-        );
-        setPoData(filtered);
+        setPoData(list);
         setLoadError(null);
-      } catch (e) {
-        console.error(e);
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
         const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
         setLoadError(msg);
         if (poData.length === 0) setPoData([]);
       } finally {
         setLoading(false);
       }
+    }, 100);
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      controller.abort();
     };
-    load();
   }, [company, refreshTick]);
 
   useEffect(() => {
@@ -106,16 +111,24 @@ export default function CompanyDetail() {
         noInvoice: po?.noInvoice || "",
       };
       if (items.length === 0) {
+        const itemsCount = Number(po?.itemsCount) || 0;
+        const firstProduct = String(po?.firstProductName || "").trim();
+        const productDisplay =
+          itemsCount > 0
+            ? itemsCount > 1
+              ? `${firstProduct || "Item"} (+${itemsCount - 1} lainnya)`
+              : firstProduct || "Item"
+            : "-";
         out.push({
           ...base,
           key: `${po?.id || po?.noPo || "po"}-empty`,
-          product: "-",
-          pcs: 0,
-          pcsKirim: 0,
+          product: productDisplay,
+          pcs: Number(po?.pcsTotal) || 0,
+          pcsKirim: Number(po?.pcsKirimTotal) || 0,
           hargaPcs: 0,
-          discount: 0,
-          nominal: 0,
-          rpTagih: 0,
+          discount: Number(po?.totalDiscount) || 0,
+          nominal: Number(po?.totalNominal) || 0,
+          rpTagih: Number(po?.totalTagihan) || 0,
         });
       } else {
         items.forEach((it: any, idx: number) => {
@@ -200,42 +213,77 @@ export default function CompanyDetail() {
     XLSX.writeFile(wb, `PO-${company}-${dateStamp}.xlsx`);
   };
 
-  const openModal = (po: any) => {
-    const productNames = po?.Items?.map((i: any) => i?.Product?.name) || [];
-    const productDisplay =
-      productNames.length > 0
-        ? productNames.length > 1
-          ? `${productNames[0]} (+${productNames.length - 1} lainnya)`
-          : productNames[0]
-        : "-";
-    const totalTagih =
-      po?.Items?.reduce(
-        (acc: number, curr: any) => acc + (curr?.rpTagih || 0),
-        0,
-      ) || 0;
-    setSelectedPO({
-      ...po,
-      company: po?.RitelModern?.namaPt || "Unknown",
-      createdAt: po?.createdAt || null,
-      updatedAt: po?.updatedAt || null,
-      productName: productDisplay,
-      regional: po?.regional || po?.UnitProduksi?.namaRegional || null,
-      siteArea:
-        po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
-          ? po.UnitProduksi.siteArea
-          : "-",
-      Items: po?.Items || [],
-      rpTagih: totalTagih,
-      status: {
-        kirim: !!po.statusKirim,
-        sdif: !!po.statusSdif,
-        po: !!po.statusPo,
-        fp: !!po.statusFp,
-        kwi: !!po.statusKwi,
-        inv: !!po.statusInv,
-        tagih: !!po.statusTagih,
-        bayar: !!po.statusBayar,
+  const openModal = async (po: any) => {
+    const nopo = String(po?.noPo || "").trim();
+    let fullPo: any = po;
+    if (nopo) {
+      try {
+        const params = new URLSearchParams();
+        params.set("includeUnknown", "true");
+        params.set("noPo", nopo);
+        params.set("includeItems", "true");
+        params.set("limit", "1");
+        params.set("offset", "0");
+        const res = await fetch(`/api/po?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => null);
+        const first = Array.isArray((json as any)?.data)
+          ? (json as any).data[0]
+          : Array.isArray(json)
+            ? (json as any)[0]
+            : null;
+        if (first) fullPo = first;
+      } catch {}
+    }
+
+    const items: any[] = Array.isArray(fullPo?.Items) ? fullPo.Items : [];
+    const mappedItems = items.map((it: any, idx: number) => ({
+      id:
+        it?.id ??
+        `${it?.Product?.name || "item"}-${it?.pcs || 0}-${it?.hargaPcs || 0}-${idx}`,
+      pcs: Number(it?.pcs || 0),
+      pcsKirim: Number(it?.pcsKirim || 0),
+      hargaPcs: Number(it?.hargaPcs || 0),
+      nominal: Number(it?.nominal || 0),
+      rpTagih: Number(it?.rpTagih || 0),
+      Product: {
+        name: String(it?.Product?.name || "-"),
+        satuanKg:
+          typeof it?.Product?.satuanKg === "number"
+            ? it.Product.satuanKg
+            : undefined,
       },
+    }));
+    setSelectedPO({
+      id: fullPo?.id || "",
+      noPo: fullPo?.noPo || "-",
+      company: fullPo?.RitelModern?.namaPt || "Unknown",
+      createdAt: fullPo?.createdAt || null,
+      updatedAt: fullPo?.updatedAt || null,
+      tglPo: fullPo?.tglPo || null,
+      expiredTgl: fullPo?.expiredTgl || null,
+      linkPo: fullPo?.linkPo || null,
+      noInvoice: fullPo?.noInvoice || null,
+      siteArea:
+        fullPo?.UnitProduksi?.siteArea &&
+        fullPo.UnitProduksi.siteArea !== "UNKNOWN"
+          ? fullPo.UnitProduksi.siteArea
+          : "-",
+      tujuanDetail: fullPo?.tujuanDetail || null,
+      regional: fullPo?.regional || fullPo?.UnitProduksi?.namaRegional || null,
+      Items: mappedItems,
+      status: {
+        kirim: !!fullPo?.statusKirim,
+        sdif: !!fullPo?.statusSdif,
+        po: !!fullPo?.statusPo,
+        fp: !!fullPo?.statusFp,
+        kwi: !!fullPo?.statusKwi,
+        inv: !!fullPo?.statusInv,
+        tagih: !!fullPo?.statusTagih,
+        bayar: !!fullPo?.statusBayar,
+      },
+      remarks: fullPo?.remarks || null,
     });
     setOpenDetail(true);
   };

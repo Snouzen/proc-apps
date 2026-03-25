@@ -1,6 +1,8 @@
 "use client";
 import * as React from "react";
 import { Area, AreaChart as ReAreaChart, CartesianGrid, XAxis } from "recharts";
+import { ChevronDown } from "lucide-react";
+import SmoothSelect from "@/components/ui/smooth-select";
 import {
   Card,
   CardContent,
@@ -22,11 +24,18 @@ export const description = "An interactive area chart";
 const chartConfig = {
   mobile: { label: "Total KG", color: "#38bdf8" },
 } satisfies ChartConfig;
-export function ChartAreaInteractive({ poData }: { poData?: any[] }) {
+export function ChartAreaInteractive({
+  role,
+  regional,
+}: {
+  role: "pusat" | "rm" | null;
+  regional: string | null;
+}) {
   const [timeRange, setTimeRange] = React.useState("90d");
   const [series, setSeries] = React.useState<
     Array<{ date: string; mobile: number }>
   >([]);
+  const [loading, setLoading] = React.useState(false);
 
   const toYMD = (d: Date) => {
     return d.toISOString().slice(0, 10);
@@ -67,67 +76,53 @@ export function ChartAreaInteractive({ poData }: { poData?: any[] }) {
   const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
 
   React.useEffect(() => {
-    let active = true;
-    const run = async () => {
+    if (!role) return;
+    let mounted = true;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
       try {
-        const res = await fetch(
-          `/api/po/trend?includeUnknown=true&metric=kg&days=${days}`,
-          {
-            cache: "no-store",
-          },
-        );
-        const json = await res.json();
-        const rows = Array.isArray(json?.data) ? json.data : [];
-        const next = rows.map((r: any) => ({
-          date: String(r?.date || ""),
-          mobile: Number(r?.kg) || 0,
-        }));
-        if (active) setSeries(next);
-      } catch {
-        if (active) setSeries([]);
+        setLoading(true);
+        const params = new URLSearchParams();
+        params.set("metric", "kg");
+        params.set("days", String(days));
+        params.set("includeUnknown", "true");
+        if (role === "rm" && regional) params.set("regional", regional);
+        const res = await fetch(`/api/po/trend?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const json = await res.json().catch(() => null);
+        if (!mounted) return;
+        if (!res.ok || !json) {
+          setSeries([]);
+        } else {
+          const rows: Array<{ date: string; kg: number }> = Array.isArray(
+            (json as any)?.data,
+          )
+            ? (json as any).data
+            : [];
+          setSeries(
+            rows.map((r) => ({
+              date: String(r.date || ""),
+              mobile: Number(r.kg) || 0,
+            })),
+          );
+        }
+      } catch (e) {
+        if ((e as any)?.name === "AbortError") return;
+        if (mounted) setSeries([]);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    };
-    run();
+    }, 100);
     return () => {
-      active = false;
+      mounted = false;
+      window.clearTimeout(timer);
+      controller.abort();
     };
-  }, [days]);
+  }, [role, regional, days]);
 
-  const filteredData =
-    series.length > 0
-      ? series
-      : (() => {
-          const today = new Date();
-          const dates: string[] = [];
-          for (let i = days - 1; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(d.getDate() - i);
-            dates.push(toYMD(d));
-          }
-          const rows = Array.isArray(poData) ? poData : [];
-          const byDate = new Map<string, { kg: number }>();
-          for (const d of dates) byDate.set(d, { kg: 0 });
-          for (const po of rows) {
-            const dt = safeParseDate(po?.tglPo);
-            const t = dt ? toYMD(dt) : null;
-            if (!t || !byDate.has(t)) continue;
-            const items = Array.isArray(po?.Items) ? po.Items : [];
-            const kg = items.reduce((acc: number, it: any) => {
-              const pcs = Number(it?.pcs) || 0;
-              const satuan = Number(it?.Product?.satuanKg ?? 1) || 1;
-              return acc + pcs * satuan;
-            }, 0);
-            const rec = byDate.get(t)!;
-            rec.kg += kg;
-          }
-          return dates.map((d) => {
-            const rec = byDate.get(d)!;
-            return {
-              date: d,
-              mobile: rec.kg,
-            };
-          });
-        })();
+  const filteredData = series;
 
   const rangeLabel =
     timeRange === "90d"
@@ -145,17 +140,17 @@ export function ChartAreaInteractive({ poData }: { poData?: any[] }) {
             Showing total KG for the {rangeLabel}
           </CardDescription>
         </div>
-        <div className="sm:ml-auto">
-          <select
-            className="w-[160px] rounded-lg border border-gray-200 text-sm px-3 py-2"
+        <div className="sm:ml-auto relative">
+          <SmoothSelect
+            width={184}
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-            aria-label="Select time range"
-          >
-            <option value="90d">Last 3 months</option>
-            <option value="30d">Last 30 days</option>
-            <option value="7d">Last 7 days</option>
-          </select>
+            onChange={(v) => setTimeRange(v)}
+            options={[
+              { value: "90d", label: "Last 3 months" },
+              { value: "30d", label: "Last 30 days" },
+              { value: "7d", label: "Last 7 days" },
+            ]}
+          />
         </div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">

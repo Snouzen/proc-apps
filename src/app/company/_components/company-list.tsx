@@ -70,14 +70,16 @@ export default function CompanyList({
 
   const fetchData = async () => {
     setLoading((v) => v || groups.length === 0);
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), 10000);
     try {
       const me = await getMe();
       let url = "/api/po";
-      url += `?includeItems=false`;
+      url += `?summary=true&includeUnknown=true`;
       if (me?.role === "rm" && me?.regional) {
         url += `&regional=${encodeURIComponent(me.regional)}`;
       }
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch(url, { cache: "no-store", signal: ctrl.signal });
       const json = await res.json().catch(() => null);
       if (!res.ok) {
         const msg =
@@ -102,6 +104,7 @@ export default function CompanyList({
     } catch (e) {
       console.error(e);
     } finally {
+      window.clearTimeout(timer);
       setLoading(false);
     }
   };
@@ -233,8 +236,38 @@ export default function CompanyList({
     return () => clearTimeout(t);
   }, [focusCompany, groups]);
 
-  const openModal = (po: any) => {
-    const productNames = po.Items?.map((i: any) => i.Product?.name) || [];
+  const openModal = async (po: any) => {
+    const nopo = String(po?.noPo || "").trim();
+    let fullPo = po;
+    if (nopo) {
+      try {
+        const me = await getMe();
+        const params = new URLSearchParams();
+        params.set("includeUnknown", "true");
+        params.set("noPo", nopo);
+        params.set("includeItems", "true");
+        params.set("limit", "1");
+        params.set("offset", "0");
+        if (me?.role === "rm" && me?.regional) {
+          params.set("regional", me.regional);
+        }
+        const res = await fetch(`/api/po?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => null);
+        const first = Array.isArray((json as any)?.data)
+          ? (json as any).data[0]
+          : Array.isArray(json)
+            ? (json as any)[0]
+            : null;
+        if (first) fullPo = first;
+      } catch {}
+    }
+
+    const items = Array.isArray(fullPo?.Items) ? fullPo.Items : [];
+    const productNames = items
+      .map((i: any) => i?.Product?.name)
+      .filter(Boolean);
     const productDisplay =
       productNames.length > 0
         ? productNames.length > 1
@@ -242,32 +275,31 @@ export default function CompanyList({
           : productNames[0]
         : "-";
     const totalTagih =
-      po.Items?.reduce(
-        (acc: number, curr: any) => acc + (curr?.rpTagih || 0),
-        0,
-      ) || 0;
+      items.reduce((acc: number, curr: any) => acc + (curr?.rpTagih || 0), 0) ||
+      0;
     setSelectedPO({
-      ...po,
-      company: po?.RitelModern?.namaPt || "Unknown",
-      createdAt: po?.createdAt || null,
-      updatedAt: po?.updatedAt || null,
+      ...fullPo,
+      company: fullPo?.RitelModern?.namaPt || fullPo?.company || "Unknown",
+      createdAt: fullPo?.createdAt || null,
+      updatedAt: fullPo?.updatedAt || null,
       productName: productDisplay,
-      regional: po?.regional || po?.UnitProduksi?.namaRegional || null,
+      regional: fullPo?.regional || fullPo?.UnitProduksi?.namaRegional || null,
       siteArea:
-        po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
-          ? po.UnitProduksi.siteArea
+        fullPo?.UnitProduksi?.siteArea &&
+        fullPo.UnitProduksi.siteArea !== "UNKNOWN"
+          ? fullPo.UnitProduksi.siteArea
           : "-",
-      Items: po?.Items || [],
+      Items: items,
       rpTagih: totalTagih,
       status: {
-        kirim: !!po.statusKirim,
-        sdif: !!po.statusSdif,
-        po: !!po.statusPo,
-        fp: !!po.statusFp,
-        kwi: !!po.statusKwi,
-        inv: !!po.statusInv,
-        tagih: !!po.statusTagih,
-        bayar: !!po.statusBayar,
+        kirim: !!fullPo.statusKirim,
+        sdif: !!fullPo.statusSdif,
+        po: !!fullPo.statusPo,
+        fp: !!fullPo.statusFp,
+        kwi: !!fullPo.statusKwi,
+        inv: !!fullPo.statusInv,
+        tagih: !!fullPo.statusTagih,
+        bayar: !!fullPo.statusBayar,
       },
     });
     setIsModalOpen(true);
@@ -1199,45 +1231,74 @@ export default function CompanyList({
                                                             acc + (f(it) || 0),
                                                           0,
                                                         );
-                                                      const kgKirim = sum(
-                                                        items,
-                                                        (it) =>
-                                                          Number(it?.pcsKirim) *
-                                                          (Number(
-                                                            it?.Product
-                                                              ?.satuanKg,
-                                                          ) || 1),
-                                                      );
-                                                      const kgPesan = sum(
-                                                        items,
-                                                        (it) =>
-                                                          Number(it?.pcs) *
-                                                          (Number(
-                                                            it?.Product
-                                                              ?.satuanKg,
-                                                          ) || 1),
-                                                      );
-                                                      const totalKg =
-                                                        kgKirim || kgPesan || 0;
-                                                      const rpDiscount = sum(
-                                                        items,
-                                                        (it) =>
-                                                          Number(it?.discount),
-                                                      );
-                                                      const rpNominal = sum(
-                                                        items,
-                                                        (it) =>
-                                                          Number(it?.nominal),
-                                                      );
+                                                      const hasItems =
+                                                        items.length > 0;
+                                                      const kgKirim = hasItems
+                                                        ? sum(
+                                                            items,
+                                                            (it) =>
+                                                              Number(
+                                                                it?.pcsKirim,
+                                                              ) *
+                                                              (Number(
+                                                                it?.Product
+                                                                  ?.satuanKg,
+                                                              ) || 1),
+                                                          )
+                                                        : 0;
+                                                      const kgPesan = hasItems
+                                                        ? sum(
+                                                            items,
+                                                            (it) =>
+                                                              Number(it?.pcs) *
+                                                              (Number(
+                                                                it?.Product
+                                                                  ?.satuanKg,
+                                                              ) || 1),
+                                                          )
+                                                        : 0;
+                                                      const totalKg = hasItems
+                                                        ? kgKirim ||
+                                                          kgPesan ||
+                                                          0
+                                                        : Number(
+                                                            po?.totalKgKirim ||
+                                                              po?.totalKg ||
+                                                              0,
+                                                          ) || 0;
+                                                      const rpDiscount =
+                                                        hasItems
+                                                          ? sum(items, (it) =>
+                                                              Number(
+                                                                it?.discount,
+                                                              ),
+                                                            )
+                                                          : Number(
+                                                              po?.totalDiscount ||
+                                                                0,
+                                                            ) || 0;
+                                                      const rpNominal = hasItems
+                                                        ? sum(items, (it) =>
+                                                            Number(it?.nominal),
+                                                          )
+                                                        : Number(
+                                                            po?.totalNominal ||
+                                                              0,
+                                                          ) || 0;
                                                       const n = (v: number) =>
                                                         v.toLocaleString(
                                                           "id-ID",
                                                         );
-                                                      const pcsKirim = sum(
-                                                        items,
-                                                        (it) =>
-                                                          Number(it?.pcsKirim),
-                                                      );
+                                                      const pcsKirim = hasItems
+                                                        ? sum(items, (it) =>
+                                                            Number(
+                                                              it?.pcsKirim,
+                                                            ),
+                                                          )
+                                                        : Number(
+                                                            po?.pcsKirimTotal ||
+                                                              0,
+                                                          ) || 0;
                                                       const tglPoDate = toDate(
                                                         po?.tglPo,
                                                       );
@@ -1277,13 +1338,25 @@ export default function CompanyList({
                                                         Array.from(
                                                           new Set(productNames),
                                                         );
+                                                      const productCount =
+                                                        hasItems
+                                                          ? uniqueProducts.length
+                                                          : Number(
+                                                              po?.itemsCount,
+                                                            ) || 0;
+                                                      const firstProduct =
+                                                        hasItems
+                                                          ? uniqueProducts[0]
+                                                          : String(
+                                                              po?.firstProductName ||
+                                                                "",
+                                                            ).trim();
                                                       const productText: string =
-                                                        uniqueProducts.length >
-                                                        0
-                                                          ? uniqueProducts.length >
-                                                            1
-                                                            ? `${uniqueProducts[0]} (+${uniqueProducts.length - 1} lainnya)`
-                                                            : uniqueProducts[0]
+                                                        productCount > 0
+                                                          ? productCount > 1
+                                                            ? `${firstProduct || "Item"} (+${productCount - 1} lainnya)`
+                                                            : firstProduct ||
+                                                              "Item"
                                                           : "-";
                                                       return (
                                                         <tr
@@ -1305,9 +1378,13 @@ export default function CompanyList({
                                                           </td>
                                                           <td
                                                             className="px-4 py-3 text-slate-700 font-semibold max-w-[360px] truncate"
-                                                            title={uniqueProducts.join(
-                                                              ", ",
-                                                            )}
+                                                            title={
+                                                              hasItems
+                                                                ? uniqueProducts.join(
+                                                                    ", ",
+                                                                  )
+                                                                : productText
+                                                            }
                                                           >
                                                             {productText}
                                                           </td>

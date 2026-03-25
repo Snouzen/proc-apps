@@ -1,42 +1,81 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 const rawUrl = process.env.DATABASE_URL;
 
-/** Tambah timeout di URL. SSL di-set via pool config (rejectUnauthorized: false untuk self-signed cert Supabase). */
-function normalizeConnectionUrl(url: string): string {
-  const sep = url.includes("?") ? "&" : "?";
-  if (!url.includes("connect_timeout=")) {
-    const params = new URLSearchParams();
-    params.set("connect_timeout", "15");
-    return `${url}${sep}${params.toString()}`;
+function sanitizeDatabaseUrl(url: string): string {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return url;
   }
-  return url;
+  u.searchParams.set("connect_timeout", "20");
+  if (u.port === "6543") {
+    u.searchParams.set("pgbouncer", "true");
+  }
+  return u.toString();
 }
 
-function createPrisma(): PrismaClient {
+function createPool(connectionString: string) {
+  return new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+    max: 50,
+    idleTimeoutMillis: 5000,
+  });
+}
+
+function createPrisma(pool: Pool): PrismaClient {
   if (!rawUrl) {
     throw new Error(
       "DATABASE_URL is not set. Tambahkan DATABASE_URL di file .env",
     );
   }
-  const connectionString = normalizeConnectionUrl(rawUrl);
-  // Supabase pooler kadang pakai cert chain yang Node anggap self-signed; terima agar koneksi jalan
-  const poolConfig = {
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    max: 1,
-    idleTimeoutMillis: 1_000,
-  };
-  const adapter = new PrismaPg(poolConfig);
-  return new PrismaClient({ adapter });
+  const adapter = new PrismaPg(pool);
+  const isProd = process.env.NODE_ENV === "production";
+  const prisma = new PrismaClient({
+    adapter,
+    log: isProd
+      ? ["error"]
+      : [
+          { emit: "event", level: "query" },
+          { emit: "stdout", level: "error" },
+        ],
+  });
+  return prisma;
 }
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | null;
+  pool: Pool | null;
+  prismaListenersAttached?: boolean;
 };
-// Note: If you add columns to schema, you might need to restart dev server or rename this key temporarily
-const prisma = globalForPrisma.prisma ?? createPrisma();
+
+if (!rawUrl) {
+  throw new Error(
+    "DATABASE_URL is not set. Tambahkan DATABASE_URL di file .env",
+  );
+}
+
+const connectionString = sanitizeDatabaseUrl(rawUrl);
+const pool = globalForPrisma.pool ?? createPool(connectionString);
+globalForPrisma.pool = pool;
+
+const prisma = globalForPrisma.prisma ?? createPrisma(pool);
 globalForPrisma.prisma = prisma;
+
+if (
+  process.env.NODE_ENV !== "production" &&
+  !globalForPrisma.prismaListenersAttached
+) {
+  globalForPrisma.prismaListenersAttached = true;
+  (prisma as any).$on?.("query", (e: any) => {
+    if (e.duration >= 1000) {
+      console.warn(`[prisma] slow query ${e.duration}ms`);
+    }
+  });
+}
 
 export default prisma;

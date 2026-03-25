@@ -20,15 +20,18 @@ import {
   Search,
   UserPlus,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import SmoothSelect from "@/components/ui/smooth-select";
 import PODetailModal from "@/components/po-detail-modal";
 import POEditModal from "@/components/po-edit-modal";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
+import { getMe } from "@/lib/me";
 
 export default function Home() {
   const refreshTick = useAutoRefreshTick();
   const [poData, setPoData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [role, setRole] = useState<"pusat" | "rm" | null>(null);
   const [regional, setRegional] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
@@ -45,15 +48,19 @@ export default function Home() {
   const [tableFocus, setTableFocus] = useState<
     "active" | "assign" | "almost_expired" | "expired" | "completed" | null
   >(null);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   useEffect(() => {
     let mounted = true;
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), 10000);
     const load = async () => {
       try {
-        if (mounted) setLoading(true);
-        const me = await fetch("/api/auth/me", { cache: "no-store" }).then(
-          (r) => r.json(),
-        );
+        if (mounted) {
+          setLoading(true);
+        }
+        const me = await getMe();
         const r: "pusat" | "rm" = me?.role === "rm" ? "rm" : "pusat";
         const reg = me?.regional || null;
         if (mounted) {
@@ -61,18 +68,43 @@ export default function Home() {
           setRegional(reg);
           setRoleReady(true);
         }
-        const statsUrl =
-          r === "rm" && reg
-            ? `/api/po/stats?includeUnknown=true&regional=${encodeURIComponent(reg)}`
-            : `/api/po/stats?includeUnknown=true`;
-        const [resStats, resUnits] = await Promise.all([
-          fetch(statsUrl, { cache: "no-store" }),
-          fetch("/api/unit-produksi", { cache: "no-store" }),
-        ]);
-        const s = await resStats.json();
-        const u = await resUnits.json();
+      } catch {
         if (!mounted) return;
-        setUnitData(Array.isArray(u) ? u : u?.data || []);
+      } finally {
+        window.clearTimeout(timer);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+      window.clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, []);
+
+  const statsParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("includeUnknown", "true");
+    if (role === "rm" && regional) params.set("regional", regional);
+    if (dateFrom) params.set("tglFrom", dateFrom);
+    if (dateTo) params.set("tglTo", dateTo);
+    return params.toString();
+  }, [role, regional, dateFrom, dateTo]);
+
+  const fetchStats = useCallback(
+    async (signal?: AbortSignal) => {
+      setStatsLoading(true);
+      try {
+        const res = await fetch(`/api/po/stats?${statsParams}`, {
+          cache: "no-store",
+          signal,
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json) throw new Error("Gagal mengambil statistik PO");
+        const s = json as any;
         setStats({
           totalCount: Number(s?.cAll) || 0,
           activeCount: Number(s?.cActive) || 0,
@@ -82,26 +114,28 @@ export default function Home() {
           expiredCount: Number(s?.cExpired) || 0,
           completedCount: Number(s?.cCompleted) || 0,
         });
-      } catch {
-        if (!mounted) return;
-        setStats({
-          totalCount: 0,
-          activeCount: 0,
-          inProgressCount: 0,
-          needAssignCount: 0,
-          almostExpiredCount: 0,
-          expiredCount: 0,
-          completedCount: 0,
-        });
-      } finally {
-        if (mounted) setLoading(false);
+        setStatsLoading(false);
+      } catch (err) {
+        if ((err as any)?.name === "AbortError") return;
+        setStatsLoading(false);
       }
-    };
-    load();
+    },
+    [statsParams],
+  );
+
+  useEffect(() => {
+    if (!roleReady) return;
+    let mounted = true;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      if (mounted) fetchStats(controller.signal);
+    }, 100);
     return () => {
       mounted = false;
+      window.clearTimeout(timer);
+      controller.abort();
     };
-  }, [refreshTick]);
+  }, [roleReady, fetchStats]);
 
   const toDate = (d: any) => {
     if (!d) return null;
@@ -156,7 +190,7 @@ export default function Home() {
         <StatCard
           title="PO Total"
           value={String(totalCount)}
-          subValue={loading ? "Loading..." : `${totalCount} total`}
+          subValue={statsLoading ? "Loading..." : `${totalCount} total`}
           subLabel=""
           color=""
           variant="amber"
@@ -165,7 +199,7 @@ export default function Home() {
         <StatCard
           title="PO Active"
           value={String(activeCount)}
-          subValue={loading ? "Loading..." : `${activeCount} active`}
+          subValue={statsLoading ? "Loading..." : `${activeCount} active`}
           subLabel=""
           color=""
           variant="blue"
@@ -175,7 +209,7 @@ export default function Home() {
         <StatCard
           title="PO In Progress"
           value={String(inProgressCount)}
-          subValue={loading ? "Loading..." : `${inProgressCount} open`}
+          subValue={statsLoading ? "Loading..." : `${inProgressCount} open`}
           subLabel=""
           color=""
           variant="blue"
@@ -184,7 +218,9 @@ export default function Home() {
         <StatCard
           title="PO Need To Assign"
           value={String(needAssignCount)}
-          subValue={loading ? "Loading..." : `${needAssignCount} need assign`}
+          subValue={
+            statsLoading ? "Loading..." : `${needAssignCount} need assign`
+          }
           subLabel=""
           color=""
           variant="amber"
@@ -195,7 +231,7 @@ export default function Home() {
           title="PO Almost Expired"
           value={String(almostExpiredCount)}
           subValue={
-            loading ? "Loading..." : `${almostExpiredCount} within 14 days`
+            statsLoading ? "Loading..." : `${almostExpiredCount} within 14 days`
           }
           subLabel=""
           color=""
@@ -206,7 +242,7 @@ export default function Home() {
         <StatCard
           title="PO Expired"
           value={String(expiredCount)}
-          subValue={loading ? "Loading..." : `${expiredCount} expired`}
+          subValue={statsLoading ? "Loading..." : `${expiredCount} expired`}
           subLabel=""
           color=""
           variant="rose"
@@ -216,7 +252,7 @@ export default function Home() {
         <StatCard
           title="PO Completed"
           value={String(completedCount)}
-          subValue={loading ? "Loading..." : `Selesai`}
+          subValue={statsLoading ? "Loading..." : `Selesai`}
           subLabel=""
           color=""
           variant="emerald"
@@ -227,7 +263,7 @@ export default function Home() {
 
       {role === "pusat" && (
         <div className="mt-8">
-          <ChartAreaInteractive poData={poData} />
+          <ChartAreaInteractive role={role} regional={regional} />
         </div>
       )}
       {/* Table bawah chart - full width */}
@@ -237,13 +273,20 @@ export default function Home() {
       >
         <TableUnderChart
           refreshTick={refreshTick}
-          poData={poData}
-          setPoData={setPoData}
           role={role}
           regional={regional}
           units={unitData}
           focusGroup={tableFocus}
           onFocusApplied={() => setTableFocus(null)}
+          counts={{
+            cAll: stats.totalCount,
+            cActive: stats.activeCount,
+            cAssign: stats.needAssignCount,
+            cProgress: stats.inProgressCount,
+            cAlmost: stats.almostExpiredCount,
+            cExpired: stats.expiredCount,
+            cCompleted: stats.completedCount,
+          }}
         />
       </div>
     </main>
@@ -252,17 +295,14 @@ export default function Home() {
 
 function TableUnderChart({
   refreshTick,
-  poData,
-  setPoData,
   role,
   regional,
   units,
   focusGroup,
   onFocusApplied,
+  counts,
 }: {
   refreshTick: number;
-  poData: any[];
-  setPoData: React.Dispatch<React.SetStateAction<any[]>>;
   role: "pusat" | "rm" | null;
   regional: string | null;
   units: any[];
@@ -274,12 +314,21 @@ function TableUnderChart({
     | "completed"
     | null;
   onFocusApplied: () => void;
+  counts: {
+    cAll: number;
+    cActive: number;
+    cAssign: number;
+    cProgress: number;
+    cAlmost: number;
+    cExpired: number;
+    cCompleted: number;
+  };
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [editNoPo, setEditNoPo] = useState<string | null>(null);
   const [group, setGroup] = useState<
-    "active" | "assign" | "almost_expired" | "expired" | "completed"
-  >(() => (role === "rm" ? "assign" : "active"));
+    "all" | "active" | "assign" | "almost_expired" | "expired" | "completed"
+  >("all");
   const [visibleCols, setVisibleCols] = useState({
     company: true,
     nopo: true,
@@ -305,15 +354,7 @@ function TableUnderChart({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [poLoadError, setPoLoadError] = useState<string | null>(null);
-  const [counts, setCounts] = useState({
-    cAll: 0,
-    cActive: 0,
-    cAssign: 0,
-    cProgress: 0,
-    cAlmost: 0,
-    cExpired: 0,
-    cCompleted: 0,
-  });
+  const [localPoData, setLocalPoData] = useState<any[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
   const [assignOpenId, setAssignOpenId] = useState<string | null>(null);
@@ -348,50 +389,10 @@ function TableUnderChart({
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  useEffect(() => {
-    if (!role) return;
-    const controller = new AbortController();
-    const run = async () => {
-      try {
-        const params = new URLSearchParams();
-        params.set("includeUnknown", "true");
-        if (role === "rm" && regional) params.set("regional", regional);
-        if (dateFrom) params.set("tglFrom", dateFrom);
-        if (dateTo) params.set("tglTo", dateTo);
-        const res = await fetch(`/api/po/stats?${params.toString()}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const json = await res.json();
-        setCounts({
-          cAll: Number(json?.cAll) || 0,
-          cActive: Number(json?.cActive) || 0,
-          cAssign: Number(json?.cAssign) || 0,
-          cProgress: Number(json?.cProgress) || 0,
-          cAlmost: Number(json?.cAlmost) || 0,
-          cExpired: Number(json?.cExpired) || 0,
-          cCompleted: Number(json?.cCompleted) || 0,
-        });
-      } catch {
-        setCounts({
-          cAll: 0,
-          cActive: 0,
-          cAssign: 0,
-          cProgress: 0,
-          cAlmost: 0,
-          cExpired: 0,
-          cCompleted: 0,
-        });
-      }
-    };
-    run();
-    return () => controller.abort();
-  }, [role, regional, dateFrom, dateTo]);
+  // Stats fetched centrally above; no duplicate fetch here
 
-  useEffect(() => {
-    if (!role) return;
-    const controller = new AbortController();
-    const run = async () => {
+  const fetchTable = useCallback(
+    async (signal?: AbortSignal) => {
       try {
         const params = new URLSearchParams();
         params.set("includeUnknown", "true");
@@ -415,10 +416,10 @@ function TableUnderChart({
         params.set("sort", sort);
         const res = await fetch(`/api/po?${params.toString()}`, {
           cache: "no-store",
-          signal: controller.signal,
+          signal,
         });
         const json = await res.json().catch(() => null);
-        if (!res.ok) {
+        if (!res.ok || !json) {
           const msg =
             (json as any)?.error || res.statusText || "Gagal mengambil data PO";
           throw new Error(msg);
@@ -428,16 +429,41 @@ function TableUnderChart({
           : Array.isArray(json)
             ? json
             : [];
-        setPoData(list);
+        setLocalPoData(list);
         setServerTotal(Number(json?.total) || list.length);
         setPoLoadError(null);
       } catch (e) {
+        if ((e as any)?.name === "AbortError") return;
         const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
         setPoLoadError(msg);
       }
+    },
+    [
+      role,
+      regional,
+      group,
+      dateFrom,
+      dateTo,
+      debouncedSearch,
+      page,
+      rowsPerPage,
+      sortDesc,
+      alphaSort,
+    ],
+  );
+
+  useEffect(() => {
+    if (!role) return;
+    let mounted = true;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      if (mounted) fetchTable(controller.signal);
+    }, 100);
+    return () => {
+      mounted = false;
+      window.clearTimeout(timer);
+      controller.abort();
     };
-    run();
-    return () => controller.abort();
   }, [
     refreshTick,
     role,
@@ -450,24 +476,14 @@ function TableUnderChart({
     rowsPerPage,
     sortDesc,
     alphaSort,
-    setPoData,
+    fetchTable,
   ]);
 
-  useEffect(() => {
-    if (
-      role === "rm" &&
-      group !== "assign" &&
-      group !== "active" &&
-      group !== "completed" &&
-      group !== "expired"
-    ) {
-      setGroup("assign");
-    }
-  }, [role]);
+  // Default group 'all' allowed for all roles; no auto override
 
   const totalPages = Math.max(1, Math.ceil(serverTotal / rowsPerPage));
   const start = (page - 1) * rowsPerPage;
-  const pageRows = Array.isArray(poData) ? poData : [];
+  const pageRows = Array.isArray(localPoData) ? localPoData : [];
 
   const getCompanyName = (po: any) => {
     const candidates = [
@@ -634,26 +650,22 @@ function TableUnderChart({
       )}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <select
-              value={group}
-              onChange={(e) => {
-                setPage(1);
-                setGroup(e.target.value as any);
-              }}
-              className="h-10 pl-3 pr-10 rounded-xl text-sm font-semibold border border-gray-300 bg-white text-black hover:bg-gray-50 appearance-none"
-            >
-              <option value="active">Active</option>
-              <option value="assign">Need To Assign</option>
-              <option value="almost_expired">Almost Expired</option>
-              <option value="expired">Expired</option>
-              <option value="completed">Completed</option>
-            </select>
-            <ChevronDown
-              size={16}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-            />
-          </div>
+          <SmoothSelect
+            width={172}
+            value={group}
+            onChange={(v) => {
+              setPage(1);
+              setGroup(v as any);
+            }}
+            options={[
+              { value: "all", label: "All" },
+              { value: "active", label: "Active" },
+              { value: "assign", label: "Need To Assign" },
+              { value: "almost_expired", label: "Almost Expired" },
+              { value: "expired", label: "Expired" },
+              { value: "completed", label: "Completed" },
+            ]}
+          />
           <button
             className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${sortDesc ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
             onClick={() => {
@@ -693,7 +705,7 @@ function TableUnderChart({
                 setDateFrom(e.target.value);
                 setPage(1);
               }}
-              className="px-2 py-1 rounded-md border border-gray-300 text-sm text-black"
+              className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-black bg-white/90 transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-sm hover:shadow"
             />
             <span className="text-sm text-gray-600">to</span>
             <input
@@ -703,7 +715,7 @@ function TableUnderChart({
                 setDateTo(e.target.value);
                 setPage(1);
               }}
-              className="px-2 py-1 rounded-md border border-gray-300 text-sm text-black"
+              className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-black bg-white/90 transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-sm hover:shadow"
             />
             {(dateFrom || dateTo) && (
               <button
@@ -968,8 +980,7 @@ function TableUnderChart({
                           units={units}
                           regional={regional}
                           onAssigned={(unit: any) => {
-                            // Optimistic update
-                            setPoData((prev) =>
+                            setLocalPoData((prev) =>
                               prev.map((x) =>
                                 x.noPo === po.noPo
                                   ? {
@@ -1072,7 +1083,7 @@ function TableUnderChart({
           const updatedNo = String(updated?.noPo || "").trim();
           const originalNo = String(updated?.__originalNoPo || "").trim();
           if (!updatedNo) return;
-          setPoData((prev) =>
+          setLocalPoData((prev) =>
             prev.map((x) => {
               const xNo = String(
                 x?.noPo || x?.nopo || x?.poNumber || "",
