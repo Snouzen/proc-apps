@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import prisma from "@/lib/prisma";
 import { cacheGet, cacheSet, singleFlight } from "@/lib/ttl-cache";
 
 function parseDate(v?: string | null) {
@@ -33,16 +33,21 @@ function parseDate(v?: string | null) {
 }
 
 export async function GET(request: Request) {
-  const cacheKey = `po_stats:${request.url}`;
+  const { searchParams } = new URL(request.url);
+  const includeUnknown =
+    (searchParams.get("includeUnknown") || "true") === "true";
+  const regionalParam = searchParams.get("regional") || undefined;
+  const tglFrom = parseDate(searchParams.get("tglFrom"));
+  const tglTo = parseDate(searchParams.get("tglTo"));
+
+  const keyParams = new URLSearchParams();
+  keyParams.set("includeUnknown", includeUnknown ? "true" : "false");
+  if (regionalParam && regionalParam.trim()) keyParams.set("regional", regionalParam.trim());
+  if (tglFrom) keyParams.set("tglFrom", searchParams.get("tglFrom") || "");
+  if (tglTo) keyParams.set("tglTo", searchParams.get("tglTo") || "");
+  const cacheKey = `po_stats:${keyParams.toString()}`;
   const cached = cacheGet<any>(cacheKey);
   try {
-    const { searchParams } = new URL(request.url);
-    const includeUnknown =
-      (searchParams.get("includeUnknown") || "true") === "true";
-    const regionalParam = searchParams.get("regional") || undefined;
-    const tglFrom = parseDate(searchParams.get("tglFrom"));
-    const tglTo = parseDate(searchParams.get("tglTo"));
-
     const emptyInvoiceValues = ["", "-", "Unknown"];
     const emptyRegionalValues = ["", "-", "Unknown", "UNKNOWN"];
     const now = new Date();
@@ -138,7 +143,6 @@ export async function GET(request: Request) {
               AND (
                 COALESCE(trim(COALESCE(po."regional", '')), '') = ANY(${emptyRegionalValues})
                 OR po."unitProduksiId" = 'UNKNOWN'
-                OR COALESCE(trim(COALESCE(up."namaRegional", '')), '') = ANY(${emptyRegionalValues})
               )
           )::int AS "cAssign",
           COUNT(*) FILTER (
@@ -159,8 +163,6 @@ export async function GET(request: Request) {
               NOT (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
           )::int AS "cCompleted"
         FROM "PurchaseOrder" po
-        LEFT JOIN "UnitProduksi" up ON up."idRegional" = po."unitProduksiId"
-        LEFT JOIN "ritel_modern" rm ON rm."id" = po."ritelId"
         WHERE
           (${tglFrom}::timestamptz IS NULL OR po."tglPo" >= ${tglFrom}::timestamptz)
           AND (${tglTo}::timestamptz IS NULL OR po."tglPo" <= ${tglTo}::timestamptz)
@@ -168,13 +170,12 @@ export async function GET(request: Request) {
             ${includeUnknown} = true OR NOT (
               po."unitProduksiId" = 'UNKNOWN'
               OR COALESCE(trim(po."tujuanDetail"), '') = ANY(${emptyText})
-              OR COALESCE(trim(rm."namaPt"), '') = ANY(${emptyText})
+              OR COALESCE(trim(COALESCE(po."regional", '')), '') = ANY(${emptyText})
             )
           )
           AND (
             ${hasRegional} = false OR (
               COALESCE(po."regional", '') ILIKE ANY(${regionalPatterns})
-              OR COALESCE(up."namaRegional", '') ILIKE ANY(${regionalPatterns})
             )
           )
       `;
@@ -190,7 +191,13 @@ export async function GET(request: Request) {
         }
       );
     });
-    cacheSet(cacheKey, payload, 15000);
+    cacheSet(cacheKey, payload, 30000);
+    cacheSet(`po_stats_group:${keyParams.toString()}:all`, payload.cAll, 30000);
+    cacheSet(`po_stats_group:${keyParams.toString()}:active`, payload.cActive, 30000);
+    cacheSet(`po_stats_group:${keyParams.toString()}:almost_expired`, payload.cAlmost, 30000);
+    cacheSet(`po_stats_group:${keyParams.toString()}:expired`, payload.cExpired, 30000);
+    cacheSet(`po_stats_group:${keyParams.toString()}:completed`, payload.cCompleted, 30000);
+    cacheSet(`po_stats_group:${keyParams.toString()}:progress`, payload.cProgress, 30000);
     return NextResponse.json(payload);
   } catch (error) {
     if (cached) return NextResponse.json(cached);

@@ -11,39 +11,72 @@ export const StatusSchema = z
     tagih: z.boolean().optional(),
     bayar: z.boolean().optional(),
   })
+  .strip()
   .optional();
 
-export const ItemSchema = z.object({
-  namaProduk: z.string().min(1),
-  pcs: z.union([z.number(), z.string()]).transform((v) =>
-    typeof v === "string" ? Number(v) || 0 : v,
-  ),
-  pcsKirim: z
-    .union([z.number(), z.string()])
-    .transform((v) => (typeof v === "string" ? Number(v) || 0 : v))
-    .optional(),
-  hargaPcs: z.union([z.number(), z.string()]).transform((v) =>
-    typeof v === "string" ? Number(v) || 0 : v,
-  ),
-  discount: z
-    .union([z.number(), z.string()])
-    .transform((v) => (typeof v === "string" ? Number(v) || 0 : v))
-    .optional(),
-});
+export const ItemSchema = z
+  .object({
+    namaProduk: z.string().min(1),
+    pcs: z
+      .union([z.number(), z.string()])
+      .transform((v) => (typeof v === "string" ? Number(v) || 0 : v)),
+    pcsKirim: z
+      .union([z.number(), z.string()])
+      .transform((v) => (typeof v === "string" ? Number(v) || 0 : v))
+      .optional(),
+    hargaPcs: z
+      .union([z.number(), z.string()])
+      .transform((v) => (typeof v === "string" ? Number(v) || 0 : v)),
+    discount: z
+      .union([z.number(), z.string()])
+      .transform((v) => (typeof v === "string" ? Number(v) || 0 : v))
+      .optional(),
+  })
+  .strip();
 
-export const POBodySchema = z.object({
-  company: z.string().min(1),
-  inisial: z.string().optional(),
-  siteArea: z.string().optional(),
-  tujuan: z.string().min(1),
-  noPo: z.string().min(1),
-  originalNoPo: z.string().optional(),
-  tglPo: z.string().min(1),
-  expiredTgl: z.string().min(1),
-  linkPo: z.string().url().optional(),
-  noInvoice: z.string().optional(),
-  items: z.array(ItemSchema).min(1),
-  remarks: z.string().optional(),
-  status: StatusSchema,
-  regional: z.string().optional(),
-});
+export const POBodySchema = z
+  .object({
+    company: z.string().min(1),
+    inisial: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional(),
+    ),
+    siteArea: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional(),
+    ),
+    tujuan: z.string().min(1),
+    noPo: z.string().min(1),
+    originalNoPo: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional(),
+    ),
+    tglPo: z.string().min(1),
+    expiredTgl: z.string().min(1),
+    linkPo: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional(),
+    ),
+    noInvoice: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional(),
+    ),
+    items: z.array(ItemSchema).min(1),
+    remarks: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional(),
+    ),
+    status: StatusSchema,
+    regional: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional(),
+    ),
+  })
+  .strip();

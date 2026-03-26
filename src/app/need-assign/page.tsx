@@ -93,18 +93,24 @@ export default function NeedAssignPage() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      setDebouncedSearch(String(search || "").trim());
-      setPage(1);
+      const newSearch = String(search || "").trim();
+      if (newSearch !== debouncedSearch) {
+        setDebouncedSearch(newSearch);
+        setPage(1);
+      }
     }, 300);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, debouncedSearch]);
+
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     if (!role) return;
     const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(() => controller.abort(), 10000);
     const run = async () => {
-      setLoading((v) => v || rows.length === 0);
+      setLoading(true);
+      setIsTransitioning(true);
       try {
         const params = new URLSearchParams();
         params.set("includeUnknown", "true");
@@ -133,16 +139,18 @@ export default function NeedAssignPage() {
         setRows(list as Row[]);
         setTotal(Number(json?.total) || list.length);
         setError(null);
-      } catch (e) {
+      } catch (e: any) {
+        if (e.name === "AbortError") return;
         const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
         setError(msg);
       } finally {
         setLoading(false);
+        setIsTransitioning(false);
       }
     };
     run();
     return () => {
-      window.clearTimeout(timer);
+      clearTimeout(timer);
       controller.abort();
     };
   }, [role, regional, page, rowsPerPage, debouncedSearch]);
@@ -150,11 +158,10 @@ export default function NeedAssignPage() {
   const formatDate = (d: any) => {
     const date = d ? new Date(d) : null;
     if (!date || isNaN(date.getTime())) return "-";
-    return date.toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = date.toLocaleDateString("id-ID", { month: "short" });
+    const year = date.getFullYear().toString();
+    return `${day} ${month} ${year}`;
   };
 
   const openModal = async (po: any) => {
@@ -266,10 +273,19 @@ export default function NeedAssignPage() {
 
   const columns: ColumnDef<Row>[] = [
     {
+      header: "No",
+      id: "index",
+      cell: ({ row }) => (
+        <span className="font-bold text-black">
+          {(page - 1) * rowsPerPage + row.index + 1}
+        </span>
+      ),
+    },
+    {
       header: "No PO",
       accessorKey: "noPo",
       cell: ({ row }) => (
-        <span className="font-semibold text-slate-800 uppercase">
+        <span className="font-semibold text-black uppercase whitespace-nowrap">
           {row.original.noPo}
         </span>
       ),
@@ -278,9 +294,18 @@ export default function NeedAssignPage() {
       header: "Company",
       accessorKey: "company",
       cell: ({ row }) => (
-        <span className="text-slate-700">
+        <div className="text-black font-medium whitespace-normal max-w-[200px] line-clamp-2">
           {row.original.company || row.original?.RitelModern?.namaPt || "-"}
-        </span>
+        </div>
+      ),
+    },
+    {
+      header: "Tujuan (Toko/DC)",
+      accessorKey: "tujuanDetail",
+      cell: ({ row }) => (
+        <div className="text-black font-medium whitespace-normal max-w-[150px] line-clamp-2">
+          {row.original.tujuanDetail || "-"}
+        </div>
       ),
     },
     {
@@ -334,7 +359,7 @@ export default function NeedAssignPage() {
           regional ??
           "";
         return (
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 whitespace-nowrap">
             {lockedRegional || "-"}
           </span>
         );
@@ -411,14 +436,16 @@ export default function NeedAssignPage() {
       header: "Tgl PO",
       accessorKey: "tglPo",
       cell: ({ row }) => (
-        <span className="text-slate-600">{formatDate(row.original.tglPo)}</span>
+        <span className="text-black font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
+          {formatDate(row.original.tglPo)}
+        </span>
       ),
     },
     {
       header: "Expired",
       accessorKey: "expiredTgl",
       cell: ({ row }) => (
-        <span className="text-slate-600">
+        <span className="text-black font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
           {formatDate(row.original.expiredTgl)}
         </span>
       ),
@@ -427,7 +454,9 @@ export default function NeedAssignPage() {
       header: "No Invoice",
       accessorKey: "noInvoice",
       cell: ({ row }) => (
-        <span className="text-slate-600">{row.original.noInvoice || "-"}</span>
+        <span className="text-black font-medium whitespace-nowrap text-[12px]">
+          {row.original.noInvoice || "-"}
+        </span>
       ),
     },
     {
@@ -507,7 +536,7 @@ export default function NeedAssignPage() {
               <button
                 disabled={!canAssign || st.saving}
                 onClick={onAssign}
-                className={`inline-flex h-9 px-3 items-center justify-center rounded-xl border text-xs font-bold ${
+                className={`inline-flex h-9 px-3 items-center justify-center rounded-xl border text-xs font-bold whitespace-nowrap ${
                   !canAssign || st.saving
                     ? "border-slate-200 bg-slate-100 text-slate-400"
                     : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
@@ -516,7 +545,7 @@ export default function NeedAssignPage() {
                 {st.saving ? "Saving…" : "Assign"}
               </button>
               <button
-                className="inline-flex h-9 px-3 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-bold"
+                className="inline-flex h-9 px-3 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-bold whitespace-nowrap"
                 onClick={() => openModal(row.original)}
               >
                 View
@@ -542,13 +571,14 @@ export default function NeedAssignPage() {
     data: filteredRows,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     state: {
       pagination: {
         pageIndex: Math.max(0, page - 1),
         pageSize: rowsPerPage,
       },
     },
+    manualPagination: true,
+    pageCount: totalPages,
     onPaginationChange: (updater) => {
       const next =
         typeof updater === "function"
@@ -588,7 +618,7 @@ export default function NeedAssignPage() {
             value={rowsPerPage}
             onChange={(e) => {
               setRowsPerPage(Number(e.target.value) || 10);
-              setPage(1);
+              if (page !== 1) setPage(1);
             }}
             className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800"
           >
@@ -599,19 +629,22 @@ export default function NeedAssignPage() {
         </div>
       </div>
 
-      <div className="mt-6 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="mt-6 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-160px)] min-h-[500px]">
         {error && (
           <div className="px-6 py-4 text-sm text-rose-700 bg-rose-50 border-b border-rose-100">
             {error}
           </div>
         )}
-        <div className="overflow-auto">
-          <table className="min-w-[920px] w-full text-left">
-            <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+        <div className="overflow-auto flex-1 relative">
+          <table className="min-w-[920px] w-full text-left relative">
+            <thead className="text-[11px] text-black font-bold uppercase tracking-wide sticky top-0 z-10 shadow-sm shadow-slate-200/50 bg-slate-50 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200">
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id}>
                   {hg.headers.map((h) => (
-                    <th key={h.id} className="px-6 py-3 font-bold">
+                    <th
+                      key={h.id}
+                      className="px-6 py-3 font-bold bg-slate-50 whitespace-nowrap"
+                    >
                       {h.isPlaceholder
                         ? null
                         : flexRender(h.column.columnDef.header, h.getContext())}
@@ -620,9 +653,14 @@ export default function NeedAssignPage() {
                 </tr>
               ))}
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
+            <tbody
+              className={`divide-y divide-slate-100 text-sm transition-opacity duration-300 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
+            >
               {table.getRowModel().rows.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/50">
+                <tr
+                  key={r.id}
+                  className="hover:bg-slate-50/50 transition-colors"
+                >
                   {r.getVisibleCells().map((c) => (
                     <td key={c.id} className="px-6 py-3">
                       {flexRender(c.column.columnDef.cell, c.getContext())}
@@ -630,7 +668,7 @@ export default function NeedAssignPage() {
                   ))}
                 </tr>
               ))}
-              {filteredRows.length === 0 && !loading && (
+              {filteredRows.length === 0 && !loading && !isTransitioning && (
                 <tr>
                   <td
                     className="px-6 py-10 text-center text-slate-500"
@@ -640,10 +678,10 @@ export default function NeedAssignPage() {
                   </td>
                 </tr>
               )}
-              {loading && (
+              {(loading || isTransitioning) && (
                 <tr>
                   <td
-                    className="px-6 py-10 text-center text-slate-500"
+                    className="px-6 py-10 text-center text-slate-800"
                     colSpan={columns.length}
                   >
                     Loading…
@@ -660,16 +698,20 @@ export default function NeedAssignPage() {
           </div>
           <div className="flex items-center justify-end gap-2">
             <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              disabled={page <= 1 || isTransitioning || loading}
+              onClick={() => {
+                setPage((p) => Math.max(1, p - 1));
+              }}
+              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors hover:bg-slate-50"
             >
               Previous
             </button>
             <button
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              disabled={page >= totalPages || isTransitioning || loading}
+              onClick={() => {
+                setPage((p) => Math.min(totalPages, p + 1));
+              }}
+              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors hover:bg-slate-50"
             >
               Next
             </button>

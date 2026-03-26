@@ -101,7 +101,8 @@ export default function CompanyList({
         .map(([k, v]) => ({ company: k, pos: v }))
         .sort((a, b) => a.company.localeCompare(b.company));
       setGroups(g);
-    } catch (e) {
+    } catch (e: any) {
+      if (e.name === "AbortError") return;
       console.error(e);
     } finally {
       window.clearTimeout(timer);

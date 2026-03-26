@@ -1,4 +1,4 @@
-import db from "@/lib/db"; // Sesuaikan dengan path prisma lu
+import db from "@/lib/prisma"; // gunakan prisma singleton
 import { NextResponse } from "next/server";
 import {
   cacheClearPrefix,

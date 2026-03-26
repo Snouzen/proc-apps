@@ -9,7 +9,6 @@ generator client_app {
 
 datasource db {
   provider = "postgresql"
-  
 }
 
 model Product {

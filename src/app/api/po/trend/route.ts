@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import prisma from "@/lib/prisma";
 import { cacheGet, cacheSet, singleFlight } from "@/lib/ttl-cache";
 
 const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;

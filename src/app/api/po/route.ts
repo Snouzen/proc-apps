@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import prisma from "@/lib/prisma";
 import { randomUUID } from "crypto";
+import { Prisma } from "@prisma/client";
 import {
   cacheClearPrefix,
   cacheGet,
@@ -51,8 +52,15 @@ export async function POST(request: Request) {
     const raw = await request.json();
     const parsed = POBodySchema.safeParse(raw);
     if (!parsed.success) {
+      console.error("Payload validation failed:", parsed.error);
       return NextResponse.json(
-        { error: "Payload tidak valid" },
+        {
+          error:
+            "Payload tidak valid: " +
+            parsed.error.issues
+              .map((i) => i.path.join(".") + " " + i.message)
+              .join(", "),
+        },
         { status: 400 },
       );
     }
@@ -215,128 +223,190 @@ export async function POST(request: Request) {
       }
     }
 
-    // Upsert PO Header
-    const poData = {
-      ritelId: ritel.id,
-      unitProduksiId: unit.idRegional,
-      tglPo: tglPoParsed as Date,
-      expiredTgl: expiredParsed,
-      linkPo: linkPo || null,
-      noInvoice: noInvoice || null,
-      tujuanDetail: tujuanUpper || null,
-      regional: upperCleanOrNull(regional) || null,
-      statusKirim: !!status?.kirim,
-      statusSdif: !!status?.sdif,
-      statusPo: !!status?.po,
-      statusFp: !!status?.fp,
-      statusKwi: !!status?.kwi,
-      statusInv: !!status?.inv,
-      statusTagih: !!status?.tagih,
-      statusBayar: !!status?.bayar,
-      remarks: remarks || null,
-      updatedAt: new Date(),
-    };
+    const poRitelId = ritel.id;
+    const poUnitProduksiId = unit.idRegional;
+    const poTglPo = tglPoParsed as Date;
+    const poExpiredTgl = expiredParsed;
+    const poLinkPo = linkPo || null;
+    const poNoInvoice = noInvoice || null;
+    const poTujuanDetail = tujuanUpper || null;
+    const poRegional = upperCleanOrNull(regional) || null;
+    const poStatusKirim = !!status?.kirim;
+    const poStatusSdif = !!status?.sdif;
+    const poStatusPo = !!status?.po;
+    const poStatusFp = !!status?.fp;
+    const poStatusKwi = !!status?.kwi;
+    const poStatusInv = !!status?.inv;
+    const poStatusTagih = !!status?.tagih;
+    const poStatusBayar = !!status?.bayar;
+    const poRemarks = remarks || null;
+    const poUpdatedAt = new Date();
 
-    const updatedPO = await prisma.$transaction(async (tx: any) => {
-      const existing = await tx.purchaseOrder.findUnique({
-        where: { noPo: originalNoPoTrim },
-        select: { id: true, noPo: true },
-      });
-      if (existing && noPoTrim !== existing.noPo) {
-        const conflict = await tx.purchaseOrder.findUnique({
-          where: { noPo: noPoTrim },
-          select: { id: true },
+    const updatedPO = await prisma.$transaction(
+      async (tx: any) => {
+        const existing = await tx.purchaseOrder.findUnique({
+          where: { noPo: originalNoPoTrim },
+          select: { id: true, noPo: true },
         });
-        if (conflict && conflict.id !== existing.id) {
-          throw new Error("Nomor PO sudah dipakai");
-        }
-      }
-
-      const po = existing
-        ? await tx.purchaseOrder.update({
-            where: { id: existing.id },
-            data: { ...poData, noPo: noPoTrim },
-          })
-        : await tx.purchaseOrder.upsert({
+        if (existing && noPoTrim !== existing.noPo) {
+          const conflict = await tx.purchaseOrder.findUnique({
             where: { noPo: noPoTrim },
-            create: {
-              id: randomUUID(),
-              noPo: noPoTrim,
-              ...poData,
-              createdAt: new Date(),
-            },
-            update: { ...poData },
+            select: { id: true },
           });
+          if (conflict && conflict.id !== existing.id) {
+            throw new Error("Nomor PO sudah dipakai");
+          }
+        }
 
-      // Handle Items: Delete existing and recreate
-      await tx.purchaseOrderItem.deleteMany({
-        where: { purchaseOrderId: po.id },
-      });
+        const po = existing
+          ? await tx.purchaseOrder.update({
+              where: { id: existing.id },
+              data: {
+                noPo: noPoTrim,
+                ritelId: poRitelId,
+                unitProduksiId: poUnitProduksiId,
+                tglPo: poTglPo,
+                expiredTgl: poExpiredTgl,
+                linkPo: poLinkPo,
+                noInvoice: poNoInvoice,
+                tujuanDetail: poTujuanDetail,
+                regional: poRegional,
+                statusKirim: poStatusKirim,
+                statusSdif: poStatusSdif,
+                statusPo: poStatusPo,
+                statusFp: poStatusFp,
+                statusKwi: poStatusKwi,
+                statusInv: poStatusInv,
+                statusTagih: poStatusTagih,
+                statusBayar: poStatusBayar,
+                remarks: poRemarks,
+                updatedAt: poUpdatedAt,
+              },
+            })
+          : await tx.purchaseOrder.upsert({
+              where: { noPo: noPoTrim },
+              create: {
+                id: randomUUID(),
+                noPo: noPoTrim,
+                ritelId: poRitelId,
+                unitProduksiId: poUnitProduksiId,
+                tglPo: poTglPo,
+                expiredTgl: poExpiredTgl,
+                linkPo: poLinkPo,
+                noInvoice: poNoInvoice,
+                tujuanDetail: poTujuanDetail,
+                regional: poRegional,
+                statusKirim: poStatusKirim,
+                statusSdif: poStatusSdif,
+                statusPo: poStatusPo,
+                statusFp: poStatusFp,
+                statusKwi: poStatusKwi,
+                statusInv: poStatusInv,
+                statusTagih: poStatusTagih,
+                statusBayar: poStatusBayar,
+                remarks: poRemarks,
+                updatedAt: poUpdatedAt,
+                createdAt: new Date(),
+              },
+              update: {
+                ritelId: poRitelId,
+                unitProduksiId: poUnitProduksiId,
+                tglPo: poTglPo,
+                expiredTgl: poExpiredTgl,
+                linkPo: poLinkPo,
+                noInvoice: poNoInvoice,
+                tujuanDetail: poTujuanDetail,
+                regional: poRegional,
+                statusKirim: poStatusKirim,
+                statusSdif: poStatusSdif,
+                statusPo: poStatusPo,
+                statusFp: poStatusFp,
+                statusKwi: poStatusKwi,
+                statusInv: poStatusInv,
+                statusTagih: poStatusTagih,
+                statusBayar: poStatusBayar,
+                remarks: poRemarks,
+                updatedAt: poUpdatedAt,
+              },
+            });
 
-      const names = Array.from(
-        new Set(items.map((it: any) => canonicalProductName(it.namaProduk))),
-      );
-      const existingProducts = await tx.product.findMany({
-        where: { name: { in: names } },
-        select: { id: true, name: true, satuanKg: true },
-      });
-      type ProdLite = { id: string; name: string; satuanKg?: number };
-      const existingMap: Map<string, ProdLite> = new Map(
-        existingProducts.map((p: any) => [p.name, p as ProdLite]),
-      );
-      const missing = names.filter((n) => !existingMap.has(n));
-      if (missing.length > 0) {
-        await tx.product.createMany({
-          data: missing.map((n) => ({
-            id: randomUUID(),
-            name: n,
-            updatedAt: new Date(),
-          })),
-          skipDuplicates: true,
+        // Handle Items: Delete existing and recreate
+        await tx.purchaseOrderItem.deleteMany({
+          where: { purchaseOrderId: po.id },
         });
-        const created = await tx.product.findMany({
-          where: { name: { in: missing } },
+
+        const names = Array.from(
+          new Set(items.map((it: any) => canonicalProductName(it.namaProduk))),
+        );
+        const existingProducts = await tx.product.findMany({
+          where: { name: { in: names } },
           select: { id: true, name: true, satuanKg: true },
         });
-        for (const p of created) existingMap.set(p.name, p as ProdLite);
-      }
+        type ProdLite = { id: string; name: string; satuanKg?: number };
+        const existingMap: Map<string, ProdLite> = new Map(
+          existingProducts.map((p: any) => [p.name, p as ProdLite]),
+        );
+        const missing = names.filter((n) => !existingMap.has(n));
+        if (missing.length > 0) {
+          await tx.product.createMany({
+            data: missing.map((n) => ({
+              id: randomUUID(),
+              name: n,
+              updatedAt: new Date(),
+            })),
+            skipDuplicates: true,
+          });
+          const created = await tx.product.findMany({
+            where: { name: { in: missing } },
+            select: { id: true, name: true, satuanKg: true },
+          });
+          for (const p of created) existingMap.set(p.name, p as ProdLite);
+        }
 
-      const rows = items.map((item: any) => {
-        const nm = canonicalProductName(item.namaProduk);
-        const product = existingMap.get(nm)!;
-        const satuan =
-          Number((product?.satuanKg as number | undefined) ?? 1) || 1;
-        const pcsNum = Number(item.pcs) || 0;
-        const pcsKirimNum = Number(item.pcsKirim || 0) || 0;
-        const hargaPcsNum = Number(item.hargaPcs) || 0;
-        const discountNum = Math.max(0, Number(item.discount || 0) || 0);
-        const hargaKg = satuan > 0 ? hargaPcsNum / satuan : 0;
-        const nominal = Math.max(0, hargaPcsNum * pcsNum - discountNum);
-        const rpTagih = Math.max(0, hargaPcsNum * pcsKirimNum - discountNum);
-        return {
-          id: randomUUID(),
-          purchaseOrderId: po.id,
-          productId: product.id,
-          pcs: Math.round(pcsNum),
-          pcsKirim: Math.round(pcsKirimNum),
-          hargaKg,
-          hargaPcs: hargaPcsNum,
-          nominal,
-          rpTagih,
-          discount: discountNum,
-        };
-      });
+        const rows = items.map((item: any) => {
+          const nm = canonicalProductName(item.namaProduk);
+          const product = existingMap.get(nm)!;
+          const satuan =
+            Number((product?.satuanKg as number | undefined) ?? 1) || 1;
+          const pcsNum = Number(item.pcs) || 0;
+          const pcsKirimNum = Number(item.pcsKirim || 0) || 0;
+          const hargaPcsNum = Number(item.hargaPcs) || 0;
+          const discountNum = Math.max(0, Number(item.discount || 0) || 0);
+          const hargaKg = satuan > 0 ? hargaPcsNum / satuan : 0;
+          const nominal = Math.max(0, hargaPcsNum * pcsNum - discountNum);
+          const rpTagih = Math.max(0, hargaPcsNum * pcsKirimNum - discountNum);
+          return {
+            id: randomUUID(),
+            purchaseOrderId: po.id,
+            productId: product.id,
+            pcs: Math.round(pcsNum),
+            pcsKirim: Math.round(pcsKirimNum),
+            hargaKg,
+            hargaPcs: hargaPcsNum,
+            nominal,
+            rpTagih,
+            discount: discountNum,
+          };
+        });
 
-      try {
-        await tx.purchaseOrderItem.createMany({ data: rows });
-      } catch {
-        const rowsNoDisc = rows.map(({ discount, ...rest }) => rest);
-        await tx.purchaseOrderItem.createMany({ data: rowsNoDisc as any });
-      }
+        try {
+          await tx.purchaseOrderItem.createMany({
+            data: rows,
+            skipDuplicates: true,
+          });
+        } catch {
+          const rowsNoDisc = rows.map(({ discount, ...rest }) => rest);
+          await tx.purchaseOrderItem.createMany({
+            data: rowsNoDisc as any,
+            skipDuplicates: true,
+          });
+        }
 
-      // Return minimal payload to avoid Prisma Client column mismatches
-      return { id: po.id, noPo: po.noPo };
-    });
+        // Return minimal payload to avoid Prisma Client column mismatches
+        return { id: po.id, noPo: po.noPo };
+      },
+      { timeout: 20000 },
+    );
 
     cacheClearPrefix("po:");
     return NextResponse.json(updatedPO, { status: 201 });
@@ -349,10 +419,19 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const cacheKey = `po:${request.url}`;
-  const cached = cacheGet<any>(cacheKey);
   try {
     const { searchParams } = new URL(request.url);
+    const cacheKey = `po:${searchParams.toString()}`;
+    const cached = cacheGet<any>(cacheKey);
+    const totalParams = new URLSearchParams(searchParams);
+    totalParams.delete("limit");
+    totalParams.delete("offset");
+    totalParams.delete("sort");
+    totalParams.delete("summary");
+    totalParams.delete("includeItems");
+    const totalCacheKey = `po_total:${totalParams.toString()}`;
+    const cachedTotal = cacheGet<number>(totalCacheKey);
+
     const company = searchParams.get("company") || undefined;
     const noPo = searchParams.get("noPo") || undefined;
     const includeUnknown =
@@ -380,6 +459,38 @@ export async function GET(request: Request) {
         if (parts.length > 0) noPoList = parts;
       }
     }
+
+    const statsKeyParams = new URLSearchParams();
+    statsKeyParams.set("includeUnknown", includeUnknown ? "true" : "false");
+    if (tglFrom)
+      statsKeyParams.set("tglFrom", searchParams.get("tglFrom") || "");
+    if (tglTo) statsKeyParams.set("tglTo", searchParams.get("tglTo") || "");
+    const statsCacheKey = `po_stats:${statsKeyParams.toString()}`;
+    const canApproxFromStats =
+      !q &&
+      !company &&
+      !noPo &&
+      (!noPoList || noPoList.length === 0) &&
+      !submitFrom &&
+      !submitTo &&
+      !regionalParam &&
+      includeUnknown &&
+      (group === "all" ||
+        group === "active" ||
+        group === "almost_expired" ||
+        group === "expired" ||
+        group === "completed");
+    const approxTotal = canApproxFromStats
+      ? (() => {
+          const s = cacheGet<any>(statsCacheKey);
+          if (!s) return undefined;
+          if (group === "active") return Number(s.cActive) || 0;
+          if (group === "almost_expired") return Number(s.cAlmost) || 0;
+          if (group === "expired") return Number(s.cExpired) || 0;
+          if (group === "completed") return Number(s.cCompleted) || 0;
+          return Number(s.cAll) || 0;
+        })()
+      : undefined;
     const summary = (searchParams.get("summary") || "false") === "true";
     const includeItems =
       !summary && (searchParams.get("includeItems") || "true") === "true";
@@ -388,7 +499,7 @@ export async function GET(request: Request) {
     const limit =
       limitRaw == null
         ? null
-        : Math.max(1, Math.min(500, Number(limitRaw) || 0));
+        : Math.max(1, Math.min(100, Number(limitRaw) || 0));
     const offset =
       offsetRaw == null ? null : Math.max(0, Number(offsetRaw) || 0);
     const paged = limit != null || offset != null;
@@ -635,85 +746,53 @@ export async function GET(request: Request) {
     const attachSummary = async (rows: any[]) => {
       const ids = rows.map((r) => r.id).filter(Boolean);
       if (ids.length === 0) return rows;
-      const agg = await prisma.purchaseOrderItem.groupBy({
-        by: ["purchaseOrderId"],
-        where: { purchaseOrderId: { in: ids } },
-        _sum: {
-          nominal: true,
-          rpTagih: true,
-          pcs: true,
-          pcsKirim: true,
-          discount: true,
-        },
-        _count: { _all: true },
-      });
-      const byId = new Map(
-        agg.map((a) => [
-          a.purchaseOrderId,
-          {
-            itemsCount: a._count?._all ?? 0,
-            totalNominal: a._sum?.nominal ?? 0,
-            totalTagihan: a._sum?.rpTagih ?? 0,
-            pcsTotal: a._sum?.pcs ?? 0,
-            pcsKirimTotal: a._sum?.pcsKirim ?? 0,
-            totalDiscount: a._sum?.discount ?? 0,
-          },
-        ]),
-      );
-      const kgRows = await prisma.$queryRaw<
-        Array<{ purchaseOrderId: string; kg: number; kgKirim: number }>
-      >`
-        SELECT
-          i."purchaseOrderId" as "purchaseOrderId",
-          COALESCE(SUM(i."pcs" * p."satuanKg"), 0) as "kg",
-          COALESCE(SUM(i."pcsKirim" * p."satuanKg"), 0) as "kgKirim"
-        FROM "PurchaseOrderItem" i
-        JOIN "Product" p ON p."id" = i."productId"
-        WHERE i."purchaseOrderId" = ANY(${ids})
-        GROUP BY i."purchaseOrderId"
-      `;
-      const firstRows = await prisma.$queryRaw<
-        Array<{ purchaseOrderId: string; name: string }>
-      >`
-        SELECT DISTINCT ON (i."purchaseOrderId")
-          i."purchaseOrderId" as "purchaseOrderId",
-          p."name" as "name"
-        FROM "PurchaseOrderItem" i
-        JOIN "Product" p ON p."id" = i."productId"
-        WHERE i."purchaseOrderId" = ANY(${ids})
-        ORDER BY i."purchaseOrderId", i."createdAt" ASC
-      `;
-      const kgById = new Map<string, number>();
-      const kgKirimById = new Map<string, number>();
-      for (const r of kgRows) {
-        kgById.set(String(r.purchaseOrderId), Number((r as any).kg) || 0);
-        kgKirimById.set(
-          String(r.purchaseOrderId),
-          Number((r as any).kgKirim) || 0,
-        );
-      }
-      const firstProductById = new Map<string, string>();
-      for (const r of firstRows) {
-        const id = String(r.purchaseOrderId || "");
-        if (!id || firstProductById.has(id)) continue;
-        const nm = String((r as any).name || "").trim();
-        if (nm) firstProductById.set(id, nm);
-      }
+      const rowsAgg = await prisma.$queryRaw<
+        Array<{
+          purchaseOrderId: string;
+          itemsCount: number;
+          totalNominal: number;
+          totalTagihan: number;
+          pcsTotal: number;
+          pcsKirimTotal: number;
+          totalDiscount: number;
+          totalKg: number;
+          totalKgKirim: number;
+          firstProductName: string | null;
+        }>
+      >(Prisma.sql`
+          SELECT
+            i."purchaseOrderId" as "purchaseOrderId",
+            COUNT(*)::int as "itemsCount",
+            COALESCE(SUM(i."nominal"), 0) as "totalNominal",
+            COALESCE(SUM(i."rpTagih"), 0) as "totalTagihan",
+            COALESCE(SUM(i."pcs"), 0) as "pcsTotal",
+            COALESCE(SUM(i."pcsKirim"), 0) as "pcsKirimTotal",
+            COALESCE(SUM(i."discount"), 0) as "totalDiscount",
+            COALESCE(SUM(i."pcs" * p."satuanKg"), 0)::float8 as "totalKg",
+            COALESCE(SUM(i."pcsKirim" * p."satuanKg"), 0)::float8 as "totalKgKirim",
+            (ARRAY_AGG(p."name" ORDER BY i."createdAt" ASC))[1] as "firstProductName"
+          FROM "PurchaseOrderItem" i
+          JOIN "Product" p ON p."id" = i."productId"
+          WHERE i."purchaseOrderId" IN (${Prisma.join(ids)})
+          GROUP BY i."purchaseOrderId"
+        `);
+      const byId = new Map<string, (typeof rowsAgg)[number]>();
+      for (const a of rowsAgg) byId.set(String(a.purchaseOrderId), a);
       return rows.map((r) => {
-        const s = byId.get(r.id) || {
-          itemsCount: 0,
-          totalNominal: 0,
-          totalTagihan: 0,
-          pcsTotal: 0,
-          pcsKirimTotal: 0,
-          totalDiscount: 0,
-        };
+        const s = byId.get(r.id);
         return {
           ...r,
-          ...s,
-          totalKg: kgById.get(r.id) || 0,
-          totalKgKirim: kgKirimById.get(r.id) || 0,
-          firstProductName: firstProductById.get(r.id) || null,
+          itemsCount: Number(s?.itemsCount) || 0,
+          totalNominal: Number(s?.totalNominal) || 0,
+          totalTagihan: Number(s?.totalTagihan) || 0,
+          pcsTotal: Number(s?.pcsTotal) || 0,
+          pcsKirimTotal: Number(s?.pcsKirimTotal) || 0,
+          totalDiscount: Number(s?.totalDiscount) || 0,
+          totalKg: Number(s?.totalKg) || 0,
+          totalKgKirim: Number(s?.totalKgKirim) || 0,
+          firstProductName: s?.firstProductName
+            ? String(s.firstProductName)
+            : null,
         };
       });
     };
@@ -731,7 +810,6 @@ export async function GET(request: Request) {
                   updatedAt: true,
                   tglPo: true,
                   expiredTgl: true,
-                  linkPo: true,
                   noInvoice: true,
                   tujuanDetail: true,
                   regional: true,
@@ -766,66 +844,66 @@ export async function GET(request: Request) {
               } as any),
         ),
       );
-      return NextResponse.json(
-        summary ? await attachSummary(data as any) : data,
-      );
+      const payload = summary ? await attachSummary(data as any) : data;
+      cacheSet(cacheKey, payload, 15000);
+      return NextResponse.json(payload);
     }
 
-    const take = limit ?? 50;
+    const take = Math.min(100, limit ?? 50);
     const skip = offset ?? 0;
     const [total, data] = await singleFlight(cacheKey, async () => {
-      const [t, d] = await Promise.all([
-        prisma.purchaseOrder.count({ where }),
-        prisma.purchaseOrder.findMany(
-          summary
-            ? ({
-                where,
-                select: {
-                  id: true,
-                  noPo: true,
-                  createdAt: true,
-                  updatedAt: true,
-                  tglPo: true,
-                  expiredTgl: true,
-                  linkPo: true,
-                  noInvoice: true,
-                  tujuanDetail: true,
-                  regional: true,
-                  unitProduksiId: true,
-                  statusKirim: true,
-                  statusSdif: true,
-                  statusPo: true,
-                  statusFp: true,
-                  statusKwi: true,
-                  statusInv: true,
-                  statusTagih: true,
-                  statusBayar: true,
-                  RitelModern: {
-                    select: { namaPt: true, inisial: true, tujuan: true },
-                  },
-                  UnitProduksi: {
-                    select: { siteArea: true, namaRegional: true },
-                  },
+      const t =
+        cachedTotal ??
+        (typeof approxTotal === "number" ? approxTotal : undefined) ??
+        (await prisma.purchaseOrder.count({ where }));
+      const d = await prisma.purchaseOrder.findMany(
+        summary
+          ? ({
+              where,
+              select: {
+                id: true,
+                noPo: true,
+                createdAt: true,
+                updatedAt: true,
+                tglPo: true,
+                expiredTgl: true,
+                noInvoice: true,
+                tujuanDetail: true,
+                regional: true,
+                unitProduksiId: true,
+                statusKirim: true,
+                statusSdif: true,
+                statusPo: true,
+                statusFp: true,
+                statusKwi: true,
+                statusInv: true,
+                statusTagih: true,
+                statusBayar: true,
+                RitelModern: {
+                  select: { namaPt: true, inisial: true, tujuan: true },
                 },
-                orderBy,
-                take,
-                skip,
-              } as any)
-            : ({
-                where,
-                include: {
-                  ...(includeItems
-                    ? { Items: { include: { Product: true } } }
-                    : {}),
-                  RitelModern: true,
-                  UnitProduksi: true,
-                } as any,
-                orderBy,
-                take,
-                skip,
-              } as any),
-        ),
-      ]);
+                UnitProduksi: {
+                  select: { siteArea: true, namaRegional: true },
+                },
+              },
+              orderBy,
+              take,
+              skip,
+            } as any)
+          : ({
+              where,
+              include: {
+                ...(includeItems
+                  ? { Items: { include: { Product: true } } }
+                  : {}),
+                RitelModern: true,
+                UnitProduksi: true,
+              } as any,
+              orderBy,
+              take,
+              skip,
+            } as any),
+      );
       return [t, d] as const;
     });
     const payload = {
@@ -834,9 +912,13 @@ export async function GET(request: Request) {
       limit: take,
       offset: skip,
     };
+    cacheSet(totalCacheKey, total, 30000);
     cacheSet(cacheKey, payload, 15000);
     return NextResponse.json(payload);
   } catch (error) {
+    const cached = cacheGet<any>(
+      `po:${new URL(request.url).searchParams.toString()}`,
+    );
     if (cached) return NextResponse.json(cached);
     const message =
       error instanceof Error ? error.message : String(error ?? "Unknown error");

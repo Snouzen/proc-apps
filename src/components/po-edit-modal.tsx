@@ -754,12 +754,11 @@ export default function POEditModal({
                 {PO_FORM_LABELS.preview}
               </h4>
               <div className="text-sm font-bold text-slate-700">
-                {formatCurrency(totals.nominal)} /{" "}
-                {formatCurrency(totals.tagih)}
+                Total Nominal: {formatCurrency(totals.nominal)}
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left min-w-[1200px]">
+              <table className="w-full text-sm text-left min-w-[1000px]">
                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                   <tr>
                     <th className="px-4 py-3">{PO_FORM_LABELS.namaProduk}</th>
@@ -777,9 +776,6 @@ export default function POEditModal({
                     </th>
                     <th className="px-4 py-3 text-right">
                       {PO_FORM_LABELS.nominal}
-                    </th>
-                    <th className="px-4 py-3 text-right">
-                      {PO_FORM_LABELS.rpTagih}
                     </th>
                     <th className="px-4 py-3 text-center">
                       {PO_FORM_LABELS.aksi}
@@ -881,9 +877,6 @@ export default function POEditModal({
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-slate-800 tabular-nums">
                           {formatCurrency(d.nominal)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-800 tabular-nums">
-                          {formatCurrency(d.rpTagih)}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button

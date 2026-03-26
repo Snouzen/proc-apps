@@ -219,7 +219,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                     <th className="px-4 py-3">Produk</th>
                     <th className="px-4 py-3 text-right">Pcs / Kirim</th>
                     <th className="px-4 py-3 text-right">Harga/Pcs</th>
-                    <th className="px-4 py-3 text-right">Total Tagih</th>
+                    <th className="px-4 py-3 text-right">Nominal</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -241,7 +241,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                         {formatCurrency(item.hargaPcs)}
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-emerald-600">
-                        {formatCurrency(item.rpTagih)}
+                        {formatCurrency(item.nominal)}
                       </td>
                     </tr>
                   ))}
@@ -275,12 +275,12 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                       colSpan={3}
                       className="px-4 py-3 text-right font-black text-slate-500 uppercase tracking-wider text-xs"
                     >
-                      Total Grand Tagihan
+                      Total Nominal
                     </td>
                     <td className="px-4 py-3 text-right font-black text-slate-800 text-base">
                       {formatCurrency(
                         data.Items?.reduce(
-                          (acc, curr) => acc + curr.rpTagih,
+                          (acc, curr) => acc + curr.nominal,
                           0,
                         ) || 0,
                       )}

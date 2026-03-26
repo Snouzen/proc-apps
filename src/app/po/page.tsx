@@ -156,7 +156,7 @@ function InputPODetailPageInner() {
   const currentKg = currentPcsNum * (satuanKgSelected || 0);
   const currentKgKirim = currentPcsKirimNum * (satuanKgSelected || 0);
 
-  const totalRpTagihAll = items.reduce((acc, item) => acc + item.rpTagih, 0);
+  const totalNominalAll = items.reduce((acc, item) => acc + item.nominal, 0);
 
   const getSatuanKg = (namaProduk: string) => {
     const satuan =
@@ -687,6 +687,9 @@ function InputPODetailPageInner() {
           inisial: formData.inisial,
           regional: formData.regional,
           noPo: formData.noPo,
+          originalNoPo: isEditMode
+            ? searchParams.get("noPo") || undefined
+            : undefined,
           tglPo: formData.tglPo,
           linkPo: formData.linkPo,
           expiredTgl: formData.expiredTgl,
@@ -1262,12 +1265,6 @@ function InputPODetailPageInner() {
                         >
                           Nominal
                         </th>
-                        <th
-                          className="px-4 py-3 text-right"
-                          title="Rp Tagih = (PCS Kirim × Harga/Pcs) - Discount"
-                        >
-                          Rp Tagih
-                        </th>
                         <th className="px-4 py-3 text-center">Aksi</th>
                       </tr>
                     </thead>
@@ -1365,9 +1362,6 @@ function InputPODetailPageInner() {
                               </td>
                               <td className="px-4 py-3 text-right font-bold text-slate-800">
                                 {formatCurrency(Number(derived.nominal || 0))}
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-slate-800">
-                                {formatCurrency(Number(derived.rpTagih || 0))}
                               </td>
                               <td className="px-4 py-3 text-center">
                                 {isEditing ? (
@@ -1479,16 +1473,6 @@ function InputPODetailPageInner() {
                                         )}
                                       </div>
                                     </div>
-                                    <div>
-                                      <div className="text-slate-400 font-black uppercase text-[10px]">
-                                        Rp Tagih
-                                      </div>
-                                      <div className="mt-1 font-black text-slate-900 text-right">
-                                        {formatCurrency(
-                                          Number(derived.rpTagih || 0),
-                                        )}
-                                      </div>
-                                    </div>
                                     {!isEditing && (
                                       <div className="flex items-end justify-end">
                                         <button
@@ -1514,10 +1498,10 @@ function InputPODetailPageInner() {
                           colSpan={4}
                           className="px-4 py-3 text-right font-black text-slate-500 uppercase tracking-wider text-xs"
                         >
-                          Total Tagihan
+                          Total Nominal
                         </td>
                         <td className="px-4 py-3 text-right font-black text-slate-800 text-base">
-                          {formatCurrency(totalRpTagihAll)}
+                          {formatCurrency(totalNominalAll)}
                         </td>
                         <td></td>
                       </tr>

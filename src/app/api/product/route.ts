@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import prisma from "@/lib/db";
+import prisma from "@/lib/prisma";
 import { canonicalProductName, dedupeKey } from "@/lib/text";
 
 function getErrorMessage(err: unknown): string {
