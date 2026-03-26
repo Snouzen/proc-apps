@@ -20,13 +20,51 @@ import {
   Search,
   UserPlus,
 } from "lucide-react";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  Suspense,
+} from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import SmoothSelect from "@/components/ui/smooth-select";
 import PODetailModal from "@/components/po-detail-modal";
 import POEditModal from "@/components/po-edit-modal";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 import { getMe } from "@/lib/me";
+import { getUnits } from "@/lib/units";
+import POFilters from "@/components/po-filters";
 
+function StatCardSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 animate-pulse">
+      <div className="flex items-start gap-3">
+        <div className="h-8 w-8 bg-slate-200 rounded-lg" />
+        <div className="flex-1">
+          <div className="h-3 w-24 bg-slate-200 rounded mb-3" />
+          <div className="h-7 w-20 bg-slate-200 rounded mb-2" />
+          <div className="h-3 w-28 bg-slate-200 rounded" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TableRowSkeleton({ colCount }: { colCount: number }) {
+  return (
+    <tr className="animate-pulse">
+      {Array.from({ length: colCount }).map((_, i) => (
+        <td key={i} className="px-6 py-4">
+          <div
+            className={`h-4 bg-slate-200 rounded ${i === 0 ? "w-8" : i % 3 === 0 ? "w-28" : i % 3 === 1 ? "w-44" : "w-20"}`}
+          />
+        </td>
+      ))}
+    </tr>
+  );
+}
 export default function Home() {
   const refreshTick = useAutoRefreshTick();
   const [poData, setPoData] = useState<any[]>([]);
@@ -82,6 +120,22 @@ export default function Home() {
       mounted = false;
       window.clearTimeout(timer);
       ctrl.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    getUnits()
+      .then((list) => {
+        if (!mounted) return;
+        setUnitData(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnitData([]);
+      });
+    return () => {
+      mounted = false;
     };
   }, []);
 
@@ -165,8 +219,37 @@ export default function Home() {
   if (!roleReady) {
     return (
       <main>
-        <div className="mt-8 bg-white text-black rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6">
-          <div className="text-sm text-slate-500">Loading dashboard…</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-6">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
+        <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+            <div className="h-6 w-40 bg-slate-200 rounded animate-pulse" />
+            <div className="h-6 w-24 bg-slate-200 rounded animate-pulse" />
+          </div>
+          <div className="overflow-auto max-h-[70vh]">
+            <table className="w-full text-left border-collapse table-auto text-sm">
+              <thead>
+                <tr className="text-gray-700 text-sm uppercase tracking-wider border-b border-gray-100">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <th
+                      key={i}
+                      className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white"
+                    >
+                      <div className="h-3 w-16 bg-slate-200 rounded animate-pulse" />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <TableRowSkeleton key={i} colCount={8} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     );
@@ -187,78 +270,80 @@ export default function Home() {
     <main>
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-6">
-        <StatCard
-          title="PO Total"
-          value={String(totalCount)}
-          subValue={statsLoading ? "Loading..." : `${totalCount} total`}
-          subLabel=""
-          color=""
-          variant="amber"
-          icon={<Briefcase size={20} />}
-        />
-        <StatCard
-          title="PO Active"
-          value={String(activeCount)}
-          subValue={statsLoading ? "Loading..." : `${activeCount} active`}
-          subLabel=""
-          color=""
-          variant="blue"
-          icon={<Eye size={20} />}
-          onClick={() => focusTable("active")}
-        />
-        <StatCard
-          title="PO In Progress"
-          value={String(inProgressCount)}
-          subValue={statsLoading ? "Loading..." : `${inProgressCount} open`}
-          subLabel=""
-          color=""
-          variant="blue"
-          icon={<ListChecks size={20} />}
-        />
-        <StatCard
-          title="PO Need To Assign"
-          value={String(needAssignCount)}
-          subValue={
-            statsLoading ? "Loading..." : `${needAssignCount} need assign`
-          }
-          subLabel=""
-          color=""
-          variant="amber"
-          icon={<UserPlus size={20} />}
-          onClick={() => focusTable("assign")}
-        />
-        <StatCard
-          title="PO Almost Expired"
-          value={String(almostExpiredCount)}
-          subValue={
-            statsLoading ? "Loading..." : `${almostExpiredCount} within 14 days`
-          }
-          subLabel=""
-          color=""
-          variant="rose"
-          icon={<ClockAlert size={20} />}
-          onClick={() => focusTable("almost_expired")}
-        />
-        <StatCard
-          title="PO Expired"
-          value={String(expiredCount)}
-          subValue={statsLoading ? "Loading..." : `${expiredCount} expired`}
-          subLabel=""
-          color=""
-          variant="rose"
-          icon={<CalendarClock size={20} />}
-          onClick={() => focusTable("expired")}
-        />
-        <StatCard
-          title="PO Completed"
-          value={String(completedCount)}
-          subValue={statsLoading ? "Loading..." : `Selesai`}
-          subLabel=""
-          color=""
-          variant="emerald"
-          icon={<Check size={20} />}
-          onClick={() => focusTable("completed")}
-        />
+        {statsLoading ? (
+          Array.from({ length: 7 }).map((_, i) => <StatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <StatCard
+              title="PO Total"
+              value={String(totalCount)}
+              subValue={`${totalCount} total`}
+              subLabel=""
+              color=""
+              variant="amber"
+              icon={<Briefcase size={20} />}
+            />
+            <StatCard
+              title="PO Active"
+              value={String(activeCount)}
+              subValue={`${activeCount} active`}
+              subLabel=""
+              color=""
+              variant="blue"
+              icon={<Eye size={20} />}
+              onClick={() => focusTable("active")}
+            />
+            <StatCard
+              title="PO In Progress"
+              value={String(inProgressCount)}
+              subValue={`${inProgressCount} open`}
+              subLabel=""
+              color=""
+              variant="blue"
+              icon={<ListChecks size={20} />}
+            />
+            <StatCard
+              title="PO Need To Assign"
+              value={String(needAssignCount)}
+              subValue={`${needAssignCount} need assign`}
+              subLabel=""
+              color=""
+              variant="amber"
+              icon={<UserPlus size={20} />}
+              onClick={() => focusTable("assign")}
+            />
+            <StatCard
+              title="PO Almost Expired"
+              value={String(almostExpiredCount)}
+              subValue={`${almostExpiredCount} within 14 days`}
+              subLabel=""
+              color=""
+              variant="rose"
+              icon={<ClockAlert size={20} />}
+              onClick={() => focusTable("almost_expired")}
+            />
+            <StatCard
+              title="PO Expired"
+              value={String(expiredCount)}
+              subValue={`${expiredCount} expired`}
+              subLabel=""
+              color=""
+              variant="rose"
+              icon={<CalendarClock size={20} />}
+              onClick={() => focusTable("expired")}
+            />
+            <StatCard
+              title="PO Completed"
+              value={String(completedCount)}
+              subValue={`Selesai`}
+              subLabel=""
+              color=""
+              variant="emerald"
+              icon={<Check size={20} />}
+              onClick={() => focusTable("completed")}
+            />
+          </>
+        )}
       </div>
 
       {role === "pusat" && (
@@ -271,23 +356,31 @@ export default function Home() {
         id="po-table"
         className="mt-8 bg-white text-black rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
       >
-        <TableUnderChart
-          refreshTick={refreshTick}
-          role={role}
-          regional={regional}
-          units={unitData}
-          focusGroup={tableFocus}
-          onFocusApplied={() => setTableFocus(null)}
-          counts={{
-            cAll: stats.totalCount,
-            cActive: stats.activeCount,
-            cAssign: stats.needAssignCount,
-            cProgress: stats.inProgressCount,
-            cAlmost: stats.almostExpiredCount,
-            cExpired: stats.expiredCount,
-            cCompleted: stats.completedCount,
-          }}
-        />
+        <Suspense
+          fallback={
+            <div className="p-10 text-center text-slate-500">
+              Memuat tabel...
+            </div>
+          }
+        >
+          <TableUnderChart
+            refreshTick={refreshTick}
+            role={role}
+            regional={regional}
+            units={unitData}
+            focusGroup={tableFocus}
+            onFocusApplied={() => setTableFocus(null)}
+            counts={{
+              cAll: stats.totalCount,
+              cActive: stats.activeCount,
+              cAssign: stats.needAssignCount,
+              cProgress: stats.inProgressCount,
+              cAlmost: stats.almostExpiredCount,
+              cExpired: stats.expiredCount,
+              cCompleted: stats.completedCount,
+            }}
+          />
+        </Suspense>
       </div>
     </main>
   );
@@ -324,6 +417,10 @@ function TableUnderChart({
     cCompleted: number;
   };
 }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [editOpen, setEditOpen] = useState(false);
   const [editNoPo, setEditNoPo] = useState<string | null>(null);
   const [group, setGroup] = useState<
@@ -342,22 +439,60 @@ function TableUnderChart({
     actions: true,
   });
   const [colsOpen, setColsOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
+  const [rowsPerPage, setRowsPerPage] = useState(
+    () => Number(searchParams.get("limit")) || 10,
+  );
   const [serverTotal, setServerTotal] = useState(0);
+
+  // Sync page and limit to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    let changed = false;
+
+    if (Number(params.get("page")) !== page) {
+      params.set("page", page.toString());
+      changed = true;
+    }
+    if (Number(params.get("limit")) !== rowsPerPage) {
+      params.set("limit", rowsPerPage.toString());
+      changed = true;
+    }
+
+    if (changed) {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [page, rowsPerPage, pathname, router, searchParams]);
+
   const toggleCol = (key: keyof typeof visibleCols) =>
     setVisibleCols((v) => ({ ...v, [key]: !v[key] }));
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [sortDesc, setSortDesc] = useState(true);
   const [alphaSort, setAlphaSort] = useState<"none" | "asc" | "desc">("none");
-  const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [regionalFilter, setRegionalFilter] = useState("");
+  const [siteAreaFilter, setSiteAreaFilter] = useState("");
   const [poLoadError, setPoLoadError] = useState<string | null>(null);
   const [localPoData, setLocalPoData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
   const [assignOpenId, setAssignOpenId] = useState<string | null>(null);
+  const handleSearchChange = useCallback((v: string) => {
+    setPage(1);
+    setDebouncedSearch(v);
+  }, []);
+
+  const handleFilterChange = useCallback((next: any) => {
+    setPage(1);
+    if (typeof next.dateFrom === "string") setDateFrom(next.dateFrom);
+    if (typeof next.dateTo === "string") setDateTo(next.dateTo);
+    if (typeof next.regionalValue === "string")
+      setRegionalFilter(next.regionalValue);
+    if (typeof next.siteAreaValue === "string")
+      setSiteAreaFilter(next.siteAreaValue);
+  }, []);
 
   const toDate = (d: any) => {
     if (!d) return null;
@@ -381,18 +516,42 @@ function TableUnderChart({
     onFocusApplied();
   }, [focusGroup]);
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(String(searchQuery || "").trim());
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
-
   // Stats fetched centrally above; no duplicate fetch here
+
+  const fetchKey = useMemo(() => {
+    const parts = [
+      String(role ?? ""),
+      String(regional ?? ""),
+      String(group),
+      String(dateFrom || ""),
+      String(dateTo || ""),
+      String(debouncedSearch || ""),
+      String(regionalFilter || ""),
+      String(siteAreaFilter || ""),
+      String(page),
+      String(rowsPerPage),
+      String(sortDesc ? "desc" : "asc"),
+      String(alphaSort),
+    ];
+    return parts.join("|");
+  }, [
+    role,
+    regional,
+    group,
+    dateFrom,
+    dateTo,
+    debouncedSearch,
+    regionalFilter,
+    siteAreaFilter,
+    page,
+    rowsPerPage,
+    sortDesc,
+    alphaSort,
+  ]);
 
   const fetchTable = useCallback(
     async (signal?: AbortSignal) => {
+      setLoading(true);
       try {
         const params = new URLSearchParams();
         params.set("includeUnknown", "true");
@@ -402,6 +561,8 @@ function TableUnderChart({
         params.set("limit", String(rowsPerPage));
         params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
         if (role === "rm" && regional) params.set("regional", regional);
+        if (regionalFilter) params.set("regional", regionalFilter);
+        if (siteAreaFilter) params.set("siteArea", siteAreaFilter);
         if (dateFrom) params.set("tglFrom", dateFrom);
         if (dateTo) params.set("tglTo", dateTo);
         if (debouncedSearch) params.set("q", debouncedSearch);
@@ -414,28 +575,41 @@ function TableUnderChart({
               ? "tglPo_desc"
               : "tglPo_asc";
         params.set("sort", sort);
+        console.log("Fetching with key:", fetchKey);
         const res = await fetch(`/api/po?${params.toString()}`, {
           cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          credentials: "same-origin",
           signal,
         });
         const json = await res.json().catch(() => null);
+        console.log("Raw Response:", json);
         if (!res.ok || !json) {
           const msg =
             (json as any)?.error || res.statusText || "Gagal mengambil data PO";
           throw new Error(msg);
         }
-        const list = Array.isArray(json?.data)
-          ? json.data
-          : Array.isArray(json)
-            ? json
-            : [];
-        setLocalPoData(list);
-        setServerTotal(Number(json?.total) || list.length);
-        setPoLoadError(null);
+        let list: any[] = [];
+        if (Array.isArray((json as any)?.data)) list = (json as any).data;
+        else if (Array.isArray((json as any)?.rows)) list = (json as any).rows;
+        else if (Array.isArray((json as any)?.items))
+          list = (json as any).items;
+        else if (Array.isArray(json)) list = json as any[];
+        else if (json && typeof json === "object") {
+          const arrLike = Object.values(json).find((v) => Array.isArray(v));
+          if (Array.isArray(arrLike)) list = arrLike as any[];
+        }
+        console.log("Data Received:", Array.isArray(list) ? list.length : 0);
+        const total = Number((json as any)?.total) || list.length;
+        return { list, total };
       } catch (e) {
-        if ((e as any)?.name === "AbortError") return;
         const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
-        setPoLoadError(msg);
+        return { list: [], total: 0, error: msg as string };
+      } finally {
+        setLoading(false);
       }
     },
     [
@@ -445,39 +619,40 @@ function TableUnderChart({
       dateFrom,
       dateTo,
       debouncedSearch,
+      regionalFilter,
+      siteAreaFilter,
       page,
       rowsPerPage,
       sortDesc,
       alphaSort,
+      fetchKey,
     ],
   );
 
   useEffect(() => {
     if (!role) return;
-    let mounted = true;
+    let active = true;
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      if (mounted) fetchTable(controller.signal);
-    }, 100);
+    const timer = setTimeout(() => {
+      if (active) {
+        fetchTable(controller.signal).then((out) => {
+          if (!active || !out) return;
+          if ((out as any).error) {
+            setPoLoadError((out as any).error as string);
+          } else {
+            setLocalPoData(out.list || []);
+            setServerTotal(out.total || 0);
+            setPoLoadError(null);
+          }
+        });
+      }
+    }, 500);
     return () => {
-      mounted = false;
-      window.clearTimeout(timer);
+      active = false;
+      clearTimeout(timer);
       controller.abort();
     };
-  }, [
-    refreshTick,
-    role,
-    regional,
-    group,
-    dateFrom,
-    dateTo,
-    debouncedSearch,
-    page,
-    rowsPerPage,
-    sortDesc,
-    alphaSort,
-    fetchTable,
-  ]);
+  }, [fetchKey, role, fetchTable]);
 
   // Default group 'all' allowed for all roles; no auto override
 
@@ -696,56 +871,17 @@ function TableUnderChart({
                 ? "Company Z-A"
                 : "Company Sort"}
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Date</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-black bg-white/90 transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-sm hover:shadow"
-            />
-            <span className="text-sm text-gray-600">to</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-black bg-white/90 transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-sm hover:shadow"
-            />
-            {(dateFrom || dateTo) && (
-              <button
-                onClick={() => {
-                  setDateFrom("");
-                  setDateTo("");
-                  setPage(1);
-                }}
-                className="px-2 py-1 rounded-md border border-gray-300 text-sm bg-white hover:bg-gray-50"
-                title="Clear date filter"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search..."
-              className="w-64 pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-slate-200"
-            />
-          </div>
+          <POFilters
+            unitData={units}
+            searchValue={debouncedSearch}
+            onSearchChange={handleSearchChange}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            regionalValue={regionalFilter}
+            siteAreaValue={siteAreaFilter}
+            regionalLocked={role === "rm"}
+            onFilterChange={handleFilterChange}
+          />
           <div className="relative">
             <button
               className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold bg-white hover:bg-gray-50"
@@ -785,275 +921,328 @@ function TableUnderChart({
           </div>
         </div>
       </div>
-      <div className="overflow-auto max-h-[70vh]">
-        <table className="w-full text-left border-collapse table-auto text-sm">
+      <div className="overflow-x-auto max-h-[70vh] scrollbar-hide">
+        <table className="w-full text-left border-collapse table-fixed text-sm min-w-[1200px]">
           <thead>
             <tr className="text-gray-700 text-sm uppercase tracking-wider border-b border-gray-100">
-              <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-[72px]">
+              <th className="px-6 py-3 font-semibold sticky top-0 left-0 z-20 bg-white w-16 border-r border-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                 No
               </th>
               {visibleCols.company && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-48">
                   Company
                 </th>
               )}
               {visibleCols.nopo && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-40">
                   No PO
                 </th>
               )}
               {visibleCols.pcsPo && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white text-right">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white text-right w-24">
                   PCS PO
                 </th>
               )}
               {visibleCols.nominal && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white text-right">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white text-right w-36">
                   Nominal
                 </th>
               )}
               {visibleCols.submitDate && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
                   Submit Date
                 </th>
               )}
               {visibleCols.tglPo && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
                   Tgl PO
                 </th>
               )}
               {visibleCols.dueDate && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
                   Tgl Expired
                 </th>
               )}
               {visibleCols.regional && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
                   Regional
                 </th>
               )}
               {visibleCols.status && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white">
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-44">
                   Status
                 </th>
               )}
               {visibleCols.actions && (
-                <th className="px-6 py-3 font-semibold text-center sticky top-0 z-10 bg-white">
+                <th className="px-6 py-3 font-semibold text-center sticky top-0 z-10 bg-white w-36">
                   Actions
                 </th>
               )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-[0.95rem]">
-            {pageRows.map((po, idx) => (
-              <tr
-                key={idx}
-                className="hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => openDetail(po)}
-                title="Lihat detail PO"
-              >
-                <td className="px-6 py-4 align-top text-slate-600 font-semibold tabular-nums">
-                  {start + idx + 1}
-                </td>
-                {visibleCols.company && (
-                  <td className="px-6 py-4 align-top">
-                    <span className="text-base font-semibold text-slate-800 tracking-tight">
-                      {getCompanyName(po)}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.nopo && (
-                  <td className="px-6 py-4 align-top">
-                    <span className="text-base font-mono font-bold text-slate-800 whitespace-nowrap">
-                      {po.noPo || po.nopo || po.poNumber || "-"}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.pcsPo && (
-                  <td className="px-6 py-4 text-right align-top">
-                    <span className="text-base font-bold text-slate-700 tabular-nums whitespace-nowrap">
-                      {(() => {
-                        const total =
-                          typeof po?.pcsTotal === "number"
-                            ? po.pcsTotal
-                            : (Array.isArray(po?.Items) ? po.Items : []).reduce(
-                                (acc: number, it: any) =>
-                                  acc + (Number(it?.pcs) || 0),
-                                0,
-                              );
-                        return Number(total || 0).toLocaleString("id-ID");
-                      })()}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.nominal && (
-                  <td className="px-6 py-4 text-right align-top">
-                    <span className="text-base font-bold text-slate-700 tabular-nums whitespace-nowrap">
-                      {(() => {
-                        const total =
-                          typeof po?.totalNominal === "number"
-                            ? po.totalNominal
-                            : (Array.isArray(po?.Items) ? po.Items : []).reduce(
-                                (acc: number, it: any) =>
-                                  acc + (Number(it?.nominal) || 0),
-                                0,
-                              );
-                        return `Rp ${Number(total || 0).toLocaleString("id-ID")}`;
-                      })()}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.submitDate && (
-                  <td className="px-6 py-4 align-top">
-                    <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
-                      Submitted
-                    </span>
-                    <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap">
-                      {(() => {
-                        const dt =
-                          toDate(po?.createdAt) ||
-                          toDate(po?.updatedAt) ||
-                          toDate(po?.tglPo);
-                        return dt ? dt.toLocaleDateString("id-ID") : "-";
-                      })()}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.tglPo && (
-                  <td className="px-6 py-4 align-top">
-                    <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
-                      Tgl PO
-                    </span>
-                    <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap">
-                      {toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.dueDate && (
-                  <td className="px-6 py-4 align-top">
-                    <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
-                      Tgl Expired
-                    </span>
-                    <span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap">
-                      {toDate(po.expiredTgl)?.toLocaleDateString("id-ID") ||
-                        "-"}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.regional && (
-                  <td className="px-6 py-4 align-top">
-                    <span className="text-sm font-semibold text-slate-700">
-                      {po?.regional || po?.UnitProduksi?.namaRegional || "-"}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.status && (
-                  <td className="px-6 py-4 align-top">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-2 text-sm font-semibold px-2.5 py-1 rounded-full ${statusChipClass(
-                          statusText(po),
-                        )}`}
-                      >
-                        {statusText(po)}
-                      </span>
-                      {(() => {
-                        const flag = dueFlag(po);
-                        return flag ? (
-                          <span
-                            title="Mendekati due date"
-                            className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full ${flag.className}`}
-                          >
-                            {flag.label}
-                          </span>
-                        ) : null;
-                      })()}
-                    </div>
-                  </td>
-                )}
-                {visibleCols.actions && (
-                  <td className="px-6 py-4 text-center align-top">
-                    {role === "rm" ? (
-                      group === "assign" ? (
-                        <AssignDropdown
-                          po={po}
-                          units={units}
-                          regional={regional}
-                          onAssigned={(unit: any) => {
-                            setLocalPoData((prev) =>
-                              prev.map((x) =>
-                                x.noPo === po.noPo
-                                  ? {
-                                      ...x,
-                                      UnitProduksi: {
-                                        ...(x.UnitProduksi || {}),
-                                        siteArea: unit.siteArea,
-                                        namaRegional: unit.namaRegional,
-                                      },
-                                      regional: unit.namaRegional,
-                                    }
-                                  : x,
-                              ),
-                            );
-                          }}
-                          onClick={(e: any) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <button
-                          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
-                          title="View Detail"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDetail(po);
-                          }}
+            {loading
+              ? Array.from({ length: 10 }).map((_, i) => {
+                  const colCount =
+                    1 +
+                    Number(visibleCols.company) +
+                    Number(visibleCols.nopo) +
+                    Number(visibleCols.pcsPo) +
+                    Number(visibleCols.nominal) +
+                    Number(visibleCols.submitDate) +
+                    Number(visibleCols.tglPo) +
+                    Number(visibleCols.dueDate) +
+                    Number(visibleCols.regional) +
+                    Number(visibleCols.status) +
+                    Number(visibleCols.actions);
+                  return (
+                    <TableRowSkeleton key={`sk-${i}`} colCount={colCount} />
+                  );
+                })
+              : pageRows.map((po, idx) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                    onClick={() => openDetail(po)}
+                    title="Lihat detail PO"
+                  >
+                    <td className="px-6 py-4 align-top text-slate-600 font-semibold tabular-nums sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-r border-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                      {start + idx + 1}
+                    </td>
+                    {visibleCols.company && (
+                      <td className="px-6 py-4 align-top">
+                        <div
+                          className="text-base font-semibold text-slate-800 tracking-tight max-w-[14rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                          title={getCompanyName(po)}
                         >
-                          <Eye size={16} />
-                        </button>
-                      )
-                    ) : (
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
-                          title="Edit"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const no = String(
-                              po?.noPo || po?.nopo || po?.poNumber || "",
-                            ).trim();
-                            if (!no) return;
-                            setEditNoPo(no);
-                            setEditOpen(true);
-                          }}
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
-                          title="Update"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDetail(po);
-                          }}
-                        >
-                          <RefreshCw size={14} />
-                        </button>
-                        <button
-                          className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
-                          title="Extend"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDetail(po);
-                          }}
-                        >
-                          <CalendarClock size={14} />
-                        </button>
-                      </div>
+                          {getCompanyName(po)}
+                        </div>
+                      </td>
                     )}
-                  </td>
-                )}
-              </tr>
-            ))}
-            {pageRows.length === 0 && (
+                    {visibleCols.nopo && (
+                      <td className="px-6 py-4 align-top">
+                        <div
+                          className="text-base font-mono font-bold text-slate-800 max-w-[12rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                          title={po.noPo || po.nopo || po.poNumber || "-"}
+                        >
+                          {po.noPo || po.nopo || po.poNumber || "-"}
+                        </div>
+                      </td>
+                    )}
+                    {visibleCols.pcsPo && (
+                      <td className="px-6 py-4 text-right align-top">
+                        <span className="text-base font-bold text-slate-700 tabular-nums whitespace-nowrap">
+                          {(() => {
+                            const total =
+                              typeof po?.pcsTotal === "number"
+                                ? po.pcsTotal
+                                : (Array.isArray(po?.Items)
+                                    ? po.Items
+                                    : []
+                                  ).reduce(
+                                    (acc: number, it: any) =>
+                                      acc + (Number(it?.pcs) || 0),
+                                    0,
+                                  );
+                            return Number(total || 0).toLocaleString("id-ID");
+                          })()}
+                        </span>
+                      </td>
+                    )}
+                    {visibleCols.nominal && (
+                      <td className="px-6 py-4 text-right align-top">
+                        <div
+                          className="text-base font-bold text-slate-700 tabular-nums max-w-[9rem] ml-auto overflow-x-auto whitespace-nowrap scrollbar-hide"
+                          title={`Rp ${Number(
+                            typeof po?.totalNominal === "number"
+                              ? po.totalNominal
+                              : (Array.isArray(po?.Items)
+                                  ? po.Items
+                                  : []
+                                ).reduce(
+                                  (acc: number, it: any) =>
+                                    acc + (Number(it?.nominal) || 0),
+                                  0,
+                                ) || 0,
+                          ).toLocaleString("id-ID")}`}
+                        >
+                          {(() => {
+                            const total =
+                              typeof po?.totalNominal === "number"
+                                ? po.totalNominal
+                                : (Array.isArray(po?.Items)
+                                    ? po.Items
+                                    : []
+                                  ).reduce(
+                                    (acc: number, it: any) =>
+                                      acc + (Number(it?.nominal) || 0),
+                                    0,
+                                  );
+                            return `Rp ${Number(total || 0).toLocaleString("id-ID")}`;
+                          })()}
+                        </div>
+                      </td>
+                    )}
+                    {visibleCols.submitDate && (
+                      <td className="px-6 py-4 align-top">
+                        <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
+                          Submitted
+                        </span>
+                        <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                          {(() => {
+                            const dt =
+                              toDate(po?.createdAt) ||
+                              toDate(po?.updatedAt) ||
+                              toDate(po?.tglPo);
+                            return dt ? dt.toLocaleDateString("id-ID") : "-";
+                          })()}
+                        </span>
+                      </td>
+                    )}
+                    {visibleCols.tglPo && (
+                      <td className="px-6 py-4 align-top">
+                        <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
+                          Tgl PO
+                        </span>
+                        <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                          {toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}
+                        </span>
+                      </td>
+                    )}
+                    {visibleCols.dueDate && (
+                      <td className="px-6 py-4 align-top">
+                        <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
+                          Tgl Expired
+                        </span>
+                        <span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap mt-0.5">
+                          {toDate(po.expiredTgl)?.toLocaleDateString("id-ID") ||
+                            "-"}
+                        </span>
+                      </td>
+                    )}
+                    {visibleCols.regional && (
+                      <td className="px-6 py-4 align-top">
+                        <div
+                          className="text-sm font-semibold text-slate-700 max-w-[10rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                          title={
+                            po?.regional ||
+                            po?.UnitProduksi?.namaRegional ||
+                            "-"
+                          }
+                        >
+                          {po?.regional ||
+                            po?.UnitProduksi?.namaRegional ||
+                            "-"}
+                        </div>
+                      </td>
+                    )}
+                    {visibleCols.status && (
+                      <td className="px-6 py-4 align-top">
+                        <div className="flex items-center gap-1.5 flex-wrap max-w-[10rem]">
+                          <span
+                            className={`inline-flex items-center gap-2 text-sm font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusChipClass(
+                              statusText(po),
+                            )}`}
+                          >
+                            {statusText(po)}
+                          </span>
+                          {(() => {
+                            const flag = dueFlag(po);
+                            return flag ? (
+                              <span
+                                title="Mendekati due date"
+                                className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${flag.className}`}
+                              >
+                                {flag.label}
+                              </span>
+                            ) : null;
+                          })()}
+                        </div>
+                      </td>
+                    )}
+                    {visibleCols.actions && (
+                      <td className="px-6 py-4 text-center align-top">
+                        {role === "rm" ? (
+                          group === "assign" ? (
+                            <AssignDropdown
+                              po={po}
+                              units={units}
+                              regional={regional}
+                              onAssigned={(unit: any) => {
+                                setLocalPoData((prev) =>
+                                  prev.map((x) =>
+                                    x.noPo === po.noPo
+                                      ? {
+                                          ...x,
+                                          UnitProduksi: {
+                                            ...(x.UnitProduksi || {}),
+                                            siteArea: unit.siteArea,
+                                            namaRegional: unit.namaRegional,
+                                          },
+                                          regional: unit.namaRegional,
+                                        }
+                                      : x,
+                                  ),
+                                );
+                              }}
+                              onClick={(e: any) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <button
+                              className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                              title="View Detail"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDetail(po);
+                              }}
+                            >
+                              <Eye size={16} />
+                            </button>
+                          )
+                        ) : (
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
+                              title="Edit"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const no = String(
+                                  po?.noPo || po?.nopo || po?.poNumber || "",
+                                ).trim();
+                                if (!no) return;
+                                setEditNoPo(no);
+                                setEditOpen(true);
+                              }}
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
+                              title="Update"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDetail(po);
+                              }}
+                            >
+                              <RefreshCw size={14} />
+                            </button>
+                            <button
+                              className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
+                              title="Extend"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDetail(po);
+                              }}
+                            >
+                              <CalendarClock size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+            {!loading && pageRows.length === 0 && (
               <tr>
                 <td
                   className="px-6 py-6 text-sm text-gray-500"

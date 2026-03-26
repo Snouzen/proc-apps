@@ -18,6 +18,7 @@ import Combobox from "@/components/combobox";
 import Select from "@/components/select";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PO_FORM_LABELS } from "@/lib/po-form-labels";
+import DateInputHybrid from "@/components/DateInputHybrid";
 
 type ItemPO = {
   id: string;
@@ -916,24 +917,20 @@ function InputPODetailPageInner() {
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     {PO_FORM_LABELS.tglPo}
                   </label>
-                  <input
-                    type="date"
+                  <DateInputHybrid
                     value={formData.tglPo}
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                    onChange={(e) => {
-                      const nextTglPo = e.target.value;
+                    onChange={(v) => {
                       setFormData((prev) => {
-                        const next = { ...prev, tglPo: nextTglPo };
-                        if (
-                          nextTglPo &&
-                          next.expiredTgl &&
-                          next.expiredTgl < nextTglPo
-                        ) {
-                          next.expiredTgl = nextTglPo;
+                        const next = { ...prev, tglPo: v };
+                        if (v && next.expiredTgl && next.expiredTgl < v) {
+                          next.expiredTgl = v;
                         }
                         return next;
                       });
                     }}
+                    className="w-full bg-slate-50 rounded-2xl"
+                    placeholder="YYYY-MM-DD"
+                    maxDate={formData.expiredTgl}
                   />
                 </div>
 
@@ -942,18 +939,14 @@ function InputPODetailPageInner() {
                     {PO_FORM_LABELS.expiredTgl}
                   </label>
                   <div className="relative">
-                    <CalendarDays
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400"
-                      size={16}
-                    />
-                    <input
-                      type="date"
+                    <DateInputHybrid
                       value={formData.expiredTgl}
-                      min={formData.tglPo || undefined}
-                      className="w-full pl-11 pr-4 py-3 bg-red-50/30 rounded-2xl text-sm font-semibold border border-red-100"
-                      onChange={(e) =>
-                        setFormData({ ...formData, expiredTgl: e.target.value })
+                      onChange={(v) =>
+                        setFormData({ ...formData, expiredTgl: v })
                       }
+                      className="w-full bg-red-50/30 rounded-2xl border border-red-100"
+                      placeholder="YYYY-MM-DD"
+                      minDate={formData.tglPo}
                     />
                   </div>
                 </div>
@@ -2076,42 +2069,42 @@ function InputPODetailPageInner() {
                           <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                             Tanggal PO
                           </label>
-                          <input
-                            type="date"
+                          <DateInputHybrid
                             value={d.tglPo}
-                            onChange={(e) => {
-                              const nextTglPo = e.target.value;
+                            onChange={(v) => {
                               setEditDraft((prev: any) => {
                                 if (!prev) return prev;
-                                const next = { ...prev, tglPo: nextTglPo };
+                                const next = { ...prev, tglPo: v };
                                 if (
-                                  nextTglPo &&
+                                  v &&
                                   next.expiredTgl &&
-                                  next.expiredTgl < nextTglPo
+                                  next.expiredTgl < v
                                 ) {
-                                  next.expiredTgl = nextTglPo;
+                                  next.expiredTgl = v;
                                 }
                                 return next;
                               });
                             }}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
+                            className="w-full bg-white rounded-xl"
+                            placeholder="YYYY-MM-DD"
+                            maxDate={d.expiredTgl}
                           />
                         </div>
                         <div>
                           <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                             Expired PO
                           </label>
-                          <input
-                            type="date"
+                          <DateInputHybrid
                             value={d.expiredTgl}
-                            min={d.tglPo || undefined}
-                            onChange={(e) =>
+                            onChange={(v) =>
                               setEditDraft({
                                 ...d,
-                                expiredTgl: e.target.value,
+                                expiredTgl: v,
                               })
                             }
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
+                            className="w-full bg-white rounded-xl"
+                            placeholder="YYYY-MM-DD"
+                            minDate={d.tglPo}
                           />
                         </div>
                         <div>

@@ -19,6 +19,7 @@ import { LoaderThree } from "@/components/ui/loader";
 import { getMe } from "@/lib/me";
 import BulkUploadModal from "@/components/bulk-upload-modal";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
+import DateInputHybrid from "@/components/DateInputHybrid";
 
 type GroupedPO = {
   company: string;
@@ -1077,16 +1078,15 @@ export default function CompanyList({
                                                     className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200"
                                                   />
                                                 </div>
-                                                <input
-                                                  type="date"
+                                                <DateInputHybrid
                                                   value={
                                                     inisialPoDateFrom[key] || ""
                                                   }
-                                                  onChange={(e) => {
+                                                  onChange={(v) => {
                                                     setInisialPoDateFrom(
                                                       (prev) => ({
                                                         ...prev,
-                                                        [key]: e.target.value,
+                                                        [key]: v,
                                                       }),
                                                     );
                                                     setPoPage((prev) => ({
@@ -1094,19 +1094,19 @@ export default function CompanyList({
                                                       [key]: 1,
                                                     }));
                                                   }}
-                                                  className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
-                                                  title="Filter dari Tgl PO"
+                                                  className="w-[120px]"
+                                                  placeholder="Dari Tgl PO"
+                                                  maxDate={inisialPoDateTo[key]}
                                                 />
-                                                <input
-                                                  type="date"
+                                                <DateInputHybrid
                                                   value={
                                                     inisialPoDateTo[key] || ""
                                                   }
-                                                  onChange={(e) => {
+                                                  onChange={(v) => {
                                                     setInisialPoDateTo(
                                                       (prev) => ({
                                                         ...prev,
-                                                        [key]: e.target.value,
+                                                        [key]: v,
                                                       }),
                                                     );
                                                     setPoPage((prev) => ({
@@ -1114,8 +1114,11 @@ export default function CompanyList({
                                                       [key]: 1,
                                                     }));
                                                   }}
-                                                  className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
-                                                  title="Filter sampai Tgl PO"
+                                                  className="w-[120px]"
+                                                  placeholder="Sampai Tgl PO"
+                                                  minDate={
+                                                    inisialPoDateFrom[key]
+                                                  }
                                                 />
                                                 <select
                                                   value={

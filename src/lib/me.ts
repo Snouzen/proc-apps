@@ -58,9 +58,25 @@ export async function getMe(force = false): Promise<Me> {
   if (sync && !force) return sync;
 
   if (mePromise) return mePromise;
-  mePromise = fetch("/api/auth/me", { cache: "no-store" })
-    .then((r) => r.json())
-    .then((d) => {
+  console.log("Fetching user profile...");
+  mePromise = fetch("/api/auth/me", {
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+  })
+    .then(async (r) => {
+      let d: any = null;
+      try {
+        d = await r.json();
+      } catch {
+        d = null;
+      }
+      if (r.status === 401 || d?.authenticated === false) {
+        clearMeCache();
+        const data: Me = { authenticated: false };
+        setMeCache(data);
+        return data;
+      }
       const data: Me = d?.authenticated
         ? {
             authenticated: true,
@@ -69,6 +85,12 @@ export async function getMe(force = false): Promise<Me> {
             regional: d.regional ?? null,
           }
         : { authenticated: false };
+      setMeCache(data);
+      return data;
+    })
+    .catch(() => {
+      clearMeCache();
+      const data: Me = { authenticated: false };
       setMeCache(data);
       return data;
     })

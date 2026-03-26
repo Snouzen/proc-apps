@@ -9,12 +9,14 @@ export default function SmoothSelect({
   onChange,
   className,
   width = 176,
+  disabled = false,
 }: {
   options: Option[];
   value: string;
   onChange: (v: string) => void;
   className?: string;
   width?: number;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement | null>(null);
@@ -39,13 +41,18 @@ export default function SmoothSelect({
   return (
     <div
       ref={ref}
-      className={`relative ${className || ""}`}
+      className={`relative ${className || ""} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
       style={{ width }}
     >
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full h-10 rounded-xl border border-gray-300 bg-white/90 text-sm font-semibold px-3 pr-9 text-slate-800 transition-all duration-200 ease-out hover:bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-sm hover:shadow flex items-center justify-between"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        className={`w-full h-10 rounded-xl border border-gray-300 bg-white/90 text-sm font-semibold px-3 pr-9 text-slate-800 transition-all duration-200 ease-out flex items-center justify-between ${
+          disabled
+            ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed shadow-none"
+            : "hover:bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-sm hover:shadow"
+        }`}
       >
         <span className="truncate">{current?.label || "-"}</span>
         <ChevronDown

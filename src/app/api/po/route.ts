@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
+import { cookies } from "next/headers";
+import { verifySession } from "@/lib/auth";
 import {
   cacheClearPrefix,
   cacheGet,
@@ -49,6 +51,18 @@ function parseDate(v?: string | null) {
 
 export async function POST(request: Request) {
   try {
+    const bag = await cookies();
+    let token = bag.get("session")?.value;
+    if (!token) {
+      const hdr = request.headers.get("cookie") || "";
+      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
+      if (m && m[1]) token = decodeURIComponent(m[1]);
+    }
+    const session = verifySession(token);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const raw = await request.json();
     const parsed = POBodySchema.safeParse(raw);
     if (!parsed.success) {
@@ -98,6 +112,22 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    }
+
+    // Strict RBAC Validation: Prevent RM user from creating/updating PO outside their regional
+    if (session.role === "rm" && session.regional) {
+      if (
+        regional &&
+        regional.trim() !== "" &&
+        regional.trim().toLowerCase() !== session.regional.trim().toLowerCase()
+      ) {
+        return NextResponse.json(
+          {
+            error: `Akses ditolak: Anda hanya diizinkan mengelola data untuk regional ${session.regional}`,
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const companyTrim = String(company).trim();
@@ -409,6 +439,7 @@ export async function POST(request: Request) {
     );
 
     cacheClearPrefix("po:");
+    cacheClearPrefix("po_total:");
     return NextResponse.json(updatedPO, { status: 201 });
   } catch (error) {
     const msg =
@@ -420,6 +451,18 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const bag = await cookies();
+    let token = bag.get("session")?.value;
+    if (!token) {
+      const hdr = request.headers.get("cookie") || "";
+      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
+      if (m && m[1]) token = decodeURIComponent(m[1]);
+    }
+    const session = verifySession(token);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const cacheKey = `po:${searchParams.toString()}`;
     const cached = cacheGet<any>(cacheKey);
@@ -436,13 +479,27 @@ export async function GET(request: Request) {
     const noPo = searchParams.get("noPo") || undefined;
     const includeUnknown =
       (searchParams.get("includeUnknown") || "true") === "true";
-    const regionalParam = searchParams.get("regional") || undefined;
+    const regionalParam =
+      session.role === "rm"
+        ? session.regional || undefined
+        : searchParams.get("regional") || undefined;
+    const siteAreaParam = searchParams.get("siteArea") || undefined;
     const q = (searchParams.get("q") || "").trim();
     const tglFrom = parseDate(searchParams.get("tglFrom"));
     const tglTo = parseDate(searchParams.get("tglTo"));
     const submitFrom = parseDate(searchParams.get("submitFrom"));
     const submitTo = parseDate(searchParams.get("submitTo"));
     const group = (searchParams.get("group") || "all").trim();
+
+    let colFilters: Record<string, string> = {};
+    const colFiltersRaw = searchParams.get("colFilters");
+    if (colFiltersRaw) {
+      try {
+        colFilters = JSON.parse(colFiltersRaw);
+      } catch (e) {
+        console.error("Failed to parse colFilters", e);
+      }
+    }
     const noPoListRaw = searchParams.get("noPoList") || undefined;
     let noPoList: string[] | undefined = undefined;
     if (noPoListRaw) {
@@ -564,6 +621,60 @@ export async function GET(request: Request) {
         },
       ];
     }
+    // Strict RBAC: force regional scope for RM users
+    if (session.role === "rm" && session.regional) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [
+            {
+              regional: {
+                equals: session.regional,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              UnitProduksi: {
+                is: {
+                  namaRegional: {
+                    equals: session.regional,
+                    mode: "insensitive" as const,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ];
+    }
+    if (siteAreaParam && siteAreaParam.trim()) {
+      const sa = siteAreaParam.trim();
+      const saFilter =
+        session.role === "rm" && session.regional
+          ? {
+              AND: [
+                {
+                  UnitProduksi: {
+                    is: {
+                      siteArea: { contains: sa, mode: "insensitive" as const },
+                      namaRegional: {
+                        equals: session.regional,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  },
+                },
+              ],
+            }
+          : {
+              UnitProduksi: {
+                is: {
+                  siteArea: { contains: sa, mode: "insensitive" as const },
+                },
+              },
+            };
+      where.AND = [...(Array.isArray(where.AND) ? where.AND : []), saFilter];
+    }
     if (company && company.trim()) {
       where.RitelModern = {
         is: {
@@ -583,6 +694,7 @@ export async function GET(request: Request) {
             { noInvoice: { contains: q, mode: "insensitive" as const } },
             { tujuanDetail: { contains: q, mode: "insensitive" as const } },
             { regional: { contains: q, mode: "insensitive" as const } },
+            { remarks: { contains: q, mode: "insensitive" as const } },
             {
               RitelModern: {
                 is: {
@@ -730,6 +842,79 @@ export async function GET(request: Request) {
       ];
     }
 
+    if (colFilters && Object.keys(colFilters).length > 0) {
+      const AND = Array.isArray(where.AND) ? where.AND : [];
+      for (const [key, val] of Object.entries(colFilters)) {
+        const strVal = String(val).trim();
+        if (!strVal) continue;
+
+        const isBool = (v: string) => {
+          const norm = v.toLowerCase();
+          return ["1", "true", "ya", "yes", "y"].includes(norm)
+            ? true
+            : ["0", "false", "tidak", "no", "n"].includes(norm)
+              ? false
+              : null;
+        };
+
+        if (
+          key === "noPo" ||
+          key === "tujuan" ||
+          key === "noInvoice" ||
+          key === "linkPo" ||
+          key === "remarks"
+        ) {
+          const dbKey = key === "tujuan" ? "tujuanDetail" : key;
+          AND.push({ [dbKey]: { contains: strVal, mode: "insensitive" } });
+        } else if (key === "company" || key === "inisial") {
+          const dbKey = key === "company" ? "namaPt" : "inisial";
+          AND.push({
+            RitelModern: {
+              is: { [dbKey]: { contains: strVal, mode: "insensitive" } },
+            },
+          });
+        } else if (key === "siteArea") {
+          AND.push({
+            UnitProduksi: {
+              is: { siteArea: { contains: strVal, mode: "insensitive" } },
+            },
+          });
+        } else if (key === "regional") {
+          AND.push({
+            OR: [
+              { regional: { contains: strVal, mode: "insensitive" } },
+              {
+                UnitProduksi: {
+                  is: {
+                    namaRegional: { contains: strVal, mode: "insensitive" },
+                  },
+                },
+              },
+            ],
+          });
+        } else if (key === "products") {
+          AND.push({
+            Items: {
+              some: {
+                Product: {
+                  is: { name: { contains: strVal, mode: "insensitive" } },
+                },
+              },
+            },
+          });
+        } else if (key.startsWith("status")) {
+          const bVal = isBool(strVal);
+          if (bVal !== null) {
+            AND.push({ [key]: bVal });
+          }
+        }
+        // Note: filtering by computed columns (totalNominal, totalTagihan) is not supported at DB level via Prisma findMany.
+      }
+      if (AND.length > 0) {
+        where.AND = AND;
+      }
+    }
+
     const orderBy =
       sort === "createdAt_asc"
         ? ({ createdAt: "asc" } as const)
@@ -798,6 +983,7 @@ export async function GET(request: Request) {
     };
 
     if (!paged) {
+      if (cached) return NextResponse.json(cached);
       const data = await singleFlight(cacheKey, () =>
         prisma.purchaseOrder.findMany(
           summary
@@ -851,6 +1037,9 @@ export async function GET(request: Request) {
 
     const take = Math.min(100, limit ?? 50);
     const skip = offset ?? 0;
+
+    if (cached) return NextResponse.json(cached);
+
     const [total, data] = await singleFlight(cacheKey, async () => {
       const t =
         cachedTotal ??
@@ -928,6 +1117,21 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const bag = await cookies();
+    let token = bag.get("session")?.value;
+    if (!token) {
+      const hdr = request.headers.get("cookie") || "";
+      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
+      if (m && m[1]) token = decodeURIComponent(m[1]);
+    }
+    const session = verifySession(token);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (session.role !== "pusat") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const id = body?.id as string | undefined;
     const noPo = body?.noPo as string | undefined;
@@ -953,6 +1157,7 @@ export async function DELETE(request: Request) {
       await tx.purchaseOrder.delete({ where: { id: po.id } });
     });
     cacheClearPrefix("po:");
+    cacheClearPrefix("po_total:");
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message =

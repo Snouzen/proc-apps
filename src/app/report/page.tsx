@@ -2,10 +2,12 @@
 
 import * as XLSX from "xlsx";
 import { Download, Filter, RefreshCw, Settings2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { upperClean } from "@/lib/text";
+import DateInputHybrid from "@/components/DateInputHybrid";
 
 type Row = {
+  no: number;
   id: string;
   noPo: string;
   company: string;
@@ -75,16 +77,11 @@ const formatCurrency = (n: number) =>
     minimumFractionDigits: 0,
   }).format(n);
 
-const norm = (s: any) =>
-  String(s ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-
 export default function ReportPage() {
   const [raw, setRaw] = useState<any[]>([]);
   const [serverTotal, setServerTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [tglFrom, setTglFrom] = useState("");
@@ -99,6 +96,13 @@ export default function ReportPage() {
 
   const columns: Column[] = useMemo(
     () => [
+      {
+        id: "no",
+        label: "No",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.no,
+      },
       {
         id: "noPo",
         label: "No PO",
@@ -270,16 +274,29 @@ export default function ReportPage() {
       if (tglTo) params.set("tglTo", tglTo);
       if (submitFrom) params.set("submitFrom", submitFrom);
       if (submitTo) params.set("submitTo", submitTo);
+
+      const activeFilters = Object.entries(colFilters).filter(
+        ([, v]) => String(v || "").trim() !== "",
+      );
+      if (activeFilters.length > 0) {
+        const filterObj = Object.fromEntries(activeFilters);
+        params.set("colFilters", JSON.stringify(filterObj));
+      }
+
       params.set("sort", "createdAt_desc");
 
       const res = await fetch(`/api/po?${params.toString()}`, {
         cache: "no-store",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
       });
       const data = await res.json();
       const list = Array.isArray(data?.data) ? data.data : [];
-      const total = Number(data?.total) || 0;
       setRaw(list);
-      setServerTotal(total);
+      // Wait for React to process raw data and stop loading, then we update the total safely
+      requestAnimationFrame(() => {
+        setServerTotal(Number(data?.total) || 0);
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal load data";
       setError(msg);
@@ -292,11 +309,21 @@ export default function ReportPage() {
 
   useEffect(() => {
     load();
-  }, [page, rowsPerPage, query, tglFrom, tglTo, submitFrom, submitTo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    page,
+    rowsPerPage,
+    query,
+    tglFrom,
+    tglTo,
+    submitFrom,
+    submitTo,
+    colFilters,
+  ]);
 
   const rows: Row[] = useMemo(() => {
     const arr = Array.isArray(raw) ? raw : [];
-    return arr.map((po: any) => {
+    return arr.map((po: any, index: number) => {
       const items = Array.isArray(po?.Items) ? po.Items : [];
       const productList = items
         .map((it: any) => upperClean(it?.Product?.name || ""))
@@ -314,6 +341,7 @@ export default function ReportPage() {
           0,
         );
       return {
+        no: (page - 1) * rowsPerPage + index + 1,
         id: String(po?.id || po?.noPo || crypto.randomUUID()),
         noPo: upperClean(po?.noPo || "-"),
         company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
@@ -348,190 +376,214 @@ export default function ReportPage() {
         submitDate: toYMD(po?.createdAt || po?.updatedAt || po?.tglPo || null),
       };
     });
-  }, [raw]);
+  }, [raw, page, rowsPerPage]);
 
   const visibleColumns = useMemo(
     () => columns.filter((c) => visibleCols[String(c.id)]),
     [columns, visibleCols],
   );
 
-  const filteredRows = useMemo(() => {
-    const q = norm(query);
-    const from = tglFrom ? new Date(tglFrom) : null;
-    const to = tglTo ? new Date(tglTo) : null;
-    const inRange = (d: string) => {
-      const dt = d ? new Date(d) : null;
-      if (!dt || isNaN(dt.getTime())) return false;
-      if (from && dt < from) return false;
-      if (to) {
-        const end = new Date(to);
-        end.setHours(23, 59, 59, 999);
-        if (dt > end) return false;
-      }
-      return true;
-    };
-
-    const activeFilters = Object.entries(colFilters).filter(
-      ([, v]) => String(v || "").trim() !== "",
-    );
-
-    const applyColFilters = (r: Row) => {
-      if (submitFrom || submitTo) {
-        const d = r.submitDate ? new Date(r.submitDate) : null;
-        if (!d || isNaN(d.getTime())) return false;
-        if (submitFrom) {
-          const sf = new Date(submitFrom);
-          if (d < sf) return false;
-        }
-        if (submitTo) {
-          const st = new Date(submitTo);
-          st.setHours(23, 59, 59, 999);
-          if (d > st) return false;
-        }
-      }
-      if (activeFilters.length === 0) return true;
-      for (const [key, val] of activeFilters) {
-        if (key === "submitDate") continue;
-        const col = columns.find((c) => String(c.id) === key);
-        if (!col) continue;
-        const rawVal = col.value(r);
-        const needle = norm(val);
-        if (!needle) continue;
-        if (col.kind === "number") {
-          const n = Number(rawVal) || 0;
-          const s = String(val).trim();
-          const mRange = s.match(/^(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)$/);
-          if (mRange) {
-            const a = Number(mRange[1]);
-            const b = Number(mRange[2]);
-            const lo = Math.min(a, b);
-            const hi = Math.max(a, b);
-            if (!(n >= lo && n <= hi)) return false;
-            continue;
-          }
-          const mOp = s.match(/^(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)$/);
-          if (mOp) {
-            const op = mOp[1];
-            const x = Number(mOp[2]);
-            if (op === ">=" && !(n >= x)) return false;
-            if (op === "<=" && !(n <= x)) return false;
-            if (op === ">" && !(n > x)) return false;
-            if (op === "<" && !(n < x)) return false;
-            if (op === "=" && !(n === x)) return false;
-            continue;
-          }
-          if (!norm(String(n)).includes(needle)) return false;
-          continue;
-        }
-        if (col.kind === "bool") {
-          const b = !!rawVal;
-          const s = needle;
-          const want =
-            s === "1" || s === "true" || s === "ya" || s === "yes" || s === "y";
-          const wantFalse =
-            s === "0" ||
-            s === "false" ||
-            s === "tidak" ||
-            s === "no" ||
-            s === "n";
-          if (want && !b) return false;
-          if (wantFalse && b) return false;
-          if (!want && !wantFalse) {
-            if (!norm(String(b)).includes(s)) return false;
-          }
-          continue;
-        }
-        if (!norm(String(rawVal ?? "")).includes(needle)) return false;
-      }
-      return true;
-    };
-
-    const applyQuery = (r: Row) => {
-      if (!q) return true;
-      const fields = [
-        r.noPo,
-        r.company,
-        r.inisial,
-        r.tujuan,
-        r.products,
-        r.siteArea,
-        r.regional,
-        r.noInvoice,
-        r.linkPo,
-      ];
-      return fields.some((f) => norm(f).includes(q));
-    };
-
-    return rows
-      .filter((r) => {
-        if (tglFrom || tglTo) {
-          if (!inRange(r.tglPo)) return false;
-        }
-        return applyQuery(r) && applyColFilters(r);
-      })
-      .sort((a, b) => {
-        const da = new Date(a.createdAt || 0).getTime();
-        const db = new Date(b.createdAt || 0).getTime();
-        if (da !== db) return db - da;
-        return norm(b.noPo).localeCompare(norm(a.noPo));
-      });
-  }, [rows, query, tglFrom, tglTo, colFilters, columns, submitFrom, submitTo]);
-
   useEffect(() => {
     setPage(1);
   }, [query, tglFrom, tglTo, rowsPerPage, colFilters, visibleCols]);
 
   const totalPages = Math.max(1, Math.ceil(serverTotal / rowsPerPage));
-  const pageRows = filteredRows;
+  const pageRows = rows;
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    setExporting(true);
     const productCol = columns.find((c) => String(c.id) === "products");
     const cols =
       visibleColumns.some((c) => String(c.id) === "products") || !productCol
         ? visibleColumns
         : [...visibleColumns, productCol];
-    const data = filteredRows.flatMap((r) => {
-      const products =
-        Array.isArray(r.productList) && r.productList.length > 0
-          ? r.productList
-          : [""];
-      return products.map((p) => {
-        const row: Record<string, any> = {};
-        cols.forEach((c) => {
-          if (String(c.id) === "products") {
-            row[c.label] = String(p || "");
-            return;
-          }
-          const v = c.value(r);
-          if (c.kind === "number") row[c.label] = Number(v) || 0;
-          else if (c.kind === "bool") row[c.label] = !!v;
-          else if (c.kind === "date") row[c.label] = v ? formatDateId(v) : "-";
-          else row[c.label] = String(v ?? "");
+    try {
+      const baseParams = new URLSearchParams();
+      baseParams.set("includeUnknown", "true");
+      baseParams.set("includeItems", "true");
+      if (query.trim()) baseParams.set("q", query.trim());
+      if (tglFrom) baseParams.set("tglFrom", tglFrom);
+      if (tglTo) baseParams.set("tglTo", tglTo);
+      if (submitFrom) baseParams.set("submitFrom", submitFrom);
+      if (submitTo) baseParams.set("submitTo", submitTo);
+
+      const activeFilters = Object.entries(colFilters).filter(
+        ([, v]) => String(v || "").trim() !== "",
+      );
+      if (activeFilters.length > 0) {
+        const filterObj = Object.fromEntries(activeFilters);
+        baseParams.set("colFilters", JSON.stringify(filterObj));
+      }
+
+      baseParams.set("sort", "createdAt_desc");
+
+      if (serverTotal > 5000) {
+        const columnsConfig = cols.map((c) => ({ id: c.id, label: c.label }));
+        baseParams.set("cols", JSON.stringify(columnsConfig));
+
+        const url = `/api/po/export?${baseParams.toString()}`;
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `report-po-${toYMD(new Date())}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+        setExporting(false);
+        return;
+      }
+
+      const chunk = 500;
+      const total = Math.max(0, Number(serverTotal) || 0);
+      const pages = total > 0 ? Math.ceil(total / chunk) : 1;
+      const all: any[] = [];
+      for (let i = 0; i < pages; i++) {
+        const params = new URLSearchParams(baseParams);
+        params.set("limit", String(chunk));
+        params.set("offset", String(i * chunk));
+        const res = await fetch(`/api/po?${params.toString()}`, {
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
         });
-        return row;
+        const json = await res.json().catch(() => null);
+        const list = Array.isArray(json?.data) ? json.data : [];
+        all.push(...list);
+        if (list.length < chunk) break;
+      }
+
+      const mapped: Row[] = (Array.isArray(all) ? all : []).map(
+        (po: any, i: number) => {
+          const items = Array.isArray(po?.Items) ? po.Items : [];
+          const productList = items
+            .map((it: any) => upperClean(it?.Product?.name || ""))
+            .filter((s: string) => s.trim().length > 0);
+          const totalTagihan =
+            Number(po?.totalTagihan) ||
+            items.reduce(
+              (acc: number, it: any) => acc + (Number(it?.rpTagih) || 0),
+              0,
+            );
+          const totalNominal =
+            Number(po?.totalNominal) ||
+            items.reduce(
+              (acc: number, it: any) => acc + (Number(it?.nominal) || 0),
+              0,
+            );
+          return {
+            no: i + 1,
+            id: String(po?.id || po?.noPo || crypto.randomUUID()),
+            noPo: upperClean(po?.noPo || "-"),
+            company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
+            inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || ""),
+            tujuan: upperClean(po?.tujuanDetail || po?.tujuan || ""),
+            tglPo: toYMD(po?.tglPo || null),
+            expiredTgl: toYMD(po?.expiredTgl || null),
+            siteArea: upperClean(
+              po?.UnitProduksi?.siteArea &&
+                po.UnitProduksi.siteArea !== "UNKNOWN"
+                ? po.UnitProduksi.siteArea
+                : "",
+            ),
+            regional: upperClean(
+              po?.regional || po?.UnitProduksi?.namaRegional || "",
+            ),
+            noInvoice: upperClean(po?.noInvoice || ""),
+            linkPo: String(po?.linkPo || ""),
+            productList,
+            products: productList.join(", "),
+            totalNominal,
+            totalTagihan,
+            statusKirim: !!po?.statusKirim,
+            statusSdif: !!po?.statusSdif,
+            statusPo: !!po?.statusPo,
+            statusFp: !!po?.statusFp,
+            statusKwi: !!po?.statusKwi,
+            statusInv: !!po?.statusInv,
+            statusTagih: !!po?.statusTagih,
+            statusBayar: !!po?.statusBayar,
+            updatedAt: toYMD(po?.updatedAt || null),
+            createdAt: toYMD(po?.createdAt || null),
+            submitDate: toYMD(
+              po?.createdAt || po?.updatedAt || po?.tglPo || null,
+            ),
+          };
+        },
+      );
+
+      const data = mapped.flatMap((r) => {
+        const products =
+          Array.isArray(r.productList) && r.productList.length > 0
+            ? r.productList
+            : [""];
+        return products.map((p) => {
+          const row: Record<string, any> = {};
+          cols.forEach((c) => {
+            if (String(c.id) === "products") {
+              row[c.label] = String(p || "");
+              return;
+            }
+            const v = c.value(r);
+            if (c.kind === "number") row[c.label] = Number(v) || 0;
+            else if (c.kind === "bool") row[c.label] = !!v;
+            else if (c.kind === "date")
+              row[c.label] = v ? formatDateId(v) : "-";
+            else row[c.label] = String(v ?? "");
+          });
+          return row;
+        });
       });
-    });
-    const ws = XLSX.utils.json_to_sheet(data);
-    const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
-    ws["!autofilter"] = {
-      ref: XLSX.utils.encode_range({
-        s: { r: 0, c: 0 },
-        e: { r: range.e.r, c: range.e.c },
-      }),
-    };
-    (ws as any)["!freeze"] = {
-      xSplit: 0,
-      ySplit: 1,
-      topLeftCell: "A2",
-      activePane: "bottomRight",
-    };
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Report");
-    XLSX.writeFile(wb, `report-po-${toYMD(new Date())}.xlsx`);
+      const ws = XLSX.utils.json_to_sheet(data);
+      const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
+      ws["!autofilter"] = {
+        ref: XLSX.utils.encode_range({
+          s: { r: 0, c: 0 },
+          e: { r: range.e.r, c: range.e.c },
+        }),
+      };
+      (ws as any)["!freeze"] = {
+        xSplit: 0,
+        ySplit: 1,
+        topLeftCell: "A2",
+        activePane: "bottomRight",
+      };
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Report");
+      XLSX.writeFile(wb, `report-po-${toYMD(new Date())}.xlsx`);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const toggleCol = (id: string) => {
     setVisibleCols((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const HighlightText = ({
+    text,
+    highlight,
+  }: {
+    text: string;
+    highlight: string;
+  }) => {
+    if (!highlight.trim()) return <>{text}</>;
+    const regex = new RegExp(`(${highlight})`, "gi");
+    const parts = text.split(regex);
+    return (
+      <>
+        {parts.map((part, i) =>
+          regex.test(part) ? (
+            <span
+              key={i}
+              className="bg-yellow-200 text-yellow-900 px-0.5 rounded"
+            >
+              {part}
+            </span>
+          ) : (
+            <span key={i}>{part}</span>
+          ),
+        )}
+      </>
+    );
   };
 
   return (
@@ -574,10 +626,10 @@ export default function ReportPage() {
               type="button"
               onClick={exportExcel}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-black hover:bg-emerald-700 disabled:opacity-50"
-              disabled={loading || visibleColumns.length === 0}
+              disabled={loading || exporting || visibleColumns.length === 0}
             >
               <Download size={16} />
-              Export
+              {exporting ? "Exporting..." : "Export"}
             </button>
           </div>
         </div>
@@ -596,25 +648,25 @@ export default function ReportPage() {
               />
             </div>
             <div className="lg:col-span-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1 mb-1 block">
                 Tgl PO From
               </label>
-              <input
-                type="date"
+              <DateInputHybrid
                 value={tglFrom}
-                onChange={(e) => setTglFrom(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none text-sm"
+                onChange={setTglFrom}
+                placeholder="Pilih Tanggal..."
+                maxDate={tglTo}
               />
             </div>
             <div className="lg:col-span-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1 mb-1 block">
                 Tgl PO To
               </label>
-              <input
-                type="date"
+              <DateInputHybrid
                 value={tglTo}
-                onChange={(e) => setTglTo(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none text-sm"
+                onChange={setTglTo}
+                placeholder="Pilih Tanggal..."
+                minDate={tglFrom}
               />
             </div>
             <div className="lg:col-span-1 flex items-end">
@@ -753,19 +805,25 @@ export default function ReportPage() {
                     <th key={String(c.id)} className="px-3 py-2">
                       {c.id === "submitDate" ? (
                         <div className="flex items-center gap-2">
-                          <input
-                            type="date"
+                          <DateInputHybrid
                             value={submitFrom}
-                            onChange={(e) => setSubmitFrom(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-slate-700 outline-none"
+                            onChange={setSubmitFrom}
+                            placeholder="Dari..."
+                            className="w-full"
+                            maxDate={submitTo}
                           />
                           <span className="text-[10px] text-slate-400">to</span>
-                          <input
-                            type="date"
+                          <DateInputHybrid
                             value={submitTo}
-                            onChange={(e) => setSubmitTo(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-slate-700 outline-none"
+                            onChange={setSubmitTo}
+                            placeholder="Sampai..."
+                            className="w-full"
+                            minDate={submitFrom}
                           />
+                        </div>
+                      ) : c.id === "no" ? (
+                        <div className="w-full px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 text-xs text-transparent select-none cursor-not-allowed">
+                          -
                         </div>
                       ) : (
                         <input
@@ -804,6 +862,7 @@ export default function ReportPage() {
                   <tr key={r.id} className="hover:bg-slate-50/60">
                     {visibleColumns.map((c) => {
                       const v = c.value(r);
+                      const isStatus = c.id.toString().startsWith("status");
                       const text =
                         c.kind === "number"
                           ? c.id === "totalNominal" || c.id === "totalTagihan"
@@ -818,18 +877,36 @@ export default function ReportPage() {
                                 ? "Ya"
                                 : "Tidak"
                               : String(v ?? "");
+
+                      const filterVal = colFilters[String(c.id)] || "";
+                      const highlightTerm =
+                        query && !filterVal && c.kind === "text"
+                          ? query
+                          : filterVal;
+
                       return (
                         <td
                           key={String(c.id)}
                           className={`px-4 py-3 whitespace-nowrap ${
-                            c.kind === "number" ? "text-right" : ""
-                          } ${
+                            c.kind === "number" && c.id !== "no"
+                              ? "text-right"
+                              : ""
+                          } ${c.id === "no" ? "text-center font-semibold text-slate-500" : ""} ${
                             c.id === "expiredTgl"
                               ? "text-rose-600 font-bold"
-                              : "text-slate-800"
+                              : c.id !== "no"
+                                ? "text-slate-800"
+                                : ""
                           }`}
                         >
-                          {text || "-"}
+                          {text === "-" || isStatus || c.kind !== "text" ? (
+                            text
+                          ) : (
+                            <HighlightText
+                              text={text}
+                              highlight={highlightTerm}
+                            />
+                          )}
                         </td>
                       );
                     })}

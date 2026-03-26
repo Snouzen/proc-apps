@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cacheGet, cacheSet, singleFlight } from "@/lib/ttl-cache";
+import { cookies } from "next/headers";
+import { verifySession } from "@/lib/auth";
 
 function parseDate(v?: string | null) {
   if (!v) return null;
@@ -33,19 +35,33 @@ function parseDate(v?: string | null) {
 }
 
 export async function GET(request: Request) {
+  const bag = await cookies();
+  let token = bag.get("session")?.value;
+  if (!token) {
+    const hdr = request.headers.get("cookie") || "";
+    const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
+    if (m && m[1]) token = decodeURIComponent(m[1]);
+  }
+  const session = verifySession(token);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { searchParams } = new URL(request.url);
   const includeUnknown =
     (searchParams.get("includeUnknown") || "true") === "true";
-  const regionalParam = searchParams.get("regional") || undefined;
+  const regionalParamRaw = searchParams.get("regional") || undefined;
+  const regionalParam =
+    session.role === "rm" ? session.regional || undefined : regionalParamRaw;
   const tglFrom = parseDate(searchParams.get("tglFrom"));
   const tglTo = parseDate(searchParams.get("tglTo"));
 
   const keyParams = new URLSearchParams();
   keyParams.set("includeUnknown", includeUnknown ? "true" : "false");
-  if (regionalParam && regionalParam.trim()) keyParams.set("regional", regionalParam.trim());
+  if (regionalParam && regionalParam.trim())
+    keyParams.set("regional", regionalParam.trim());
   if (tglFrom) keyParams.set("tglFrom", searchParams.get("tglFrom") || "");
   if (tglTo) keyParams.set("tglTo", searchParams.get("tglTo") || "");
-  const cacheKey = `po_stats:${keyParams.toString()}`;
+  const cacheKey = `po_stats:${session.role}:${session.regional || ""}:${keyParams.toString()}`;
   const cached = cacheGet<any>(cacheKey);
   try {
     const emptyInvoiceValues = ["", "-", "Unknown"];
@@ -163,6 +179,7 @@ export async function GET(request: Request) {
               NOT (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
           )::int AS "cCompleted"
         FROM "PurchaseOrder" po
+        LEFT JOIN "UnitProduksi" up ON up."idRegional" = po."unitProduksiId"
         WHERE
           (${tglFrom}::timestamptz IS NULL OR po."tglPo" >= ${tglFrom}::timestamptz)
           AND (${tglTo}::timestamptz IS NULL OR po."tglPo" <= ${tglTo}::timestamptz)
@@ -176,6 +193,7 @@ export async function GET(request: Request) {
           AND (
             ${hasRegional} = false OR (
               COALESCE(po."regional", '') ILIKE ANY(${regionalPatterns})
+              OR COALESCE(up."namaRegional", '') ILIKE ANY(${regionalPatterns})
             )
           )
       `;
@@ -193,11 +211,31 @@ export async function GET(request: Request) {
     });
     cacheSet(cacheKey, payload, 30000);
     cacheSet(`po_stats_group:${keyParams.toString()}:all`, payload.cAll, 30000);
-    cacheSet(`po_stats_group:${keyParams.toString()}:active`, payload.cActive, 30000);
-    cacheSet(`po_stats_group:${keyParams.toString()}:almost_expired`, payload.cAlmost, 30000);
-    cacheSet(`po_stats_group:${keyParams.toString()}:expired`, payload.cExpired, 30000);
-    cacheSet(`po_stats_group:${keyParams.toString()}:completed`, payload.cCompleted, 30000);
-    cacheSet(`po_stats_group:${keyParams.toString()}:progress`, payload.cProgress, 30000);
+    cacheSet(
+      `po_stats_group:${keyParams.toString()}:active`,
+      payload.cActive,
+      30000,
+    );
+    cacheSet(
+      `po_stats_group:${keyParams.toString()}:almost_expired`,
+      payload.cAlmost,
+      30000,
+    );
+    cacheSet(
+      `po_stats_group:${keyParams.toString()}:expired`,
+      payload.cExpired,
+      30000,
+    );
+    cacheSet(
+      `po_stats_group:${keyParams.toString()}:completed`,
+      payload.cCompleted,
+      30000,
+    );
+    cacheSet(
+      `po_stats_group:${keyParams.toString()}:progress`,
+      payload.cProgress,
+      30000,
+    );
     return NextResponse.json(payload);
   } catch (error) {
     if (cached) return NextResponse.json(cached);

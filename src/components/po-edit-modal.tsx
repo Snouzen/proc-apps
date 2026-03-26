@@ -6,6 +6,7 @@ import Combobox from "@/components/combobox";
 import Select from "@/components/select";
 import { LinkIcon, MapPin, Minus, Plus } from "lucide-react";
 import { PO_FORM_LABELS } from "@/lib/po-form-labels";
+import DateInputHybrid from "@/components/DateInputHybrid";
 
 type ReturnMode = "full" | "summary";
 
@@ -541,16 +542,15 @@ export default function POEditModal({
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                   {PO_FORM_LABELS.tglPo}
                 </label>
-                <input
-                  type="date"
+                <DateInputHybrid
                   value={tglPo}
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setTglPo(next);
-                    if (expiredTgl && next && expiredTgl < next)
-                      setExpiredTgl(next);
+                  onChange={(v) => {
+                    setTglPo(v);
+                    if (expiredTgl && v && expiredTgl < v) setExpiredTgl(v);
                   }}
+                  className="w-full bg-slate-50 rounded-2xl"
+                  placeholder="YYYY-MM-DD"
+                  maxDate={expiredTgl}
                 />
               </div>
 
@@ -558,12 +558,12 @@ export default function POEditModal({
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                   {PO_FORM_LABELS.expiredTgl}
                 </label>
-                <input
-                  type="date"
+                <DateInputHybrid
                   value={expiredTgl}
-                  min={tglPo || undefined}
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                  onChange={(e) => setExpiredTgl(e.target.value)}
+                  onChange={setExpiredTgl}
+                  className="w-full bg-slate-50 rounded-2xl"
+                  placeholder="YYYY-MM-DD"
+                  minDate={tglPo}
                 />
               </div>
 

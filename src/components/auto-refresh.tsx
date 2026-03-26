@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const AutoRefreshContext = createContext<number>(0);
 
@@ -12,19 +19,34 @@ export function AutoRefreshProvider({
   intervalMs?: number;
 }) {
   const [tick, setTick] = useState(0);
+  const lastTickAtRef = useRef<number>(0);
+  const safeIntervalMs = Math.max(30000, Number(intervalMs) || 0);
 
   useEffect(() => {
-    if (!intervalMs || intervalMs <= 0) return;
+    if (!safeIntervalMs || safeIntervalMs <= 0) return;
     const id = window.setInterval(() => {
+      if (document.hidden) return;
+      const now = Date.now();
+      if (now - lastTickAtRef.current < 30000) return;
+      lastTickAtRef.current = now;
+      console.log("Auto-refresh tick triggered");
       setTick((t) => t + 1);
-    }, intervalMs);
+    }, safeIntervalMs);
     return () => window.clearInterval(id);
-  }, [intervalMs]);
+  }, [safeIntervalMs]);
 
   useEffect(() => {
-    const onFocus = () => setTick((t) => t + 1);
+    const trigger = () => {
+      if (document.hidden || document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastTickAtRef.current < 30000) return;
+      lastTickAtRef.current = now;
+      console.log("Auto-refresh tick triggered");
+      setTick((t) => t + 1);
+    };
+    const onFocus = () => trigger();
     const onVis = () => {
-      if (document.visibilityState === "visible") setTick((t) => t + 1);
+      if (document.visibilityState === "visible") trigger();
     };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVis);
@@ -46,4 +68,3 @@ export function AutoRefreshProvider({
 export function useAutoRefreshTick() {
   return useContext(AutoRefreshContext);
 }
-
