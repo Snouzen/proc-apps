@@ -7,8 +7,16 @@ export interface SessionPayload {
   jti: string;
 }
 
+// [SECURITY] Production MUST throw if AUTH_SECRET is absent
 function getAuthSecret(): string {
-  return process.env.AUTH_SECRET || "dev-secret-change-me";
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: AUTH_SECRET is not set in production.");
+    }
+    return "dev-secret-change-me";
+  }
+  return secret;
 }
 
 function toBase64UrlFromBytes(bytes: ArrayBuffer): string {

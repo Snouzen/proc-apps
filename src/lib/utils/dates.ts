@@ -1,3 +1,6 @@
+// [ENV] Timezone offset from env instead of hardcoded magic number 7
+const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
+
 export function parseYmdOrIsoToUtcNoon(v?: string | null) {
   if (!v) return null;
   const s = String(v).trim();
@@ -13,8 +16,7 @@ export function parseYmdOrIsoToUtcNoon(v?: string | null) {
   }
   const d = new Date(s);
   if (isNaN(d.getTime())) return null;
-  const tzOffsetHours = 7;
-  const shifted = new Date(d.getTime() + tzOffsetHours * 3600 * 1000);
+  const shifted = new Date(d.getTime() + TZ_OFFSET_HOURS * 3600 * 1000);
   return new Date(
     Date.UTC(
       shifted.getUTCFullYear(),

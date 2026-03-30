@@ -155,14 +155,16 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+// [REST] DELETE extracts identifiers from URL searchParams, not request body
 export async function DELETE(request: Request) {
   try {
     const { default: prisma } = await import("@/lib/db");
-    const body = await request.json().catch(() => ({}));
-    const { namaPt, id } = body as { namaPt?: string; id?: string };
+    const { searchParams } = new URL(request.url);
+    const namaPt = searchParams.get("namaPt") || undefined;
+    const id = searchParams.get("id") || undefined;
     if (!namaPt && !id) {
       return NextResponse.json(
-        { error: "namaPt atau id wajib diisi" },
+        { error: "namaPt atau id wajib disertakan sebagai query param" },
         { status: 400 },
       );
     }

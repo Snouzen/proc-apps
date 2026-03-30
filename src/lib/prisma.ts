@@ -21,13 +21,9 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not set");
 }
 
-// Ensure sslmode doesn't conflict with pg.Pool ssl settings in production
-const urlObj = new URL(connectionString);
-urlObj.searchParams.delete("sslmode");
-
 // 3. Setup Pool & Adapter (Tetap menggunakan performa pg adapter)
 const pool = new pg.Pool({
-  connectionString: urlObj.toString(),
+  connectionString: connectionString,
   max: isProd ? 10 : 3,
   idleTimeoutMillis: 5000,
   // 🟢 GANTI BAGIAN SSL JADI SEPERTI INI:
@@ -42,8 +38,14 @@ const adapter = new PrismaPg(pool);
 const prisma =
   global.prisma ??
   new PrismaClient({
-    adapter, // Menggunakan adapter yang sudah kita pasang pool dengan SSL
+    adapter,
     log: ["error", "warn"],
   });
 
+// [BUG FIX] Cache instance on global to prevent connection pool exhaustion during dev HMR
+if (!isProd) {
+  global.prisma = prisma;
+}
+
 export default prisma;
+

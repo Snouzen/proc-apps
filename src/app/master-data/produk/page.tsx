@@ -154,10 +154,8 @@ export default function ProdukPage() {
     if (!confirm("Yakin hapus produk ini?")) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/product", {
+      const res = await fetch(`/api/product?id=${encodeURIComponent(id)}`, { // REFACTOR: DELETE via query param
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));

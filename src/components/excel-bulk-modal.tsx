@@ -341,10 +341,8 @@ export default function ExcelBulkModal({
                 if (cancelRef.current) return;
                 if (replaceDupes && rec.matchId) {
                   try {
-                    await fetch("/api/ritel", {
+                    await fetch(`/api/ritel?id=${encodeURIComponent(rec.matchId)}`, { // REFACTOR: DELETE via query param
                       method: "DELETE",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ id: rec.matchId }),
                       signal: controller.signal,
                     });
                   } catch {}
@@ -395,10 +393,9 @@ export default function ExcelBulkModal({
           if (match && !replaceDupes) continue;
           if (match && replaceDupes) {
             try {
-              await fetch("/api/unit-produksi", {
+              const delParams = new URLSearchParams({ namaRegional: regional, siteArea }); // REFACTOR: DELETE via query params
+              await fetch(`/api/unit-produksi?${delParams.toString()}`, {
                 method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ namaRegional: regional, siteArea }),
               });
             } catch {}
           }

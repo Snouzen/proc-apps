@@ -19,6 +19,9 @@ import {
 import { POBodySchema } from "@/lib/schemas/po";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
 
+// [ENV] Timezone offset from env, not hardcoded magic number
+const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
+
 function parseDate(v?: string | null) {
   if (!v) return null;
   const s = String(v).trim();
@@ -34,8 +37,7 @@ function parseDate(v?: string | null) {
   }
   const d = new Date(s);
   if (isNaN(d.getTime())) return null;
-  const tzOffsetHours = 7;
-  const shifted = new Date(d.getTime() + tzOffsetHours * 3600 * 1000);
+  const shifted = new Date(d.getTime() + TZ_OFFSET_HOURS * 3600 * 1000);
   return new Date(
     Date.UTC(
       shifted.getUTCFullYear(),
@@ -1019,13 +1021,51 @@ export async function GET(request: Request) {
               } as any)
             : ({
                 where,
-                include: {
+                select: {
+                  id: true,
+                  noPo: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  tglPo: true,
+                  expiredTgl: true,
+                  linkPo: true,
+                  noInvoice: true,
+                  tujuanDetail: true,
+                  regional: true,
+                  statusKirim: true,
+                  statusSdif: true,
+                  statusPo: true,
+                  statusFp: true,
+                  statusKwi: true,
+                  statusInv: true,
+                  statusTagih: true,
+                  statusBayar: true,
+                  remarks: true,
+                  // Prevent over-fetching by using specific selects instead of raw includes
                   ...(includeItems
-                    ? { Items: { include: { Product: true } } }
+                    ? {
+                        Items: {
+                          select: {
+                            id: true,
+                            pcs: true,
+                            pcsKirim: true,
+                            hargaKg: true,
+                            hargaPcs: true,
+                            nominal: true,
+                            rpTagih: true,
+                            discount: true,
+                            Product: { select: { id: true, name: true, satuanKg: true } },
+                          },
+                        },
+                      }
                     : {}),
-                  RitelModern: true,
-                  UnitProduksi: true,
-                } as any,
+                  RitelModern: {
+                    select: { id: true, namaPt: true, inisial: true, tujuan: true },
+                  },
+                  UnitProduksi: {
+                    select: { idRegional: true, namaRegional: true, siteArea: true },
+                  },
+                },
                 orderBy,
               } as any),
         ),
@@ -1081,13 +1121,50 @@ export async function GET(request: Request) {
             } as any)
           : ({
               where,
-              include: {
+              select: {
+                id: true,
+                noPo: true,
+                createdAt: true,
+                updatedAt: true,
+                tglPo: true,
+                expiredTgl: true,
+                linkPo: true,
+                noInvoice: true,
+                tujuanDetail: true,
+                regional: true,
+                statusKirim: true,
+                statusSdif: true,
+                statusPo: true,
+                statusFp: true,
+                statusKwi: true,
+                statusInv: true,
+                statusTagih: true,
+                statusBayar: true,
+                remarks: true,
                 ...(includeItems
-                  ? { Items: { include: { Product: true } } }
+                  ? {
+                      Items: {
+                        select: {
+                          id: true,
+                          pcs: true,
+                          pcsKirim: true,
+                          hargaKg: true,
+                          hargaPcs: true,
+                          nominal: true,
+                          rpTagih: true,
+                          discount: true,
+                          Product: { select: { id: true, name: true, satuanKg: true } },
+                        },
+                      },
+                    }
                   : {}),
-                RitelModern: true,
-                UnitProduksi: true,
-              } as any,
+                RitelModern: {
+                  select: { id: true, namaPt: true, inisial: true, tujuan: true },
+                },
+                UnitProduksi: {
+                  select: { idRegional: true, namaRegional: true, siteArea: true },
+                },
+              },
               orderBy,
               take,
               skip,
@@ -1115,6 +1192,7 @@ export async function GET(request: Request) {
   }
 }
 
+// [REST] DELETE must extract identifiers from URL searchParams, NOT from request body
 export async function DELETE(request: Request) {
   try {
     const bag = await cookies();
@@ -1132,18 +1210,20 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json().catch(() => ({}));
-    const id = body?.id as string | undefined;
-    const noPo = body?.noPo as string | undefined;
+    // [REST] Read from URL params instead of body
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id") || undefined;
+    const noPo = searchParams.get("noPo") || undefined;
     if (!id && !noPo) {
       return NextResponse.json(
-        { error: "id atau noPo wajib disertakan" },
+        { error: "id atau noPo wajib disertakan sebagai query param" },
         { status: 400 },
       );
     }
+    // [PERF] Only select id — we don't need the full row
     const po = id
-      ? await prisma.purchaseOrder.findUnique({ where: { id } })
-      : await prisma.purchaseOrder.findUnique({ where: { noPo: noPo! } });
+      ? await prisma.purchaseOrder.findUnique({ where: { id }, select: { id: true } })
+      : await prisma.purchaseOrder.findUnique({ where: { noPo: noPo! }, select: { id: true } });
     if (!po) {
       return NextResponse.json(
         { error: "PO tidak ditemukan" },

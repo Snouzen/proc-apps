@@ -245,13 +245,9 @@ export default function UnitProduksiPage() {
         }
         if (isDupe && replaceDupes) {
           try {
-            await fetch("/api/unit-produksi", {
+            const delParams = new URLSearchParams({ namaRegional: payload.regional, siteArea: payload.siteArea }); // REFACTOR: DELETE via query params
+            await fetch(`/api/unit-produksi?${delParams.toString()}`, {
               method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                namaRegional: payload.regional,
-                siteArea: payload.siteArea,
-              }),
             });
           } catch {}
         }
@@ -721,13 +717,9 @@ export default function UnitProduksiPage() {
                 variant="submit"
                 onClick={async () => {
                   try {
-                    await fetch("/api/unit-produksi", {
+                    const delParams = new URLSearchParams({ namaRegional: deleteSite.regional, siteArea: deleteSite.site }); // REFACTOR: DELETE via query params
+                    await fetch(`/api/unit-produksi?${delParams.toString()}`, {
                       method: "DELETE",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        namaRegional: deleteSite.regional,
-                        siteArea: deleteSite.site,
-                      }),
                     });
                     setDeleteSite(null);
                     setDataUnit((prev) =>
@@ -967,10 +959,8 @@ export default function UnitProduksiPage() {
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch("/api/unit-produksi", {
+                    const res = await fetch(`/api/unit-produksi?namaRegional=${encodeURIComponent(deleteRegional!)}`, { // REFACTOR: DELETE via query param
                       method: "DELETE",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ namaRegional: deleteRegional }),
                     });
                     const j = await res.json().catch(() => ({}));
                     if (!res.ok) {

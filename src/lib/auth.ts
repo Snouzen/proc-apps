@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from "crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 
 export type Role = "pusat" | "rm";
 
@@ -10,15 +10,29 @@ export interface SessionPayload {
   jti: string;
 }
 
+// [SECURITY] Production MUST have AUTH_SECRET set; dev gets insecure default with warning
 function getAuthSecret(): string {
-  return process.env.AUTH_SECRET || "dev-secret-change-me";
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: AUTH_SECRET is not set in production.");
+    }
+    console.warn("WARNING: AUTH_SECRET is not set. Using insecure dev default.");
+    return "dev-secret-change-me";
+  }
+  return secret;
 }
 
-function getExpectedCredentials(): { email: string; password: string } {
-  const email = process.env.AUTH_EMAIL || "gmi_27001@bulog.co.id";
-  const password = process.env.AUTH_PASSWORD || "password";
-  return { email, password };
+// [SECURITY] No default credentials — env-only
+function getExpectedCredentials(): { email?: string; password?: string } {
+  return {
+    email: process.env.AUTH_EMAIL,
+    password: process.env.AUTH_PASSWORD,
+  };
 }
+
+// [SECURITY] Session TTL from env, default 7 days
+const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 7 * 24 * 60 * 60 * 1000;
 
 export function authenticate(
   email: string,
@@ -29,39 +43,50 @@ export function authenticate(
   if (!lower.includes("@")) {
     lower = `${lower}@bulog.co.id`;
   }
-  // STRICT mapping as requested
-  const PASS = "password";
-  const map: Record<
-    string,
-    { role: Role; regional: string | null }
-  > = {
+
+  // [SECURITY] Password MUST come from env, never hardcoded in source
+  const SUPER_PASS = process.env.AUTH_SUPER_PASSWORD;
+
+  const map: Record<string, { role: Role; regional: string | null }> = {
     "gmi_27001@bulog.co.id": { role: "pusat", regional: null },
     "rmi_27001@bulog.co.id": { role: "rm", regional: "Regional 1 Bandung" },
     "rmii_27001@bulog.co.id": { role: "rm", regional: "Regional 2 Surabaya" },
     "rmiii_27001@bulog.co.id": { role: "rm", regional: "Regional 3 Makassar" },
   };
+
   const entry = map[lower];
-  if (entry && password === PASS) {
-    const payload: SessionPayload = {
-      email: lower,
-      role: entry.role,
-      regional: entry.regional,
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
-      jti: randomBytes(8).toString("hex"),
+  // [SECURITY] Only allow mapped-user login if SUPER_PASS is set in env
+  if (entry && SUPER_PASS && password === SUPER_PASS) {
+    return {
+      ok: true,
+      payload: {
+        email: lower,
+        role: entry.role,
+        regional: entry.regional,
+        exp: Date.now() + SESSION_TTL_MS,
+        jti: randomBytes(8).toString("hex"),
+      },
     };
-    return { ok: true, payload };
   }
-  // Fallback to env credentials for pusat (optional)
+
+  // Fallback: env administrative credentials
   const expected = getExpectedCredentials();
-  if (lower === expected.email.toLowerCase() && password === expected.password) {
-    const payload: SessionPayload = {
-      email: lower,
-      role: "pusat",
-      regional: null,
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
-      jti: randomBytes(8).toString("hex"),
+  if (
+    expected.email &&
+    expected.password &&
+    lower === expected.email.toLowerCase() &&
+    password === expected.password
+  ) {
+    return {
+      ok: true,
+      payload: {
+        email: lower,
+        role: "pusat",
+        regional: null,
+        exp: Date.now() + SESSION_TTL_MS,
+        jti: randomBytes(8).toString("hex"),
+      },
     };
-    return { ok: true, payload };
   }
   return { ok: false };
 }
@@ -73,6 +98,7 @@ export function signSession(payload: SessionPayload): string {
   return `${base}.${sig}`;
 }
 
+// [SECURITY] Use timingSafeEqual to prevent timing-based signature attacks
 export function verifySession(
   token: string | undefined,
 ): SessionPayload | null {
@@ -83,7 +109,12 @@ export function verifySession(
   const expectedSig = createHmac("sha256", secret)
     .update(base)
     .digest("base64url");
-  if (sig !== expectedSig) return null;
+  // timingSafeEqual requires same-length buffers
+  const sigBuf = Buffer.from(sig);
+  const expectedBuf = Buffer.from(expectedSig);
+  if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) {
+    return null;
+  }
   try {
     const payload: SessionPayload = JSON.parse(
       Buffer.from(base, "base64url").toString("utf8"),

@@ -189,13 +189,14 @@ export async function PUT(request: Request) {
   }
 }
 
+// [REST] DELETE reads id from URL searchParams, not body
 export async function DELETE(request: Request) {
   try {
-    const body = await request.json();
-    const id: string | undefined = body?.id;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id") || undefined;
     if (!id) {
       return NextResponse.json(
-        { error: "ID produk wajib diisi" },
+        { error: "ID produk wajib disertakan sebagai query param" },
         { status: 400 },
       );
     }
@@ -218,3 +219,4 @@ export async function DELETE(request: Request) {
     );
   }
 }
+

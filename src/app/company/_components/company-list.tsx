@@ -157,10 +157,8 @@ export default function CompanyList({
   const handleDelete = async (noPo: string) => {
     setDeleting(true);
     try {
-      await fetch("/api/po", {
+      await fetch(`/api/po?noPo=${encodeURIComponent(noPo)}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ noPo }),
       });
       fetchData();
       setConfirmDelete(null);

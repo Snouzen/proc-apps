@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cacheGet, cacheSet, singleFlight } from "@/lib/ttl-cache";
 
-const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;
+// [ENV] Timezone offset from env, not hardcoded magic number
+const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
+const JAKARTA_OFFSET_MS = TZ_OFFSET_HOURS * 60 * 60 * 1000;
 
 function toYMDJakarta(d: Date) {
   return new Date(d.getTime() + JAKARTA_OFFSET_MS).toISOString().slice(0, 10);

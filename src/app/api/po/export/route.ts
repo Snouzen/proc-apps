@@ -5,6 +5,9 @@ import { verifySession } from "@/lib/auth";
 import ExcelJS from "exceljs";
 import { upperClean } from "@/lib/text";
 
+// [ENV] Timezone offset from env, not hardcoded
+const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
+
 function parseDate(v?: string | null) {
   if (!v) return null;
   const s = String(v).trim();
@@ -20,8 +23,7 @@ function parseDate(v?: string | null) {
   }
   const d = new Date(s);
   if (isNaN(d.getTime())) return null;
-  const tzOffsetHours = 7;
-  const shifted = new Date(d.getTime() + tzOffsetHours * 3600 * 1000);
+  const shifted = new Date(d.getTime() + TZ_OFFSET_HOURS * 3600 * 1000);
   return new Date(
     Date.UTC(
       shifted.getUTCFullYear(),
@@ -358,12 +360,38 @@ export async function GET(request: Request) {
       }
     }
 
+    // [PERF] Use select instead of include — only fetch fields used in Excel generation
     const data = await prisma.purchaseOrder.findMany({
       where,
-      include: {
-        Items: { include: { Product: true } },
-        RitelModern: true,
-        UnitProduksi: true,
+      select: {
+        id: true,
+        noPo: true,
+        tglPo: true,
+        expiredTgl: true,
+        linkPo: true,
+        noInvoice: true,
+        tujuanDetail: true,
+        regional: true,
+        statusKirim: true,
+        statusSdif: true,
+        statusPo: true,
+        statusFp: true,
+        statusKwi: true,
+        statusInv: true,
+        statusTagih: true,
+        statusBayar: true,
+        createdAt: true,
+        updatedAt: true,
+        Items: {
+          select: {
+            pcs: true,
+            nominal: true,
+            rpTagih: true,
+            Product: { select: { name: true } },
+          },
+        },
+        RitelModern: { select: { namaPt: true, inisial: true } },
+        UnitProduksi: { select: { siteArea: true, namaRegional: true } },
       },
       orderBy,
     });

@@ -259,10 +259,8 @@ export default function RitelModernPage() {
           );
           if (match?.id) {
             try {
-              await fetch("/api/ritel", {
+              await fetch(`/api/ritel?id=${encodeURIComponent(match.id)}`, { // REFACTOR: DELETE via query param
                 method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: match.id }),
               });
             } catch {}
           }
@@ -784,10 +782,8 @@ export default function RitelModernPage() {
                 variant="submit"
                 onClick={async () => {
                   try {
-                    await fetch("/api/ritel", {
+                    await fetch(`/api/ritel?id=${encodeURIComponent(deleteStore.id)}`, { // REFACTOR: DELETE via query param
                       method: "DELETE",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ id: deleteStore.id }),
                     });
                     setDeleteStore(null);
                     setDataRitel((prev) =>
@@ -1376,10 +1372,8 @@ export default function RitelModernPage() {
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch("/api/ritel", {
+                    const res = await fetch(`/api/ritel?namaPt=${encodeURIComponent(deleteCompany!)}`, { // REFACTOR: DELETE via query param
                       method: "DELETE",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ namaPt: deleteCompany }),
                     });
                     if (!res.ok) {
                       const j = await res.json().catch(() => ({}));

@@ -13,6 +13,8 @@ export async function GET() {
   try {
     const data = await singleFlight(cacheKey, () =>
       db.unitProduksi.findMany({
+        // [PERF] Only select fields needed by the client
+        select: { idRegional: true, namaRegional: true, siteArea: true, createdAt: true, updatedAt: true },
         orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
       }),
     );
@@ -84,16 +86,15 @@ export async function POST(req: Request) {
   }
 }
 
+// [REST] DELETE reads identifiers from URL searchParams, not request body
 export async function DELETE(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const { namaRegional, siteArea } = body as {
-      namaRegional?: string;
-      siteArea?: string;
-    };
+    const { searchParams } = new URL(req.url);
+    const namaRegional = searchParams.get("namaRegional") || undefined;
+    const siteArea = searchParams.get("siteArea") || undefined;
     if (!namaRegional && !siteArea) {
       return NextResponse.json(
-        { error: "Minimal sertakan namaRegional atau siteArea" },
+        { error: "Minimal sertakan namaRegional atau siteArea sebagai query param" },
         { status: 400 },
       );
     }
