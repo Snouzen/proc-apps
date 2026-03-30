@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CalendarDays,
   Check,
   Eye,
   LinkIcon,
@@ -35,33 +34,62 @@ type ItemPO = {
   rpTagih: number;
 };
 
+type StatusDoc = {
+  kirim: boolean;
+  sdif: boolean;
+  po: boolean;
+  fp: boolean;
+  kwi: boolean;
+  inv: boolean;
+  tagih: boolean;
+  bayar: boolean;
+};
+
+const INITIAL_STATUS: StatusDoc = {
+  kirim: false,
+  sdif: false,
+  po: false,
+  fp: false,
+  kwi: false,
+  inv: false,
+  tagih: false,
+  bayar: false,
+};
+
+const INITIAL_FORM: {
+  company: string;
+  inisial: string;
+  regional: string;
+  noPo: string;
+  tglPo: string;
+  linkPo: string;
+  expiredTgl: string;
+  siteArea: string;
+  noInvoice: string;
+  tujuan: string;
+  status: StatusDoc;
+  remarks: string;
+} = {
+  company: "",
+  inisial: "",
+  regional: "",
+  noPo: "",
+  tglPo: "",
+  linkPo: "",
+  expiredTgl: "",
+  siteArea: "",
+  noInvoice: "",
+  tujuan: "",
+  status: { ...INITIAL_STATUS },
+  remarks: "",
+};
+
 function InputPODetailPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const numberNoSpinner =
+    "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
   const [submitting, setSubmitting] = useState(false);
-  const INITIAL_FORM = {
-    company: "",
-    inisial: "",
-    regional: "",
-    noPo: "",
-    tglPo: "",
-    linkPo: "",
-    expiredTgl: "",
-    siteArea: "",
-    noInvoice: "",
-    tujuan: "",
-    status: {
-      kirim: false,
-      sdif: false,
-      po: false,
-      fp: false,
-      kwi: false,
-      inv: false,
-      tagih: false,
-      bayar: false,
-    },
-    remarks: "",
-  };
   const [poDrafts, setPoDrafts] = useState<
     Array<{
       noPo: string;
@@ -70,7 +98,7 @@ function InputPODetailPageInner() {
       linkPo: string;
       noInvoice: string;
       tujuan: string;
-      status: typeof formData.status;
+      status: StatusDoc;
       remarks: string;
       items: ItemPO[];
     }>
@@ -257,12 +285,19 @@ function InputPODetailPageInner() {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
     const load = async () => {
       try {
         const [r1, r2, r3] = await Promise.all([
-          fetch("/api/ritel"),
-          fetch("/api/unit-produksi"),
-          fetch("/api/product"),
+          fetch("/api/ritel", { cache: "no-store", signal: controller.signal }),
+          fetch("/api/unit-produksi", {
+            cache: "no-store",
+            signal: controller.signal,
+          }),
+          fetch("/api/product", {
+            cache: "no-store",
+            signal: controller.signal,
+          }),
         ]);
         const [d1, d2, d3] = await Promise.all([
           r1.json(),
@@ -279,6 +314,7 @@ function InputPODetailPageInner() {
       }
     };
     load();
+    return () => controller.abort();
   }, []);
 
   // Prefill when editing existing PO via query noPo
@@ -381,7 +417,6 @@ function InputPODetailPageInner() {
       }
     };
     loadPo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const norm = (s: any) =>
@@ -510,6 +545,17 @@ function InputPODetailPageInner() {
     }));
   };
 
+  const toggleAllChecklist = () => {
+    setFormData((prev) => {
+      const allOn = Object.values(prev.status).every(Boolean);
+      const next: any = {};
+      Object.keys(prev.status).forEach((k) => {
+        next[k] = !allOn;
+      });
+      return { ...prev, status: next };
+    });
+  };
+
   const handleAddItem = () => {
     if (!currentItem.namaProduk || !currentItem.pcs || !currentItem.hargaPcs) {
       showToast("error", "Lengkapi data: produk, PCS, dan Harga/Pcs");
@@ -547,63 +593,6 @@ function InputPODetailPageInner() {
 
   const handleDeleteItem = (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleSaveCurrentPODraft = () => {
-    if (!isKnownCompany) {
-      showToast("error", "Nama company tidak ada di daftar");
-      return;
-    }
-    if (!formData.inisial || !formData.inisial.trim()) {
-      showToast("error", "Inisial wajib diisi");
-      return;
-    }
-    if (!inisialOptions.some((o) => norm(o) === norm(formData.inisial || ""))) {
-      showToast("error", "Inisial tidak ada di daftar");
-      return;
-    }
-    if (!formData.noPo || !formData.noPo.trim()) {
-      showToast("error", "Nomor PO wajib diisi");
-      return;
-    }
-    if (!formData.tglPo || !formData.tglPo.trim()) {
-      showToast("error", "Tanggal PO wajib diisi");
-      return;
-    }
-    if (!formData.expiredTgl || !formData.expiredTgl.trim()) {
-      showToast("error", "Expired PO wajib diisi");
-      return;
-    }
-    if (!formData.tujuan || !formData.tujuan.trim()) {
-      showToast("error", "Tujuan (Toko/DC) wajib diisi");
-      return;
-    }
-    if (invalidTujuan) {
-      showToast("error", "Tujuan tidak ada di daftar");
-      return;
-    }
-    if (items.length === 0) {
-      showToast("error", "Minimal harus ada 1 produk");
-      return;
-    }
-    setPoDrafts([
-      {
-        noPo: formData.noPo,
-        tglPo: formData.tglPo,
-        expiredTgl: formData.expiredTgl,
-        linkPo: formData.linkPo,
-        noInvoice: formData.noInvoice,
-        tujuan: formData.tujuan,
-        status: formData.status,
-        remarks: formData.remarks,
-        items,
-      },
-    ]);
-    showToast("success", `Draft PO ${formData.noPo} disiapkan`);
-  };
-
-  const removeDraft = (noPo: string) => {
-    setPoDrafts((prev) => prev.filter((d) => d.noPo !== noPo));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -748,7 +737,6 @@ function InputPODetailPageInner() {
   const formatNumber = (val: number) =>
     new Intl.NumberFormat("id-ID").format(val);
 
-  const [editDraftNoPo, setEditDraftNoPo] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{
     noPo: string;
     tglPo: string;
@@ -756,19 +744,14 @@ function InputPODetailPageInner() {
     linkPo: string;
     noInvoice: string;
     tujuan: string;
-    status: typeof formData.status;
+    status: StatusDoc;
     remarks: string;
     items: ItemPO[];
   } | null>(null);
-  const [selectedDraftNoPo, setSelectedDraftNoPo] = useState<string | null>(
-    null,
-  );
   const openEditDraft = (d: any) => {
-    setEditDraftNoPo(d.noPo);
     setEditDraft(JSON.parse(JSON.stringify(d)));
   };
   const closeEditDraft = () => {
-    setEditDraftNoPo(null);
     setEditDraft(null);
   };
   const saveEditDraft = () => {
@@ -1075,7 +1058,7 @@ function InputPODetailPageInner() {
                     type="number"
                     value={currentItem.pcs}
                     placeholder="Input Pcs"
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                    className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
                     onChange={
                       (e) =>
                         setCurrentItem((prev) => ({
@@ -1093,7 +1076,7 @@ function InputPODetailPageInner() {
                     type="number"
                     value={currentItem.hargaPcs}
                     placeholder="Input Harga"
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                    className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
                     onChange={(e) =>
                       setCurrentItem((prev) => ({
                         ...prev,
@@ -1110,7 +1093,7 @@ function InputPODetailPageInner() {
                     type="number"
                     value={currentItem.pcsKirim}
                     placeholder="Input Pcs Kirim"
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                    className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
                     onChange={
                       (e) =>
                         setCurrentItem((prev) => ({
@@ -1285,7 +1268,12 @@ function InputPODetailPageInner() {
                           <Fragment key={item.id}>
                             <tr className="group hover:bg-slate-50/50">
                               <td className="px-4 py-3 font-medium text-slate-700">
-                                {item.namaProduk}
+                                <div
+                                  className="max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                                  title={String(item.namaProduk || "-")}
+                                >
+                                  {String(item.namaProduk || "-")}
+                                </div>
                               </td>
                               <td className="px-4 py-3 text-right text-slate-600">
                                 {isEditing ? (
@@ -1298,7 +1286,7 @@ function InputPODetailPageInner() {
                                         pcs: e.target.value,
                                       }))
                                     }
-                                    className="w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                                    className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
                                   />
                                 ) : (
                                   formatNumber(Number(item.pcs || 0))
@@ -1318,7 +1306,7 @@ function InputPODetailPageInner() {
                                         hargaPcs: e.target.value,
                                       }))
                                     }
-                                    className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                                    className={`w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
                                   />
                                 ) : (
                                   formatNumber(Number(item.hargaPcs || 0))
@@ -1426,7 +1414,7 @@ function InputPODetailPageInner() {
                                               pcsKirim: e.target.value,
                                             }))
                                           }
-                                          className="mt-1 w-full px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                                          className={`mt-1 w-full px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
                                         />
                                       ) : (
                                         <div className="mt-1 font-bold text-slate-700 text-right">
@@ -1520,13 +1508,22 @@ function InputPODetailPageInner() {
           </div>
           <div className="lg:col-span-4 space-y-6">
             <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
                   3
                 </div>
                 <h2 className="font-bold text-slate-800 text-lg">
                   Checklist Dokumen
                 </h2>
+                <button
+                  type="button"
+                  onClick={toggleAllChecklist}
+                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                >
+                  {Object.values(formData.status).every(Boolean)
+                    ? "Uncheck All"
+                    : "Check All"}
+                </button>
               </div>
 
               <div className="space-y-3">
@@ -1952,12 +1949,7 @@ function InputPODetailPageInner() {
                                     <input
                                       type="checkbox"
                                       checked={false}
-                                      onChange={(e) =>
-                                        setDeleteSelection((prev) => ({
-                                          ...prev,
-                                          ...prev,
-                                        }))
-                                      }
+                                      readOnly
                                       disabled
                                     />
                                   </td>
@@ -2205,7 +2197,7 @@ function InputPODetailPageInner() {
                                             items: arr,
                                           });
                                         }}
-                                        className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
+                                        className={`w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right ${numberNoSpinner}`}
                                       />
                                     </td>
                                     <td className="px-4 py-2 text-right">
@@ -2232,7 +2224,7 @@ function InputPODetailPageInner() {
                                             items: arr,
                                           });
                                         }}
-                                        className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
+                                        className={`w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right ${numberNoSpinner}`}
                                       />
                                     </td>
                                     <td className="px-4 py-2 text-right">
@@ -2264,7 +2256,7 @@ function InputPODetailPageInner() {
                                             items: arr,
                                           });
                                         }}
-                                        className="w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right"
+                                        className={`w-28 px-3 py-2 rounded-lg border border-slate-200 bg-white text-right ${numberNoSpinner}`}
                                       />
                                     </td>
                                     <td className="px-4 py-2 text-right">

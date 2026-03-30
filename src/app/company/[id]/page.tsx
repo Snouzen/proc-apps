@@ -179,7 +179,7 @@ export default function CompanyDetail() {
         .join(" ");
       return hay.includes(q);
     });
-  }, [rows, search]);
+  }, [rows, search, formatDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
   const start = (page - 1) * itemsPerPage;

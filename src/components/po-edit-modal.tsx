@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "@/components/modal";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
@@ -34,6 +34,8 @@ export default function POEditModal({
   returnMode = "full",
   onSaved,
 }: Props) {
+  const numberNoSpinner =
+    "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
   const norm = (s: any) =>
     String(s ?? "")
       .trim()
@@ -111,43 +113,49 @@ export default function POEditModal({
   const parseRupiah = (v: any) =>
     Math.max(0, Number(String(v ?? "").replace(/[^0-9]/g, "")) || 0);
 
-  const getSatuanKg = (namaProduk: string) => {
-    const pick = (Array.isArray(productData) ? productData : []).find(
-      (p: any) =>
-        String(p?.name || "")
-          .trim()
-          .toLowerCase() ===
-        String(namaProduk || "")
-          .trim()
-          .toLowerCase(),
-    );
-    const s = Number(pick?.satuanKg ?? 1);
-    return Number.isFinite(s) && s > 0 ? s : 1;
-  };
+  const getSatuanKg = useCallback(
+    (namaProduk: string) => {
+      const pick = (Array.isArray(productData) ? productData : []).find(
+        (p: any) =>
+          String(p?.name || "")
+            .trim()
+            .toLowerCase() ===
+          String(namaProduk || "")
+            .trim()
+            .toLowerCase(),
+      );
+      const s = Number(pick?.satuanKg ?? 1);
+      return Number.isFinite(s) && s > 0 ? s : 1;
+    },
+    [productData],
+  );
 
-  const computeDerived = (it: EditItem) => {
-    const pcs = Number(it.pcs) || 0;
-    const pcsKirim = Number(it.pcsKirim) || 0;
-    const hargaPcs = Number(it.hargaPcs) || 0;
-    const discount = parseRupiah(it.discount);
-    const satuan = getSatuanKg(it.namaProduk);
-    const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
-    const kg = pcs * satuan;
-    const kgKirim = pcsKirim * satuan;
-    const nominal = Math.max(0, hargaPcs * pcs - discount);
-    const rpTagih = Math.max(0, hargaPcs * pcsKirim - discount);
-    return {
-      pcs,
-      pcsKirim,
-      hargaPcs,
-      discount,
-      hargaKg,
-      kg,
-      kgKirim,
-      nominal,
-      rpTagih,
-    };
-  };
+  const computeDerived = useCallback(
+    (it: EditItem) => {
+      const pcs = Number(it.pcs) || 0;
+      const pcsKirim = Number(it.pcsKirim) || 0;
+      const hargaPcs = Number(it.hargaPcs) || 0;
+      const discount = parseRupiah(it.discount);
+      const satuan = getSatuanKg(it.namaProduk);
+      const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
+      const kg = pcs * satuan;
+      const kgKirim = pcsKirim * satuan;
+      const nominal = Math.max(0, hargaPcs * pcs - discount);
+      const rpTagih = Math.max(0, hargaPcs * pcsKirim - discount);
+      return {
+        pcs,
+        pcsKirim,
+        hargaPcs,
+        discount,
+        hargaKg,
+        kg,
+        kgKirim,
+        nominal,
+        rpTagih,
+      };
+    },
+    [getSatuanKg],
+  );
 
   const productOptions = useMemo(() => {
     const pinnedProducts = ["punokawan 5 kg", "befood setra ramos 5 kg"].map(
@@ -318,7 +326,7 @@ export default function POEditModal({
           hargaPcs: "",
           discount: "",
         });
-      } catch (e) {
+      } catch {
         if (!active) return;
         setPo(null);
         setItems([]);
@@ -344,6 +352,22 @@ export default function POEditModal({
       [field]: !prev[field as keyof typeof prev],
     }));
   };
+
+  const allChecklistChecked = useMemo(
+    () => Object.values(status).every(Boolean),
+    [status],
+  );
+
+  const toggleAllChecklist = useCallback(() => {
+    setStatus((prev) => {
+      const allOn = Object.values(prev).every(Boolean);
+      const next: any = {};
+      Object.keys(prev).forEach((k) => {
+        next[k] = !allOn;
+      });
+      return next;
+    });
+  }, []);
 
   const invalidCurrentProduct =
     !!currentItem.namaProduk &&
@@ -468,7 +492,7 @@ export default function POEditModal({
       tagih += d.rpTagih;
     }
     return { nominal, tagih };
-  }, [items, productData]);
+  }, [items, computeDerived]);
 
   return (
     <Modal
@@ -683,7 +707,7 @@ export default function POEditModal({
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, pcs: e.target.value }))
                   }
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                  className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
                 />
               </div>
               <div className="space-y-1">
@@ -696,7 +720,7 @@ export default function POEditModal({
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, hargaPcs: e.target.value }))
                   }
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                  className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
                 />
               </div>
               <div className="space-y-1">
@@ -709,7 +733,7 @@ export default function POEditModal({
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, pcsKirim: e.target.value }))
                   }
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                  className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
                 />
               </div>
               <div className="space-y-1">
@@ -803,7 +827,7 @@ export default function POEditModal({
                                 ),
                               )
                             }
-                            className="w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                            className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
                           />
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -819,7 +843,7 @@ export default function POEditModal({
                                 ),
                               )
                             }
-                            className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                            className={`w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
                           />
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -835,7 +859,7 @@ export default function POEditModal({
                                 ),
                               )
                             }
-                            className="w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                            className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
                           />
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -912,10 +936,17 @@ export default function POEditModal({
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-between gap-3 mb-4">
                 <h2 className="font-bold text-slate-800 text-lg">
                   {PO_FORM_LABELS.checklistDokumen}
                 </h2>
+                <button
+                  type="button"
+                  onClick={toggleAllChecklist}
+                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                >
+                  {allChecklistChecked ? "Uncheck All" : "Check All"}
+                </button>
               </div>
 
               <div className="space-y-3">

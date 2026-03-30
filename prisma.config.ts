@@ -1,45 +1,49 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
-function sanitizeDatabaseUrl(url: string) {
+function sanitizeDatabaseUrl(url: string | undefined, isDirect: boolean) {
+  if (!url) return undefined;
+
   let u: URL;
   try {
     u = new URL(url);
   } catch {
     return url;
   }
-  if (!u.searchParams.get("connect_timeout"))
+
+  if (!u.searchParams.get("connect_timeout")) {
     u.searchParams.set("connect_timeout", "30");
+  }
+
   const host = u.hostname.toLowerCase();
-  const sslmode = (u.searchParams.get("sslmode") || "").toLowerCase();
   const isSupabase =
     host.endsWith(".supabase.co") || host.includes(".supabase.com");
-  if (!sslmode && isSupabase) u.searchParams.set("sslmode", "no-verify");
-  if (u.port === "6543" || u.hostname.toLowerCase().includes("pooler")) {
-    u.searchParams.set("pgbouncer", "true");
+
+  if (!u.searchParams.get("sslmode") && isSupabase) {
+    u.searchParams.set("sslmode", "no-verify");
   }
+
+  if (!isDirect && (u.port === "6543" || host.includes("pooler"))) {
+    u.searchParams.set("pgbouncer", "true");
+  } else if (isDirect && u.searchParams.has("pgbouncer")) {
+    u.searchParams.delete("pgbouncer");
+  }
+
   return u.toString();
 }
 
-const migrateRaw =
-  process.env.MIGRATE_DATABASE_URL || process.env.migrate_database_url;
-const migrate =
-  migrateRaw && /USER:PASSWORD@HOST/i.test(migrateRaw) ? undefined : migrateRaw;
 const runtime = process.env.DATABASE_URL || process.env.database_url;
-const direct =
-  process.env.DIRECT_DATABASE_URL ||
-  process.env.direct_database_url ||
-  process.env.DIRECT_URL;
-const selected = migrate || runtime || direct;
-if (!selected) {
-  throw new Error(
-    "Set DATABASE_URL (or MIGRATE_DATABASE_URL / DIRECT_DATABASE_URL)",
-  );
-}
+const direct = process.env.DIRECT_URL || process.env.DIRECT_DATABASE_URL;
+
+// 🔥 Trik Deteksi CLI: Mengecek apakah command di terminal mengandung kata "migrate" atau "db"
+const isMigrating =
+  process.argv.join(" ").includes("migrate") ||
+  process.argv.join(" ").includes("db");
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: sanitizeDatabaseUrl(selected),
+    // Hanya gunakan satu "url", tapi isinya otomatis berubah tergantung perintah di terminal
+    url: sanitizeDatabaseUrl(isMigrating ? direct : runtime, isMigrating),
   },
 });

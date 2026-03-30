@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -18,7 +18,6 @@ import POEditModal from "@/components/po-edit-modal";
 import { LoaderThree } from "@/components/ui/loader";
 import { getMe } from "@/lib/me";
 import BulkUploadModal from "@/components/bulk-upload-modal";
-import { useAutoRefreshTick } from "@/components/auto-refresh";
 import DateInputHybrid from "@/components/DateInputHybrid";
 
 type GroupedPO = {
@@ -26,10 +25,15 @@ type GroupedPO = {
   pos: any[];
 };
 
+const norm = (s: any) =>
+  String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
 export default function CompanyList({
   focusCompany,
 }: { focusCompany?: string } = {}) {
-  const refreshTick = useAutoRefreshTick();
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<GroupedPO[]>([]);
   const [openCompanies, setOpenCompanies] = useState<Record<string, boolean>>(
@@ -41,6 +45,8 @@ export default function CompanyList({
   >({});
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -68,10 +74,18 @@ export default function CompanyList({
   const [poRowsPerPage, setPoRowsPerPage] = useState<Record<string, number>>(
     {},
   );
+  const lastCtrlRef = useRef<AbortController | null>(null);
 
-  const fetchData = async () => {
-    setLoading((v) => v || groups.length === 0);
+  const fetchData = useCallback(async () => {
+    if (typeof document !== "undefined" && !document.hasFocus()) return;
+    setLoading(true);
+    if (lastCtrlRef.current) {
+      try {
+        lastCtrlRef.current.abort();
+      } catch {}
+    }
     const ctrl = new AbortController();
+    lastCtrlRef.current = ctrl;
     const timer = window.setTimeout(() => ctrl.abort(), 10000);
     try {
       const me = await getMe();
@@ -109,11 +123,32 @@ export default function CompanyList({
       window.clearTimeout(timer);
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    if (!isInitialLoad) return;
+    if (typeof document !== "undefined" && !document.hasFocus()) {
+      const onFocus = () => {
+        fetchData().finally(() => setIsInitialLoad(false));
+      };
+      window.addEventListener("focus", onFocus, { once: true });
+      return () => window.removeEventListener("focus", onFocus);
+    }
+    fetchData().finally(() => setIsInitialLoad(false));
+  }, [fetchData, isInitialLoad]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (isInitialLoad) return;
+    if (typeof document !== "undefined" && !document.hasFocus()) return;
     fetchData();
-  }, [refreshTick]);
+  }, [debouncedSearch, fetchData, isInitialLoad, currentPage]);
 
   const handlePOCreated = () => {
     fetchData();
@@ -179,21 +214,97 @@ export default function CompanyList({
     });
   };
 
+  const globalQ = useMemo(() => norm(debouncedSearch), [debouncedSearch]);
+  const highlightTerm = useMemo(
+    () => String(searchQuery ?? "").trim(),
+    [searchQuery],
+  );
+
+  const getHighlightedText = useCallback((text: any, highlight: string) => {
+    const raw = String(text ?? "");
+    const h = String(highlight ?? "").trim();
+    if (!h) return raw;
+    const escaped = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(${escaped})`, "ig");
+    const parts = raw.split(re);
+    return parts.map((part, idx) => {
+      const isMatch = part.toLowerCase() === h.toLowerCase();
+      return isMatch ? (
+        <mark
+          key={`${idx}-${part}`}
+          className="bg-yellow-300 text-black rounded-sm px-0.5 font-semibold"
+        >
+          {part}
+        </mark>
+      ) : (
+        <span key={`${idx}-${part}`}>{part}</span>
+      );
+    });
+  }, []);
+
+  const poMatchesQ = useCallback((po: any, q: string) => {
+    if (!q) return false;
+    const noPo = norm(po?.noPo || "");
+    if (noPo.includes(q)) return true;
+    const noInvoice = norm(po?.noInvoice || "");
+    if (noInvoice.includes(q)) return true;
+    const firstProduct = norm(po?.firstProductName || "");
+    if (firstProduct && firstProduct.includes(q)) return true;
+    const inisial = norm(po?.RitelModern?.inisial || "");
+    if (inisial && inisial.includes(q)) return true;
+    return false;
+  }, []);
+
   const filteredGroups = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = globalQ;
     if (!q) return groups;
     return groups.filter((g) => {
       const companyName = String(g.company || "").toLowerCase();
       if (companyName.includes(q)) return true;
       const list = Array.isArray(g.pos) ? g.pos : [];
       return list.some((po: any) => {
-        const noPo = String(po?.noPo || "").toLowerCase();
-        if (noPo.includes(q)) return true;
-        const inisial = String(po?.RitelModern?.inisial || "").toLowerCase();
-        return inisial.includes(q);
+        return poMatchesQ(po, q);
       });
     });
-  }, [groups, searchQuery]);
+  }, [groups, globalQ, poMatchesQ]);
+
+  const autoExpand = useMemo(() => {
+    const q = globalQ;
+    if (!q) return null;
+    const perPage = 5;
+    const open: Record<string, boolean> = {};
+    const active: Record<string, string | null> = {};
+    const pageByCompany: Record<string, number> = {};
+    for (const g of groups) {
+      const pos = Array.isArray(g.pos) ? g.pos : [];
+      const groupsByInisial: Record<string, any[]> = {};
+      for (const po of pos) {
+        const alias = (po?.RitelModern?.inisial as string) || "—";
+        if (!groupsByInisial[alias]) groupsByInisial[alias] = [];
+        groupsByInisial[alias].push(po);
+      }
+      const aliases = Object.keys(groupsByInisial).sort((a, b) =>
+        a.localeCompare(b),
+      );
+      const matchingAliases = aliases.filter((alias) =>
+        (groupsByInisial[alias] || []).some((po) => poMatchesQ(po, q)),
+      );
+      if (matchingAliases.length === 0) continue;
+      const chosen = matchingAliases[0];
+      open[g.company] = true;
+      active[g.company] = chosen;
+      const idx = Math.max(0, aliases.indexOf(chosen));
+      pageByCompany[g.company] = Math.floor(idx / perPage) + 1;
+    }
+    return { open, active, pageByCompany };
+  }, [globalQ, groups, poMatchesQ]);
+
+  useEffect(() => {
+    if (!autoExpand) return;
+    setOpenCompanies((prev) => ({ ...prev, ...autoExpand.open }));
+    setActiveInisial((prev) => ({ ...prev, ...autoExpand.active }));
+    setInisialPage((prev) => ({ ...prev, ...autoExpand.pageByCompany }));
+  }, [autoExpand]);
 
   const totalUniquePo = useMemo(() => {
     const set = new Set<string>();
@@ -209,7 +320,7 @@ export default function CompanyList({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, itemsPerPage]);
+  }, [debouncedSearch, itemsPerPage]);
 
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
@@ -317,7 +428,7 @@ export default function CompanyList({
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full md:w-80">
             <Search
               size={18}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -325,11 +436,11 @@ export default function CompanyList({
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search nama company / No PO / inisial..."
+              placeholder="Search nama company / No PO / No Invoice / inisial..."
               className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
           </div>
-          <div className="flex flex-col gap-2 sm:items-end">
+          <div className="flex flex-col gap-2 sm:items-end w-full md:w-auto">
             <div className="flex items-center gap-2 justify-end">
               <button
                 onClick={() => setIsBulkOpen(true)}
@@ -392,7 +503,7 @@ export default function CompanyList({
                       className="w-full flex items-center justify-between px-4 py-3 bg-slate-900 text-white hover:bg-slate-800 transition-colors"
                     >
                       <span className="text-sm font-bold tracking-wide text-left">
-                        {g.company}
+                        {getHighlightedText(g.company, highlightTerm)}
                       </span>
                       {(() => {
                         const pos = Array.isArray(g.pos) ? g.pos : [];
@@ -606,7 +717,7 @@ export default function CompanyList({
                                   </div>
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                                  <div className="max-h-[360px] overflow-auto">
+                                  <div className="max-h-[360px] overflow-auto scrollbar-hide">
                                     <table className="w-full min-w-[1280px] text-left">
                                       <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
                                         <tr>
@@ -720,8 +831,34 @@ export default function CompanyList({
                                               title="Klik baris untuk lihat detail"
                                               onClick={() => openModal(po)}
                                             >
-                                              <td className="px-4 py-3 font-mono font-bold text-slate-800">
-                                                {po.noPo}
+                                              <td
+                                                className="px-4 py-3 font-mono font-bold text-slate-800 max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                                                title={String(po?.noPo || "-")}
+                                              >
+                                                <div className="">
+                                                  {getHighlightedText(
+                                                    po.noPo,
+                                                    highlightTerm,
+                                                  )}
+                                                </div>
+                                                {String(
+                                                  po?.noInvoice || "",
+                                                ).trim() && (
+                                                  <div
+                                                    className="mt-1 text-[10px] font-semibold text-slate-500 max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                                                    title={String(
+                                                      po?.noInvoice || "-",
+                                                    )}
+                                                  >
+                                                    INV:{" "}
+                                                    {getHighlightedText(
+                                                      String(
+                                                        po?.noInvoice || "",
+                                                      ),
+                                                      highlightTerm,
+                                                    )}
+                                                  </div>
+                                                )}
                                               </td>
                                               <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
                                                 {tglPoText}
@@ -729,19 +866,34 @@ export default function CompanyList({
                                               <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
                                                 {dueText}
                                               </td>
-                                              <td
-                                                className="px-4 py-3 text-slate-700 font-semibold max-w-[360px] truncate"
-                                                title={uniqueProducts.join(
-                                                  ", ",
-                                                )}
-                                              >
-                                                {productText}
+                                              <td className="px-4 py-3 text-slate-700 font-semibold">
+                                                <div
+                                                  className="max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                                                  title={uniqueProducts.join(
+                                                    ", ",
+                                                  )}
+                                                >
+                                                  {getHighlightedText(
+                                                    productText,
+                                                    highlightTerm,
+                                                  )}
+                                                </div>
                                               </td>
                                               <td className="px-4 py-3 text-right text-slate-700 font-semibold">
                                                 {n(Math.round(pcsKirim))}
                                               </td>
                                               <td className="px-4 py-3 text-slate-700">
-                                                {po.tujuanDetail || "-"}
+                                                <div
+                                                  className="max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                                                  title={String(
+                                                    po.tujuanDetail || "-",
+                                                  )}
+                                                >
+                                                  {getHighlightedText(
+                                                    po.tujuanDetail || "-",
+                                                    highlightTerm,
+                                                  )}
+                                                </div>
                                               </td>
                                               <td className="px-4 py-3 text-right text-slate-700 font-semibold">
                                                 {n(Math.round(totalKg))}
@@ -891,7 +1043,10 @@ export default function CompanyList({
                                         title="Pilih inisial untuk lihat daftar PO"
                                       >
                                         <div className="text-xs font-black tracking-widest text-slate-600 uppercase">
-                                          {alias}
+                                          {getHighlightedText(
+                                            alias,
+                                            highlightTerm,
+                                          )}
                                         </div>
                                         <div className="text-[11px] text-slate-500">
                                           {groupsByInisial[alias].length} PO
@@ -948,11 +1103,12 @@ export default function CompanyList({
                                         const perPo = poRowsPerPage[key] || 10;
                                         const list =
                                           groupsByInisial[selectedAlias];
-                                        const q = String(
+                                        const qLocal = String(
                                           inisialPoSearch[key] || "",
                                         )
                                           .trim()
                                           .toLowerCase();
+                                        const q = qLocal || globalQ;
                                         const fromYMD = String(
                                           inisialPoDateFrom[key] || "",
                                         ).trim();
@@ -965,6 +1121,11 @@ export default function CompanyList({
                                           ? list.filter((po: any) => {
                                               const noPo = String(
                                                 po?.noPo || "",
+                                              )
+                                                .toLowerCase()
+                                                .includes(q);
+                                              const noInvoice = String(
+                                                po?.noInvoice || "",
                                               )
                                                 .toLowerCase()
                                                 .includes(q);
@@ -984,9 +1145,14 @@ export default function CompanyList({
                                                     .map(String)
                                                     .join(" ")
                                                     .toLowerCase()
-                                                : "";
+                                                : String(
+                                                    po?.firstProductName || "",
+                                                  )
+                                                    .trim()
+                                                    .toLowerCase();
                                               return (
                                                 noPo ||
+                                                noInvoice ||
                                                 tujuan ||
                                                 (products &&
                                                   products.includes(q))
@@ -1050,7 +1216,10 @@ export default function CompanyList({
                                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-2">
                                               <div className="text-xs font-bold text-slate-600">
                                                 Daftar PO untuk inisial:{" "}
-                                                {selectedAlias}
+                                                {getHighlightedText(
+                                                  selectedAlias,
+                                                  highlightTerm,
+                                                )}
                                               </div>
                                               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                                                 <div className="relative w-full sm:w-72">
@@ -1184,7 +1353,7 @@ export default function CompanyList({
                                               </div>
                                             </div>
                                             <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                                              <div className="max-h-[360px] overflow-auto">
+                                              <div className="max-h-[360px] overflow-auto scrollbar-hide">
                                                 <table className="w-full min-w-[1280px] text-left">
                                                   <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
                                                     <tr>
@@ -1362,17 +1531,53 @@ export default function CompanyList({
                                                             : firstProduct ||
                                                               "Item"
                                                           : "-";
+                                                      const isHit =
+                                                        !!q &&
+                                                        (poMatchesQ(po, q) ||
+                                                          String(
+                                                            po?.tujuanDetail ||
+                                                              "",
+                                                          )
+                                                            .toLowerCase()
+                                                            .includes(q) ||
+                                                          String(productText)
+                                                            .toLowerCase()
+                                                            .includes(q));
                                                       return (
                                                         <tr
                                                           key={po.id}
-                                                          className="hover:bg-slate-50/70 cursor-pointer"
+                                                          className={`hover:bg-slate-50/70 cursor-pointer ${
+                                                            isHit
+                                                              ? "bg-amber-50/60"
+                                                              : ""
+                                                          }`}
                                                           title="Klik baris untuk lihat detail"
                                                           onClick={() =>
                                                             openModal(po)
                                                           }
                                                         >
                                                           <td className="px-4 py-3 font-mono font-bold text-slate-800">
-                                                            {po.noPo}
+                                                            <div className="max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide">
+                                                              {getHighlightedText(
+                                                                po.noPo,
+                                                                highlightTerm,
+                                                              )}
+                                                            </div>
+                                                            {String(
+                                                              po?.noInvoice ||
+                                                                "",
+                                                            ).trim() && (
+                                                              <div className="mt-1 text-[10px] font-semibold text-slate-500 max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide">
+                                                                INV:{" "}
+                                                                {getHighlightedText(
+                                                                  String(
+                                                                    po?.noInvoice ||
+                                                                      "",
+                                                                  ),
+                                                                  highlightTerm,
+                                                                )}
+                                                              </div>
+                                                            )}
                                                           </td>
                                                           <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
                                                             {tglPoText}
@@ -1380,17 +1585,22 @@ export default function CompanyList({
                                                           <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
                                                             {dueText}
                                                           </td>
-                                                          <td
-                                                            className="px-4 py-3 text-slate-700 font-semibold max-w-[360px] truncate"
-                                                            title={
-                                                              hasItems
-                                                                ? uniqueProducts.join(
-                                                                    ", ",
-                                                                  )
-                                                                : productText
-                                                            }
-                                                          >
-                                                            {productText}
+                                                          <td className="px-4 py-3 text-slate-700 font-semibold">
+                                                            <div
+                                                              className="max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                                                              title={
+                                                                hasItems
+                                                                  ? uniqueProducts.join(
+                                                                      ", ",
+                                                                    )
+                                                                  : productText
+                                                              }
+                                                            >
+                                                              {getHighlightedText(
+                                                                productText,
+                                                                highlightTerm,
+                                                              )}
+                                                            </div>
                                                           </td>
                                                           <td className="px-4 py-3 text-right text-slate-700 font-semibold">
                                                             {n(
@@ -1400,8 +1610,19 @@ export default function CompanyList({
                                                             )}
                                                           </td>
                                                           <td className="px-4 py-3 text-slate-700">
-                                                            {po.tujuanDetail ||
-                                                              "-"}
+                                                            <div
+                                                              className="max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                                                              title={String(
+                                                                po.tujuanDetail ||
+                                                                  "-",
+                                                              )}
+                                                            >
+                                                              {getHighlightedText(
+                                                                po.tujuanDetail ||
+                                                                  "-",
+                                                                highlightTerm,
+                                                              )}
+                                                            </div>
                                                           </td>
                                                           <td className="px-4 py-3 text-right text-slate-700 font-semibold">
                                                             {n(

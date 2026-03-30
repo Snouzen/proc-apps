@@ -2,7 +2,14 @@
 
 import * as XLSX from "xlsx";
 import { Download, Filter, RefreshCw, Settings2, X } from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { upperClean } from "@/lib/text";
 import DateInputHybrid from "@/components/DateInputHybrid";
 
@@ -84,6 +91,7 @@ export default function ReportPage() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [tglFrom, setTglFrom] = useState("");
   const [tglTo, setTglTo] = useState("");
   const [showFilters, setShowFilters] = useState(true);
@@ -91,8 +99,11 @@ export default function ReportPage() {
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [page, setPage] = useState(1);
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
+  const [debouncedColFiltersJson, setDebouncedColFiltersJson] =
+    useState<string>("{}");
   const [submitFrom, setSubmitFrom] = useState("");
   const [submitTo, setSubmitTo] = useState("");
+  const lastCtrlRef = useRef<AbortController | null>(null);
 
   const columns: Column[] = useMemo(
     () => [
@@ -260,27 +271,50 @@ export default function ReportPage() {
     });
   }, [columns]);
 
-  const load = async () => {
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedQuery(String(query || "").trim());
+    }, 500);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const activeFilters = Object.entries(colFilters).filter(
+        ([, v]) => String(v || "").trim() !== "",
+      );
+      const filterObj =
+        activeFilters.length > 0 ? Object.fromEntries(activeFilters) : {};
+      setDebouncedColFiltersJson(JSON.stringify(filterObj));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [colFilters]);
+
+  const fetchData = useCallback(async () => {
+    if (typeof document !== "undefined" && !document.hasFocus()) return;
     setLoading(true);
     setError(null);
+    if (lastCtrlRef.current) {
+      try {
+        lastCtrlRef.current.abort();
+      } catch {}
+    }
+    const ctrl = new AbortController();
+    lastCtrlRef.current = ctrl;
     try {
       const params = new URLSearchParams();
       params.set("includeUnknown", "true");
       params.set("includeItems", "true");
       params.set("limit", String(rowsPerPage));
       params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
-      if (query.trim()) params.set("q", query.trim());
+      if (debouncedQuery) params.set("q", debouncedQuery);
       if (tglFrom) params.set("tglFrom", tglFrom);
       if (tglTo) params.set("tglTo", tglTo);
       if (submitFrom) params.set("submitFrom", submitFrom);
       if (submitTo) params.set("submitTo", submitTo);
 
-      const activeFilters = Object.entries(colFilters).filter(
-        ([, v]) => String(v || "").trim() !== "",
-      );
-      if (activeFilters.length > 0) {
-        const filterObj = Object.fromEntries(activeFilters);
-        params.set("colFilters", JSON.stringify(filterObj));
+      if (debouncedColFiltersJson && debouncedColFiltersJson !== "{}") {
+        params.set("colFilters", debouncedColFiltersJson);
       }
 
       params.set("sort", "createdAt_desc");
@@ -289,15 +323,16 @@ export default function ReportPage() {
         cache: "no-store",
         credentials: "same-origin",
         headers: { Accept: "application/json" },
+        signal: ctrl.signal,
       });
       const data = await res.json();
       const list = Array.isArray(data?.data) ? data.data : [];
       setRaw(list);
-      // Wait for React to process raw data and stop loading, then we update the total safely
       requestAnimationFrame(() => {
         setServerTotal(Number(data?.total) || 0);
       });
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.name === "AbortError") return;
       const msg = e instanceof Error ? e.message : "Gagal load data";
       setError(msg);
       setRaw([]);
@@ -305,21 +340,31 @@ export default function ReportPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    debouncedColFiltersJson,
+    debouncedQuery,
     page,
     rowsPerPage,
-    query,
-    tglFrom,
-    tglTo,
     submitFrom,
     submitTo,
-    colFilters,
+    tglFrom,
+    tglTo,
   ]);
+
+  useEffect(() => {
+    if (typeof document !== "undefined" && !document.hasFocus()) return;
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    return () => {
+      if (lastCtrlRef.current) {
+        try {
+          lastCtrlRef.current.abort();
+        } catch {}
+      }
+    };
+  }, []);
 
   const rows: Row[] = useMemo(() => {
     const arr = Array.isArray(raw) ? raw : [];
@@ -385,10 +430,67 @@ export default function ReportPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, tglFrom, tglTo, rowsPerPage, colFilters, visibleCols]);
+  }, [
+    debouncedQuery,
+    tglFrom,
+    tglTo,
+    rowsPerPage,
+    debouncedColFiltersJson,
+    visibleCols,
+    submitFrom,
+    submitTo,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(serverTotal / rowsPerPage));
-  const pageRows = rows;
+  const filteredRows = useMemo(() => {
+    const q = upperClean(debouncedQuery);
+    const filters: Record<string, string> = (() => {
+      try {
+        const obj = JSON.parse(debouncedColFiltersJson || "{}");
+        return obj && typeof obj === "object" ? obj : {};
+      } catch {
+        return {};
+      }
+    })();
+    const list = Array.isArray(rows) ? rows : [];
+    if (!q && Object.keys(filters).length === 0) return list;
+    return list.filter((r) => {
+      if (q) {
+        const hay = [
+          r.noPo,
+          r.company,
+          r.inisial,
+          r.tujuan,
+          r.siteArea,
+          r.regional,
+          r.noInvoice,
+          r.products,
+        ]
+          .map((x) => upperClean(x))
+          .join(" ");
+        if (!hay.includes(q)) return false;
+      }
+      for (const [k, v] of Object.entries(filters)) {
+        const fv = upperClean(v);
+        if (!fv) continue;
+        const key = String(k);
+        const cell = upperClean(String((r as any)[key] ?? ""));
+        if (!cell.includes(fv)) return false;
+      }
+      return true;
+    });
+  }, [debouncedColFiltersJson, debouncedQuery, rows]);
+  const pageRows = filteredRows;
+
+  const clearAllFilters = useCallback(() => {
+    setQuery("");
+    setTglFrom("");
+    setTglTo("");
+    setColFilters({});
+    setSubmitFrom("");
+    setSubmitTo("");
+    setPage(1);
+  }, []);
 
   const exportExcel = async () => {
     setExporting(true);
@@ -565,8 +667,10 @@ export default function ReportPage() {
     text: string;
     highlight: string;
   }) => {
-    if (!highlight.trim()) return <>{text}</>;
-    const regex = new RegExp(`(${highlight})`, "gi");
+    const h = String(highlight || "").trim();
+    if (!h) return <>{text}</>;
+    const escaped = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(${escaped})`, "gi");
     const parts = text.split(regex);
     return (
       <>
@@ -599,7 +703,7 @@ export default function ReportPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => load()}
+              onClick={fetchData}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-slate-700 hover:bg-gray-50"
               disabled={loading}
             >
@@ -631,6 +735,9 @@ export default function ReportPage() {
               <Download size={16} />
               {exporting ? "Exporting..." : "Export"}
             </button>
+            <div className="text-xs font-bold text-slate-600 px-3 py-2 rounded-xl border border-gray-200 bg-white">
+              Terfilter: {formatNumber(serverTotal || 0)}
+            </div>
           </div>
         </div>
 
@@ -672,17 +779,11 @@ export default function ReportPage() {
             <div className="lg:col-span-1 flex items-end">
               <button
                 type="button"
-                onClick={() => {
-                  setQuery("");
-                  setTglFrom("");
-                  setTglTo("");
-                  setColFilters({});
-                  setSubmitFrom("");
-                  setSubmitTo("");
-                }}
+                onClick={clearAllFilters}
                 className="w-full inline-flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-slate-700 hover:bg-gray-50"
               >
                 <X size={16} />
+                Clear
               </button>
             </div>
           </div>
@@ -788,12 +889,12 @@ export default function ReportPage() {
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-wider">
+            <thead className="sticky top-0 z-20 bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-wider">
               <tr>
                 {visibleColumns.map((c) => (
                   <th
                     key={String(c.id)}
-                    className="px-4 py-3 whitespace-nowrap"
+                    className="px-4 py-3 whitespace-nowrap bg-slate-50"
                   >
                     {c.label}
                   </th>
@@ -802,7 +903,7 @@ export default function ReportPage() {
               {showFilters && (
                 <tr className="bg-white border-t border-slate-100">
                   {visibleColumns.map((c) => (
-                    <th key={String(c.id)} className="px-3 py-2">
+                    <th key={String(c.id)} className="px-3 py-2 bg-white">
                       {c.id === "submitDate" ? (
                         <div className="flex items-center gap-2">
                           <DateInputHybrid
@@ -848,7 +949,20 @@ export default function ReportPage() {
               )}
             </thead>
             <tbody className="divide-y divide-slate-100 uppercase">
-              {!loading && pageRows.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 10 }).map((_, i) => (
+                  <tr key={`sk-${i}`} className="animate-pulse">
+                    {visibleColumns.map((c) => (
+                      <td
+                        key={`${i}-${String(c.id)}`}
+                        className="px-4 py-3 whitespace-nowrap"
+                      >
+                        <div className="h-4 w-full max-w-[160px] bg-slate-100 rounded" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : pageRows.length === 0 ? (
                 <tr>
                   <td
                     className="px-6 py-8 text-slate-500"
@@ -884,6 +998,8 @@ export default function ReportPage() {
                           ? query
                           : filterVal;
 
+                      const shouldClamp =
+                        c.id === "products" || c.id === "tujuan";
                       return (
                         <td
                           key={String(c.id)}
@@ -900,7 +1016,26 @@ export default function ReportPage() {
                           }`}
                         >
                           {text === "-" || isStatus || c.kind !== "text" ? (
-                            text
+                            shouldClamp ? (
+                              <div
+                                className="max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                                title={String(text)}
+                              >
+                                {text}
+                              </div>
+                            ) : (
+                              text
+                            )
+                          ) : shouldClamp ? (
+                            <div
+                              className="max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                              title={String(text)}
+                            >
+                              <HighlightText
+                                text={text}
+                                highlight={highlightTerm}
+                              />
+                            </div>
                           ) : (
                             <HighlightText
                               text={text}

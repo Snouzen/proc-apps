@@ -89,55 +89,70 @@ export default function Home() {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
 
-  useEffect(() => {
-    let mounted = true;
-    const ctrl = new AbortController();
-    const timer = window.setTimeout(() => ctrl.abort(), 10000);
-    const load = async () => {
-      try {
-        if (mounted) {
-          setLoading(true);
-        }
-        const me = await getMe();
-        const r: "pusat" | "rm" = me?.role === "rm" ? "rm" : "pusat";
-        const reg = me?.regional || null;
-        if (mounted) {
-          setRole(r);
-          setRegional(reg);
-          setRoleReady(true);
-        }
-      } catch {
-        if (!mounted) return;
-      } finally {
-        window.clearTimeout(timer);
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-    load();
-    return () => {
-      mounted = false;
-      window.clearTimeout(timer);
-      ctrl.abort();
-    };
+  const fetchMe = useCallback(async () => {
+    setLoading(true);
+    try {
+      const me = await getMe();
+      const r: "pusat" | "rm" = me?.role === "rm" ? "rm" : "pusat";
+      const reg = me?.regional || null;
+      setRole(r);
+      setRegional(reg);
+      setRoleReady(true);
+    } catch {
+      setRole("pusat");
+      setRegional(null);
+      setRoleReady(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     let mounted = true;
-    getUnits()
-      .then((list) => {
-        if (!mounted) return;
-        setUnitData(Array.isArray(list) ? list : []);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setUnitData([]);
-      });
+    const run = () => {
+      if (!mounted) return;
+      fetchMe();
+    };
+    if (typeof document !== "undefined" && !document.hasFocus()) {
+      window.addEventListener("focus", run, { once: true });
+      return () => {
+        mounted = false;
+        window.removeEventListener("focus", run);
+      };
+    }
+    run();
     return () => {
       mounted = false;
     };
+  }, [fetchMe]);
+
+  const fetchUnits = useCallback(async () => {
+    try {
+      const list = await getUnits();
+      setUnitData(Array.isArray(list) ? list : []);
+    } catch {
+      setUnitData([]);
+    }
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const run = () => {
+      if (!mounted) return;
+      fetchUnits();
+    };
+    if (typeof document !== "undefined" && !document.hasFocus()) {
+      window.addEventListener("focus", run, { once: true });
+      return () => {
+        mounted = false;
+        window.removeEventListener("focus", run);
+      };
+    }
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, [fetchUnits]);
 
   const statsParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -168,9 +183,9 @@ export default function Home() {
           expiredCount: Number(s?.cExpired) || 0,
           completedCount: Number(s?.cCompleted) || 0,
         });
-        setStatsLoading(false);
       } catch (err) {
         if ((err as any)?.name === "AbortError") return;
+      } finally {
         setStatsLoading(false);
       }
     },
@@ -181,9 +196,18 @@ export default function Home() {
     if (!roleReady) return;
     let mounted = true;
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
+    const run = () => {
       if (mounted) fetchStats(controller.signal);
-    }, 100);
+    };
+    if (typeof document !== "undefined" && !document.hasFocus()) {
+      window.addEventListener("focus", run, { once: true });
+      return () => {
+        mounted = false;
+        window.removeEventListener("focus", run);
+        controller.abort();
+      };
+    }
+    const timer = window.setTimeout(run, 100);
     return () => {
       mounted = false;
       window.clearTimeout(timer);
@@ -216,44 +240,7 @@ export default function Home() {
     completedCount,
   } = stats;
 
-  if (!roleReady) {
-    return (
-      <main>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-6">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
-          ))}
-        </div>
-        <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
-            <div className="h-6 w-40 bg-slate-200 rounded animate-pulse" />
-            <div className="h-6 w-24 bg-slate-200 rounded animate-pulse" />
-          </div>
-          <div className="overflow-auto max-h-[70vh]">
-            <table className="w-full text-left border-collapse table-auto text-sm">
-              <thead>
-                <tr className="text-gray-700 text-sm uppercase tracking-wider border-b border-gray-100">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <th
-                      key={i}
-                      className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white"
-                    >
-                      <div className="h-3 w-16 bg-slate-200 rounded animate-pulse" />
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <TableRowSkeleton key={i} colCount={8} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  const showStatsSkeleton = !roleReady || statsLoading;
 
   const focusTable = (
     group: "active" | "assign" | "almost_expired" | "expired" | "completed",
@@ -270,7 +257,7 @@ export default function Home() {
     <main>
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-6">
-        {statsLoading ? (
+        {showStatsSkeleton ? (
           Array.from({ length: 7 }).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
           <>
@@ -346,7 +333,7 @@ export default function Home() {
         )}
       </div>
 
-      {role === "pusat" && (
+      {roleReady && role === "pusat" && (
         <div className="mt-8">
           <ChartAreaInteractive role={role} regional={regional} />
         </div>
@@ -479,6 +466,7 @@ function TableUnderChart({
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
   const [assignOpenId, setAssignOpenId] = useState<string | null>(null);
+  const modalOpen = detailOpen || editOpen;
   const handleSearchChange = useCallback((v: string) => {
     setPage(1);
     setDebouncedSearch(v);
@@ -493,6 +481,12 @@ function TableUnderChart({
     if (typeof next.siteAreaValue === "string")
       setSiteAreaFilter(next.siteAreaValue);
   }, []);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    setColsOpen(false);
+    setAssignOpenId(null);
+  }, [modalOpen]);
 
   const toDate = (d: any) => {
     if (!d) return null;
@@ -514,7 +508,7 @@ function TableUnderChart({
     setPage(1);
     setGroup(focusGroup);
     onFocusApplied();
-  }, [focusGroup]);
+  }, [focusGroup, onFocusApplied]);
 
   // Stats fetched centrally above; no duplicate fetch here
 
@@ -553,6 +547,9 @@ function TableUnderChart({
     async (signal?: AbortSignal) => {
       setLoading(true);
       try {
+        if (typeof document !== "undefined" && !document.hasFocus()) {
+          return;
+        }
         const params = new URLSearchParams();
         params.set("includeUnknown", "true");
         params.set("summary", "true");
@@ -575,7 +572,6 @@ function TableUnderChart({
               ? "tglPo_desc"
               : "tglPo_asc";
         params.set("sort", sort);
-        console.log("Fetching with key:", fetchKey);
         const res = await fetch(`/api/po?${params.toString()}`, {
           cache: "no-store",
           headers: {
@@ -586,7 +582,6 @@ function TableUnderChart({
           signal,
         });
         const json = await res.json().catch(() => null);
-        console.log("Raw Response:", json);
         if (!res.ok || !json) {
           const msg =
             (json as any)?.error || res.statusText || "Gagal mengambil data PO";
@@ -602,7 +597,6 @@ function TableUnderChart({
           const arrLike = Object.values(json).find((v) => Array.isArray(v));
           if (Array.isArray(arrLike)) list = arrLike as any[];
         }
-        console.log("Data Received:", Array.isArray(list) ? list.length : 0);
         const total = Number((json as any)?.total) || list.length;
         return { list, total };
       } catch (e) {
@@ -625,12 +619,12 @@ function TableUnderChart({
       rowsPerPage,
       sortDesc,
       alphaSort,
-      fetchKey,
     ],
   );
 
   useEffect(() => {
     if (!role) return;
+    if (typeof document !== "undefined" && !document.hasFocus()) return;
     let active = true;
     const controller = new AbortController();
     const timer = setTimeout(() => {
@@ -646,7 +640,7 @@ function TableUnderChart({
           }
         });
       }
-    }, 500);
+    }, 100);
     return () => {
       active = false;
       clearTimeout(timer);
@@ -713,6 +707,35 @@ function TableUnderChart({
       : t === "Almost Expired"
         ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
         : "bg-blue-50 text-blue-700 ring-1 ring-blue-200";
+
+  const columnDefs = useMemo(
+    () => [
+      { key: "company", label: "Company" },
+      { key: "nopo", label: "No PO" },
+      { key: "pcsPo", label: "PCS PO" },
+      { key: "nominal", label: "Nominal" },
+      { key: "submitDate", label: "Submit Date" },
+      { key: "tglPo", label: "Tgl PO" },
+      { key: "dueDate", label: "Tgl Expired" },
+      { key: "regional", label: "Regional" },
+      { key: "status", label: "Status" },
+      { key: "actions", label: "Actions" },
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    debouncedSearch,
+    dateFrom,
+    dateTo,
+    regionalFilter,
+    siteAreaFilter,
+    group,
+    alphaSort,
+    sortDesc,
+  ]);
 
   // New: flag jika due date mendekati real time (D-7 & D-3)
   const dueFlag = (po: any) => {
@@ -816,6 +839,38 @@ function TableUnderChart({
     setDetailOpen(true);
   };
 
+  if (!role) {
+    return (
+      <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+          <div className="h-6 w-40 bg-slate-200 rounded animate-pulse" />
+          <div className="h-6 w-24 bg-slate-200 rounded animate-pulse" />
+        </div>
+        <div className="overflow-auto max-h-[70vh]">
+          <table className="w-full text-left border-collapse table-auto text-sm min-w-[1200px]">
+            <thead>
+              <tr className="text-gray-700 text-sm uppercase tracking-wider border-b border-gray-100">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <th
+                    key={i}
+                    className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white"
+                  >
+                    <div className="h-3 w-16 bg-slate-200 rounded animate-pulse" />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <TableRowSkeleton key={i} colCount={8} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {poLoadError && (
@@ -823,100 +878,99 @@ function TableUnderChart({
           Gagal load data: {poLoadError}
         </div>
       )}
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
-        <div className="flex items-center gap-2">
-          <SmoothSelect
-            width={172}
-            value={group}
-            onChange={(v) => {
-              setPage(1);
-              setGroup(v as any);
-            }}
-            options={[
-              { value: "all", label: "All" },
-              { value: "active", label: "Active" },
-              { value: "assign", label: "Need To Assign" },
-              { value: "almost_expired", label: "Almost Expired" },
-              { value: "expired", label: "Expired" },
-              { value: "completed", label: "Completed" },
-            ]}
-          />
-          <button
-            className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${sortDesc ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
-            onClick={() => {
-              setPage(1);
-              setSortDesc((v) => !v);
-            }}
-            title="Toggle newest to oldest"
-          >
-            Newest First
-          </button>
-          <button
-            className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${
-              alphaSort !== "none"
-                ? "bg-black text-white border-black"
-                : "bg-white text-black border-gray-300 hover:bg-gray-50"
-            }`}
-            onClick={() => {
-              setPage(1);
-              setAlphaSort((v) =>
-                v === "none" ? "asc" : v === "asc" ? "desc" : "none",
-              );
-            }}
-            title="Toggle alphabet sort (Company)"
-          >
-            {alphaSort === "asc"
-              ? "Company A-Z"
-              : alphaSort === "desc"
-                ? "Company Z-A"
-                : "Company Sort"}
-          </button>
-          <POFilters
-            unitData={units}
-            searchValue={debouncedSearch}
-            onSearchChange={handleSearchChange}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            regionalValue={regionalFilter}
-            siteAreaValue={siteAreaFilter}
-            regionalLocked={role === "rm"}
-            onFilterChange={handleFilterChange}
-          />
-          <div className="relative">
-            <button
-              className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold bg-white hover:bg-gray-50"
-              onClick={() => setColsOpen((o) => !o)}
-            >
-              Customize Columns
-            </button>
-            {colsOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-50">
-                {[
-                  { key: "company", label: "Company" },
-                  { key: "nopo", label: "No PO" },
-                  { key: "pcsPo", label: "PCS PO" },
-                  { key: "nominal", label: "Nominal" },
-                  { key: "submitDate", label: "Submit Date" },
-                  { key: "tglPo", label: "Tgl PO" },
-                  { key: "dueDate", label: "Tgl Expired" },
-                  { key: "regional", label: "Regional" },
-                  { key: "status", label: "Status" },
-                  { key: "actions", label: "Actions" },
-                ].map((c) => (
-                  <label
-                    key={c.key}
-                    className="flex items-center gap-2 text-xs px-2 py-1 rounded hover:bg-gray-50 cursor-pointer text-black"
-                    onClick={() => toggleCol(c.key as any)}
+      <div className="px-5 py-4 border-b border-gray-100 bg-white">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full">
+            {!modalOpen && (
+              <>
+                <div className="w-full md:w-auto">
+                  <SmoothSelect
+                    width={172}
+                    value={group}
+                    onChange={(v) => {
+                      setPage(1);
+                      setGroup(v as any);
+                    }}
+                    options={[
+                      { value: "all", label: "All" },
+                      { value: "active", label: "Active" },
+                      { value: "assign", label: "Need To Assign" },
+                      { value: "almost_expired", label: "Almost Expired" },
+                      { value: "expired", label: "Expired" },
+                      { value: "completed", label: "Completed" },
+                    ]}
+                  />
+                </div>
+                <button
+                  className={`w-full md:w-auto px-3 py-1.5 rounded-full text-sm font-semibold border ${sortDesc ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                  onClick={() => {
+                    setPage(1);
+                    setSortDesc((v) => !v);
+                  }}
+                  title="Toggle newest to oldest"
+                >
+                  Newest First
+                </button>
+                <button
+                  className={`w-full md:w-auto px-3 py-1.5 rounded-full text-sm font-semibold border ${
+                    alphaSort !== "none"
+                      ? "bg-black text-white border-black"
+                      : "bg-white text-black border-gray-300 hover:bg-gray-50"
+                  }`}
+                  onClick={() => {
+                    setPage(1);
+                    setAlphaSort((v) =>
+                      v === "none" ? "asc" : v === "asc" ? "desc" : "none",
+                    );
+                  }}
+                  title="Toggle alphabet sort (Company)"
+                >
+                  {alphaSort === "asc"
+                    ? "Company A-Z"
+                    : alphaSort === "desc"
+                      ? "Company Z-A"
+                      : "Company Sort"}
+                </button>
+                <div className="w-full md:w-auto">
+                  <POFilters
+                    unitData={units}
+                    searchValue={debouncedSearch}
+                    onSearchChange={handleSearchChange}
+                    dateFrom={dateFrom}
+                    dateTo={dateTo}
+                    regionalValue={regionalFilter}
+                    siteAreaValue={siteAreaFilter}
+                    regionalLocked={role === "rm"}
+                    onFilterChange={handleFilterChange}
+                  />
+                </div>
+                <div className="relative w-full md:w-auto z-[60]">
+                  <button
+                    className="w-full md:w-auto px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold bg-white hover:bg-gray-50"
+                    onClick={() => setColsOpen((o) => !o)}
                   >
-                    <input
-                      type="checkbox"
-                      readOnly
-                      checked={(visibleCols as any)[c.key]}
-                    />
-                    <span>{c.label}</span>
-                  </label>
-                ))}
-              </div>
+                    Customize Columns
+                  </button>
+                  {colsOpen && !modalOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-[70]">
+                      {columnDefs.map((c) => (
+                        <label
+                          key={c.key}
+                          className="flex items-center gap-2 text-xs px-2 py-1 rounded hover:bg-gray-50 cursor-pointer text-black"
+                          onClick={() => toggleCol(c.key as any)}
+                        >
+                          <input
+                            type="checkbox"
+                            readOnly
+                            checked={(visibleCols as any)[c.key]}
+                          />
+                          <span>{c.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -1269,19 +1323,35 @@ function TableUnderChart({
         noPo={editNoPo}
         returnMode="summary"
         onSaved={(updated) => {
-          const updatedNo = String(updated?.noPo || "").trim();
-          const originalNo = String(updated?.__originalNoPo || "").trim();
+          const norm = (s: any) =>
+            String(s ?? "")
+              .trim()
+              .toLowerCase();
+          const updatedNo = norm(updated?.noPo || updated?.nopo || "");
+          const originalNo = norm(updated?.__originalNoPo || "");
           if (!updatedNo) return;
           setLocalPoData((prev) =>
             prev.map((x) => {
-              const xNo = String(
-                x?.noPo || x?.nopo || x?.poNumber || "",
-              ).trim();
+              const xNo = norm(x?.noPo || x?.nopo || x?.poNumber || "");
               return xNo === updatedNo || (originalNo && xNo === originalNo)
-                ? { ...x, ...updated, noPo: updatedNo }
+                ? {
+                    ...x,
+                    ...updated,
+                    noPo: String(updated?.noPo || updated?.nopo || "").trim(),
+                  }
                 : x;
             }),
           );
+          fetchTable().then((out) => {
+            if (!out) return;
+            if ((out as any).error) {
+              setPoLoadError((out as any).error as string);
+              return;
+            }
+            setLocalPoData(out.list || []);
+            setServerTotal(out.total || 0);
+            setPoLoadError(null);
+          });
         }}
       />
       <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white text-sm">

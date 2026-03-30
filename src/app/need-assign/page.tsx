@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getMe } from "@/lib/me";
 import PODetailModal from "@/components/po-detail-modal";
 import { Search } from "lucide-react";
 import {
   ColumnDef,
   getCoreRowModel,
-  getPaginationRowModel,
   useReactTable,
   flexRender,
 } from "@tanstack/react-table";
@@ -39,6 +38,7 @@ export default function NeedAssignPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const lastCtrlRef = useRef<AbortController | null>(null);
 
   const [openDetail, setOpenDetail] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
@@ -96,64 +96,84 @@ export default function NeedAssignPage() {
       const newSearch = String(search || "").trim();
       if (newSearch !== debouncedSearch) {
         setDebouncedSearch(newSearch);
-        setPage(1);
+        if (page !== 1) {
+          setIsTransitioning(true);
+          setPage(1);
+        }
       }
-    }, 300);
+    }, 500);
     return () => clearTimeout(t);
-  }, [search, debouncedSearch]);
+  }, [search, debouncedSearch, page]);
 
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  const fetchData = useCallback(async () => {
+    if (!role) return;
+    if (typeof document !== "undefined" && !document.hasFocus()) return;
+    setLoading(true);
+    setIsTransitioning(true);
+    if (lastCtrlRef.current) {
+      try {
+        lastCtrlRef.current.abort();
+      } catch {}
+    }
+    const controller = new AbortController();
+    lastCtrlRef.current = controller;
+    const timer = setTimeout(() => controller.abort(), 10000);
+    try {
+      const params = new URLSearchParams();
+      params.set("includeUnknown", "true");
+      params.set("summary", "true");
+      params.set("includeItems", "false");
+      params.set("group", "assign");
+      params.set("limit", String(rowsPerPage));
+      params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
+      if (role === "rm" && regional) params.set("regional", regional);
+      if (debouncedSearch) params.set("q", debouncedSearch);
+      const res = await fetch(`/api/po?${params.toString()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          (json as any)?.error || res.statusText || "Gagal mengambil data PO";
+        throw new Error(msg);
+      }
+      const list = Array.isArray((json as any)?.data)
+        ? (json as any).data
+        : Array.isArray(json)
+          ? (json as any)
+          : [];
+      setRows(list as Row[]);
+      setTotal(Number((json as any)?.total) || list.length);
+      setError(null);
+    } catch (e: any) {
+      if (e?.name === "AbortError") return;
+      const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
+      setError(msg);
+    } finally {
+      clearTimeout(timer);
+      setLoading(false);
+      setIsTransitioning(false);
+    }
+  }, [debouncedSearch, page, regional, role, rowsPerPage]);
+
   useEffect(() => {
     if (!role) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
-    const run = async () => {
-      setLoading(true);
-      setIsTransitioning(true);
-      try {
-        const params = new URLSearchParams();
-        params.set("includeUnknown", "true");
-        params.set("summary", "true");
-        params.set("includeItems", "false");
-        params.set("group", "assign");
-        params.set("limit", String(rowsPerPage));
-        params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
-        if (role === "rm" && regional) params.set("regional", regional);
-        if (debouncedSearch) params.set("q", debouncedSearch);
-        const res = await fetch(`/api/po?${params.toString()}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const json = await res.json().catch(() => null);
-        if (!res.ok) {
-          const msg =
-            (json as any)?.error || res.statusText || "Gagal mengambil data PO";
-          throw new Error(msg);
-        }
-        const list = Array.isArray(json?.data)
-          ? json.data
-          : Array.isArray(json)
-            ? json
-            : [];
-        setRows(list as Row[]);
-        setTotal(Number(json?.total) || list.length);
-        setError(null);
-      } catch (e: any) {
-        if (e.name === "AbortError") return;
-        const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
-        setError(msg);
-      } finally {
-        setLoading(false);
-        setIsTransitioning(false);
+    if (typeof document !== "undefined" && !document.hasFocus()) return;
+    fetchData();
+  }, [fetchData, role, debouncedSearch, page, rowsPerPage, regional]);
+
+  useEffect(() => {
+    return () => {
+      if (lastCtrlRef.current) {
+        try {
+          lastCtrlRef.current.abort();
+        } catch {}
       }
     };
-    run();
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [role, regional, page, rowsPerPage, debouncedSearch]);
+  }, []);
 
   const formatDate = (d: any) => {
     const date = d ? new Date(d) : null;
@@ -276,7 +296,7 @@ export default function NeedAssignPage() {
       header: "No",
       id: "index",
       cell: ({ row }) => (
-        <span className="font-bold text-black">
+        <span className="text-black font-bold">
           {(page - 1) * rowsPerPage + row.index + 1}
         </span>
       ),
@@ -285,16 +305,24 @@ export default function NeedAssignPage() {
       header: "No PO",
       accessorKey: "noPo",
       cell: ({ row }) => (
-        <span className="font-semibold text-black uppercase whitespace-nowrap">
-          {row.original.noPo}
-        </span>
+        <div
+          className="font-semibold text-black uppercase max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+          title={String(row.original.noPo || "-")}
+        >
+          {row.original.noPo || "-"}
+        </div>
       ),
     },
     {
       header: "Company",
       accessorKey: "company",
       cell: ({ row }) => (
-        <div className="text-black font-medium whitespace-normal max-w-[200px] line-clamp-2">
+        <div
+          className="text-slate-800 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+          title={String(
+            row.original.company || row.original?.RitelModern?.namaPt || "-",
+          )}
+        >
           {row.original.company || row.original?.RitelModern?.namaPt || "-"}
         </div>
       ),
@@ -303,7 +331,10 @@ export default function NeedAssignPage() {
       header: "Tujuan (Toko/DC)",
       accessorKey: "tujuanDetail",
       cell: ({ row }) => (
-        <div className="text-black font-medium whitespace-normal max-w-[150px] line-clamp-2">
+        <div
+          className="text-slate-800 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+          title={String(row.original.tujuanDetail || "-")}
+        >
           {row.original.tujuanDetail || "-"}
         </div>
       ),
@@ -436,7 +467,7 @@ export default function NeedAssignPage() {
       header: "Tgl PO",
       accessorKey: "tglPo",
       cell: ({ row }) => (
-        <span className="text-black font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
+        <span className="text-slate-800 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
           {formatDate(row.original.tglPo)}
         </span>
       ),
@@ -445,7 +476,7 @@ export default function NeedAssignPage() {
       header: "Expired",
       accessorKey: "expiredTgl",
       cell: ({ row }) => (
-        <span className="text-black font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
+        <span className="text-slate-800 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
           {formatDate(row.original.expiredTgl)}
         </span>
       ),
@@ -454,7 +485,7 @@ export default function NeedAssignPage() {
       header: "No Invoice",
       accessorKey: "noInvoice",
       cell: ({ row }) => (
-        <span className="text-black font-medium whitespace-nowrap text-[12px]">
+        <span className="text-slate-800 font-medium whitespace-nowrap text-[12px]">
           {row.original.noInvoice || "-"}
         </span>
       ),
@@ -580,6 +611,7 @@ export default function NeedAssignPage() {
     manualPagination: true,
     pageCount: totalPages,
     onPaginationChange: (updater) => {
+      setIsTransitioning(true);
       const next =
         typeof updater === "function"
           ? updater({
@@ -617,6 +649,7 @@ export default function NeedAssignPage() {
           <select
             value={rowsPerPage}
             onChange={(e) => {
+              setIsTransitioning(true);
               setRowsPerPage(Number(e.target.value) || 10);
               if (page !== 1) setPage(1);
             }}
@@ -637,7 +670,7 @@ export default function NeedAssignPage() {
         )}
         <div className="overflow-auto flex-1 relative">
           <table className="min-w-[920px] w-full text-left relative">
-            <thead className="text-[11px] text-black font-bold uppercase tracking-wide sticky top-0 z-10 shadow-sm shadow-slate-200/50 bg-slate-50 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200">
+            <thead className="text-[11px] text-slate-800 uppercase tracking-wide sticky top-0 z-10 shadow-sm shadow-slate-200/50 bg-slate-50 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200">
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id}>
                   {hg.headers.map((h) => (
@@ -654,7 +687,7 @@ export default function NeedAssignPage() {
               ))}
             </thead>
             <tbody
-              className={`divide-y divide-slate-100 text-sm transition-opacity duration-300 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
+              className={`divide-y divide-slate-100 text-sm text-black transition-opacity duration-300 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
             >
               {table.getRowModel().rows.map((r) => (
                 <tr
@@ -698,20 +731,22 @@ export default function NeedAssignPage() {
           </div>
           <div className="flex items-center justify-end gap-2">
             <button
-              disabled={page <= 1 || isTransitioning || loading}
+              disabled={page <= 1 || isTransitioning}
               onClick={() => {
+                setIsTransitioning(true);
                 setPage((p) => Math.max(1, p - 1));
               }}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors hover:bg-slate-50"
+              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"
             >
               Previous
             </button>
             <button
-              disabled={page >= totalPages || isTransitioning || loading}
+              disabled={page >= totalPages || isTransitioning}
               onClick={() => {
+                setIsTransitioning(true);
                 setPage((p) => Math.min(totalPages, p + 1));
               }}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors hover:bg-slate-50"
+              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"
             >
               Next
             </button>
