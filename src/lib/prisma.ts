@@ -21,9 +21,13 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not set");
 }
 
+// Ensure sslmode doesn't conflict with pg.Pool ssl settings in production
+const urlObj = new URL(connectionString);
+urlObj.searchParams.delete("sslmode");
+
 // 3. Setup Pool & Adapter (Tetap menggunakan performa pg adapter)
 const pool = new pg.Pool({
-  connectionString: connectionString,
+  connectionString: urlObj.toString(),
   max: isProd ? 10 : 3,
   idleTimeoutMillis: 5000,
   // 🟢 GANTI BAGIAN SSL JADI SEPERTI INI:
