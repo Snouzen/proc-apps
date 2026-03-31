@@ -62,6 +62,7 @@ export async function POST(req: Request) {
       "pcs",
       "harga per kg",
       "harga per pcs",
+      "discount",
       "nominal",
       "kirim",
       "pcs kirim",
@@ -172,6 +173,7 @@ export async function POST(req: Request) {
       findKey(sample, ["harga per kg", "RP/KG", "RP KG"]) || "harga per kg";
     const keyHargaPcs =
       findKey(sample, ["harga per pcs", "RP/PCS", "RP PCS"]) || "harga per pcs";
+    const keyDiscount = findKey(sample, ["discount", "diskon", "potongan"]) || "discount";
     const keyNominal = findKey(sample, ["nominal", "NOMINAL"]) || "nominal";
     const keyKirim = findKey(sample, ["kirim", "KIRIM"]) || "kirim";
     const keyPcsKirim =
@@ -725,10 +727,15 @@ export async function POST(req: Request) {
             pcs = Math.round(pcs);
             const pcsKirim = Math.round(Number(row?.[keyPcsKirim]) || 0);
             const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
-            const nominal = hargaPcs * pcs;
+            
+            // FEATURE: Discount Mapping
+            const rawDiscount = Number(row?.[keyDiscount]) || 0;
+            const discount = Math.max(0, rawDiscount);
+
+            const nominal = Math.max(0, (hargaPcs * pcs) - discount);
             const rpTagih =
               Number(row?.[keyRpTagih]) ||
-              (hargaPcs && pcsKirim ? hargaPcs * pcsKirim : 0);
+              Math.max(0, (hargaPcs && pcsKirim ? hargaPcs * pcsKirim : 0) - discount);
 
             itemsToCreateAll.push({
               id: randomUUID(),
@@ -740,7 +747,7 @@ export async function POST(req: Request) {
               hargaPcs,
               nominal,
               rpTagih,
-              discount: 0,
+              discount,
             });
           }
         } catch (err: any) {

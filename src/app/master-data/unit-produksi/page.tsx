@@ -21,6 +21,7 @@ import { useAutoRefreshTick } from "@/components/auto-refresh";
 export default function UnitProduksiPage() {
   const refreshTick = useAutoRefreshTick();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"addSite" | "addRegional">("addSite");
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [viewRegional, setViewRegional] = useState<{
@@ -308,7 +309,13 @@ export default function UnitProduksiPage() {
           </button>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setContextRegional(null);
+              setSelectedRegional("");
+              setSiteName("");
+              setModalMode("addSite");
+              setIsModalOpen(true);
+            }}
             className="flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-sm"
           >
             <Plus size={18} />
@@ -458,6 +465,7 @@ export default function UnitProduksiPage() {
                               setContextRegional(reg.nama);
                               setSelectedRegional(reg.nama);
                               setSiteName("");
+                              setModalMode("addSite");
                               setIsModalOpen(true);
                             }}
                             className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
@@ -780,9 +788,11 @@ export default function UnitProduksiPage() {
           <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
               <h3 className="text-xl font-bold text-slate-800">
-                {contextRegional
-                  ? `Tambah Site ke ${contextRegional}`
-                  : "Tambah Site Baru"}
+                {modalMode === "addRegional"
+                  ? "Tambah Regional Baru"
+                  : contextRegional
+                    ? `Tambah Site ke ${contextRegional}`
+                    : "Tambah Site Baru"}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -796,44 +806,104 @@ export default function UnitProduksiPage() {
               onSubmit={(e) => e.preventDefault()}
               className="p-6 space-y-5"
             >
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
-                  Regional
-                </label>
-                <select
-                  required
-                  value={selectedRegional}
-                  onChange={(e) => setSelectedRegional(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm appearance-none cursor-pointer"
-                  disabled={!!contextRegional}
+              <div className="relative overflow-hidden" style={{ minHeight: modalMode === "addSite" ? (contextRegional ? "160px" : "190px") : "120px" }}>
+                <div
+                  className={`transition-all duration-300 transform ${
+                    modalMode === "addSite"
+                      ? "translate-x-0 opacity-100 relative"
+                      : "-translate-x-full opacity-0 absolute inset-0 pointer-events-none"
+                  } space-y-5`}
                 >
-                  <option value="">Pilih Regional</option>
-                  <option value="REG 1 BANDUNG">REG 1 BANDUNG</option>
-                  <option value="REG 2 SURABAYA">REG 2 SURABAYA</option>
-                  <option value="REG 3 MAKASSAR">REG 3 MAKASSAR</option>
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                      Regional
+                    </label>
+                    <select
+                      required={modalMode === "addSite"}
+                      value={selectedRegional}
+                      onChange={(e) => setSelectedRegional(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm appearance-none cursor-pointer"
+                      disabled={!!contextRegional}
+                    >
+                      <option value="">Pilih Regional</option>
+                      {Array.from(new Set(groupedData.map((g: any) => g.nama)))
+                        .filter(Boolean)
+                        .map((regName: any) => (
+                          <option key={regName} value={regName}>
+                            {regName}
+                          </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
-                  Nama Site
-                </label>
-                <input
-                  required
-                  type="text"
-                  placeholder="Contoh: SPP Kendal"
-                  value={siteName}
-                  onChange={(e) => setSiteName(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
-                />
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                      Nama Site
+                    </label>
+                    <input
+                      required={modalMode === "addSite"}
+                      type="text"
+                      placeholder="Contoh: SPP Kendal"
+                      value={siteName}
+                      onChange={(e) => setSiteName(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                    />
+                  </div>
+                  
+                  {!contextRegional && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRegional("");
+                        setSiteName("");
+                        setModalMode("addRegional");
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium block text-center w-full mt-2"
+                    >
+                      Add Regional
+                    </button>
+                  )}
+                </div>
+
+                <div
+                  className={`transition-all duration-300 transform ${
+                    modalMode === "addRegional"
+                      ? "translate-x-0 opacity-100 relative"
+                      : "translate-x-full opacity-0 absolute inset-0 pointer-events-none"
+                  } space-y-5`}
+                >
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                      Nama Regional
+                    </label>
+                    <input
+                      required={modalMode === "addRegional"}
+                      type="text"
+                      placeholder="Contoh: REG 4 KALIMANTAN"
+                      value={selectedRegional}
+                      onChange={(e) => setSelectedRegional(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                    />
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRegional("");
+                      setSiteName("");
+                      setModalMode("addSite");
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium block text-center w-full mt-2"
+                  >
+                    Back
+                  </button>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-2">
                 <StatefulButton
                   variant="cancel"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                  }}
+                  onClick={() => setIsModalOpen(false)}
                   className="flex-1"
                 >
                   Batal
@@ -841,18 +911,41 @@ export default function UnitProduksiPage() {
                 <StatefulButton
                   variant="submit"
                   onClick={async () => {
-                    const created = await saveUnitProduksi({
-                      regional: selectedRegional,
-                      siteArea: siteName,
-                    });
-                    setIsModalOpen(false);
-                    setSelectedRegional("");
-                    setSiteName("");
-                    setDataUnit((prev) => [...prev, created]);
+                    if (modalMode === "addSite" && (!selectedRegional || !siteName)) {
+                      alert("Regional dan Site Area wajib diisi!");
+                      return;
+                    }
+                    if (modalMode === "addRegional" && !selectedRegional) {
+                      alert("Nama Regional wajib diisi!");
+                      return;
+                    }
+                    try {
+                      const payload = {
+                        regional: selectedRegional,
+                        siteArea: modalMode === "addRegional" ? "-" : siteName,
+                      };
+                      const created = await saveUnitProduksi(payload);
+                      setIsModalOpen(false);
+                      setSelectedRegional("");
+                      setSiteName("");
+                      
+                      // Biar langsung update di UI, pastikan endpoint mengembalikan raw yg benar
+                      const isRegionalExist = dataUnit.some(d => String(d?.namaRegional || d?.regional) === created?.namaRegional);
+                      setDataUnit((prev) => [...prev, created]);
+                      
+                      if (modalMode === "addRegional" && !isRegionalExist) {
+                         alert(`Regional '${created?.namaRegional || payload.regional}' berhasil dibuat!`);
+                      } else {
+                         alert(`Site '${payload.siteArea}' berhasil ditambahkan ke ${payload.regional}!`);
+                      }
+                      window.location.reload();
+                    } catch (err: any) {
+                      alert(err?.message || "Gagal menyimpan data");
+                    }
                   }}
                   className="flex-1"
                 >
-                  Simpan Site
+                  Simpan {modalMode === "addRegional" ? "Regional" : "Site"}
                 </StatefulButton>
               </div>
             </form>

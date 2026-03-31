@@ -1,7 +1,7 @@
 "use client";
 
 import * as XLSX from "xlsx";
-import { Download, Filter, RefreshCw, Settings2, X } from "lucide-react";
+import { Download, Filter, RefreshCw, Settings2, X, ChevronDown, Check, Search } from "lucide-react";
 import {
   Fragment,
   useCallback,
@@ -84,6 +84,163 @@ const formatCurrency = (n: number) =>
     minimumFractionDigits: 0,
   }).format(n);
 
+const EXCLUDED_FILTER_COLS = [
+  "tglPo",
+  "expiredTgl",
+  "createdAt",
+  "updatedAt",
+  "submitDate",
+  "totalNominal",
+  "totalTagihan",
+  "no",
+];
+
+function CustomFilterDropdown({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const filteredOptions = options.filter(
+    (o) => o && o.toLowerCase().includes(inputValue.toLowerCase())
+  );
+
+  return (
+    <div className={`relative w-full ${open ? "z-50" : "z-0"}`} ref={wrapperRef}>
+      <div className="relative flex items-center group">
+        <input
+          type="text"
+          className="w-full px-3 py-2 pr-8 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-emerald-500 hover:border-gray-300 transition-colors placeholder:text-slate-400 placeholder:font-normal"
+          placeholder={placeholder || "Ketik atau pilih..."}
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            if (!open) setOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              onChange(inputValue);
+              setOpen(false);
+            }
+          }}
+          onFocus={() => setOpen(true)}
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          className="absolute right-2 text-slate-400 hover:text-slate-600 transition-colors"
+          onClick={() => setOpen(!open)}
+        >
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-200 ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+      </div>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent scrollbar-thumb-gray-200 rounded-xl border border-gray-100 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-top-1">
+          <ul className="flex flex-col gap-0.5">
+            <li
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700 cursor-pointer flex items-center transition-colors"
+              onClick={() => {
+                setInputValue("");
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <X size={14} className="text-slate-400" />
+                Semua (Reset)
+              </div>
+            </li>
+
+            {inputValue && !options.some((o) => o?.toLowerCase() === inputValue.toLowerCase()) && (
+              <li
+                className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer flex items-center transition-colors mt-1"
+                onClick={() => {
+                  onChange(inputValue);
+                  setOpen(false);
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Search size={14} />
+                  <span>Cari <q>{inputValue}</q></span>
+                </div>
+              </li>
+            )}
+
+            {filteredOptions.length > 0 ? (
+              <>
+                <div className="h-px bg-slate-100 my-1"></div>
+                {filteredOptions.map((opt, i) => {
+                  const isSelected = value.toLowerCase() === opt.toLowerCase();
+                  return (
+                    <li
+                      key={i}
+                      onClick={() => {
+                        setInputValue(opt);
+                        onChange(opt);
+                        setOpen(false);
+                      }}
+                      className={`px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-between transition-colors ${
+                        isSelected
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="truncate pr-2">
+                        {opt.length > 50 ? opt.substring(0, 50) + "..." : opt}
+                      </span>
+                      {isSelected && (
+                        <Check size={14} className="flex-shrink-0 text-emerald-600" />
+                      )}
+                    </li>
+                  );
+                })}
+              </>
+            ) : (
+              !inputValue && (
+                <li className="px-3 py-4 text-center text-xs text-slate-400">
+                  Tidak ada data yang tersedia
+                </li>
+              )
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReportPage() {
   const [raw, setRaw] = useState<any[]>([]);
   const [serverTotal, setServerTotal] = useState(0);
@@ -103,7 +260,27 @@ export default function ReportPage() {
     useState<string>("{}");
   const [submitFrom, setSubmitFrom] = useState("");
   const [submitTo, setSubmitTo] = useState("");
+  // FEATURE: Cascading Filter Logic
+  const [masterCombinations, setMasterCombinations] = useState<any[]>([]);
   const lastCtrlRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/po/dict", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" }
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted && Array.isArray(data)) {
+          setMasterCombinations(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const columns: Column[] = useMemo(
     () => [
@@ -280,18 +457,21 @@ export default function ReportPage() {
 
   useEffect(() => {
     const t = setTimeout(() => {
+      // FIX: Fetch Data Logic - Memastikan debouncedColFiltersJson menjadi string kosong ("") jika tak ada filter aktif, bukan "{}" yang menyesatkan
       const activeFilters = Object.entries(colFilters).filter(
         ([, v]) => String(v || "").trim() !== "",
       );
-      const filterObj =
-        activeFilters.length > 0 ? Object.fromEntries(activeFilters) : {};
-      setDebouncedColFiltersJson(JSON.stringify(filterObj));
+      if (activeFilters.length > 0) {
+        setDebouncedColFiltersJson(JSON.stringify(Object.fromEntries(activeFilters)));
+      } else {
+        setDebouncedColFiltersJson("");
+      }
     }, 500);
     return () => clearTimeout(t);
   }, [colFilters]);
 
+  // FIX: Fetch Data Logic - Menghapus pengecekan 'document.hasFocus()' yang menjadi penyebab utama data kosong (array hilang) jika user pindah tab/membuka inspect element saat halaman di-load
   const fetchData = useCallback(async () => {
-    if (typeof document !== "undefined" && !document.hasFocus()) return;
     setLoading(true);
     setError(null);
     if (lastCtrlRef.current) {
@@ -313,7 +493,8 @@ export default function ReportPage() {
       if (submitFrom) params.set("submitFrom", submitFrom);
       if (submitTo) params.set("submitTo", submitTo);
 
-      if (debouncedColFiltersJson && debouncedColFiltersJson !== "{}") {
+      // FIX: Fetch Data Logic - Hanya di set jika benar-benar ada data
+      if (debouncedColFiltersJson) {
         params.set("colFilters", debouncedColFiltersJson);
       }
 
@@ -352,7 +533,7 @@ export default function ReportPage() {
   ]);
 
   useEffect(() => {
-    if (typeof document !== "undefined" && !document.hasFocus()) return;
+    // FIX: Fetch Data Logic - Trigger langsung tanpa block hasFocus()
     fetchData();
   }, [fetchData]);
 
@@ -481,6 +662,59 @@ export default function ReportPage() {
     });
   }, [debouncedColFiltersJson, debouncedQuery, rows]);
   const pageRows = filteredRows;
+
+  // FEATURE: Cascading Filter Logic
+  const getOptionsForColumn = useCallback(
+    (colId: string) => {
+      // 1. Ekstrak filter aktif selain kolom ini sendiri
+      const activeFilters = Object.entries(colFilters).filter(
+        ([k, v]) => String(k) !== String(colId) && String(v || "").trim() !== ""
+      );
+
+      // 2. Saring kombinasi master
+      const validCombos = masterCombinations.filter((combo) => {
+        return activeFilters.every(([k, v]) => {
+          const filterValue = upperClean(v);
+          if (!filterValue) return true;
+          
+          const comboVal = combo[k];
+          if (Array.isArray(comboVal)) {
+            // Case khusus misal products array
+            return comboVal.some(p => upperClean(String(p)).includes(filterValue));
+          } else {
+            return upperClean(String(comboVal || "")).includes(filterValue);
+          }
+        });
+      });
+
+      // 3. Tarik unique value untuk kolom saat ini dari sisa kombinasi
+      const uniqueValues = new Set<string>();
+      validCombos.forEach((combo) => {
+        const val = combo[colId];
+        if (Array.isArray(val)) {
+          val.forEach((v) => {
+            const str = String(v || "").trim();
+            if (str) uniqueValues.add(str);
+          });
+        } else {
+          const str = String(val ?? "").trim();
+          if (str) uniqueValues.add(str);
+        }
+      });
+
+      const rawList = Array.from(uniqueValues);
+      const isNumber = columns.find((c) => String(c.id) === colId)?.kind === "number";
+      if (isNumber) {
+        rawList.sort((a, b) => Number(a) - Number(b));
+      } else {
+        rawList.sort((a, b) => a.localeCompare(b));
+      }
+
+      return rawList;
+    },
+    [masterCombinations, colFilters, columns]
+  );
+
 
   const clearAllFilters = useCallback(() => {
     setQuery("");
@@ -742,20 +976,33 @@ export default function ReportPage() {
         </div>
 
         {showFilters && (
-          <div className="mt-5 grid grid-cols-1 lg:grid-cols-12 gap-3">
-            <div className="lg:col-span-5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">
-                Search
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-5 bg-slate-50 border border-slate-100 rounded-3xl shadow-sm mb-6">
+            <div className="col-span-full flex items-center justify-between mb-2 border-b border-gray-200 pb-3">
+              <h3 className="text-sm font-black text-slate-800">Filter Data Dinamis</h3>
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors"
+              >
+                <X size={14} />
+                Clear All
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                Pencarian Umum
               </label>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Cari No PO, company, tujuan, site area, invoice..."
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none text-sm"
+                placeholder="Cari PO, company, invoice..."
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none text-sm text-slate-700 focus:border-emerald-500 font-semibold"
               />
             </div>
-            <div className="lg:col-span-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1 mb-1 block">
+            
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 block">
                 Tgl PO From
               </label>
               <DateInputHybrid
@@ -765,8 +1012,9 @@ export default function ReportPage() {
                 maxDate={tglTo}
               />
             </div>
-            <div className="lg:col-span-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1 mb-1 block">
+            
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 block">
                 Tgl PO To
               </label>
               <DateInputHybrid
@@ -776,16 +1024,53 @@ export default function ReportPage() {
                 minDate={tglFrom}
               />
             </div>
-            <div className="lg:col-span-1 flex items-end">
-              <button
-                type="button"
-                onClick={clearAllFilters}
-                className="w-full inline-flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-slate-700 hover:bg-gray-50"
-              >
-                <X size={16} />
-                Clear
-              </button>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 block">
+                Tanggal Submit
+              </label>
+              <div className="flex items-center gap-2">
+                <DateInputHybrid
+                  value={submitFrom}
+                  onChange={setSubmitFrom}
+                  placeholder="Dari..."
+                  className="w-full"
+                  maxDate={submitTo}
+                />
+                <span className="text-[10px] text-slate-400">to</span>
+                <DateInputHybrid
+                  value={submitTo}
+                  onChange={setSubmitTo}
+                  placeholder="Sampai..."
+                  className="w-full"
+                  minDate={submitFrom}
+                />
+              </div>
             </div>
+
+            {columns.map((c) => {
+              if (EXCLUDED_FILTER_COLS.includes(String(c.id))) return null;
+              
+              return (
+                <div key={String(c.id)} className="flex flex-col gap-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                    {c.label}
+                  </label>
+                  <CustomFilterDropdown
+                    value={colFilters[String(c.id)] || ""}
+                    onChange={(val) =>
+                      setColFilters((prev) => ({
+                        ...prev,
+                        [String(c.id)]: val,
+                      }))
+                    }
+                    // FIX: Dropdown render logic aman menggunakan helper cascading Excel-style
+                    options={getOptionsForColumn(String(c.id))}
+                    placeholder={`Filter ${c.label}...`}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -900,53 +1185,6 @@ export default function ReportPage() {
                   </th>
                 ))}
               </tr>
-              {showFilters && (
-                <tr className="bg-white border-t border-slate-100">
-                  {visibleColumns.map((c) => (
-                    <th key={String(c.id)} className="px-3 py-2 bg-white">
-                      {c.id === "submitDate" ? (
-                        <div className="flex items-center gap-2">
-                          <DateInputHybrid
-                            value={submitFrom}
-                            onChange={setSubmitFrom}
-                            placeholder="Dari..."
-                            className="w-full"
-                            maxDate={submitTo}
-                          />
-                          <span className="text-[10px] text-slate-400">to</span>
-                          <DateInputHybrid
-                            value={submitTo}
-                            onChange={setSubmitTo}
-                            placeholder="Sampai..."
-                            className="w-full"
-                            minDate={submitFrom}
-                          />
-                        </div>
-                      ) : c.id === "no" ? (
-                        <div className="w-full px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 text-xs text-transparent select-none cursor-not-allowed">
-                          -
-                        </div>
-                      ) : (
-                        <input
-                          value={colFilters[String(c.id)] || ""}
-                          onChange={(e) =>
-                            setColFilters((prev) => ({
-                              ...prev,
-                              [String(c.id)]: e.target.value,
-                            }))
-                          }
-                          placeholder={
-                            c.kind === "number"
-                              ? "ex: >1000000, 10-20"
-                              : "filter..."
-                          }
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-slate-700 outline-none"
-                        />
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              )}
             </thead>
             <tbody className="divide-y divide-slate-100 uppercase">
               {loading ? (

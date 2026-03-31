@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "@/components/modal";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
-import { LinkIcon, MapPin, Minus, Plus } from "lucide-react";
+import { LinkIcon, MapPin, Minus, Plus, Copy } from "lucide-react";
 import { PO_FORM_LABELS } from "@/lib/po-form-labels";
 import DateInputHybrid from "@/components/DateInputHybrid";
 
@@ -847,20 +847,38 @@ export default function POEditModal({
                           />
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <input
-                            type="number"
-                            value={it.pcsKirim}
-                            onChange={(e) =>
-                              setItems((prev) =>
-                                prev.map((x) =>
-                                  x.id === it.id
-                                    ? { ...x, pcsKirim: e.target.value }
-                                    : x,
-                                ),
-                              )
-                            }
-                            className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
-                          />
+                          <div className="flex items-center justify-end gap-1 group/pckirim">
+                            <input
+                              type="number"
+                              value={it.pcsKirim}
+                              onChange={(e) =>
+                                setItems((prev) =>
+                                  prev.map((x) =>
+                                    x.id === it.id
+                                      ? { ...x, pcsKirim: e.target.value }
+                                      : x,
+                                  ),
+                                )
+                              }
+                              className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setItems((prev) =>
+                                  prev.map((x) =>
+                                    x.id === it.id
+                                      ? { ...x, pcsKirim: x.pcs }
+                                      : x,
+                                  ),
+                                )
+                              }
+                              className="p-1.5 text-slate-400 opacity-50 group-hover/pckirim:opacity-100 hover:text-blue-600 hover:bg-blue-50 focus:opacity-100 focus:text-blue-600 focus:bg-blue-50 rounded-lg transition-all border border-transparent hover:border-blue-100"
+                              title="Salin nilai dari PCS"
+                            >
+                              <Copy size={16} />
+                            </button>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <input

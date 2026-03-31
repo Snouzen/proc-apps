@@ -558,7 +558,7 @@ export async function GET(request: Request) {
     const limit =
       limitRaw == null
         ? null
-        : Math.max(1, Math.min(100, Number(limitRaw) || 0));
+        : Math.max(1, Math.min(1000, Number(limitRaw) || 0));
     const offset =
       offsetRaw == null ? null : Math.max(0, Number(offsetRaw) || 0);
     const paged = limit != null || offset != null;
@@ -1075,7 +1075,7 @@ export async function GET(request: Request) {
       return NextResponse.json(payload);
     }
 
-    const take = Math.min(100, limit ?? 50);
+    const take = limit ? Math.min(5000, limit) : 50;
     const skip = offset ?? 0;
 
     if (cached) return NextResponse.json(cached);

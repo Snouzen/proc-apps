@@ -12,7 +12,6 @@ import { useAutoRefreshTick } from "@/components/auto-refresh";
 export default function CompanyDetail() {
   const params = useParams<{ id: string }>();
   const company = decodeURIComponent(params.id);
-  const refreshTick = useAutoRefreshTick();
   const [loading, setLoading] = useState(true);
   const [poData, setPoData] = useState<any[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -85,7 +84,7 @@ export default function CompanyDetail() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [company, refreshTick]);
+  }, [company]);
 
   useEffect(() => {
     setPage(1);
@@ -527,7 +526,7 @@ export default function CompanyDetail() {
           setEditNoPo(null);
         }}
         noPo={editNoPo}
-        returnMode="full"
+        returnMode="summary"
         onSaved={(updated) => {
           const updatedNo = String(updated?.noPo || "").trim();
           const originalNo = String(updated?.__originalNoPo || "").trim();
