@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getMe, getMeSync } from "@/lib/me";
+
 import Modal from "@/components/modal";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
@@ -54,8 +56,10 @@ export default function POEditModal({
   const [unitData, setUnitData] = useState<any[]>([]);
 
   const [inisial, setInisial] = useState("");
+  const [company, setCompany] = useState("");
   const [regional, setRegional] = useState("");
   const [siteArea, setSiteArea] = useState("");
+
   const [noPoValue, setNoPoValue] = useState("");
   const [tglPo, setTglPo] = useState("");
   const [expiredTgl, setExpiredTgl] = useState("");
@@ -176,15 +180,24 @@ export default function POEditModal({
     });
   }, [productData]);
 
-  const companyName = String(
-    po?.RitelModern?.namaPt || po?.company || "",
-  ).trim();
+  // FEATURE: Role-based Form Logic - Master Data Combinations
+  const companyOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        (Array.isArray(ritelData) ? ritelData : []).map((r: any) =>
+          String(r?.namaPt || "").trim(),
+        ),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [ritelData]);
+
   const companyRitelRows = useMemo(() => {
-    if (!companyName) return [];
+    if (!company) return [];
     return (Array.isArray(ritelData) ? ritelData : []).filter(
-      (r: any) => norm(r?.namaPt) === norm(companyName),
+      (r: any) => norm(r?.namaPt) === norm(company),
     );
-  }, [ritelData, companyName]);
+  }, [ritelData, company]);
+
   const inisialOptions = useMemo(() => {
     return Array.from(
       new Set(
@@ -194,8 +207,10 @@ export default function POEditModal({
       ),
     ).sort((a, b) => a.localeCompare(b));
   }, [companyRitelRows]);
+
   const isKnownInisial =
     !!inisial && inisialOptions.some((o) => norm(o) === norm(inisial));
+
   const tujuanOptions = useMemo(() => {
     const base = isKnownInisial
       ? companyRitelRows.filter((r: any) => norm(r?.inisial) === norm(inisial))
@@ -206,15 +221,56 @@ export default function POEditModal({
       ),
     ).sort((a, b) => a.localeCompare(b));
   }, [companyRitelRows, isKnownInisial, inisial]);
+
+
   const siteAreaOptions = useMemo(() => {
+    // DEBUG: Role-based Form Logic - Super Forgiving Match Debug
+    if (regional && unitData.length > 0) {
+      console.log("DEBUG REGIONAL MATCH (EditModal):", {
+        session: regional,
+        dbSample: unitData[0]?.namaRegional,
+      });
+    }
+
     return Array.from(
       new Set(
         (Array.isArray(unitData) ? unitData : [])
+          .filter((u: any) => {
+            // FEATURE: Role-based Form Logic - Cascading Filter Site Area (Super Forgiving)
+            if (!regional) return false;
+
+            const sRaw = String(regional).toLowerCase().trim();
+            const dRaw = String(u?.namaRegional || "").toLowerCase().trim();
+            
+            const sNorm = norm(sRaw);
+            const dNorm = norm(dRaw);
+
+            // 1. Basic Equality or Double-includes
+            if (
+              sNorm === dNorm ||
+              sNorm.includes(dNorm) ||
+              dNorm.includes(sNorm)
+            )
+              return true;
+
+            // 2. Keyword Split (Super Forgiving Match)
+            const noise = ["regional", "reg"];
+            const sKeywords = sNorm
+              .split(/\s+/)
+              .filter(
+                (w) =>
+                  !noise.includes(w) && isNaN(Number(w)) && w.length > 2,
+              );
+
+            // Jika ada kata kunci session yang terkandung dalam data DB, anggap match
+            return sKeywords.some((sw) => dNorm.includes(sw));
+          })
           .map((u: any) => String(u?.siteArea || "").trim())
-          .filter(Boolean),
+          .filter((s) => s && s !== "UNKNOWN"),
       ),
     ).sort((a, b) => a.localeCompare(b));
-  }, [unitData]);
+  }, [unitData, regional]);
+
   const regionalOptions = useMemo(() => {
     return Array.from(
       new Set(
@@ -226,6 +282,7 @@ export default function POEditModal({
       .sort((a, b) => a.localeCompare(b))
       .map((r) => ({ label: r, value: r }));
   }, [unitData]);
+
 
   useEffect(() => {
     if (!open || !noPo) return;
@@ -252,12 +309,12 @@ export default function POEditModal({
           fetch(`/api/unit-produksi`, { cache: "no-store" }).then((r) =>
             r.json(),
           ),
-          cName
-            ? fetch(`/api/ritel?q=${encodeURIComponent(cName)}`, {
-                cache: "no-store",
-              }).then((r) => r.json())
-            : Promise.resolve([]),
+          // FEATURE: Role-based Form Logic - Fetch All Master Data (Not transaction history)
+          fetch(`/api/ritel?limit=1000`, { cache: "no-store" }).then((r) =>
+            r.json(),
+          ),
         ]);
+
 
         const prods = Array.isArray(prodJson)
           ? prodJson
@@ -280,16 +337,26 @@ export default function POEditModal({
         setProductData(prods);
         setUnitData(units);
         setRitelData(ritels);
+        setCompany(cName);
         setInisial(String(poRow?.RitelModern?.inisial || ""));
-        setRegional(
-          String(poRow?.regional || poRow?.UnitProduksi?.namaRegional || ""),
-        );
+
+        // FEATURE: Role-based Form Logic - Set Default Regional from Session
+        const session = await getMe();
+        if (session && session.role === "rm" && session.regional) {
+          setRegional(session.regional);
+        } else {
+          setRegional(
+            String(poRow?.regional || poRow?.UnitProduksi?.namaRegional || ""),
+          );
+        }
+
         setSiteArea(
           poRow?.UnitProduksi?.siteArea &&
             poRow.UnitProduksi.siteArea !== "UNKNOWN"
             ? String(poRow.UnitProduksi.siteArea)
             : "",
         );
+
         setNoPoValue(String(poRow?.noPo || noPo || ""));
         setTglPo(toYMD(poRow?.tglPo));
         setExpiredTgl(toYMD(poRow?.expiredTgl));
@@ -406,12 +473,13 @@ export default function POEditModal({
   };
 
   const canSubmit =
-    !!companyName.trim() &&
+    !!company.trim() &&
     !!noPoValue.trim() &&
     !!tglPo &&
     !!expiredTgl &&
     !!tujuan.trim() &&
     items.length > 0;
+
 
   const handleSave = async () => {
     if (!po) return;
@@ -426,9 +494,10 @@ export default function POEditModal({
     try {
       const originalNoPo = String(po?.noPo || noPo || "").trim();
       const payload = {
-        company: companyName,
+        company: company.trim(),
         inisial: String(inisial || "").trim(),
         regional: String(regional || "").trim(),
+
         siteArea: String(siteArea || "").trim(),
         originalNoPo,
         noPo: noPoValue.trim(),
@@ -531,12 +600,18 @@ export default function POEditModal({
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                   {PO_FORM_LABELS.company}
                 </label>
-                <input
-                  value={companyName}
-                  disabled
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold uppercase opacity-80"
+                {/* FEATURE: Role-based Form Logic - Company Master Data Mapping */}
+                <Combobox
+                  options={companyOptions}
+                  value={company}
+                  onChange={(v) => {
+                    setCompany(v);
+                    setInisial("");
+                  }}
+                  placeholder="Pilih/Ketik Perusahaan..."
                 />
               </div>
+
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
@@ -597,14 +672,31 @@ export default function POEditModal({
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                   {PO_FORM_LABELS.regional}
                 </label>
-                <Select
-                  options={regionalOptions}
-                  value={regional}
-                  onChange={(v) => setRegional(v)}
-                  placeholder="Pilih Regional"
-                  leftIcon={<MapPin size={16} />}
-                />
+                {getMeSync()?.role === "rm" ? (
+                  <div className="relative">
+                    <MapPin
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      size={16}
+                    />
+                    <input
+                      type="text"
+                      disabled
+                      value={regional}
+                      className="w-full pl-11 pr-4 py-3 bg-slate-100 rounded-2xl text-sm font-semibold cursor-not-allowed text-slate-500 border border-slate-200"
+                      placeholder="Loading..."
+                    />
+                  </div>
+                ) : (
+                  <Select
+                    options={regionalOptions}
+                    value={regional}
+                    onChange={(v) => setRegional(v)}
+                    placeholder="Pilih Regional"
+                    leftIcon={<MapPin size={16} />}
+                  />
+                )}
               </div>
+
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">

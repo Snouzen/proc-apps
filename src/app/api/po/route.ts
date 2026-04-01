@@ -116,20 +116,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Strict RBAC Validation: Prevent RM user from creating/updating PO outside their regional
+    // FEATURE: Role-based Security - Force-Override Pattern for RM users
+    // If user is RM, we use their session regional regardless of what the frontend sent.
+    // This prevents string mismatch errors (caps, spaces) and unauthorized regional data entry.
+    let effectiveRegional = regional;
     if (session.role === "rm" && session.regional) {
-      if (
-        regional &&
-        regional.trim() !== "" &&
-        regional.trim().toLowerCase() !== session.regional.trim().toLowerCase()
-      ) {
-        return NextResponse.json(
-          {
-            error: `Akses ditolak: Anda hanya diizinkan mengelola data untuk regional ${session.regional}`,
-          },
-          { status: 403 },
-        );
-      }
+      effectiveRegional = session.regional;
     }
 
     const companyTrim = String(company).trim();
@@ -262,7 +254,8 @@ export async function POST(request: Request) {
     const poLinkPo = linkPo || null;
     const poNoInvoice = noInvoice || null;
     const poTujuanDetail = tujuanUpper || null;
-    const poRegional = upperCleanOrNull(regional) || null;
+    // Use the effective regional (which might be forced from session for RM users)
+    const poRegional = upperCleanOrNull(effectiveRegional) || null;
     const poStatusKirim = !!status?.kirim;
     const poStatusSdif = !!status?.sdif;
     const poStatusPo = !!status?.po;
@@ -492,6 +485,7 @@ export async function GET(request: Request) {
     const submitFrom = parseDate(searchParams.get("submitFrom"));
     const submitTo = parseDate(searchParams.get("submitTo"));
     const group = (searchParams.get("group") || "all").trim();
+    const pcsKirimParam = searchParams.get("pcsKirim") || undefined;
 
     let colFilters: Record<string, string> = {};
     const colFiltersRaw = searchParams.get("colFilters");
@@ -579,35 +573,37 @@ export async function GET(request: Request) {
         ...(submitTo ? { lte: submitTo } : {}),
       };
     }
+    function getRegionalSynonyms(input: string): string[] {
+      const rp = input.trim().toLowerCase();
+      if (
+        rp.includes("bandung") ||
+        rp.includes("reg 1") ||
+        rp.includes("regional 1") ||
+        rp.includes(" i")
+      ) {
+        return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
+      }
+      if (
+        rp.includes("surabaya") ||
+        rp.includes("reg 2") ||
+        rp.includes("regional 2") ||
+        rp.includes(" ii")
+      ) {
+        return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
+      }
+      if (
+        rp.includes("makassar") ||
+        rp.includes("reg 3") ||
+        rp.includes("regional 3") ||
+        rp.includes(" iii")
+      ) {
+        return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
+      }
+      return [input.trim()];
+    }
+
     if (regionalParam && regionalParam.trim()) {
-      const rp = regionalParam.trim().toLowerCase();
-      const syn = (() => {
-        if (
-          rp.includes("bandung") ||
-          rp.includes("reg 1") ||
-          rp.includes("regional 1") ||
-          rp.includes(" i")
-        ) {
-          return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
-        }
-        if (
-          rp.includes("surabaya") ||
-          rp.includes("reg 2") ||
-          rp.includes("regional 2") ||
-          rp.includes(" ii")
-        ) {
-          return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
-        }
-        if (
-          rp.includes("makassar") ||
-          rp.includes("reg 3") ||
-          rp.includes("regional 3") ||
-          rp.includes(" iii")
-        ) {
-          return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
-        }
-        return [regionalParam.trim()];
-      })();
+      const syn = getRegionalSynonyms(regionalParam);
       where.OR = [
         ...syn.map((s) => ({
           regional: { contains: s, mode: "insensitive" as const },
@@ -623,25 +619,22 @@ export async function GET(request: Request) {
         },
       ];
     }
-    // Strict RBAC: force regional scope for RM users
+    // Strict RBAC: force regional scope for RM users with synonym support for robustness
     if (session.role === "rm" && session.regional) {
+      const syn = getRegionalSynonyms(session.regional);
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         {
           OR: [
-            {
-              regional: {
-                equals: session.regional,
-                mode: "insensitive" as const,
-              },
-            },
+            ...syn.map((s) => ({
+              regional: { contains: s, mode: "insensitive" as const },
+            })),
             {
               UnitProduksi: {
                 is: {
-                  namaRegional: {
-                    equals: session.regional,
-                    mode: "insensitive" as const,
-                  },
+                  OR: syn.map((s) => ({
+                    namaRegional: { contains: s, mode: "insensitive" as const },
+                  })),
                 },
               },
             },
@@ -842,6 +835,16 @@ export async function GET(request: Request) {
           ],
         },
       ];
+    }
+
+    if (pcsKirimParam) {
+      const pNum = Number(pcsKirimParam);
+      if (!isNaN(pNum)) {
+        where.AND = [
+          ...(Array.isArray(where.AND) ? where.AND : []),
+          { Items: { some: { pcsKirim: pNum } } },
+        ];
+      }
     }
 
     if (colFilters && Object.keys(colFilters).length > 0) {

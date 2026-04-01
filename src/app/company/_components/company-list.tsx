@@ -16,7 +16,7 @@ import Link from "next/link";
 import PODetailModal from "@/components/po-detail-modal";
 import POEditModal from "@/components/po-edit-modal";
 import { LoaderThree } from "@/components/ui/loader";
-import { getMe } from "@/lib/me";
+import { getMe, getMeSync } from "@/lib/me";
 import BulkUploadModal from "@/components/bulk-upload-modal";
 import DateInputHybrid from "@/components/DateInputHybrid";
 
@@ -34,6 +34,8 @@ const norm = (s: any) =>
 export default function CompanyList({
   focusCompany,
 }: { focusCompany?: string } = {}) {
+  const session = getMeSync();
+  const role = session?.role || "pusat"; // Default to pusat as safety or for initial server render (client component)
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<GroupedPO[]>([]);
   const [openCompanies, setOpenCompanies] = useState<Record<string, boolean>>(
@@ -925,16 +927,18 @@ export default function CompanyList({
                                                   >
                                                     <Pencil size={16} />
                                                   </button>
-                                                  <button
-                                                    title="Delete"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      setConfirmDelete(po.noPo);
-                                                    }}
-                                                    className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors"
-                                                  >
-                                                    <Trash2 size={16} />
-                                                  </button>
+                                                  {role === "pusat" && (
+                                                    <button
+                                                      title="Delete"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setConfirmDelete(po.noPo);
+                                                      }}
+                                                      className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors"
+                                                    >
+                                                      <Trash2 size={16} />
+                                                    </button>
+                                                  )}
                                                 </div>
                                               </td>
                                             </tr>
@@ -1670,27 +1674,29 @@ export default function CompanyList({
                                                                   size={16}
                                                                 />
                                                               </button>
-                                                              <button
-                                                                title="Delete"
-                                                                className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
-                                                                onMouseDown={(
-                                                                  e,
-                                                                ) =>
-                                                                  e.stopPropagation()
-                                                                }
-                                                                onClick={(
-                                                                  e,
-                                                                ) => {
-                                                                  e.stopPropagation();
-                                                                  setConfirmDelete(
-                                                                    po.noPo,
-                                                                  );
-                                                                }}
-                                                              >
-                                                                <Trash2
-                                                                  size={16}
-                                                                />
-                                                              </button>
+                                                              {role === "pusat" && (
+                                                                <button
+                                                                  title="Delete"
+                                                                  className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                                                  onMouseDown={(
+                                                                    e,
+                                                                  ) =>
+                                                                    e.stopPropagation()
+                                                                  }
+                                                                  onClick={(
+                                                                    e,
+                                                                  ) => {
+                                                                    e.stopPropagation();
+                                                                    setConfirmDelete(
+                                                                      po.noPo,
+                                                                    );
+                                                                  }}
+                                                                >
+                                                                  <Trash2
+                                                                    size={16}
+                                                                  />
+                                                                </button>
+                                                              )}
                                                             </div>
                                                           </td>
                                                         </tr>

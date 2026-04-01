@@ -12,12 +12,13 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Fragment, Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PO_FORM_LABELS } from "@/lib/po-form-labels";
 import DateInputHybrid from "@/components/DateInputHybrid";
+import { getMe, getMeSync } from "@/lib/me";
 
 type ItemPO = {
   id: string;
@@ -288,8 +289,12 @@ function InputPODetailPageInner() {
     const controller = new AbortController();
     const load = async () => {
       try {
-        const [r1, r2, r3] = await Promise.all([
-          fetch("/api/ritel", { cache: "no-store", signal: controller.signal }),
+        const [ritelRes, unitRes, prodRes] = await Promise.all([
+          // FEATURE: Role-based Form Logic - Fetch All Master Data (Not transaction history)
+          fetch("/api/ritel?limit=1000", {
+            cache: "no-store",
+            signal: controller.signal,
+          }),
           fetch("/api/unit-produksi", {
             cache: "no-store",
             signal: controller.signal,
@@ -300,13 +305,23 @@ function InputPODetailPageInner() {
           }),
         ]);
         const [d1, d2, d3] = await Promise.all([
-          r1.json(),
-          r2.json(),
-          r3.json(),
+          ritelRes.json(),
+          unitRes.json(),
+          prodRes.json(),
         ]);
-        setRitelData(Array.isArray(d1) ? d1 : d1?.data || []);
-        setUnitData(Array.isArray(d2) ? d2 : d2?.data || []);
-        setProductData(Array.isArray(d3) ? d3 : d3?.data || []);
+        const ritels = Array.isArray(d1) ? d1 : d1?.data || [];
+        const units = Array.isArray(d2) ? d2 : d2?.data || [];
+        const prods = Array.isArray(d3) ? d3 : d3?.data || [];
+
+        setRitelData(ritels);
+        setUnitData(units);
+        setProductData(prods);
+
+        // FEATURE: Role-based Form Logic - Set Default Regional from Session
+        const session = await getMe();
+        if (session && session.role === "rm" && session.regional) {
+          setFormData((prev) => ({ ...prev, regional: session.regional! }));
+        }
       } catch {
         setRitelData([]);
         setUnitData([]);
@@ -434,92 +449,134 @@ function InputPODetailPageInner() {
       .map((r: any) => norm(r.inisial)),
   );
 
-  const companyOptions = Array.from(
-    new Set(
-      (Array.isArray(ritelData) ? ritelData : [])
-        .map((r: any) => String(r?.namaPt || "").trim())
-        .filter(Boolean)
-        .filter((nama: string) => !inisialUsedAsCompany.has(norm(nama))),
-    ),
-  ).sort();
+  const companyOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        (Array.isArray(ritelData) ? ritelData : []).map((r: any) =>
+          String(r?.namaPt || "").trim(),
+        ),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [ritelData]);
 
   const isKnownCompany =
     !!formData.company &&
     companyOptions.some((o) => norm(o) === norm(formData.company));
 
-  const inisialOptions = isKnownCompany
-    ? Array.from(
-        new Set(
-          (Array.isArray(ritelData) ? ritelData : [])
-            .filter((r: any) => norm(r?.namaPt) === norm(formData.company))
-            .map((r: any) => String(r?.inisial || "").trim())
-            .filter(Boolean)
-            .map(String),
-        ),
-      ).sort()
-    : [];
+  const companyRitelRows = useMemo(() => {
+    if (!formData.company) return [];
+    return (Array.isArray(ritelData) ? ritelData : []).filter(
+      (r: any) => norm(r?.namaPt) === norm(formData.company),
+    );
+  }, [ritelData, formData.company]);
+
+  const inisialOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        companyRitelRows
+          .map((r: any) => String(r?.inisial || "").trim())
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [companyRitelRows]);
+
   const isKnownInisial =
     isKnownCompany &&
     !!formData.inisial &&
     inisialOptions.some((o) => norm(o) === norm(formData.inisial));
-  const allTujuan = Array.from(
-    new Set(
-      (Array.isArray(ritelData) ? ritelData : [])
-        .map((r: any) => String(r?.tujuan || "").trim())
-        .filter(Boolean),
-    ),
-  ).sort();
-  const tujuanOptions = isKnownInisial
-    ? Array.from(
-        new Set(
-          (Array.isArray(ritelData) ? ritelData : [])
-            .filter(
-              (r: any) =>
-                norm(r?.namaPt) === norm(formData.company) &&
-                norm(r?.inisial) === norm(formData.inisial),
+
+  const tujuanOptions = useMemo(() => {
+    const base = isKnownInisial
+      ? companyRitelRows.filter(
+          (r: any) => norm(r?.inisial) === norm(formData.inisial),
+        )
+      : companyRitelRows;
+    return Array.from(
+      new Set(
+        base.map((r: any) => String(r?.tujuan || "").trim()).filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [companyRitelRows, isKnownInisial, formData.inisial]);
+
+  const siteAreaOptions = useMemo(() => {
+    // DEBUG: Role-based Form Logic - Super Forgiving Match Debug
+    if (formData.regional && unitData.length > 0) {
+      console.log("DEBUG REGIONAL MATCH:", {
+        session: formData.regional,
+        dbSample: unitData[0]?.namaRegional,
+      });
+    }
+
+    return Array.from(
+      new Set(
+        (Array.isArray(unitData) ? unitData : [])
+          .filter((u: any) => {
+            // FEATURE: Role-based Form Logic - Cascading Filter Site Area (Super Forgiving)
+            if (!formData.regional) return false;
+
+            const sRaw = String(formData.regional).toLowerCase().trim();
+            const dRaw = String(u?.namaRegional || "").toLowerCase().trim();
+            
+            const sNorm = norm(sRaw);
+            const dNorm = norm(dRaw);
+
+            // 1. Basic Equality or Double-includes (e.g. "Makassar" vs "Regional 3 Makassar")
+            if (
+              sNorm === dNorm ||
+              sNorm.includes(dNorm) ||
+              dNorm.includes(sNorm)
             )
-            .map((r: any) => String(r?.tujuan || "").trim())
-            .filter(Boolean),
-        ),
-      ).sort()
-    : isKnownCompany
-      ? []
-      : allTujuan;
-  const siteAreaOptions = Array.from(
-    new Set(
-      (Array.isArray(unitData) ? unitData : [])
-        .map((u: any) => u?.siteArea)
-        .filter(Boolean),
-    ),
-  ).sort();
-  const regionalOptions = Array.from(
-    new Set(
-      (Array.isArray(unitData) ? unitData : [])
-        .map((u: any) => u?.namaRegional)
-        .filter(Boolean),
-    ),
-  )
-    .sort()
-    .map((r) => ({ label: r, value: r }));
+              return true;
+
+            // 2. Keyword Split (Super Forgiving Match)
+            // Abaikan noise seperti 'regional', 'reg', atau angka, ambil kata kunci utamanya saja
+            const noise = ["regional", "reg"];
+            const sKeywords = sNorm
+              .split(/\s+/)
+              .filter(
+                (w) =>
+                  !noise.includes(w) && isNaN(Number(w)) && w.length > 2,
+              );
+
+            // Jika ada kata kunci session yang terkandung dalam data DB, anggap match
+            return sKeywords.some((sw) => dNorm.includes(sw));
+          })
+          .map((u: any) => String(u?.siteArea || "").trim())
+          .filter((s) => s && s !== "UNKNOWN"),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [unitData, formData.regional]);
+
+  const regionalOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        (Array.isArray(unitData) ? unitData : [])
+          .map((u: any) => String(u?.namaRegional || "").trim())
+          .filter(Boolean),
+      ),
+    )
+      .sort((a, b) => a.localeCompare(b))
+      .map((r) => ({ label: r, value: r }));
+  }, [unitData]);
+
   const pinnedProducts = ["punokawan 5 kg", "befood setra ramos 5 kg"].map(
     (s) => norm(s),
   );
-  const productOptions = Array.from(
-    new Set(
-      (Array.isArray(productData) ? productData : [])
-        .map((p: any) => String(p?.name || "").trim())
-        .filter(Boolean),
-    ),
-  ).sort((a, b) => {
-    const ai = pinnedProducts.indexOf(norm(a));
-    const bi = pinnedProducts.indexOf(norm(b));
-    if (ai !== -1 || bi !== -1) {
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    }
-    return a.localeCompare(b);
-  });
+  const productOptions = useMemo(() => {
+    const list = (Array.isArray(productData) ? productData : [])
+      .map((p: any) => String(p?.name || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set(list)).sort((a, b) => {
+      const ai = pinnedProducts.indexOf(norm(a));
+      const bi = pinnedProducts.indexOf(norm(b));
+      if (ai !== -1 || bi !== -1) {
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      }
+      return a.localeCompare(b);
+    });
+  }, [productData]);
 
   const companyLooksLikeInisial =
     !!formData.company && inisialUsedAsCompany.has(norm(formData.company));
@@ -940,13 +997,31 @@ function InputPODetailPageInner() {
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     {PO_FORM_LABELS.regional}
                   </label>
-                  <Select
-                    options={regionalOptions}
-                    value={formData.regional}
-                    onChange={(v) => setFormData({ ...formData, regional: v })}
-                    placeholder="Pilih Regional"
-                    leftIcon={<MapPin size={16} />}
-                  />
+                  {getMeSync()?.role === "rm" ? (
+                    <div className="relative">
+                      <MapPin
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={16}
+                      />
+                      <input
+                        type="text"
+                        disabled
+                        value={formData.regional}
+                        className="w-full pl-11 pr-4 py-3 bg-slate-100 rounded-2xl text-sm font-semibold cursor-not-allowed text-slate-500 border border-slate-200"
+                        placeholder="Loading..."
+                      />
+                    </div>
+                  ) : (
+                    <Select
+                      options={regionalOptions}
+                      value={formData.regional}
+                      onChange={(v) =>
+                        setFormData({ ...formData, regional: v })
+                      }
+                      placeholder="Pilih Regional"
+                      leftIcon={<MapPin size={16} />}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -957,9 +1032,14 @@ function InputPODetailPageInner() {
                     options={siteAreaOptions}
                     value={formData.siteArea}
                     onChange={(v) => setFormData({ ...formData, siteArea: v })}
-                    placeholder="Ketik/cari site area..."
+                    placeholder={
+                      !formData.regional
+                        ? "Pilih Regional dulu..."
+                        : "Ketik/cari site area..."
+                    }
                     leftIcon={<MapPin size={16} />}
                     inputClassName="pl-11 pr-4"
+                    disabled={!formData.regional}
                   />
                 </div>
 
@@ -1384,14 +1464,16 @@ function InputPODetailPageInner() {
                                     >
                                       <Pencil size={16} />
                                     </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteItem(item.id)}
-                                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                                      title="Hapus"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
+                                    {getMeSync()?.role === "pusat" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteItem(item.id)}
+                                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                        title="Hapus"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </td>
@@ -1668,27 +1750,29 @@ function InputPODetailPageInner() {
                 >
                   <Pencil size={16} />
                 </button>
-                <button
-                  type="button"
-                  title="Hapus draft"
-                  onClick={() => {
-                    if (poDrafts.length === 0) return;
-                    const init: Record<string, boolean> = {};
-                    for (const d of poDrafts) {
-                      const items = Array.isArray(d.items) ? d.items : [];
-                      for (let i = 0; i < items.length; i++) {
-                        const it = items[i];
-                        const k = `${d.noPo}::${it?.id || i}`;
-                        init[k] = false;
+                {getMeSync()?.role === "pusat" && (
+                  <button
+                    type="button"
+                    title="Hapus draft"
+                    onClick={() => {
+                      if (poDrafts.length === 0) return;
+                      const init: Record<string, boolean> = {};
+                      for (const d of poDrafts) {
+                        const items = Array.isArray(d.items) ? d.items : [];
+                        for (let i = 0; i < items.length; i++) {
+                          const it = items[i];
+                          const k = `${d.noPo}::${it?.id || i}`;
+                          init[k] = false;
+                        }
                       }
-                    }
-                    setDeleteSelection(init);
-                    setDeletePickerOpen(true);
-                  }}
-                  className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
-                >
-                  <Trash2 size={16} />
-                </button>
+                      setDeleteSelection(init);
+                      setDeletePickerOpen(true);
+                    }}
+                    className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
               <div>
                 <button

@@ -10,6 +10,7 @@ type Props = {
   placeholder?: string;
   leftIcon?: React.ReactNode;
   inputClassName?: string;
+  disabled?: boolean;
 };
 
 export default function Combobox({
@@ -19,6 +20,7 @@ export default function Combobox({
   placeholder,
   leftIcon,
   inputClassName,
+  disabled,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -44,7 +46,14 @@ export default function Combobox({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
   return (
-    <div ref={containerRef} className="relative">
+    <div
+      ref={containerRef}
+      className={cn(
+        "relative transition-all duration-200",
+        disabled &&
+          "opacity-60 grayscale-[40%] pointer-events-none cursor-not-allowed scale-[0.99]",
+      )}
+    >
       {!!leftIcon && (
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
           {leftIcon}

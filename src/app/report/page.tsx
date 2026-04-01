@@ -41,6 +41,7 @@ type Row = {
   updatedAt: string;
   createdAt: string;
   submitDate: string;
+  pcsKirim: number;
 };
 
 type Column = {
@@ -260,6 +261,7 @@ export default function ReportPage() {
     useState<string>("{}");
   const [submitFrom, setSubmitFrom] = useState("");
   const [submitTo, setSubmitTo] = useState("");
+  const [pcsKirim, setPcsKirim] = useState("");
   // FEATURE: Cascading Filter Logic
   const [masterCombinations, setMasterCombinations] = useState<any[]>([]);
   const lastCtrlRef = useRef<AbortController | null>(null);
@@ -431,6 +433,16 @@ export default function ReportPage() {
         defaultVisible: true,
         value: (r) => r.submitDate,
       },
+      {
+        id: "pcsKirim",
+        label: "PCS Kirim",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => {
+          // Relational logic: show the sum or the specific value if it's already mapped
+          return r.pcsKirim;
+        },
+      },
     ],
     [],
   );
@@ -492,6 +504,7 @@ export default function ReportPage() {
       if (tglTo) params.set("tglTo", tglTo);
       if (submitFrom) params.set("submitFrom", submitFrom);
       if (submitTo) params.set("submitTo", submitTo);
+      if (pcsKirim.trim()) params.set("pcsKirim", pcsKirim.trim());
 
       // FIX: Fetch Data Logic - Hanya di set jika benar-benar ada data
       if (debouncedColFiltersJson) {
@@ -530,6 +543,7 @@ export default function ReportPage() {
     submitTo,
     tglFrom,
     tglTo,
+    pcsKirim,
   ]);
 
   useEffect(() => {
@@ -600,6 +614,7 @@ export default function ReportPage() {
         updatedAt: toYMD(po?.updatedAt || null),
         createdAt: toYMD(po?.createdAt || null),
         submitDate: toYMD(po?.createdAt || po?.updatedAt || po?.tglPo || null),
+        pcsKirim: items.reduce((acc: number, it: any) => acc + (Number(it?.pcsKirim) || 0), 0),
       };
     });
   }, [raw, page, rowsPerPage]);
@@ -842,6 +857,7 @@ export default function ReportPage() {
             submitDate: toYMD(
               po?.createdAt || po?.updatedAt || po?.tglPo || null,
             ),
+            pcsKirim: items.reduce((acc: number, it: any) => acc + (Number(it?.pcsKirim) || 0), 0),
           };
         },
       );
@@ -861,14 +877,23 @@ export default function ReportPage() {
             const v = c.value(r);
             if (c.kind === "number") row[c.label] = Number(v) || 0;
             else if (c.kind === "bool") row[c.label] = !!v;
-            else if (c.kind === "date")
-              row[c.label] = v ? formatDateId(v) : "-";
-            else row[c.label] = String(v ?? "");
+            else if (c.kind === "date") {
+              // Convert string YYYY-MM-DD to Date object for Excel
+              row[c.label] = v && v !== "-" ? new Date(v as any) : null;
+            } else row[c.label] = String(v ?? "");
           });
           return row;
         });
       });
-      const ws = XLSX.utils.json_to_sheet(data);
+
+      const ws = XLSX.utils.json_to_sheet(data, { cellDates: true });
+
+      // Apply Native Excel Date Formatting (dd/mm/yyyy)
+      Object.keys(ws).forEach((key) => {
+        if (ws[key] && ws[key].t === "d") {
+          ws[key].z = "dd/mm/yyyy";
+        }
+      });
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
       ws["!autofilter"] = {
         ref: XLSX.utils.encode_range({
@@ -1046,6 +1071,19 @@ export default function ReportPage() {
                   minDate={submitFrom}
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                PCS Kirim
+              </label>
+              <input
+                type="number"
+                value={pcsKirim}
+                onChange={(e) => setPcsKirim(e.target.value)}
+                placeholder="Filter PCS..."
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none text-sm text-slate-700 focus:border-emerald-500 font-semibold"
+              />
             </div>
 
             {columns.map((c) => {

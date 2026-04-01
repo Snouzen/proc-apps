@@ -11,6 +11,7 @@ type Props = {
   placeholder?: string;
   leftIcon?: React.ReactNode;
   className?: string;
+  disabled?: boolean;
 };
 
 export default function Select({
@@ -20,7 +21,9 @@ export default function Select({
   placeholder,
   leftIcon,
   className,
+  disabled,
 }: Props) {
+
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -47,11 +50,13 @@ export default function Select({
         )}
         <button
           type="button"
-          onClick={() => setOpen(!open)}
+          onClick={() => !disabled && setOpen(!open)}
+          disabled={disabled}
           className={cn(
             "w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold text-left flex items-center justify-between outline-none focus:ring-2 focus:ring-blue-500/20 transition-all border border-transparent",
             open ? "ring-2 ring-blue-500/20 bg-white border-blue-100" : "hover:bg-slate-100",
             leftIcon ? "pl-11 pr-4" : "px-4",
+            disabled && "opacity-60 cursor-not-allowed bg-slate-100",
             className
           )}
         >

@@ -14,38 +14,35 @@ try {
 
 const isProd = process.env.NODE_ENV === "production";
 
-// 2. Ambil DATABASE_URL (Port 6543) untuk runtime aplikasi
-const connectionString = process.env.DATABASE_URL;
+// Use a singleton pattern to prevent multiple instances of PrismaClient and pg.Pool in development
+const getPrisma = () => {
+  if (global.prisma) return global.prisma;
 
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set");
-}
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set");
+  }
 
-// 3. Setup Pool & Adapter (Tetap menggunakan performa pg adapter)
-const pool = new pg.Pool({
-  connectionString: connectionString,
-  max: isProd ? 10 : 3,
-  idleTimeoutMillis: 5000,
-  // 🟢 GANTI BAGIAN SSL JADI SEPERTI INI:
-  ssl: {
-    rejectUnauthorized: false, // Bypass validasi sertifikat
-  },
-});
-
-const adapter = new PrismaPg(pool);
-
-// 4. Inisialisasi Prisma Client
-const prisma =
-  global.prisma ??
-  new PrismaClient({
-    adapter,
-    log: ["error", "warn"],
+  const pool = new pg.Pool({
+    connectionString: connectionString,
+    max: isProd ? 10 : 3,
+    idleTimeoutMillis: 5000,
+    ssl: {
+      rejectUnauthorized: false,
+    },
   });
 
-// [BUG FIX] Cache instance on global to prevent connection pool exhaustion during dev HMR
-if (!isProd) {
-  global.prisma = prisma;
-}
+  const adapter = new PrismaPg(pool);
+  const client = new PrismaClient({
+    adapter,
+    log: isProd ? ["error"] : ["query", "error", "warn"],
+  });
+
+  if (!isProd) global.prisma = client;
+  return client;
+};
+
+const prisma = getPrisma();
 
 export default prisma;
 

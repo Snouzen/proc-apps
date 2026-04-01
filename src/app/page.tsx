@@ -1216,8 +1216,8 @@ function TableUnderChart({
                     )}
                     {visibleCols.actions && (
                       <td className="px-6 py-4 text-center align-top">
-                        {role === "rm" ? (
-                          group === "assign" ? (
+                        <div className="flex items-center justify-center gap-2">
+                          {(role === "rm" && group === "assign") ? (
                             <AssignDropdown
                               po={po}
                               units={units}
@@ -1242,56 +1242,59 @@ function TableUnderChart({
                               onClick={(e: any) => e.stopPropagation()}
                             />
                           ) : (
-                            <button
-                              className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
-                              title="View Detail"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDetail(po);
-                              }}
-                            >
-                              <Eye size={16} />
-                            </button>
-                          )
-                        ) : (
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
-                              title="Edit"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const no = String(
-                                  po?.noPo || po?.nopo || po?.poNumber || "",
-                                ).trim();
-                                if (!no) return;
-                                setEditNoPo(no);
-                                setEditOpen(true);
-                              }}
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
-                              title="Update"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDetail(po);
-                              }}
-                            >
-                              <RefreshCw size={14} />
-                            </button>
-                            <button
-                              className="p-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
-                              title="Extend"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDetail(po);
-                              }}
-                            >
-                              <CalendarClock size={14} />
-                            </button>
-                          </div>
-                        )}
+                            <>
+                              <button
+                                className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                                title="Edit"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const no = String(
+                                    po?.noPo || po?.nopo || po?.poNumber || "",
+                                  ).trim();
+                                  if (!no) return;
+                                  setEditNoPo(no);
+                                  setEditOpen(true);
+                                }}
+                              >
+                                <Pencil size={14} className="text-amber-500" />
+                              </button>
+                              <button
+                                className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                                title="View Detail"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDetail(po);
+                                }}
+                              >
+                                <Eye size={16} className="text-slate-600" />
+                              </button>
+                              {role === "pusat" && (
+                                <>
+                                  <button
+                                    className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                                    title="Update"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openDetail(po);
+                                    }}
+                                  >
+                                    <RefreshCw size={14} className="text-blue-600" />
+                                  </button>
+                                  <button
+                                    className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                                    title="Extend"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openDetail(po);
+                                    }}
+                                  >
+                                    <CalendarClock size={14} className="text-emerald-600" />
+                                  </button>
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
