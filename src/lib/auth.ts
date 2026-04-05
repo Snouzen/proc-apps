@@ -1,11 +1,12 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 
-export type Role = "pusat" | "rm";
+export type Role = "pusat" | "rm" | "spb_dki";
 
 export interface SessionPayload {
   email: string;
   role: Role;
   regional?: string | null;
+  siteArea?: string | null;
   exp: number;
   jti: string;
 }
@@ -47,11 +48,19 @@ export function authenticate(
   // [SECURITY] Password MUST come from env, never hardcoded in source
   const SUPER_PASS = process.env.AUTH_SUPER_PASSWORD;
 
-  const map: Record<string, { role: Role; regional: string | null }> = {
+  const map: Record<
+    string,
+    { role: Role; regional: string | null; siteArea?: string | null }
+  > = {
     "gmi_27001@bulog.co.id": { role: "pusat", regional: null },
     "rmi_27001@bulog.co.id": { role: "rm", regional: "Regional 1 Bandung" },
     "rmii_27001@bulog.co.id": { role: "rm", regional: "Regional 2 Surabaya" },
     "rmiii_27001@bulog.co.id": { role: "rm", regional: "Regional 3 Makassar" },
+    "spbdki@bulog.co.id": {
+      role: "spb_dki",
+      regional: "Regional 1 Bandung",
+      siteArea: "SPB DKI",
+    },
   };
 
   const entry = map[lower];
@@ -63,6 +72,7 @@ export function authenticate(
         email: lower,
         role: entry.role,
         regional: entry.regional,
+        siteArea: entry.siteArea,
         exp: Date.now() + SESSION_TTL_MS,
         jti: randomBytes(8).toString("hex"),
       },

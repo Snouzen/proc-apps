@@ -21,30 +21,24 @@ export default function ClientLayout({
   const isLogin = pathname === "/login";
   const isFullWidthPage = pathname === "/po" || pathname.startsWith("/po/");
 
-  const [profileRole, setProfileRole] = useState<"pusat" | "rm" | null>(null);
+  const [profileRole, setProfileRole] = useState<
+    "pusat" | "rm" | "spb_dki" | null
+  >(null);
   const [profileRegional, setProfileRegional] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     const cached = getMeSync();
     if (mounted && cached?.authenticated && cached.role) {
-      if (cached.role === "rm") {
-        setProfileRole("rm");
-        setProfileRegional(cached.regional || null);
-      } else {
-        setProfileRole("pusat");
-        setProfileRegional(null);
-      }
+      setProfileRole(cached.role);
+      setProfileRegional(cached.regional || null);
     }
     getMe()
       .then((data) => {
         if (!mounted) return;
-        if (data?.authenticated && data?.role === "rm") {
-          setProfileRole("rm");
-          setProfileRegional(data?.regional || null);
-        } else if (data?.authenticated) {
-          setProfileRole("pusat");
-          setProfileRegional(null);
+        if (data?.authenticated && data?.role) {
+          setProfileRole(data.role);
+          setProfileRegional(data.regional || null);
         } else {
           setProfileRole(null);
           setProfileRegional(null);
@@ -59,6 +53,16 @@ export default function ClientLayout({
       mounted = false;
     };
   }, []);
+
+  // SECURITY: Redirect if spb_dki tries to access restricted routes
+  useEffect(() => {
+    if (profileRole === "spb_dki") {
+      const restricted = ["/po", "/report", "/company", "/need-assign"];
+      if (restricted.some((p) => pathname.startsWith(p))) {
+        router.push("/");
+      }
+    }
+  }, [profileRole, pathname, router]);
 
   if (isLogin) {
     return <>{children}</>;
@@ -133,9 +137,11 @@ export default function ClientLayout({
                               reg = reg + " Makassar";
                             return reg.trim();
                           })()
-                        : profileRole === "pusat"
-                          ? "Admin Pusat"
-                          : ""}
+                        : profileRole === "spb_dki"
+                          ? "SPB DKI"
+                          : profileRole === "pusat"
+                            ? "Admin Pusat"
+                            : ""}
                     </p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                       {profileRole === "rm"
@@ -147,9 +153,11 @@ export default function ClientLayout({
                             const num = m && m[1] ? m[1] : "";
                             return `RM ${num}`.trim();
                           })()
-                        : profileRole === "pusat"
-                          ? "Super Admin"
-                          : ""}
+                        : profileRole === "spb_dki"
+                          ? "SPB"
+                          : profileRole === "pusat"
+                            ? "Super Admin"
+                            : ""}
                     </p>
                   </div>
 
@@ -158,9 +166,11 @@ export default function ClientLayout({
                     {profileRole ? (
                       <img
                         src={
-                          profileRole === "rm"
-                            ? "https://ui-avatars.com/api/?name=RM&background=004a87&color=fff"
-                            : "https://ui-avatars.com/api/?name=Administrator+Pusat&background=004a87&color=fff"
+                          profileRole === "spb_dki"
+                            ? "https://ui-avatars.com/api/?name=SD&background=004a87&color=fff"
+                            : profileRole === "rm"
+                              ? "https://ui-avatars.com/api/?name=RM&background=004a87&color=fff"
+                              : "https://ui-avatars.com/api/?name=Administrator+Pusat&background=004a87&color=fff"
                         }
                         alt="user"
                         className="w-full h-full rounded-full object-cover"

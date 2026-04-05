@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getMe } from "@/lib/me";
 import PODetailModal from "@/components/po-detail-modal";
-import { Search } from "lucide-react";
+import { Search, ChevronDown } from "lucide-react";
 import {
   ColumnDef,
   getCoreRowModel,
@@ -26,6 +26,94 @@ type Row = {
   UnitProduksi?: any;
   RitelModern?: any;
 };
+
+// UI FIX: Modern Custom Select Component Wrapper
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Pilih...",
+  disabled = false,
+  className = "",
+  align = "left",
+}: {
+  value: string | number;
+  onChange: (val: string) => void;
+  options: { value: string | number; label: string }[];
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+  align?: "left" | "right";
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const clickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", clickOutside);
+    return () => document.removeEventListener("mousedown", clickOutside);
+  }, []);
+
+  const selectedLabel =
+    options.find((o) => String(o.value) === String(value))?.label || placeholder;
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(!open)}
+        className={`flex h-10 w-full items-center justify-between rounded-xl border px-3 text-sm transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 ${
+          disabled
+            ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+            : "bg-white border-slate-300 text-slate-800 hover:border-blue-400 shadow-sm"
+        }`}
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronDown
+          size={16}
+          className={`ml-2 text-slate-400 transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {open && !disabled && (
+        <div
+          className={`absolute z-[9999] mt-1 min-w-[200px] max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 ${
+            align === "right" ? "right-0" : "left-0"
+          }`}
+        >
+          {options.length > 0 ? (
+            options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(String(opt.value));
+                  setOpen(false);
+                }}
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 font-medium ${
+                  String(opt.value) === String(value)
+                    ? "bg-blue-50 text-blue-700 font-bold"
+                    : "text-slate-700"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-xs text-slate-400 text-center">
+              Tidak ada data
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function NeedAssignPage() {
   const [loading, setLoading] = useState(true);
@@ -353,33 +441,27 @@ export default function NeedAssignPage() {
         if (role === "pusat") {
           return (
             <div className="flex items-center gap-2">
-              <select
+              {/* UI FIX: Modern Custom Select */}
+              <CustomSelect
                 value={current}
-                onChange={(e) =>
+                onChange={(val) =>
                   setEdited((prev) => ({
                     ...prev,
                     [noPo]: {
                       ...(prev[noPo] || {}),
-                      regional: e.target.value,
+                      regional: val,
                       error: null,
                       ok: false,
                     },
                   }))
                 }
-                className="h-9 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 min-w-48"
-              >
-                <option value="">
-                  {row.original.regional ? "—" : "Pilih…"}
-                </option>
-                {Array.from(new Set(units.map((u) => u.namaRegional)))
+                placeholder={row.original.regional ? "—" : "Pilih…"}
+                options={Array.from(new Set(units.map((u) => u.namaRegional)))
                   .filter(Boolean)
                   .sort()
-                  .map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-              </select>
+                  .map((opt) => ({ value: opt, label: opt }))}
+                className="min-w-[220px]"
+              />
             </div>
           );
         }
@@ -424,41 +506,33 @@ export default function NeedAssignPage() {
         // options already computed from effectiveRegional
         return (
           <div className="flex items-center gap-2">
-            <select
+            {/* UI FIX: Modern Custom Select */}
+            <CustomSelect
               value={currentSite || ""}
               disabled={disabled}
-              onChange={(e) =>
+              onChange={(val) =>
                 setEdited((prev) => ({
                   ...prev,
                   [noPo]: {
                     ...(prev[noPo] || {}),
-                    siteArea: e.target.value,
+                    siteArea: val,
                     error: null,
                     ok: false,
                   },
                 }))
               }
-              className={`h-9 rounded-xl border px-3 text-sm min-w-40 ${
-                disabled
-                  ? "bg-slate-100 border-slate-200 text-slate-400"
-                  : "bg-white border-slate-300 text-slate-800"
-              }`}
-            >
-              <option value="">
-                {row.original.siteArea
+              placeholder={
+                row.original.siteArea
                   ? "—"
                   : disabled
                     ? effectiveRegional
                       ? "Tidak ada site area"
                       : "Regional terkunci"
-                    : "Pilih…"}
-              </option>
-              {options.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+                    : "Pilih…"
+              }
+              options={options.map((opt) => ({ value: opt, label: opt }))}
+              className="min-w-40"
+            />
           </div>
         );
       },
@@ -646,19 +720,22 @@ export default function NeedAssignPage() {
               className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-800"
             />
           </div>
-          <select
+          {/* UI FIX: Modern Custom Select */}
+          <CustomSelect
             value={rowsPerPage}
-            onChange={(e) => {
+            onChange={(val) => {
               setIsTransitioning(true);
-              setRowsPerPage(Number(e.target.value) || 10);
+              setRowsPerPage(Number(val) || 10);
               if (page !== 1) setPage(1);
             }}
-            className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800"
-          >
-            <option value={10}>10 rows</option>
-            <option value={25}>25 rows</option>
-            <option value={50}>50 rows</option>
-          </select>
+            options={[
+              { value: 10, label: "10 rows" },
+              { value: 25, label: "25 rows" },
+              { value: 50, label: "50 rows" },
+            ]}
+            className="w-32"
+            align="right"
+          />
         </div>
       </div>
 

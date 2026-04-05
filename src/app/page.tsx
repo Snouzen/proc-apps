@@ -70,8 +70,9 @@ export default function Home() {
   const [poData, setPoData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [role, setRole] = useState<"pusat" | "rm" | null>(null);
+  const [role, setRole] = useState<"pusat" | "rm" | "spb_dki" | null>(null);
   const [regional, setRegional] = useState<string | null>(null);
+  const [siteArea, setSiteArea] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
   const [unitData, setUnitData] = useState<any[]>([]);
   const [stats, setStats] = useState({
@@ -93,14 +94,14 @@ export default function Home() {
     setLoading(true);
     try {
       const me = await getMe();
-      const r: "pusat" | "rm" = me?.role === "rm" ? "rm" : "pusat";
-      const reg = me?.regional || null;
-      setRole(r);
-      setRegional(reg);
+      setRole(me?.role as any);
+      setRegional(me?.regional || null);
+      setSiteArea((me as any)?.siteArea || null);
       setRoleReady(true);
     } catch {
       setRole("pusat");
       setRegional(null);
+      setSiteArea(null);
       setRoleReady(true);
     } finally {
       setLoading(false);
@@ -157,11 +158,16 @@ export default function Home() {
   const statsParams = useMemo(() => {
     const params = new URLSearchParams();
     params.set("includeUnknown", "true");
-    if (role === "rm" && regional) params.set("regional", regional);
+    if ((role === "rm" || role === "spb_dki") && regional) {
+      params.set("regional", regional);
+    }
+    if (role === "spb_dki" && siteArea) {
+      params.set("siteArea", siteArea);
+    }
     if (dateFrom) params.set("tglFrom", dateFrom);
     if (dateTo) params.set("tglTo", dateTo);
     return params.toString();
-  }, [role, regional, dateFrom, dateTo]);
+  }, [role, regional, siteArea, dateFrom, dateTo]);
 
   const fetchStats = useCallback(
     async (signal?: AbortSignal) => {
@@ -354,6 +360,7 @@ export default function Home() {
             refreshTick={refreshTick}
             role={role}
             regional={regional}
+            siteArea={siteArea}
             units={unitData}
             focusGroup={tableFocus}
             onFocusApplied={() => setTableFocus(null)}
@@ -377,14 +384,16 @@ function TableUnderChart({
   refreshTick,
   role,
   regional,
+  siteArea,
   units,
   focusGroup,
   onFocusApplied,
   counts,
 }: {
   refreshTick: number;
-  role: "pusat" | "rm" | null;
+  role: "pusat" | "rm" | "spb_dki" | null;
   regional: string | null;
+  siteArea: string | null;
   units: any[];
   focusGroup:
     | "active"
@@ -557,7 +566,12 @@ function TableUnderChart({
         params.set("group", group);
         params.set("limit", String(rowsPerPage));
         params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
-        if (role === "rm" && regional) params.set("regional", regional);
+        if ((role === "rm" || role === "spb_dki") && regional) {
+          params.set("regional", regional);
+        }
+        if (role === "spb_dki" && siteArea) {
+          params.set("siteArea", siteArea);
+        }
         if (regionalFilter) params.set("regional", regionalFilter);
         if (siteAreaFilter) params.set("siteArea", siteAreaFilter);
         if (dateFrom) params.set("tglFrom", dateFrom);
@@ -615,6 +629,7 @@ function TableUnderChart({
       debouncedSearch,
       regionalFilter,
       siteAreaFilter,
+      siteArea,
       page,
       rowsPerPage,
       sortDesc,

@@ -1,7 +1,17 @@
 "use client";
 
 import * as XLSX from "xlsx";
-import { Download, Filter, RefreshCw, Settings2, X, ChevronDown, Check, Search } from "lucide-react";
+import {
+  Download,
+  Filter,
+  RefreshCw,
+  Settings2,
+  X,
+  ChevronDown,
+  Check,
+  Search,
+  ExternalLink,
+} from "lucide-react";
 import {
   Fragment,
   useCallback,
@@ -94,6 +104,24 @@ const EXCLUDED_FILTER_COLS = [
   "totalNominal",
   "totalTagihan",
   "no",
+  "linkPo",
+  "kg",
+  "pcs",
+  "hargaKg",
+  "pcsKirim",
+  "hargaPcs",
+  "discount",
+  "nominal",
+  "kirim",
+  "rpTagih",
+  "statusSdif",
+  "statusPo",
+  "statusFp",
+  "statusKwi",
+  "statusInv",
+  "statusTagih",
+  "statusBayar",
+  "statusKirim",
 ];
 
 function CustomFilterDropdown({
@@ -129,11 +157,14 @@ function CustomFilterDropdown({
   }, []);
 
   const filteredOptions = options.filter(
-    (o) => o && o.toLowerCase().includes(inputValue.toLowerCase())
+    (o) => o && o.toLowerCase().includes(inputValue.toLowerCase()),
   );
 
   return (
-    <div className={`relative w-full ${open ? "z-50" : "z-0"}`} ref={wrapperRef}>
+    <div
+      className={`relative w-full ${open ? "z-50" : "z-0"}`}
+      ref={wrapperRef}
+    >
       <div className="relative flex items-center group">
         <input
           type="text"
@@ -184,20 +215,25 @@ function CustomFilterDropdown({
               </div>
             </li>
 
-            {inputValue && !options.some((o) => o?.toLowerCase() === inputValue.toLowerCase()) && (
-              <li
-                className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer flex items-center transition-colors mt-1"
-                onClick={() => {
-                  onChange(inputValue);
-                  setOpen(false);
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <Search size={14} />
-                  <span>Cari <q>{inputValue}</q></span>
-                </div>
-              </li>
-            )}
+            {inputValue &&
+              !options.some(
+                (o) => o?.toLowerCase() === inputValue.toLowerCase(),
+              ) && (
+                <li
+                  className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer flex items-center transition-colors mt-1"
+                  onClick={() => {
+                    onChange(inputValue);
+                    setOpen(false);
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Search size={14} />
+                    <span>
+                      Cari <q>{inputValue}</q>
+                    </span>
+                  </div>
+                </li>
+              )}
 
             {filteredOptions.length > 0 ? (
               <>
@@ -222,7 +258,10 @@ function CustomFilterDropdown({
                         {opt.length > 50 ? opt.substring(0, 50) + "..." : opt}
                       </span>
                       {isSelected && (
-                        <Check size={14} className="flex-shrink-0 text-emerald-600" />
+                        <Check
+                          size={14}
+                          className="flex-shrink-0 text-emerald-600"
+                        />
                       )}
                     </li>
                   );
@@ -270,7 +309,7 @@ export default function ReportPage() {
     let mounted = true;
     fetch("/api/po/dict", {
       credentials: "same-origin",
-      headers: { Accept: "application/json" }
+      headers: { Accept: "application/json" },
     })
       .then((res) => res.json())
       .then((data) => {
@@ -311,7 +350,7 @@ export default function ReportPage() {
         id: "inisial",
         label: "Inisial",
         kind: "text",
-        defaultVisible: false,
+        defaultVisible: true,
         value: (r) => r.inisial,
       },
       {
@@ -346,21 +385,21 @@ export default function ReportPage() {
         id: "regional",
         label: "Regional",
         kind: "text",
-        defaultVisible: false,
+        defaultVisible: true,
         value: (r) => r.regional,
       },
       {
         id: "noInvoice",
         label: "No Invoice",
         kind: "text",
-        defaultVisible: false,
+        defaultVisible: true,
         value: (r) => r.noInvoice,
       },
       {
         id: "linkPo",
         label: "Link PO",
         kind: "text",
-        defaultVisible: false,
+        defaultVisible: true,
         value: (r) => r.linkPo,
       },
       {
@@ -369,6 +408,16 @@ export default function ReportPage() {
         kind: "text",
         defaultVisible: true,
         value: (r) => r.products,
+      },
+      {
+        id: "pcsKirim",
+        label: "PCS Kirim",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => {
+          // Relational logic: show the sum or the specific value if it's already mapped
+          return r.pcsKirim;
+        },
       },
       {
         id: "totalNominal",
@@ -388,60 +437,57 @@ export default function ReportPage() {
         id: "statusKirim",
         label: "Kirim",
         kind: "bool",
-        defaultVisible: false,
+        defaultVisible: true,
         value: (r) => r.statusKirim,
       },
       {
         id: "statusPo",
         label: "PO",
         kind: "bool",
-        defaultVisible: false,
+        defaultVisible: true,
         value: (r) => r.statusPo,
       },
       {
         id: "statusInv",
         label: "Inv",
         kind: "bool",
-        defaultVisible: false,
+        defaultVisible: true,
         value: (r) => r.statusInv,
       },
       {
         id: "statusBayar",
         label: "Bayar",
         kind: "bool",
-        defaultVisible: false,
+        defaultVisible: true,
         value: (r) => r.statusBayar,
       },
       {
-        id: "updatedAt",
-        label: "Updated",
-        kind: "date",
-        defaultVisible: false,
-        value: (r) => r.updatedAt,
-      },
-      {
-        id: "createdAt",
-        label: "Created",
-        kind: "date",
-        defaultVisible: false,
-        value: (r) => r.createdAt,
-      },
-      {
-        id: "submitDate",
-        label: "Submit Date",
-        kind: "date",
+        id: "statusSdif",
+        label: "SDIF",
+        kind: "bool",
         defaultVisible: true,
-        value: (r) => r.submitDate,
+        value: (r) => r.statusSdif,
       },
       {
-        id: "pcsKirim",
-        label: "PCS Kirim",
-        kind: "number",
+        id: "statusFp",
+        label: "FP",
+        kind: "bool",
         defaultVisible: true,
-        value: (r) => {
-          // Relational logic: show the sum or the specific value if it's already mapped
-          return r.pcsKirim;
-        },
+        value: (r) => r.statusFp,
+      },
+      {
+        id: "statusKwi",
+        label: "Kwi",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusKwi,
+      },
+      {
+        id: "statusTagih",
+        label: "Tagih",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusTagih,
       },
     ],
     [],
@@ -474,7 +520,9 @@ export default function ReportPage() {
         ([, v]) => String(v || "").trim() !== "",
       );
       if (activeFilters.length > 0) {
-        setDebouncedColFiltersJson(JSON.stringify(Object.fromEntries(activeFilters)));
+        setDebouncedColFiltersJson(
+          JSON.stringify(Object.fromEntries(activeFilters)),
+        );
       } else {
         setDebouncedColFiltersJson("");
       }
@@ -614,7 +662,10 @@ export default function ReportPage() {
         updatedAt: toYMD(po?.updatedAt || null),
         createdAt: toYMD(po?.createdAt || null),
         submitDate: toYMD(po?.createdAt || po?.updatedAt || po?.tglPo || null),
-        pcsKirim: items.reduce((acc: number, it: any) => acc + (Number(it?.pcsKirim) || 0), 0),
+        pcsKirim: items.reduce(
+          (acc: number, it: any) => acc + (Number(it?.pcsKirim) || 0),
+          0,
+        ),
       };
     });
   }, [raw, page, rowsPerPage]);
@@ -683,7 +734,8 @@ export default function ReportPage() {
     (colId: string) => {
       // 1. Ekstrak filter aktif selain kolom ini sendiri
       const activeFilters = Object.entries(colFilters).filter(
-        ([k, v]) => String(k) !== String(colId) && String(v || "").trim() !== ""
+        ([k, v]) =>
+          String(k) !== String(colId) && String(v || "").trim() !== "",
       );
 
       // 2. Saring kombinasi master
@@ -691,11 +743,13 @@ export default function ReportPage() {
         return activeFilters.every(([k, v]) => {
           const filterValue = upperClean(v);
           if (!filterValue) return true;
-          
+
           const comboVal = combo[k];
           if (Array.isArray(comboVal)) {
             // Case khusus misal products array
-            return comboVal.some(p => upperClean(String(p)).includes(filterValue));
+            return comboVal.some((p) =>
+              upperClean(String(p)).includes(filterValue),
+            );
           } else {
             return upperClean(String(comboVal || "")).includes(filterValue);
           }
@@ -718,7 +772,8 @@ export default function ReportPage() {
       });
 
       const rawList = Array.from(uniqueValues);
-      const isNumber = columns.find((c) => String(c.id) === colId)?.kind === "number";
+      const isNumber =
+        columns.find((c) => String(c.id) === colId)?.kind === "number";
       if (isNumber) {
         rawList.sort((a, b) => Number(a) - Number(b));
       } else {
@@ -727,9 +782,8 @@ export default function ReportPage() {
 
       return rawList;
     },
-    [masterCombinations, colFilters, columns]
+    [masterCombinations, colFilters, columns],
   );
-
 
   const clearAllFilters = useCallback(() => {
     setQuery("");
@@ -857,7 +911,10 @@ export default function ReportPage() {
             submitDate: toYMD(
               po?.createdAt || po?.updatedAt || po?.tglPo || null,
             ),
-            pcsKirim: items.reduce((acc: number, it: any) => acc + (Number(it?.pcsKirim) || 0), 0),
+            pcsKirim: items.reduce(
+              (acc: number, it: any) => acc + (Number(it?.pcsKirim) || 0),
+              0,
+            ),
           };
         },
       );
@@ -1003,7 +1060,9 @@ export default function ReportPage() {
         {showFilters && (
           <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-5 bg-slate-50 border border-slate-100 rounded-3xl shadow-sm mb-6">
             <div className="col-span-full flex items-center justify-between mb-2 border-b border-gray-200 pb-3">
-              <h3 className="text-sm font-black text-slate-800">Filter Data Dinamis</h3>
+              <h3 className="text-sm font-black text-slate-800">
+                Filter Data Dinamis
+              </h3>
               <button
                 type="button"
                 onClick={clearAllFilters}
@@ -1013,7 +1072,7 @@ export default function ReportPage() {
                 Clear All
               </button>
             </div>
-            
+
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
                 Pencarian Umum
@@ -1025,7 +1084,7 @@ export default function ReportPage() {
                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none text-sm text-slate-700 focus:border-emerald-500 font-semibold"
               />
             </div>
-            
+
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 block">
                 Tgl PO From
@@ -1037,7 +1096,7 @@ export default function ReportPage() {
                 maxDate={tglTo}
               />
             </div>
-            
+
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 block">
                 Tgl PO To
@@ -1088,7 +1147,7 @@ export default function ReportPage() {
 
             {columns.map((c) => {
               if (EXCLUDED_FILTER_COLS.includes(String(c.id))) return null;
-              
+
               return (
                 <div key={String(c.id)} className="flex flex-col gap-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
@@ -1291,7 +1350,20 @@ export default function ReportPage() {
                                 : ""
                           }`}
                         >
-                          {text === "-" || isStatus || c.kind !== "text" ? (
+                          {c.id === "linkPo" ? (
+                            v && String(v).trim() && String(v) !== "-" ? (
+                              <a
+                                href={String(v)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                              >
+                                <ExternalLink size={16} />
+                              </a>
+                            ) : (
+                              "-"
+                            )
+                          ) : text === "-" || isStatus || c.kind !== "text" ? (
                             shouldClamp ? (
                               <div
                                 className="max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"

@@ -22,6 +22,7 @@ export async function GET(req: Request) {
       email: session.email,
       role: session.role,
       regional: session.regional ?? null,
+      siteArea: session.siteArea ?? null,
     });
   } catch {
     return NextResponse.json({ authenticated: false }, { status: 200 });

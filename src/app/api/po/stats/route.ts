@@ -44,26 +44,70 @@ export async function GET(request: Request) {
     const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
     if (m && m[1]) token = decodeURIComponent(m[1]);
   }
-  const session = verifySession(token);
-  if (!session) {
+  const sessionObj = await Promise.resolve(verifySession(token));
+  if (!sessionObj) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // 1. Ekstrak Email Sekuat Tenaga (Anti-Undefined & Lowercase)
+  const emailRaw = sessionObj?.email || (sessionObj as any)?.user?.email || (sessionObj as any)?.payload?.email || "";
+  const email = String(emailRaw).toLowerCase().trim();
+
+  // 2. Cari di DB (Abaikan Huruf Besar/Kecil dengan findFirst)
+  let dbUser = null;
+  if (email) {
+    dbUser = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } }
+    });
+  }
+
+  // 3. Ekstrak Role & Hard-Fallback
+  let rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
+
+  // 🔥 GEMBOK PAKSA DARURAT JIKA DB GAGAL 🔥
+  if (email.includes("spbdki") && !dbUser) {
+    rawRole = "picsite"; 
+  }
+
+  const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+
+  // 4. Debugger (WAJIB CEK TERMINAL)
+  console.log("🚨 [DEBUG API] EMAIL:", email, "| DB_USER:", dbUser ? "KETEMU" : "KOSONG", "| SAFE_ROLE:", safeRole);
+
+
+  // 5. Tentukan Wilayah (Dengan Fallback ke Token Metadata jika ada)
+  let overrideRegional: string | null = null;
+  let overrideSiteArea: string | null = null;
+  if (safeRole === 'picsite' || safeRole === 'spbdki') {
+    overrideRegional = dbUser?.regional || (sessionObj as any)?.user_metadata?.regional || "Regional 1 Bandung";
+    overrideSiteArea = dbUser?.siteArea || (sessionObj as any)?.user_metadata?.siteArea || "SPB DKI";
+  } else if (safeRole === 'rm') {
+    overrideRegional = dbUser?.regional || (sessionObj as any)?.regional || null;
+  }
+
   const { searchParams } = new URL(request.url);
   const includeUnknown =
     (searchParams.get("includeUnknown") || "true") === "true";
-  const regionalParamRaw = searchParams.get("regional") || undefined;
-  const regionalParam =
-    session.role === "rm" ? session.regional || undefined : regionalParamRaw;
+  
+  // Use overrides if present, otherwise search parameters
+  const regionalParam = overrideRegional ?? (searchParams.get("regional") || undefined);
+  const siteAreaParam = overrideSiteArea ?? (searchParams.get("siteArea") || undefined);
+
   const tglFrom = parseDate(searchParams.get("tglFrom"));
   const tglTo = parseDate(searchParams.get("tglTo"));
+
+  const safeSa = overrideSiteArea || searchParams.get("siteArea") || "";
+  const hasSiteArea = safeSa.length > 0;
+  const saPattern = hasSiteArea ? `%${safeSa.trim()}%` : '%';
 
   const keyParams = new URLSearchParams();
   keyParams.set("includeUnknown", includeUnknown ? "true" : "false");
   if (regionalParam && regionalParam.trim())
     keyParams.set("regional", regionalParam.trim());
+  if (siteAreaParam) keyParams.set("siteArea", siteAreaParam);
   if (tglFrom) keyParams.set("tglFrom", searchParams.get("tglFrom") || "");
   if (tglTo) keyParams.set("tglTo", searchParams.get("tglTo") || "");
-  const cacheKey = `po_stats:${session.role}:${session.regional || ""}:${keyParams.toString()}`;
+  const cacheKey = `po_stats:${safeRole}:${regionalParam || "all"}:${siteAreaParam || "all"}:${keyParams.toString()}`;
   const cached = cacheGet<any>(cacheKey);
   try {
     const emptyInvoiceValues = ["", "-", "Unknown"];
@@ -198,6 +242,9 @@ export async function GET(request: Request) {
               OR COALESCE(up."namaRegional", '') ILIKE ANY(${regionalPatterns})
             )
           )
+          AND (
+            ${hasSiteArea} = false OR up."siteArea" ILIKE ${saPattern}
+          )
       `;
       return (
         rows[0] || {
@@ -212,29 +259,33 @@ export async function GET(request: Request) {
       );
     });
     cacheSet(cacheKey, payload, 30000);
-    cacheSet(`po_stats_group:${keyParams.toString()}:all`, payload.cAll, 30000);
     cacheSet(
-      `po_stats_group:${keyParams.toString()}:active`,
+      `po_stats_group:${safeRole}:${keyParams.toString()}:all`,
+      payload.cAll,
+      30000,
+    );
+    cacheSet(
+      `po_stats_group:${safeRole}:${keyParams.toString()}:active`,
       payload.cActive,
       30000,
     );
     cacheSet(
-      `po_stats_group:${keyParams.toString()}:almost_expired`,
+      `po_stats_group:${safeRole}:${keyParams.toString()}:almost_expired`,
       payload.cAlmost,
       30000,
     );
     cacheSet(
-      `po_stats_group:${keyParams.toString()}:expired`,
+      `po_stats_group:${safeRole}:${keyParams.toString()}:expired`,
       payload.cExpired,
       30000,
     );
     cacheSet(
-      `po_stats_group:${keyParams.toString()}:completed`,
+      `po_stats_group:${safeRole}:${keyParams.toString()}:completed`,
       payload.cCompleted,
       30000,
     );
     cacheSet(
-      `po_stats_group:${keyParams.toString()}:progress`,
+      `po_stats_group:${safeRole}:${keyParams.toString()}:progress`,
       payload.cProgress,
       30000,
     );

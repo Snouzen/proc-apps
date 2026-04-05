@@ -1152,12 +1152,28 @@ export default function CompanyList({
                                                   )
                                                     .trim()
                                                     .toLowerCase();
+                                              const inisial = String(
+                                                po?.RitelModern?.inisial ||
+                                                  po?.inisial ||
+                                                  "",
+                                              )
+                                                .toLowerCase()
+                                                .includes(q);
+                                              const company = String(
+                                                po?.RitelModern?.namaPt ||
+                                                  po?.company ||
+                                                  "",
+                                              )
+                                                .toLowerCase()
+                                                .includes(q);
                                               return (
                                                 noPo ||
                                                 noInvoice ||
                                                 tujuan ||
                                                 (products &&
-                                                  products.includes(q))
+                                                  products.includes(q)) ||
+                                                inisial ||
+                                                company
                                               );
                                             })
                                           : list;

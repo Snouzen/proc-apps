@@ -3,6 +3,7 @@
 import {
   BarChart3,
   BookOpen,
+  CalendarDays,
   ChevronDown,
   ChevronRight,
   ClipboardList,
@@ -22,7 +23,7 @@ import { getMe } from "@/lib/me";
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  initialRole?: "pusat" | "rm" | null;
+  initialRole?: "pusat" | "rm" | "spb_dki" | null;
   initialRegional?: string | null;
 }
 
@@ -34,7 +35,9 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [poMenuOpen, setPoMenuOpen] = useState(false);
-  const [role, setRole] = useState<"pusat" | "rm" | null>(initialRole || null);
+  const [role, setRole] = useState<"pusat" | "rm" | "spb_dki" | null>(
+    initialRole || null,
+  );
   const [regional, setRegional] = useState<string | null>(
     initialRegional ?? null,
   );
@@ -48,14 +51,17 @@ export default function Sidebar({
 
   useEffect(() => {
     if (initialRole) {
-      setRole(initialRole === "rm" ? "rm" : "pusat");
+      setRole(initialRole);
       setRegional(initialRegional ?? null);
       return;
     }
     (async () => {
       try {
         const data = await getMe();
-        if (data?.authenticated && data?.role === "rm") {
+        if (data?.authenticated && data?.role === "spb_dki") {
+          setRole("spb_dki");
+          setRegional(data?.regional || null);
+        } else if (data?.authenticated && data?.role === "rm") {
           setRole("rm");
           setRegional(data?.regional || null);
         } else if (data?.authenticated) {
@@ -74,6 +80,7 @@ export default function Sidebar({
 
   const baseMenu = [
     { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" },
+    { name: "Schedule", icon: <CalendarDays size={20} />, path: "/schedule" },
     { name: "Company", icon: <BookOpen size={20} />, path: "/company" },
     {
       name: "Need To Assign",
@@ -83,7 +90,12 @@ export default function Sidebar({
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
   ];
 
-  const menuItems = baseMenu;
+  const menuItems =
+    role === "spb_dki"
+      ? [baseMenu[0], baseMenu[1]] // ONLY Dashboard & Schedule for spb_dki
+      : role === "rm"
+        ? baseMenu.filter((m) => m.name !== "Schedule")
+        : baseMenu;
 
   const subItems =
     role === "rm" || !role
@@ -168,7 +180,7 @@ export default function Sidebar({
 
           {/* Collapsible Master Data (hide for RM) */}
           <div className="space-y-1">
-            {role !== "rm" && (
+            {role !== "rm" && role !== "spb_dki" && (
               <>
                 <div
                   onClick={() =>

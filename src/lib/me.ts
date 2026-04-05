@@ -3,8 +3,9 @@
 type Me = {
   authenticated: boolean;
   email?: string;
-  role?: "pusat" | "rm";
+  role?: "pusat" | "rm" | "spb_dki";
   regional?: string | null;
+  siteArea?: string | null;
 };
 
 let meCache: Me | null = null;
@@ -83,6 +84,7 @@ export async function getMe(force = false): Promise<Me> {
             email: d.email,
             role: d.role,
             regional: d.regional ?? null,
+            siteArea: d.siteArea ?? null,
           }
         : { authenticated: false };
       setMeCache(data);

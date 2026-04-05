@@ -60,8 +60,19 @@ export async function POST(request: Request) {
       const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
       if (m && m[1]) token = decodeURIComponent(m[1]);
     }
-    const session = verifySession(token);
-    if (!session) {
+    const sessionRaw = verifySession(token);
+    const sessionObj = await Promise.resolve(sessionRaw);
+    const email = sessionObj?.email || (sessionObj as any)?.user?.email;
+
+    let dbUser = null;
+    if (email) {
+      dbUser = await prisma.user.findUnique({ where: { email } });
+    }
+
+    const rawRole = dbUser?.role || sessionObj?.role || "";
+    const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+
+    if (!sessionObj) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -120,8 +131,8 @@ export async function POST(request: Request) {
     // If user is RM, we use their session regional regardless of what the frontend sent.
     // This prevents string mismatch errors (caps, spaces) and unauthorized regional data entry.
     let effectiveRegional = regional;
-    if (session.role === "rm" && session.regional) {
-      effectiveRegional = session.regional;
+    if ((safeRole === "rm" || safeRole === "spbdki" || safeRole === "picsite") && (dbUser?.regional || (sessionObj as any).regional)) {
+      effectiveRegional = dbUser?.regional || (sessionObj as any).regional;
     }
 
     const companyTrim = String(company).trim();
@@ -453,13 +464,52 @@ export async function GET(request: Request) {
       const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
       if (m && m[1]) token = decodeURIComponent(m[1]);
     }
-    const session = verifySession(token);
-    if (!session) {
+    const sessionObj = await Promise.resolve(verifySession(token));
+    if (!sessionObj) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // 1. Ekstrak Email Sekuat Tenaga (Anti-Undefined & Lowercase)
+    const emailRaw = sessionObj?.email || (sessionObj as any)?.user?.email || (sessionObj as any)?.payload?.email || "";
+    const email = String(emailRaw).toLowerCase().trim();
+
+    // 2. Cari di DB (Abaikan Huruf Besar/Kecil dengan findFirst)
+    let dbUser = null;
+    if (email) {
+      dbUser = await prisma.user.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } }
+      });
+    }
+
+    // 3. Ekstrak Role & Hard-Fallback
+    let rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
+
+    // 🔥 GEMBOK PAKSA DARURAT JIKA DB GAGAL 🔥
+    if (email.includes("spbdki") && !dbUser) {
+      rawRole = "picsite"; 
+    }
+
+    const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+
+    // 4. Debugger (WAJIB CEK TERMINAL)
+    console.log("🚨 [DEBUG API] EMAIL:", email, "| DB_USER:", dbUser ? "KETEMU" : "KOSONG", "| SAFE_ROLE:", safeRole);
+
     const { searchParams } = new URL(request.url);
-    const cacheKey = `po:${searchParams.toString()}`;
+
+    // 5. Tentukan Wilayah (Dengan Fallback ke Token Metadata jika ada)
+    let overrideRegional: string | null = null;
+    let overrideSiteArea: string | null = null;
+    if (safeRole === 'picsite' || safeRole === 'spbdki') {
+      overrideRegional = dbUser?.regional || (sessionObj as any)?.user_metadata?.regional || "Regional 1 Bandung";
+      overrideSiteArea = dbUser?.siteArea || (sessionObj as any)?.user_metadata?.siteArea || "SPB DKI";
+    } else if (safeRole === 'rm') {
+      overrideRegional = dbUser?.regional || null;
+    }
+
+    const regionalParam = overrideRegional || (searchParams.get("regional") || undefined);
+    const siteAreaParam = overrideSiteArea || (searchParams.get("siteArea") || undefined);
+
+    const cacheKey = `po:${safeRole}:${regionalParam || "all"}:${siteAreaParam || "all"}:${searchParams.toString()}`;
     const cached = cacheGet<any>(cacheKey);
     const totalParams = new URLSearchParams(searchParams);
     totalParams.delete("limit");
@@ -467,18 +517,13 @@ export async function GET(request: Request) {
     totalParams.delete("sort");
     totalParams.delete("summary");
     totalParams.delete("includeItems");
-    const totalCacheKey = `po_total:${totalParams.toString()}`;
+    const totalCacheKey = `po_total:${safeRole}:${regionalParam || "all"}:${siteAreaParam || "all"}:${totalParams.toString()}`;
     const cachedTotal = cacheGet<number>(totalCacheKey);
 
     const company = searchParams.get("company") || undefined;
     const noPo = searchParams.get("noPo") || undefined;
     const includeUnknown =
       (searchParams.get("includeUnknown") || "true") === "true";
-    const regionalParam =
-      session.role === "rm"
-        ? session.regional || undefined
-        : searchParams.get("regional") || undefined;
-    const siteAreaParam = searchParams.get("siteArea") || undefined;
     const q = (searchParams.get("q") || "").trim();
     const tglFrom = parseDate(searchParams.get("tglFrom"));
     const tglTo = parseDate(searchParams.get("tglTo"));
@@ -486,6 +531,7 @@ export async function GET(request: Request) {
     const submitTo = parseDate(searchParams.get("submitTo"));
     const group = (searchParams.get("group") || "all").trim();
     const pcsKirimParam = searchParams.get("pcsKirim") || undefined;
+    const status = searchParams.get("status") || undefined;
 
     let colFilters: Record<string, string> = {};
     const colFiltersRaw = searchParams.get("colFilters");
@@ -518,7 +564,7 @@ export async function GET(request: Request) {
     if (tglFrom)
       statsKeyParams.set("tglFrom", searchParams.get("tglFrom") || "");
     if (tglTo) statsKeyParams.set("tglTo", searchParams.get("tglTo") || "");
-    const statsCacheKey = `po_stats:${statsKeyParams.toString()}`;
+    const statsCacheKey = `po_stats:${safeRole}:${regionalParam || "all"}:${siteAreaParam || "all"}:${statsKeyParams.toString()}`;
     const canApproxFromStats =
       !q &&
       !company &&
@@ -610,18 +656,16 @@ export async function GET(request: Request) {
         })),
         {
           UnitProduksi: {
-            is: {
-              OR: syn.map((s) => ({
-                namaRegional: { contains: s, mode: "insensitive" as const },
-              })),
-            },
+            OR: syn.map((s) => ({
+              namaRegional: { contains: s, mode: "insensitive" as const },
+            })),
           },
         },
       ];
     }
     // Strict RBAC: force regional scope for RM users with synonym support for robustness
-    if (session.role === "rm" && session.regional) {
-      const syn = getRegionalSynonyms(session.regional);
+    if (safeRole === "rm" && (sessionObj as any).regional) {
+      const syn = getRegionalSynonyms((sessionObj as any).regional);
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         {
@@ -631,11 +675,9 @@ export async function GET(request: Request) {
             })),
             {
               UnitProduksi: {
-                is: {
-                  OR: syn.map((s) => ({
-                    namaRegional: { contains: s, mode: "insensitive" as const },
-                  })),
-                },
+                OR: syn.map((s) => ({
+                  namaRegional: { contains: s, mode: "insensitive" as const },
+                })),
               },
             },
           ],
@@ -645,27 +687,20 @@ export async function GET(request: Request) {
     if (siteAreaParam && siteAreaParam.trim()) {
       const sa = siteAreaParam.trim();
       const saFilter =
-        session.role === "rm" && session.regional
+        safeRole === "rm" && overrideRegional
           ? {
               AND: [
                 {
                   UnitProduksi: {
-                    is: {
-                      siteArea: { contains: sa, mode: "insensitive" as const },
-                      namaRegional: {
-                        equals: session.regional,
-                        mode: "insensitive" as const,
-                      },
-                    },
+                    siteArea: { contains: sa, mode: "insensitive" as const },
+                    namaRegional: { equals: overrideRegional, mode: "insensitive" as const },
                   },
                 },
               ],
             }
           : {
               UnitProduksi: {
-                is: {
-                  siteArea: { contains: sa, mode: "insensitive" as const },
-                },
+                siteArea: { contains: sa, mode: "insensitive" as const },
               },
             };
       where.AND = [...(Array.isArray(where.AND) ? where.AND : []), saFilter];
@@ -703,26 +738,22 @@ export async function GET(request: Request) {
             },
             {
               UnitProduksi: {
-                is: {
-                  OR: [
-                    { siteArea: { contains: q, mode: "insensitive" as const } },
-                    {
-                      namaRegional: {
-                        contains: q,
-                        mode: "insensitive" as const,
-                      },
+                OR: [
+                  { siteArea: { contains: q, mode: "insensitive" as const } },
+                  {
+                    namaRegional: {
+                      contains: q,
+                      mode: "insensitive" as const,
                     },
-                  ],
-                },
+                  },
+                ],
               },
             },
             {
               Items: {
                 some: {
                   Product: {
-                    is: {
-                      name: { contains: q, mode: "insensitive" as const },
-                    },
+                    name: { contains: q, mode: "insensitive" as const },
                   },
                 },
               },
@@ -762,15 +793,16 @@ export async function GET(request: Request) {
         { noInvoice: { not: null } },
         { noInvoice: { notIn: emptyInvoiceValues } },
       ];
-    } else if (group === "active") {
+    } else if (group === "active" || status === "active") {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
-        {
-          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
-        },
         { expiredTgl: { not: null } },
         { expiredTgl: { gte: startOfToday } },
+        { 
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
       ];
+      console.log(`🔍 [ACTIVE] Filtering for ${safeRole}`);
     } else if (group === "in_progress") {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
@@ -1043,6 +1075,7 @@ export async function GET(request: Request) {
                   statusInv: true,
                   statusTagih: true,
                   statusBayar: true,
+                  tglkirim: true,
                   remarks: true,
                   // Prevent over-fetching by using specific selects instead of raw includes
                   ...(includeItems
@@ -1111,6 +1144,7 @@ export async function GET(request: Request) {
                 statusInv: true,
                 statusTagih: true,
                 statusBayar: true,
+                tglkirim: true,
                 RitelModern: {
                   select: { namaPt: true, inisial: true, tujuan: true },
                 },
@@ -1205,11 +1239,23 @@ export async function DELETE(request: Request) {
       const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
       if (m && m[1]) token = decodeURIComponent(m[1]);
     }
-    const session = verifySession(token);
-    if (!session) {
+    const sessionRaw = verifySession(token);
+    const sessionObj = await Promise.resolve(sessionRaw);
+    const email = sessionObj?.email || (sessionObj as any)?.user?.email;
+
+    let dbUser = null;
+    if (email) {
+      dbUser = await prisma.user.findUnique({ where: { email } });
+    }
+
+    const rawRole = dbUser?.role || sessionObj?.role || "";
+    const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+
+    if (!sessionObj) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (session.role !== "pusat") {
+
+    if (safeRole !== "pusat") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

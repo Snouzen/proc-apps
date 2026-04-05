@@ -6,6 +6,7 @@ import {
   cacheSet,
   singleFlight,
 } from "@/lib/ttl-cache";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function GET() {
   const cacheKey = "unit_produksi:list";
@@ -67,6 +68,50 @@ export async function POST(req: Request) {
         updatedAt: new Date(),
       },
     });
+
+    // --- AUTO-PROVISIONING PIC ACCOUNT ---
+    try {
+      const rawSiteArea = siteArea || "";
+      const formattedAlias = rawSiteArea.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (formattedAlias) {
+        const email = `${formattedAlias}@bulog.co.id`;
+        const password = process.env.DEFAULT_PIC_PASSWORD || "password";
+
+        // 1. Check/Create in Supabase Auth via Admin client
+        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: email,
+          password: password,
+          email_confirm: true,
+          user_metadata: { role: "pic_site", regional: regional, siteArea: siteArea }
+        });
+
+        // Error code 'email_exists' is fine, we just want to ensure it's there
+        if (authError && (authError as any).code !== "email_exists") {
+          console.error("Supabase Auth provisioning failed:", authError.message);
+        }
+
+        // 2. Sync to local Prisma User table (Upsert)
+        await db.user.upsert({
+          where: { email: email },
+          update: {
+            role: "pic_site",
+            regional: regional,
+            siteArea: siteArea,
+            updatedAt: new Date()
+          },
+          create: {
+            email: email,
+            role: "pic_site",
+            regional: regional,
+            siteArea: siteArea
+          }
+        });
+      }
+    } catch (provisionErr) {
+      // Don't break the main transaction if provisioning fails, but log it
+      console.error("PIC Account provisioning error (non-fatal):", provisionErr);
+    }
+    // -------------------------------------
 
     cacheClearPrefix("unit_produksi:");
     return NextResponse.json(newUnit);
