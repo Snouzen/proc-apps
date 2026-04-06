@@ -60,11 +60,11 @@ export async function GET() {
         inisial: upperClean(d.RitelModern?.inisial || ""),
         tujuan: upperClean(d.RitelModern?.tujuan || ""),
         siteArea: upperClean(
-          d.UnitProduksi?.siteArea && d.UnitProduksi?.siteArea !== "UNKNOWN"
+          d.UnitProduksi?.siteArea && d.UnitProduksi?.siteArea.toUpperCase() !== "UNKNOWN"
             ? d.UnitProduksi.siteArea
             : ""
         ),
-        regional: upperClean(d.regional || d.UnitProduksi?.namaRegional || ""),
+        regional: upperClean((d.regional && d.regional.toLowerCase() !== "unknown") ? d.regional : (d.UnitProduksi?.namaRegional && d.UnitProduksi?.namaRegional.toLowerCase() !== "unknown") ? d.UnitProduksi?.namaRegional : ""),
         noInvoice: upperClean(d.noInvoice || ""),
         linkPo: String(d.linkPo || "").trim(),
         products: pList.filter(Boolean),

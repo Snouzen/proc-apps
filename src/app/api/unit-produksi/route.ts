@@ -16,6 +16,18 @@ export async function GET() {
       db.unitProduksi.findMany({
         // [PERF] Only select fields needed by the client
         select: { idRegional: true, namaRegional: true, siteArea: true, createdAt: true, updatedAt: true },
+        where: {
+          // [GUARD] Exclude placeholder/junk rows from Master Data dropdown
+          NOT: {
+            OR: [
+              { idRegional: "UNKNOWN" },
+              { namaRegional: { equals: "Unknown", mode: "insensitive" } },
+              { siteArea: { equals: "UNKNOWN", mode: "insensitive" } },
+              { siteArea: { equals: "site area belum ada unit produksi", mode: "insensitive" } },
+              { siteArea: { equals: "belum ada", mode: "insensitive" } },
+            ],
+          },
+        },
         orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
       }),
     );

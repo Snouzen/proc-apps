@@ -519,9 +519,9 @@ export default function ReportPage() {
           // INFO PO
           noPo: upperClean(po?.noPo || "-"),
           company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
-          inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || ""),
-          regional: upperClean(po?.regional || po?.UnitProduksi?.namaRegional || ""),
-          siteArea: upperClean(po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN" ? po.UnitProduksi.siteArea : ""),
+          inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || "-"),
+          regional: upperClean(po?.regional || po?.UnitProduksi?.namaRegional || "-"),
+          siteArea: upperClean(po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea.toUpperCase() !== "UNKNOWN" ? po.UnitProduksi.siteArea : "-"),
 
           // TIMELINE
           tglPo: toYMD(po?.tglPo),

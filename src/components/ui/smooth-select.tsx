@@ -7,6 +7,7 @@ export default function SmoothSelect({
   options,
   value,
   onChange,
+  onOpen,
   className,
   width = 176,
   disabled = false,
@@ -14,11 +15,16 @@ export default function SmoothSelect({
   options: Option[];
   value: string;
   onChange: (v: string) => void;
+  onOpen?: () => void;
   className?: string;
   width?: number;
   disabled?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open && onOpen) onOpen();
+  }, [open, onOpen]);
   const ref = React.useRef<HTMLDivElement | null>(null);
   const current = options.find((o) => o.value === value) || options[0];
 

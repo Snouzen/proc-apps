@@ -9,8 +9,21 @@ import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
-    console.log("🚀 Starting migration for buktiTagih and buktiBayar...");
+    console.log("🚀 Starting database cleanup for regional...");
+    await prisma.purchaseOrder.updateMany({
+      where: {
+        OR: [
+          { regional: "Unknown" },
+          { regional: "UNKNOWN" },
+          { regional: "" }
+        ]
+      },
+      data: {
+        regional: null
+      }
+    });
 
+    console.log("🚀 Starting migration for buktiTagih and buktiBayar...");
     const result = await prisma.purchaseOrder.updateMany({
       data: {
         buktiTagih: null,
@@ -18,11 +31,11 @@ export async function GET() {
       },
     });
 
-    console.log(`✅ Migration complete. Updated ${result.count} POs.`);
+    console.log(`✅ Cleanup & Migration complete. Updated ${result.count} POs.`);
 
     return NextResponse.json({
       success: true,
-      message: `Migration complete. Updated ${result.count} records.`,
+      message: `Data cleanup & Migration complete. Updated ${result.count} POs.`,
       count: result.count
     });
   } catch (error) {

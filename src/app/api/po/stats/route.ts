@@ -187,14 +187,10 @@ export async function GET(request: Request) {
           COUNT(*) FILTER (
             WHERE
               (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
-              AND po."expiredTgl" IS NOT NULL
-              AND po."expiredTgl" >= ${startOfToday}
           )::int AS "cActive",
           COUNT(*) FILTER (
             WHERE
               (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
-              AND po."expiredTgl" IS NOT NULL
-              AND po."expiredTgl" >= ${startOfToday}
               AND (
                 COALESCE(trim(COALESCE(po."regional", '')), '') = ANY(${emptyRegionalValues})
                 OR po."unitProduksiId" = 'UNKNOWN'
@@ -239,16 +235,17 @@ export async function GET(request: Request) {
             ${hasSiteArea} = false OR up."siteArea" ILIKE ${saPattern}
           )
       `;
-      return (
-        rows[0] || {
+      return {
+        ...(rows[0] || {
           cAll: 0,
           cActive: 0,
           cAssign: 0,
           cAlmost: 0,
           cExpired: 0,
           cCompleted: 0,
-        }
-      );
+        }),
+        cProgress: 0,
+      };
     });
     cacheSet(cacheKey, payload, 30000);
     cacheSet(

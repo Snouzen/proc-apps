@@ -183,7 +183,7 @@ export default function Home() {
         setStats({
           totalCount: Number(s?.cAll) || 0,
           activeCount: Number(s?.cActive) || 0,
-          inProgressCount: Number(s?.cProgress) || 0,
+          inProgressCount: 0,
           needAssignCount: Number(s?.cAssign) || 0,
           almostExpiredCount: Number(s?.cAlmost) || 0,
           expiredCount: Number(s?.cExpired) || 0,
@@ -708,8 +708,11 @@ function TableUnderChart({
   const statusText = (po: any) => {
     if (!isCompleted(po)) {
       const du = daysUntil(toDate(po.expiredTgl));
-      if (du != null && du >= 0 && du <= 14) return "Almost Expired";
-      return "In Progress";
+      if (du != null) {
+        if (du < 0) return "Expired";
+        if (du <= 14) return "Almost Expired";
+      }
+      return "Active";
     }
     return "Done";
   };
@@ -897,7 +900,7 @@ function TableUnderChart({
           <div className="flex flex-wrap items-center gap-2 w-full">
             {!modalOpen && (
               <>
-                <div className="w-full md:w-auto">
+                <div className="w-full md:w-auto z-[70]">
                   <SmoothSelect
                     width={172}
                     value={group}
@@ -905,6 +908,7 @@ function TableUnderChart({
                       setPage(1);
                       setGroup(v as any);
                     }}
+                    onOpen={() => setColsOpen(false)}
                     options={[
                       { value: "all", label: "All" },
                       { value: "active", label: "Active" },
@@ -958,7 +962,7 @@ function TableUnderChart({
                     onFilterChange={handleFilterChange}
                   />
                 </div>
-                <div className="relative w-full md:w-auto z-[60]">
+                <div className="relative w-full md:w-auto z-[50]">
                   <button
                     className="w-full md:w-auto px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold bg-white hover:bg-gray-50"
                     onClick={() => setColsOpen((o) => !o)}
@@ -966,7 +970,7 @@ function TableUnderChart({
                     Customize Columns
                   </button>
                   {colsOpen && !modalOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-[70]">
+                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-[60]">
                       {columnDefs.map((c) => (
                         <label
                           key={c.key}

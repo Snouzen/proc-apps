@@ -140,17 +140,27 @@ export async function POST(request: Request) {
       effectiveRegional = dbUser?.regional || (sessionObj as any).regional;
     }
 
+    // ── Backend Guard: sanitize junk values to null ──
+    const JUNK_STRINGS = ["unknown", "site area belum ada unit produksi", "belum ada", "n/a", "none", "-", ""];
+    const sanitizeToNull = (val: string | null | undefined): string | null => {
+      if (!val) return null;
+      const cleaned = val.trim();
+      if (!cleaned) return null;
+      if (JUNK_STRINGS.includes(cleaned.toLowerCase())) return null;
+      return cleaned;
+    };
+
     const companyTrim = String(company).trim();
     const inisialTrim = String(inisial).trim();
     const tujuanTrim = String(tujuan).trim();
     const noPoTrim = String(noPo).trim();
     const originalNoPoTrim = String(originalNoPo ?? noPoTrim).trim();
-    const siteAreaTrim = String(siteArea || "").trim();
+    const siteAreaTrim = sanitizeToNull(String(siteArea || "")) ?? "";
 
     const companyUpper = upperClean(companyTrim);
     const inisialUpper = upperCleanOrNull(inisialTrim);
     const tujuanUpper = upperClean(tujuanTrim);
-    const siteAreaUpper = upperCleanOrNull(siteAreaTrim);
+    const siteAreaUpper = sanitizeToNull(siteAreaTrim) ? upperCleanOrNull(siteAreaTrim) : null;
 
     const tglPoParsed = parseYmdOrIsoToUtcNoon(tglPo);
     const expiredParsed = parseYmdOrIsoToUtcNoon(expiredTgl);
@@ -271,7 +281,8 @@ export async function POST(request: Request) {
     const poNoInvoice = noInvoice || null;
     const poTujuanDetail = tujuanUpper || null;
     // Use the effective regional (which might be forced from session for RM users)
-    const poRegional = upperCleanOrNull(effectiveRegional) || null;
+    // sanitizeToNull is defined above and guards against all junk strings
+    const poRegional = sanitizeToNull(effectiveRegional) ? (upperCleanOrNull(sanitizeToNull(effectiveRegional)!) || null) : null;
     const poStatusKirim = !!status?.kirim;
     const poStatusSdif = !!status?.sdif;
     const poStatusPo = !!status?.po;
@@ -752,6 +763,8 @@ export async function GET(request: Request) {
       };
     }
     if (q) {
+      const qLower = q.toLowerCase();
+      const isDashSearch = q === "-";
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         {
@@ -760,6 +773,7 @@ export async function GET(request: Request) {
             { noInvoice: { contains: q, mode: "insensitive" as const } },
             { tujuanDetail: { contains: q, mode: "insensitive" as const } },
             { regional: { contains: q, mode: "insensitive" as const } },
+            ...(isDashSearch ? [{ regional: null }, { regional: "" }] : []),
             { remarks: { contains: q, mode: "insensitive" as const } },
             {
               RitelModern: {
@@ -776,6 +790,7 @@ export async function GET(request: Request) {
               UnitProduksi: {
                 OR: [
                   { siteArea: { contains: q, mode: "insensitive" as const } },
+                  ...(isDashSearch ? [{ siteArea: null }, { siteArea: "" }] : []),
                   {
                     namaRegional: {
                       contains: q,
@@ -823,26 +838,16 @@ export async function GET(request: Request) {
         999,
       ),
     );
-    if (group === "completed") {
+    if (group === "completed" || group === "done") {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         { noInvoice: { not: null } },
         { noInvoice: { notIn: emptyInvoiceValues } },
       ];
-    } else if (group === "active" || status === "active") {
+    } else if (group === "active" || group === "in_progress" || status === "active") {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
-        { expiredTgl: { not: null } },
-        { expiredTgl: { gte: startOfToday } },
         { 
-          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
-        },
-      ];
-      console.log(`🔍 [ACTIVE] Filtering for ${safeRole}`);
-    } else if (group === "in_progress") {
-      where.AND = [
-        ...(Array.isArray(where.AND) ? where.AND : []),
-        {
           OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
         },
       ];

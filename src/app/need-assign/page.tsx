@@ -621,11 +621,8 @@ export default function NeedAssignPage() {
         const st = edited[noPo] || {};
         const canAssign =
           role === "pusat"
-            ? !!(
-                st.regional ||
-                (row.original.regional && row.original.regional !== "UNKNOWN")
-              )
-            : !!st.siteArea;
+            ? !!st.regional
+            : !!(st.siteArea && (st.regional || row.original.regional));
 
         const onAssign = async () => {
           const reg =
@@ -664,7 +661,11 @@ export default function NeedAssignPage() {
             const res = await fetch("/api/po/assign", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ noPo, siteArea: st.siteArea || "" }),
+              body: JSON.stringify({ 
+                noPo, 
+                regional: reg,
+                siteArea: st.siteArea === "Pilih..." || !st.siteArea ? null : st.siteArea 
+              }),
             });
             const json = await res.json().catch(() => null);
             if (!res.ok)

@@ -183,6 +183,9 @@ export default function BranchPage() {
   }, []);
 
   // ── Fetch Regional Data from API ──
+  const JUNK_VALUES = ["unknown", "site area belum ada unit produksi", "belum ada", "n/a", "none", "-", ""];
+  const isJunk = (v?: string | null) => !v || JUNK_VALUES.includes(v.trim().toLowerCase());
+
   const fetchRegions = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -194,9 +197,10 @@ export default function BranchPage() {
         (acc: Record<string, string[]>, curr: any) => {
           const reg = curr.namaRegional;
           const site = curr.siteArea;
-          if (!reg) return acc;
+          // Skip junk regional or junk site area
+          if (isJunk(reg)) return acc;
           if (!acc[reg]) acc[reg] = [];
-          if (site && !acc[reg].includes(site)) acc[reg].push(site);
+          if (!isJunk(site) && !acc[reg].includes(site)) acc[reg].push(site);
           return acc;
         },
         {} as Record<string, string[]>
