@@ -16,6 +16,7 @@ import {
 import { getMe } from "@/lib/me";
 import { format } from "date-fns";
 import DateInputHybrid from "@/components/DateInputHybrid";
+import PODetailModal from "@/components/po-detail-modal";
 
 // ── Helper: strip junk site area text ──────────────────────────────────────
 function cleanSiteArea(val?: string | null): string {
@@ -35,7 +36,7 @@ function cleanSiteArea(val?: string | null): string {
 function SkeletonRow() {
   return (
     <tr className="animate-pulse border-b border-slate-50">
-      {["w-48", "w-16", "w-24", "w-24", "w-28", "w-24"].map((w, i) => (
+      {["w-8", "w-48", "w-16", "w-24", "w-24", "w-24", "w-28", "w-24"].map((w, i) => (
         <td key={i} className="px-5 py-3.5">
           <div className={`h-3.5 bg-slate-100 rounded-md ${w}`} />
         </td>
@@ -54,6 +55,18 @@ export default function SchedulePage() {
   const [selectedPo, setSelectedPo] = useState<any>(null);
   const [namaSupir, setNamaSupir] = useState("");
   const [platNomor, setPlatNomor] = useState("");
+  
+  // -- Action State --
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailData, setDetailData] = useState<any>(null);
+  
+  // -- Filter State --
+  const [activeFilter, setActiveFilter] = useState<'all' | 'scheduled' | 'unscheduled'>('all');
+  
+  // -- Pagination State --
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -107,12 +120,41 @@ export default function SchedulePage() {
     }
   };
 
+  const handleViewRow = async (po: any) => {
+    setSelectedPo(po);
+    setDetailData(po); // base instant fallback
+    setIsViewOpen(true);
+    setLoadingDetail(true);
+    try {
+      const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`);
+      const data = await res.json();
+      const first = Array.isArray(data?.data) ? data.data[0] : Array.isArray(data) ? data[0] : null;
+      if (first) {
+        setDetailData(first);
+      }
+    } catch (err) {
+      console.error("Failed to fetch detail:", err);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
   const filteredPo = useMemo(() => {
-    if (!search.trim()) return poData;
+    // Tahap 1: Filter berdasarkan Card yang diklik
+    let categoryFiltered = poData;
+    if (activeFilter === 'scheduled') {
+      categoryFiltered = poData.filter(po => po.tglkirim);
+    } else if (activeFilter === 'unscheduled') {
+      categoryFiltered = poData.filter(po => !po.tglkirim);
+    }
+
+    // Tahap 2: Filter berdasarkan Search Bar
+    if (!search.trim()) return categoryFiltered;
+    
     const query = search.toLowerCase();
-    return poData.filter((po) => {
+    return categoryFiltered.filter((po) => {
       const siteArea = String(po.UnitProduksi?.siteArea || po.siteArea || "").toLowerCase();
-      const company = String(po.RitelModern?.namaPt || "").toLowerCase();
+      const company = String(po.RitelModern?.namaPt || po.company || "").toLowerCase();
       const inisial = String(po.RitelModern?.inisial || "").toLowerCase();
       const noPo = String(po.noPo || "").toLowerCase();
       const noInvoice = String(po.noInvoice || "").toLowerCase();
@@ -124,7 +166,7 @@ export default function SchedulePage() {
         noInvoice.includes(query)
       );
     });
-  }, [poData, search]);
+  }, [poData, activeFilter, search]);
 
   const stats = useMemo(() => {
     // poData sudah difilter ke group=active (noInvoice kosong) dari API
@@ -135,10 +177,18 @@ export default function SchedulePage() {
     return { total, scheduled, pending };
   }, [poData]);
 
-  const displayPOs = useMemo(() => {
-    if (search.trim()) return filteredPo;
-    return filteredPo.filter((po) => !po.tglkirim);
-  }, [filteredPo, search]);
+  // Reset pagination to page 1 whenever search query or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, activeFilter]);
+
+  // Compute paginated slice from the `filteredPo` array
+  const paginatedPOs = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredPo.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredPo, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredPo.length / itemsPerPage);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-7">
@@ -174,30 +224,41 @@ export default function SchedulePage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           {
+            id: 'all',
             label: "Total PO",
             value: stats.total,
             icon: <Truck size={18} className="text-blue-500" />,
             bg: "bg-blue-50",
             text: "text-blue-600",
+            ring: "ring-blue-500"
           },
           {
+            id: 'scheduled',
             label: "Sudah Dijadwalkan",
             value: stats.scheduled,
             icon: <CalendarCheck size={18} className="text-emerald-500" />,
             bg: "bg-emerald-50",
             text: "text-emerald-600",
+            ring: "ring-emerald-500"
           },
           {
+            id: 'unscheduled',
             label: "Belum Dijadwalkan",
             value: stats.pending,
             icon: <Clock size={18} className="text-amber-500" />,
             bg: "bg-amber-50",
             text: "text-amber-600",
+            ring: "ring-amber-500"
           },
-        ].map((stat, i) => (
+        ].map((stat) => (
           <div
-            key={i}
-            className="bg-white px-5 py-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            key={stat.id}
+            onClick={() => setActiveFilter(stat.id as any)}
+            className={`cursor-pointer bg-white px-5 py-4 rounded-2xl border border-slate-100 flex items-center gap-4 transition-all duration-200 ${
+              activeFilter === stat.id 
+                ? `ring-2 ${stat.ring} shadow-md scale-[1.02]` 
+                : 'hover:bg-slate-50 shadow-sm'
+            }`}
           >
             <div className={`p-2.5 rounded-xl ${stat.bg} shrink-0`}>
               {stat.icon}
@@ -220,6 +281,9 @@ export default function SchedulePage() {
           <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[50px]">
+                  No
+                </th>
                 <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[260px]">
                   Purchase Order
                 </th>
@@ -232,6 +296,9 @@ export default function SchedulePage() {
                 <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[120px]">
                   Tgl PO
                 </th>
+                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[120px]">
+                  Due Date
+                </th>
                 <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[160px]">
                   Status
                 </th>
@@ -243,16 +310,22 @@ export default function SchedulePage() {
             <tbody>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
-              ) : displayPOs.length > 0 ? (
-                displayPOs.map((po) => {
+              ) : paginatedPOs.length > 0 ? (
+                paginatedPOs.map((po, index) => {
                   const site = cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea);
                   const isScheduled = !!po.tglkirim;
 
                   return (
                     <tr
                       key={po.id}
-                      className="border-b border-slate-50 hover:bg-slate-50/80 transition-all duration-150 group"
+                      onClick={() => handleViewRow(po)}
+                      className="border-b border-slate-50 hover:bg-indigo-50/50 cursor-pointer transition-all duration-150 group align-top"
                     >
+                      {/* No */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-400 font-medium">
+                        {(currentPage - 1) * itemsPerPage + index + 1}
+                      </td>
+
                       {/* PO Info */}
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <p className="font-bold text-slate-800 text-sm leading-tight">
@@ -289,6 +362,23 @@ export default function SchedulePage() {
                           : "-"}
                       </td>
 
+                      {/* Due Date */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-xs tabular-nums">
+                        <span
+                          className={`font-bold ${
+                            po.expiredTgl &&
+                            new Date(po.expiredTgl).getTime() - Date.now() <=
+                              3 * 24 * 60 * 60 * 1000
+                              ? "text-rose-600"
+                              : "text-slate-600"
+                          }`}
+                        >
+                          {po.expiredTgl
+                            ? format(new Date(po.expiredTgl), "dd MMM yyyy")
+                            : "-"}
+                        </span>
+                      </td>
+
                       {/* Status Badge */}
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         {isScheduled ? (
@@ -305,9 +395,10 @@ export default function SchedulePage() {
                       </td>
 
                       {/* Action Button */}
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                      <td className="px-5 py-3.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedPo(po);
                             setSelectedDate(
                               po.tglkirim ? po.tglkirim.split("T")[0] : ""
@@ -331,7 +422,7 @@ export default function SchedulePage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center">
+                  <td colSpan={8} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="p-4 bg-slate-50 rounded-2xl">
                         <CalendarDays size={28} className="text-slate-300" />
@@ -351,6 +442,33 @@ export default function SchedulePage() {
             </tbody>
           </table>
         </div>
+        {/* -- Pagination Controls -- */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+            <span className="text-xs text-slate-500 font-medium">
+              Menampilkan <span className="font-bold text-slate-700">{paginatedPOs.length}</span> dari <span className="font-bold text-slate-700">{filteredPo.length}</span> data
+            </span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                Sebelumnya
+              </button>
+              <div className="flex items-center justify-center px-3 py-1.5 min-w-[70px] text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg">
+                {currentPage} / {totalPages}
+              </div>
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                Selanjutnya
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Modal ─────────────────────────────────────────────────────────── */}
@@ -457,6 +575,33 @@ export default function SchedulePage() {
           </div>
         </div>
       )}
+
+      {/* ── View Detail Modal (Component) ────────────────────────────────── */}
+      <PODetailModal
+        open={isViewOpen}
+        onClose={() => {
+          setIsViewOpen(false);
+          setDetailData(null);
+        }}
+        data={
+          detailData
+            ? {
+                ...detailData,
+                status: {
+                  kirim: !!detailData.statusKirim,
+                  sdif: !!detailData.statusSdif,
+                  po: !!detailData.statusPo,
+                  fp: !!detailData.statusFp,
+                  kwi: !!detailData.statusKwi,
+                  inv: !!detailData.statusInv,
+                  tagih: !!detailData.statusTagih,
+                  bayar: !!detailData.statusBayar,
+                },
+              }
+            : null
+        }
+      />
+
     </div>
   );
 }

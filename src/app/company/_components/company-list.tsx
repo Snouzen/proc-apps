@@ -739,6 +739,12 @@ export default function CompanyList({
                                           <th className="px-4 py-3 sticky top-0 bg-slate-50">
                                             Tujuan
                                           </th>
+                                          <th className="px-4 py-3 sticky top-0 bg-slate-50 text-left">
+                                            UNIT PRODUKSI
+                                          </th>
+                                          <th className="px-4 py-3 sticky top-0 bg-slate-50 text-left">
+                                            SITE AREA
+                                          </th>
                                           <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
                                             Kg
                                           </th>
@@ -894,6 +900,12 @@ export default function CompanyList({
                                                     highlightTerm,
                                                   )}
                                                 </div>
+                                              </td>
+                                              <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                                                {(!po.regional || po.regional.toLowerCase() === 'unknown') ? "-" : po.regional}
+                                              </td>
+                                              <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                                                {(!po?.UnitProduksi?.siteArea || po.UnitProduksi.siteArea.toLowerCase().includes('unit produksi') || po.UnitProduksi.siteArea.toLowerCase() === 'unknown') ? "-" : po.UnitProduksi.siteArea}
                                               </td>
                                               <td className="px-4 py-3 text-right text-slate-700 font-semibold">
                                                 {n(Math.round(totalKg))}
@@ -1393,6 +1405,12 @@ export default function CompanyList({
                                                       <th className="px-4 py-3 sticky top-0 bg-slate-50">
                                                         Tujuan
                                                       </th>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50 text-left">
+                                                        UNIT PRODUKSI
+                                                      </th>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50 text-left">
+                                                        SITE AREA
+                                                      </th>
                                                       <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
                                                         Kg
                                                       </th>
@@ -1641,6 +1659,12 @@ export default function CompanyList({
                                                                 highlightTerm,
                                                               )}
                                                             </div>
+                                                          </td>
+                                                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                                                            {(!po.regional || po.regional.toLowerCase() === 'unknown') ? "-" : po.regional}
+                                                          </td>
+                                                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                                                            {(!po?.UnitProduksi?.siteArea || po.UnitProduksi.siteArea.toLowerCase().includes('unit produksi') || po.UnitProduksi.siteArea.toLowerCase() === 'unknown') ? "-" : po.UnitProduksi.siteArea}
                                                           </td>
                                                           <td className="px-4 py-3 text-right text-slate-700 font-semibold">
                                                             {n(

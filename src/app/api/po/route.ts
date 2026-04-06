@@ -1136,6 +1136,8 @@ export async function GET(request: Request) {
                   statusBayar: true,
                   tglkirim: true,
                   remarks: true,
+                  buktiTagih: true,
+                  buktiBayar: true,
                   namaSupir: true,
                   platNomor: true,
                   // Prevent over-fetching by using specific selects instead of raw includes

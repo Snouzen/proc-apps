@@ -619,10 +619,32 @@ export default function NeedAssignPage() {
       cell: ({ row }) => {
         const noPo = row.original.noPo;
         const st = edited[noPo] || {};
-        const canAssign =
-          role === "pusat"
-            ? !!st.regional
-            : !!(st.siteArea && (st.regional || row.original.regional));
+        
+        // 1. Bersihkan nilai dan buat perbandingan dengan data original
+        const selectedReg = st.regional !== undefined ? st.regional : row.original.regional;
+        const selectedSite = st.siteArea !== undefined ? st.siteArea : row.original.siteArea;
+        
+        const cleanStr = (val: any) => {
+          if (!val) return "";
+          const str = String(val).trim();
+          if (str.toLowerCase() === "unknown" || str.toLowerCase() === "pilih..." || str.toLowerCase().includes("unit produksi")) return "";
+          return str;
+        };
+        
+        const currentReg = cleanStr(selectedReg);
+        const currentSite = cleanStr(selectedSite);
+        
+        const originalReg = cleanStr(row.original.regional);
+        const originalSite = cleanStr(row.original.siteArea);
+        
+        // 2. Cek apakah ada perubahan data pengisian
+        const hasChanges = currentReg !== originalReg || currentSite !== originalSite;
+        
+        // 3. Cek validasi minimum berdasar role
+        const isValid = role === "pusat" ? currentReg !== "" : currentReg !== "" && currentSite !== "";
+        
+        // 4. Tombol disabled check
+        const isButtonDisabled = !isValid || !hasChanges || !!st.saving;
 
         const onAssign = async () => {
           const reg =
@@ -697,12 +719,12 @@ export default function NeedAssignPage() {
           <div className="text-right">
             <div className="flex items-center justify-end gap-2">
               <button
-                disabled={!canAssign || st.saving}
+                disabled={isButtonDisabled}
                 onClick={onAssign}
-                className={`inline-flex h-9 px-3 items-center justify-center rounded-xl border text-xs font-bold whitespace-nowrap ${
-                  !canAssign || st.saving
-                    ? "border-slate-200 bg-slate-100 text-slate-400"
-                    : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                className={`inline-flex h-9 px-3 items-center justify-center rounded-xl border text-xs font-bold whitespace-nowrap transition-colors duration-150 ${
+                  isButtonDisabled
+                    ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
+                    : "border-blue-200 bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
                 }`}
               >
                 {st.saving ? "Saving…" : "Assign"}

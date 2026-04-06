@@ -443,6 +443,48 @@ function InputPODetailPageInner() {
     loadPo();
   }, [searchParams]);
 
+  // SMART AUTO-CHECK: Sync document status with text inputs
+  useEffect(() => {
+    setFormData((prev) => {
+      const { noPo, noInvoice, buktiTagih, buktiBayar, status } = prev;
+      const newStatus = { ...status };
+      let hasChanges = false;
+
+      // 1. Auto-Check Dokumen PO (po)
+      const hasPoValue = !!noPo && noPo.trim() !== "";
+      if (hasPoValue !== status.po) {
+        newStatus.po = hasPoValue;
+        hasChanges = true;
+      }
+
+      // 2. Auto-Check Invoice (inv)
+      const hasInvValue = !!noInvoice && noInvoice.trim() !== "";
+      if (hasInvValue !== status.inv) {
+        newStatus.inv = hasInvValue;
+        hasChanges = true;
+      }
+
+      // 3. Auto-Check Tagih (tagih)
+      const hasTagihValue = !!buktiTagih && buktiTagih.trim() !== "";
+      if (hasTagihValue !== status.tagih) {
+        newStatus.tagih = hasTagihValue;
+        hasChanges = true;
+      }
+
+      // 4. Auto-Check Bayar (bayar)
+      const hasBayarValue = !!buktiBayar && buktiBayar.trim() !== "";
+      if (hasBayarValue !== status.bayar) {
+        newStatus.bayar = hasBayarValue;
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        return { ...prev, status: newStatus };
+      }
+      return prev;
+    });
+  }, [formData.noPo, formData.noInvoice, formData.buktiTagih, formData.buktiBayar]);
+
   const norm = (s: any) =>
     String(s ?? "")
       .trim()
@@ -965,6 +1007,7 @@ function InputPODetailPageInner() {
                   )}
                 </div>
 
+                {/* Row 2: Dates */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     {PO_FORM_LABELS.tglPo}
@@ -1017,8 +1060,7 @@ function InputPODetailPageInner() {
                   />
                 </div>
 
-                <div className="hidden md:block" />
-
+                {/* Row 3: Regional, Site Area, No Invoice */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     {PO_FORM_LABELS.regional}
@@ -1069,7 +1111,31 @@ function InputPODetailPageInner() {
                   />
                 </div>
 
-                <div className="md:col-span-2 space-y-1">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    {PO_FORM_LABELS.noInvoice}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nomor Invoice..."
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    value={formData.noInvoice}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({
+                        ...formData,
+                        noInvoice: v,
+                        status: {
+                          ...formData.status,
+                          ...(v.trim() ? { inv: true } : {}),
+                        },
+                      });
+                    }}
+                  />
+                </div>
+
+                {/* Row 4: Link PO */}
+                <div className="md:col-span-3 space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     {PO_FORM_LABELS.linkPo}
                   </label>
@@ -1085,68 +1151,9 @@ function InputPODetailPageInner() {
                       onChange={(e) =>
                         setFormData({ ...formData, linkPo: e.target.value })
                       }
+                      value={formData.linkPo}
                     />
                   </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    {PO_FORM_LABELS.noInvoice}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Nomor Invoice..."
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                    value={formData.noInvoice}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setFormData({
-                        ...formData,
-                        noInvoice: v,
-                        status: { ...formData.status, ...(v.trim() ? { inv: true } : {}) }
-                      });
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Bukti Tagih
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ref Tagihan..."
-                    value={formData.buktiTagih}
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setFormData({
-                        ...formData,
-                        buktiTagih: v,
-                        status: { ...formData.status, ...(v.trim() ? { tagih: true } : {}) }
-                      });
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Bukti Bayar
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ref Bayar..."
-                    value={formData.buktiBayar}
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setFormData({
-                        ...formData,
-                        buktiBayar: v,
-                        status: { ...formData.status, ...(v.trim() ? { bayar: true } : {}) }
-                      });
-                    }}
-                  />
                 </div>
               </div>
             </section>
@@ -1367,6 +1374,9 @@ function InputPODetailPageInner() {
                         <th className="px-4 py-3 text-right" title="Input PCS">
                           Pcs
                         </th>
+                        <th className="px-4 py-3 text-right text-amber-600" title="PCS yang dikirim">
+                          Pcs Kirim
+                        </th>
                         <th
                           className="px-4 py-3 text-right"
                           title="PCS × kg/pcs"
@@ -1440,6 +1450,23 @@ function InputPODetailPageInner() {
                                   />
                                 ) : (
                                   formatNumber(Number(item.pcs || 0))
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right text-amber-600 font-bold">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={editItem.pcsKirim}
+                                    onChange={(e) =>
+                                      setEditItem((p) => ({
+                                        ...p,
+                                        pcsKirim: e.target.value,
+                                      }))
+                                    }
+                                    className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                                  />
+                                ) : (
+                                  formatNumber(Number(item.pcsKirim || 0))
                                 )}
                               </td>
                               <td className="px-4 py-3 text-right text-slate-600">
@@ -1550,7 +1577,7 @@ function InputPODetailPageInner() {
                             </tr>
                             {isPreview && (
                               <tr className="bg-slate-50/50">
-                                <td colSpan={6} className="px-4 py-3">
+                                <td colSpan={7} className="px-4 py-3">
                                   <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
                                     <div>
                                       <div className="text-slate-400 font-black uppercase text-[10px]">
@@ -1628,7 +1655,7 @@ function InputPODetailPageInner() {
                     <tfoot className="bg-slate-50 border-t border-slate-200">
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="px-4 py-3 text-right font-black text-slate-500 uppercase tracking-wider text-xs"
                         >
                           Total Nominal
@@ -1680,19 +1707,83 @@ function InputPODetailPageInner() {
 
               <div className="space-y-3">
                 {Object.keys(formData.status).map((key) => {
-                  const checked =
-                    formData.status[key as keyof typeof formData.status];
+                  const checked = formData.status[key as keyof typeof formData.status];
                   const label = key === "sdif" ? "SDI/F" : key.toUpperCase();
+                  
+                  // Khusus untuk TAGIH dan BAYAR, render secara inline dengan input teks
+                  if (key === "tagih") {
+                    return (
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors">
+                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleChecklist(key)}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-bold text-slate-700">{label}</span>
+                        </label>
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Masukkan Ref Tagihan..."
+                            value={formData.buktiTagih}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setFormData({
+                                ...formData,
+                                buktiTagih: v,
+                              });
+                            }}
+                            className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (key === "bayar") {
+                    return (
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors">
+                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleChecklist(key)}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-bold text-slate-700">{label}</span>
+                        </label>
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Masukkan Ref Bayar..."
+                            value={formData.buktiBayar}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setFormData({
+                                ...formData,
+                                buktiBayar: v,
+                              });
+                            }}
+                            className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Default render untuk checkbox lainnya
                   return (
                     <label
                       key={key}
-                      className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => handleChecklist(key)}
-                        className="w-4 h-4"
+                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                       />
                       <span className="text-sm font-bold text-slate-700">
                         {label}
