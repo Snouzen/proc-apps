@@ -187,10 +187,12 @@ export async function GET(request: Request) {
           COUNT(*) FILTER (
             WHERE
               (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
+              AND (po."expiredTgl" IS NULL OR po."expiredTgl" >= ${startOfToday})
           )::int AS "cActive",
           COUNT(*) FILTER (
             WHERE
               (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
+              AND (po."expiredTgl" IS NULL OR po."expiredTgl" >= ${startOfToday})
               AND (
                 COALESCE(trim(COALESCE(po."regional", '')), '') = ANY(${emptyRegionalValues})
                 OR po."unitProduksiId" = 'UNKNOWN'

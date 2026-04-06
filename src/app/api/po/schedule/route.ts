@@ -93,6 +93,11 @@ export async function PATCH(request: Request) {
       }
     });
 
+    const { cacheClearPrefix } = await import("@/lib/ttl-cache");
+    cacheClearPrefix("po:");
+    cacheClearPrefix("po_total:");
+    cacheClearPrefix("po_stats:");
+
     return NextResponse.json({ ok: true, data: updated });
   } catch (error: any) {
     console.error("PATCH /api/po/schedule error:", error);

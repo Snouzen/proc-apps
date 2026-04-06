@@ -472,6 +472,9 @@ export async function POST(request: Request) {
 
     cacheClearPrefix("po:");
     cacheClearPrefix("po_total:");
+    cacheClearPrefix("po_stats:");
+    cacheClearPrefix("ritel:");
+    cacheClearPrefix("company");
     return NextResponse.json(updatedPO, { status: 201 });
   } catch (error) {
     const msg =
@@ -849,6 +852,9 @@ export async function GET(request: Request) {
         ...(Array.isArray(where.AND) ? where.AND : []),
         { 
           OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        {
+          OR: [{ expiredTgl: null }, { expiredTgl: { gte: startOfToday } }],
         },
       ];
     } else if (group === "almost_expired") {
