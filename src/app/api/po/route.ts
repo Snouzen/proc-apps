@@ -107,6 +107,11 @@ export async function POST(request: Request) {
       remarks,
       status,
       regional,
+      tglKirim,
+      buktiTagih,
+      buktiBayar,
+      namaSupir,
+      platNomor,
     } = body ?? {};
 
     if (
@@ -276,6 +281,7 @@ export async function POST(request: Request) {
     const poStatusTagih = !!status?.tagih;
     const poStatusBayar = !!status?.bayar;
     const poRemarks = remarks || null;
+    const poTglKirim = tglKirim ? parseYmdOrIsoToUtcNoon(tglKirim) : undefined;
     const poUpdatedAt = new Date();
 
     const updatedPO = await prisma.$transaction(
@@ -316,6 +322,9 @@ export async function POST(request: Request) {
                 statusTagih: poStatusTagih,
                 statusBayar: poStatusBayar,
                 remarks: poRemarks,
+                buktiTagih,
+                buktiBayar,
+                ...(poTglKirim !== undefined ? { tglkirim: poTglKirim } : {}),
                 updatedAt: poUpdatedAt,
               },
             })
@@ -341,6 +350,9 @@ export async function POST(request: Request) {
                 statusTagih: poStatusTagih,
                 statusBayar: poStatusBayar,
                 remarks: poRemarks,
+                buktiTagih,
+                buktiBayar,
+                ...(poTglKirim !== undefined ? { tglkirim: poTglKirim } : {}),
                 updatedAt: poUpdatedAt,
                 createdAt: new Date(),
               },
@@ -362,6 +374,9 @@ export async function POST(request: Request) {
                 statusTagih: poStatusTagih,
                 statusBayar: poStatusBayar,
                 remarks: poRemarks,
+                buktiTagih,
+                buktiBayar,
+                ...(poTglKirim !== undefined ? { tglkirim: poTglKirim } : {}),
                 updatedAt: poUpdatedAt,
               },
             });
@@ -532,6 +547,8 @@ export async function GET(request: Request) {
     const group = (searchParams.get("group") || "all").trim();
     const pcsKirimParam = searchParams.get("pcsKirim") || undefined;
     const status = searchParams.get("status") || undefined;
+    const monthParam = searchParams.get("month");
+    const yearParam = searchParams.get("year");
 
     let colFilters: Record<string, string> = {};
     const colFiltersRaw = searchParams.get("colFilters");
@@ -618,6 +635,25 @@ export async function GET(request: Request) {
         ...(submitFrom ? { gte: submitFrom } : {}),
         ...(submitTo ? { lte: submitTo } : {}),
       };
+    }
+
+    if (monthParam && yearParam) {
+      const y = parseInt(yearParam);
+      const m = parseInt(monthParam); // 1 - 12
+      if (!isNaN(y) && !isNaN(m)) {
+        const startDate = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
+        const endDate = new Date(Date.UTC(y, m, 1, 0, 0, 0));
+
+        where.AND = [
+          ...(where.AND || []),
+          {
+            tglkirim: {
+              gte: startDate,
+              lt: endDate,
+            },
+          },
+        ];
+      }
     }
     function getRegionalSynonyms(input: string): string[] {
       const rp = input.trim().toLowerCase();
@@ -1045,11 +1081,29 @@ export async function GET(request: Request) {
                   statusInv: true,
                   statusTagih: true,
                   statusBayar: true,
+                  tglkirim: true,
+                  buktiTagih: true,
+                  buktiBayar: true,
+                  namaSupir: true,
+                  platNomor: true,
                   RitelModern: {
                     select: { namaPt: true, inisial: true, tujuan: true },
                   },
                   UnitProduksi: {
                     select: { siteArea: true, namaRegional: true },
+                  },
+                  Items: {
+                    select: {
+                      id: true,
+                      pcs: true,
+                      pcsKirim: true,
+                      hargaKg: true,
+                      hargaPcs: true,
+                      nominal: true,
+                      rpTagih: true,
+                      discount: true,
+                      Product: { select: { id: true, name: true, satuanKg: true } },
+                    },
                   },
                 },
                 orderBy,
@@ -1077,6 +1131,8 @@ export async function GET(request: Request) {
                   statusBayar: true,
                   tglkirim: true,
                   remarks: true,
+                  namaSupir: true,
+                  platNomor: true,
                   // Prevent over-fetching by using specific selects instead of raw includes
                   ...(includeItems
                     ? {
@@ -1145,11 +1201,28 @@ export async function GET(request: Request) {
                 statusTagih: true,
                 statusBayar: true,
                 tglkirim: true,
+                buktiTagih: true,
+                buktiBayar: true,
+                namaSupir: true,
+                platNomor: true,
                 RitelModern: {
                   select: { namaPt: true, inisial: true, tujuan: true },
                 },
                 UnitProduksi: {
                   select: { siteArea: true, namaRegional: true },
+                },
+                Items: {
+                  select: {
+                    id: true,
+                    pcs: true,
+                    pcsKirim: true,
+                    hargaKg: true,
+                    hargaPcs: true,
+                    nominal: true,
+                    rpTagih: true,
+                    discount: true,
+                    Product: { select: { id: true, name: true, satuanKg: true } },
+                  },
                 },
               },
               orderBy,
@@ -1177,7 +1250,12 @@ export async function GET(request: Request) {
                 statusInv: true,
                 statusTagih: true,
                 statusBayar: true,
+                tglkirim: true,
                 remarks: true,
+                buktiTagih: true,
+                buktiBayar: true,
+                namaSupir: true,
+                platNomor: true,
                 ...(includeItems
                   ? {
                       Items: {

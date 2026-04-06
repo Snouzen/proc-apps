@@ -88,6 +88,7 @@ export default function Sidebar({
       path: "/need-assign",
     },
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
+    { name: "Branch Plan", icon: <CalendarDays size={20} />, path: "/branch" },
   ];
 
   const menuItems =

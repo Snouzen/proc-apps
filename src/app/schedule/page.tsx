@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { 
   Calendar, 
   CalendarCheck, 
@@ -27,6 +27,8 @@ export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPo, setSelectedPo] = useState<any>(null);
+  const [namaSupir, setNamaSupir] = useState("");
+  const [platNomor, setPlatNomor] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -55,7 +57,12 @@ export default function SchedulePage() {
       const res = await fetch("/api/po/schedule", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedPo.id, tglKirim: selectedDate })
+        body: JSON.stringify({ 
+          id: selectedPo.id, 
+          tglKirim: selectedDate,
+          namaSupir: namaSupir.trim(),
+          platNomor: platNomor.trim()
+        })
       });
       if (res.ok) {
         setModalOpen(false);
@@ -68,10 +75,27 @@ export default function SchedulePage() {
     }
   };
 
-  const filteredPo = poData.filter(po => 
-    po.noPo.toLowerCase().includes(search.toLowerCase()) ||
-    po.UnitProduksi?.siteArea?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredPo = useMemo(() => {
+    if (!search.trim()) return poData;
+
+    const query = search.toLowerCase();
+
+    return poData.filter((po) => {
+      const siteArea = String(po.UnitProduksi?.siteArea || po.siteArea || "").toLowerCase();
+      const company = String(po.RitelModern?.namaPt || "").toLowerCase();
+      const inisial = String(po.RitelModern?.inisial || "").toLowerCase();
+      const noPo = String(po.noPo || "").toLowerCase();
+      const noInvoice = String(po.noInvoice || "").toLowerCase();
+
+      return (
+        siteArea.includes(query) ||
+        company.includes(query) ||
+        inisial.includes(query) ||
+        noPo.includes(query) ||
+        noInvoice.includes(query)
+      );
+    });
+  }, [poData, search]);
 
   const stats = {
     total: poData.length,
@@ -127,6 +151,7 @@ export default function SchedulePage() {
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Purchase Order</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Inisial</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Site Area</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">PO Date</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Schedule Status</th>
@@ -137,7 +162,7 @@ export default function SchedulePage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={5} className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
+                    <td colSpan={6} className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
                   </tr>
                 ))
               ) : filteredPo.length > 0 ? (
@@ -146,6 +171,11 @@ export default function SchedulePage() {
                     <td className="px-6 py-4">
                       <p className="font-semibold text-slate-900">{po.noPo}</p>
                       <p className="text-xs text-slate-500">{po.RitelModern?.namaPt || "Self"}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-black uppercase tracking-wider">
+                        {po.RitelModern?.inisial || "-"}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -174,6 +204,8 @@ export default function SchedulePage() {
                         onClick={() => {
                           setSelectedPo(po);
                           setSelectedDate(po.tglkirim ? po.tglkirim.split('T')[0] : "");
+                          setNamaSupir(po.namaSupir || "");
+                          setPlatNomor(po.platNomor || "");
                           setModalOpen(true);
                         }}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md active:scale-95"
@@ -186,7 +218,7 @@ export default function SchedulePage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center gap-2">
                         <div className="p-4 bg-slate-50 rounded-full">
                             <CalendarDays size={32} className="text-slate-300" />
@@ -225,6 +257,28 @@ export default function SchedulePage() {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-900"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Supir <span className="text-[10px] text-slate-400 font-normal">(Opsional)</span></label>
+                <input 
+                  type="text" 
+                  placeholder="Masukkan Nama Supir..."
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-900"
+                  value={namaSupir}
+                  onChange={(e) => setNamaSupir(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Plat Nomor <span className="text-[10px] text-slate-400 font-normal">(Opsional)</span></label>
+                <input 
+                  type="text" 
+                  placeholder="Contoh: B 1234 ABC"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-900"
+                  value={platNomor}
+                  onChange={(e) => setPlatNomor(e.target.value)}
                 />
               </div>
 

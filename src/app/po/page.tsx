@@ -65,11 +65,14 @@ const INITIAL_FORM: {
   tglPo: string;
   linkPo: string;
   expiredTgl: string;
+  tglKirim: string;
   siteArea: string;
   noInvoice: string;
   tujuan: string;
   status: StatusDoc;
   remarks: string;
+  buktiTagih: string;
+  buktiBayar: string;
 } = {
   company: "",
   inisial: "",
@@ -78,11 +81,14 @@ const INITIAL_FORM: {
   tglPo: "",
   linkPo: "",
   expiredTgl: "",
+  tglKirim: "",
   siteArea: "",
   noInvoice: "",
   tujuan: "",
   status: { ...INITIAL_STATUS },
   remarks: "",
+  buktiTagih: "",
+  buktiBayar: "",
 };
 
 function InputPODetailPageInner() {
@@ -399,6 +405,9 @@ function InputPODetailPageInner() {
             bayar: !!po.statusBayar,
           },
           remarks: po.remarks || "",
+          buktiTagih: po.buktiTagih || "",
+          buktiBayar: po.buktiBayar || "",
+          tglKirim: toYMD(po.tglkirim || null),
         });
         const mappedItems: ItemPO[] = (po.Items || []).map((it: any) => {
           const satuan = Number(it?.Product?.satuanKg || 0) || 0;
@@ -753,7 +762,10 @@ function InputPODetailPageInner() {
             }),
           ),
           remarks: formData.remarks,
+          buktiTagih: formData.buktiTagih || null,
+          buktiBayar: formData.buktiBayar || null,
           status: formData.status,
+          tglKirim: formData.tglKirim || undefined,
         };
         await savePurchaseOrder(payload);
       })
@@ -968,7 +980,7 @@ function InputPODetailPageInner() {
                         return next;
                       });
                     }}
-                    className="w-full bg-slate-50 rounded-2xl"
+                    className="w-full bg-white rounded-2xl"
                     placeholder="YYYY-MM-DD"
                     maxDate={formData.expiredTgl}
                   />
@@ -984,11 +996,25 @@ function InputPODetailPageInner() {
                       onChange={(v) =>
                         setFormData({ ...formData, expiredTgl: v })
                       }
-                      className="w-full bg-red-50/30 rounded-2xl border border-red-100"
+                      className="w-full bg-white rounded-2xl"
                       placeholder="YYYY-MM-DD"
                       minDate={formData.tglPo}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    {PO_FORM_LABELS.tglKirim}
+                  </label>
+                  <DateInputHybrid
+                    value={formData.tglKirim}
+                    onChange={(v) =>
+                      setFormData({ ...formData, tglKirim: v })
+                    }
+                    className="w-full bg-white rounded-2xl"
+                    placeholder="YYYY-MM-DD (opsional)"
+                  />
                 </div>
 
                 <div className="hidden md:block" />
@@ -1043,8 +1069,6 @@ function InputPODetailPageInner() {
                   />
                 </div>
 
-                <div className="hidden md:block" />
-
                 <div className="md:col-span-2 space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     {PO_FORM_LABELS.linkPo}
@@ -1057,7 +1081,7 @@ function InputPODetailPageInner() {
                     <input
                       type="url"
                       placeholder="https://..."
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                      className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                       onChange={(e) =>
                         setFormData({ ...formData, linkPo: e.target.value })
                       }
@@ -1071,11 +1095,57 @@ function InputPODetailPageInner() {
                   </label>
                   <input
                     type="text"
-                    placeholder="INV-202X"
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                    onChange={(e) =>
-                      setFormData({ ...formData, noInvoice: e.target.value })
-                    }
+                    placeholder="Nomor Invoice..."
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    value={formData.noInvoice}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({
+                        ...formData,
+                        noInvoice: v,
+                        status: { ...formData.status, ...(v.trim() ? { inv: true } : {}) }
+                      });
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Bukti Tagih
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ref Tagihan..."
+                    value={formData.buktiTagih}
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({
+                        ...formData,
+                        buktiTagih: v,
+                        status: { ...formData.status, ...(v.trim() ? { tagih: true } : {}) }
+                      });
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    Bukti Bayar
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ref Bayar..."
+                    value={formData.buktiBayar}
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({
+                        ...formData,
+                        buktiBayar: v,
+                        status: { ...formData.status, ...(v.trim() ? { bayar: true } : {}) }
+                      });
+                    }}
                   />
                 </div>
               </div>

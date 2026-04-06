@@ -175,7 +175,6 @@ export async function GET(request: Request) {
       const rows = await prisma.$queryRaw<
         Array<{
           cAll: number;
-          cProgress: number;
           cActive: number;
           cAssign: number;
           cAlmost: number;
@@ -185,12 +184,6 @@ export async function GET(request: Request) {
       >`
         SELECT
           COUNT(*)::int AS "cAll",
-          COUNT(*) FILTER (
-            WHERE
-              NOT (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
-              AND po."expiredTgl" IS NOT NULL
-              AND po."expiredTgl" >= ${startOfToday}
-          )::int AS "cProgress",
           COUNT(*) FILTER (
             WHERE
               (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
@@ -249,7 +242,6 @@ export async function GET(request: Request) {
       return (
         rows[0] || {
           cAll: 0,
-          cProgress: 0,
           cActive: 0,
           cAssign: 0,
           cAlmost: 0,
@@ -282,11 +274,6 @@ export async function GET(request: Request) {
     cacheSet(
       `po_stats_group:${safeRole}:${keyParams.toString()}:completed`,
       payload.cCompleted,
-      30000,
-    );
-    cacheSet(
-      `po_stats_group:${safeRole}:${keyParams.toString()}:progress`,
-      payload.cProgress,
       30000,
     );
     return NextResponse.json(payload);

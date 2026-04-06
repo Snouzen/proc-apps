@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getMe } from "@/lib/me";
 import PODetailModal from "@/components/po-detail-modal";
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown, X } from "lucide-react";
 import {
   ColumnDef,
   getCoreRowModel,
@@ -36,6 +36,7 @@ function CustomSelect({
   disabled = false,
   className = "",
   align = "left",
+  onClear,
 }: {
   value: string | number;
   onChange: (val: string) => void;
@@ -44,6 +45,7 @@ function CustomSelect({
   disabled?: boolean;
   className?: string;
   align?: "left" | "right";
+  onClear?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -61,10 +63,16 @@ function CustomSelect({
 
   return (
     <div ref={ref} className={`relative ${className}`}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen(!open)}
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        onClick={() => !disabled && setOpen(!open)}
+        onKeyDown={(e) => {
+          if (!disabled && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            setOpen(!open);
+          }
+        }}
         className={`flex h-10 w-full items-center justify-between rounded-xl border px-3 text-sm transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 ${
           disabled
             ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
@@ -72,13 +80,34 @@ function CustomSelect({
         }`}
       >
         <span className="truncate">{selectedLabel}</span>
-        <ChevronDown
-          size={16}
-          className={`ml-2 text-slate-400 transition-transform duration-200 ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+        <div className="flex items-center gap-1.5 ml-2">
+          {onClear && value && !disabled && (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClear();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  onClear();
+                }
+              }}
+              className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-rose-500 transition-colors"
+            >
+              <X size={14} />
+            </div>
+          )}
+          <ChevronDown
+            size={16}
+            className={`text-slate-400 transition-transform duration-200 ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </div>
+      </div>
 
       {open && !disabled && (
         <div
@@ -460,6 +489,17 @@ export default function NeedAssignPage() {
                   .filter(Boolean)
                   .sort()
                   .map((opt) => ({ value: opt, label: opt }))}
+                onClear={() =>
+                  setEdited((prev) => ({
+                    ...prev,
+                    [noPo]: {
+                      ...(prev[noPo] || {}),
+                      regional: "",
+                      siteArea: "", // Reset site area too if regional cleared
+                      error: null,
+                    },
+                  }))
+                }
                 className="min-w-[220px]"
               />
             </div>
@@ -531,6 +571,16 @@ export default function NeedAssignPage() {
                     : "Pilih…"
               }
               options={options.map((opt) => ({ value: opt, label: opt }))}
+              onClear={() =>
+                setEdited((prev) => ({
+                  ...prev,
+                  [noPo]: {
+                    ...(prev[noPo] || {}),
+                    siteArea: "",
+                    error: null,
+                  },
+                }))
+              }
               className="min-w-40"
             />
           </div>
@@ -569,7 +619,14 @@ export default function NeedAssignPage() {
       cell: ({ row }) => {
         const noPo = row.original.noPo;
         const st = edited[noPo] || {};
-        const canAssign = !!st.siteArea;
+        const canAssign =
+          role === "pusat"
+            ? !!(
+                st.regional ||
+                (row.original.regional && row.original.regional !== "UNKNOWN")
+              )
+            : !!st.siteArea;
+
         const onAssign = async () => {
           const reg =
             role === "pusat"
@@ -581,6 +638,8 @@ export default function NeedAssignPage() {
                 (row.original.regional && row.original.regional !== "UNKNOWN"
                   ? row.original.regional
                   : null);
+
+          // Validation logic based on role
           if (!reg) {
             setEdited((prev) => ({
               ...prev,
@@ -588,13 +647,15 @@ export default function NeedAssignPage() {
             }));
             return;
           }
-          if (!st.siteArea) {
+
+          if (role === "rm" && !st.siteArea) {
             setEdited((prev) => ({
               ...prev,
               [noPo]: { ...(prev[noPo] || {}), error: "Pilih site area" },
             }));
             return;
           }
+
           setEdited((prev) => ({
             ...prev,
             [noPo]: { ...(prev[noPo] || {}), saving: true, error: null },
@@ -603,27 +664,23 @@ export default function NeedAssignPage() {
             const res = await fetch("/api/po/assign", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ noPo, siteArea: st.siteArea }),
+              body: JSON.stringify({ noPo, siteArea: st.siteArea || "" }),
             });
             const json = await res.json().catch(() => null);
             if (!res.ok)
               throw new Error((json as any)?.error || res.statusText);
-            // Update row locally
-            setRows((prev) =>
-              prev.map((r) =>
-                r.noPo === noPo
-                  ? {
-                      ...r,
-                      regional: reg || r.regional,
-                      siteArea: st.siteArea || r.siteArea,
-                    }
-                  : r,
-              ),
-            );
-            setEdited((prev) => ({
-              ...prev,
-              [noPo]: { ...(prev[noPo] || {}), saving: false, ok: true },
-            }));
+            
+            // UI Improvement: Auto-Hide (Optimistic Update)
+            setRows((prev) => prev.filter((r) => r.noPo !== noPo));
+            setTotal((prev) => Math.max(0, prev - 1));
+
+            setEdited((prev) => {
+              const next = { ...prev };
+              delete next[noPo];
+              return next;
+            });
+            
+            // alert("PO berhasil di-assign!"); // Fallback as toast library not found
           } catch (e: any) {
             setEdited((prev) => ({
               ...prev,

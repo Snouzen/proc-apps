@@ -78,5 +78,30 @@ export const POBodySchema = z
         v == null || String(v).trim() === "" ? undefined : String(v).trim(),
       z.string().optional(),
     ),
+    tglKirim: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    buktiTagih: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    buktiBayar: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    namaSupir: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    platNomor: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
   })
   .strip();

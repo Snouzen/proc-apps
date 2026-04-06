@@ -262,9 +262,9 @@ export default function Home() {
   return (
     <main>
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6 gap-6">
         {showStatsSkeleton ? (
-          Array.from({ length: 7 }).map((_, i) => <StatCardSkeleton key={i} />)
+          Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
           <>
             <StatCard
@@ -275,6 +275,7 @@ export default function Home() {
               color=""
               variant="amber"
               icon={<Briefcase size={20} />}
+              tooltip="Total keseluruhan po"
             />
             <StatCard
               title="PO Active"
@@ -285,15 +286,7 @@ export default function Home() {
               variant="blue"
               icon={<Eye size={20} />}
               onClick={() => focusTable("active")}
-            />
-            <StatCard
-              title="PO In Progress"
-              value={String(inProgressCount)}
-              subValue={`${inProgressCount} open`}
-              subLabel=""
-              color=""
-              variant="blue"
-              icon={<ListChecks size={20} />}
+              tooltip="PO yang belum melewati tgl due date dan belum memiliki no invoice"
             />
             <StatCard
               title="PO Need To Assign"
@@ -304,6 +297,7 @@ export default function Home() {
               variant="amber"
               icon={<UserPlus size={20} />}
               onClick={() => focusTable("assign")}
+              tooltip="Regional/site area masih kosong"
             />
             <StatCard
               title="PO Almost Expired"
@@ -314,6 +308,7 @@ export default function Home() {
               variant="rose"
               icon={<ClockAlert size={20} />}
               onClick={() => focusTable("almost_expired")}
+              tooltip="PO h-1 due date"
             />
             <StatCard
               title="PO Expired"
@@ -324,6 +319,7 @@ export default function Home() {
               variant="rose"
               icon={<CalendarClock size={20} />}
               onClick={() => focusTable("expired")}
+              tooltip="Sudah melewati due date"
             />
             <StatCard
               title="PO Completed"
@@ -334,6 +330,7 @@ export default function Home() {
               variant="emerald"
               icon={<Check size={20} />}
               onClick={() => focusTable("completed")}
+              tooltip="PO completed"
             />
           </>
         )}
@@ -429,6 +426,7 @@ function TableUnderChart({
     nominal: true,
     submitDate: true,
     tglPo: true,
+    tglKirim: true,
     dueDate: true,
     regional: true,
     status: true,
@@ -731,6 +729,7 @@ function TableUnderChart({
       { key: "nominal", label: "Nominal" },
       { key: "submitDate", label: "Submit Date" },
       { key: "tglPo", label: "Tgl PO" },
+      { key: "tglKirim", label: "Tgl Kirim" },
       { key: "dueDate", label: "Tgl Expired" },
       { key: "regional", label: "Regional" },
       { key: "status", label: "Status" },
@@ -1027,6 +1026,11 @@ function TableUnderChart({
                   Tgl PO
                 </th>
               )}
+              {visibleCols.tglKirim && (
+                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
+                  Tgl Kirim
+                </th>
+              )}
               {visibleCols.dueDate && (
                 <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
                   Tgl Expired
@@ -1060,6 +1064,7 @@ function TableUnderChart({
                     Number(visibleCols.nominal) +
                     Number(visibleCols.submitDate) +
                     Number(visibleCols.tglPo) +
+                    Number(visibleCols.tglKirim) +
                     Number(visibleCols.dueDate) +
                     Number(visibleCols.regional) +
                     Number(visibleCols.status) +
@@ -1175,6 +1180,16 @@ function TableUnderChart({
                         </span>
                         <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
                           {toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}
+                        </span>
+                      </td>
+                    )}
+                    {visibleCols.tglKirim && (
+                      <td className="px-6 py-4 align-top">
+                        <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
+                          Tgl Kirim
+                        </span>
+                        <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                          {toDate((po as any).tglkirim || (po as any).tglKirim)?.toLocaleDateString("id-ID") || "-"}
                         </span>
                       </td>
                     )}

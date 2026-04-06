@@ -66,7 +66,12 @@ export default function POEditModal({
   const [tujuan, setTujuan] = useState("");
   const [noInvoice, setNoInvoice] = useState("");
   const [linkPo, setLinkPo] = useState("");
+  const [tglKirim, setTglKirim] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [buktiTagih, setBuktiTagih] = useState("");
+  const [buktiBayar, setBuktiBayar] = useState("");
+  const [namaSupir, setNamaSupir] = useState("");
+  const [platNomor, setPlatNomor] = useState("");
   const [status, setStatus] = useState({
     kirim: false,
     sdif: false,
@@ -223,52 +228,46 @@ export default function POEditModal({
   }, [companyRitelRows, isKnownInisial, inisial]);
 
 
+  // UX FIX: Robust Regional Matching using keyify
+  const keyify = (s: any) =>
+    String(s ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\bregional\b/g, "reg")
+      .replace(/([a-z])([0-9])/g, "$1 $2")
+      .replace(/([0-9])([a-z])/g, "$1 $2")
+      .replace(/\s+/g, " ");
+
   const siteAreaOptions = useMemo(() => {
-    // DEBUG: Role-based Form Logic - Super Forgiving Match Debug
-    if (regional && unitData.length > 0) {
-      console.log("DEBUG REGIONAL MATCH (EditModal):", {
-        session: regional,
-        dbSample: unitData[0]?.namaRegional,
-      });
+    if (!regional || !unitData || unitData.length === 0) return [];
+
+    // 1. Group master data by keyified regional
+    const map: Record<string, string[]> = {};
+    for (const u of unitData) {
+      const k = keyify(u.namaRegional || "");
+      if (!k) continue;
+      if (!map[k]) map[k] = [];
+      if (u.siteArea && u.siteArea !== "UNKNOWN") {
+        map[k].push(String(u.siteArea).trim());
+      }
     }
 
-    return Array.from(
-      new Set(
-        (Array.isArray(unitData) ? unitData : [])
-          .filter((u: any) => {
-            // FEATURE: Role-based Form Logic - Cascading Filter Site Area (Super Forgiving)
-            if (!regional) return false;
+    const siteRegionalKeys = Object.keys(map);
+    const regKey = keyify(regional);
 
-            const sRaw = String(regional).toLowerCase().trim();
-            const dRaw = String(u?.namaRegional || "").toLowerCase().trim();
-            
-            const sNorm = norm(sRaw);
-            const dNorm = norm(dRaw);
+    // 2. Resolve matching key with fallback (same as need-assign)
+    const resolvedKey =
+      regKey && map[regKey]
+        ? regKey
+        : siteRegionalKeys.find(
+            (k) => (regKey && k.includes(regKey)) || regKey.includes(k),
+          ) || regKey;
 
-            // 1. Basic Equality or Double-includes
-            if (
-              sNorm === dNorm ||
-              sNorm.includes(dNorm) ||
-              dNorm.includes(sNorm)
-            )
-              return true;
+    const options = resolvedKey ? map[resolvedKey] || [] : [];
 
-            // 2. Keyword Split (Super Forgiving Match)
-            const noise = ["regional", "reg"];
-            const sKeywords = sNorm
-              .split(/\s+/)
-              .filter(
-                (w) =>
-                  !noise.includes(w) && isNaN(Number(w)) && w.length > 2,
-              );
-
-            // Jika ada kata kunci session yang terkandung dalam data DB, anggap match
-            return sKeywords.some((sw) => dNorm.includes(sw));
-          })
-          .map((u: any) => String(u?.siteArea || "").trim())
-          .filter((s) => s && s !== "UNKNOWN"),
-      ),
-    ).sort((a, b) => a.localeCompare(b));
+    // 3. Return unique and sorted options
+    return Array.from(new Set(options)).sort((a, b) => a.localeCompare(b));
   }, [unitData, regional]);
 
   const regionalOptions = useMemo(() => {
@@ -340,22 +339,45 @@ export default function POEditModal({
         setCompany(cName);
         setInisial(String(poRow?.RitelModern?.inisial || ""));
 
-        // FEATURE: Role-based Form Logic - Set Default Regional from Session
+        // FIX: Auto-mapping & Sanitizer untuk Regional dan Site Area
+        const rawReg = String(
+          poRow?.regional || poRow?.UnitProduksi?.namaRegional || "",
+        ).trim();
+        let resolvedReg = rawReg;
+
+        // Auto-map alias DB (misal "REG 1") ke Master Data persis ("Regional 1")
+        if (rawReg && rawReg !== "UNKNOWN") {
+          const rKey = keyify(rawReg);
+          const match = units.find((u: any) => keyify(u.namaRegional) === rKey);
+          if (match && match.namaRegional) {
+            resolvedReg = match.namaRegional;
+          }
+        }
+
         const session = await getMe();
         if (session && session.role === "rm" && session.regional) {
           setRegional(session.regional);
         } else {
-          setRegional(
-            String(poRow?.regional || poRow?.UnitProduksi?.namaRegional || ""),
-          );
+          if (resolvedReg === "UNKNOWN" || resolvedReg.includes("BELUM ADA")) {
+            setRegional("");
+          } else {
+            setRegional(resolvedReg);
+          }
         }
 
-        setSiteArea(
-          poRow?.UnitProduksi?.siteArea &&
-            poRow.UnitProduksi.siteArea !== "UNKNOWN"
-            ? String(poRow.UnitProduksi.siteArea)
-            : "",
-        );
+        // Bersihkan string invalid agar Combobox tidak mem-filter dengan kata salah
+        const rawSite = String(
+          poRow?.siteArea || poRow?.UnitProduksi?.siteArea || "",
+        ).trim();
+        if (
+          rawSite === "UNKNOWN" ||
+          rawSite.includes("BELUM ADA") ||
+          rawSite === "-"
+        ) {
+          setSiteArea("");
+        } else {
+          setSiteArea(rawSite);
+        }
 
         setNoPoValue(String(poRow?.noPo || noPo || ""));
         setTglPo(toYMD(poRow?.tglPo));
@@ -363,7 +385,12 @@ export default function POEditModal({
         setTujuan(String(poRow?.tujuanDetail || ""));
         setNoInvoice(String(poRow?.noInvoice || ""));
         setLinkPo(String(poRow?.linkPo || ""));
+        setTglKirim(toYMD(poRow?.tglkirim || null));
         setRemarks(String(poRow?.remarks || ""));
+        setBuktiTagih(String(poRow?.buktiTagih || ""));
+        setBuktiBayar(String(poRow?.buktiBayar || ""));
+        setNamaSupir(String(poRow?.namaSupir || ""));
+        setPlatNomor(String(poRow?.platNomor || ""));
         setStatus({
           kirim: !!poRow?.statusKirim,
           sdif: !!poRow?.statusSdif,
@@ -507,6 +534,11 @@ export default function POEditModal({
         noInvoice: noInvoice || null,
         tujuan: tujuan.trim(),
         remarks: remarks || null,
+        buktiTagih: buktiTagih || null,
+        buktiBayar: buktiBayar || null,
+        namaSupir: namaSupir || null,
+        platNomor: platNomor || null,
+        tglKirim: tglKirim || undefined,
         status,
         items: items.map((it) => ({
           namaProduk: String(it.namaProduk || "").trim(),
@@ -666,7 +698,47 @@ export default function POEditModal({
                 />
               </div>
 
-              <div className="hidden md:block" />
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.tglKirim}
+                </label>
+                <DateInputHybrid
+                  value={tglKirim}
+                  onChange={setTglKirim}
+                  className="w-full bg-blue-50/30 rounded-2xl border border-blue-100"
+                  placeholder="YYYY-MM-DD (opsional)"
+                />
+              </div>
+
+              {noPo && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                      Nama Supir
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Identitas Supir..."
+                      value={namaSupir}
+                      onChange={(e) => setNamaSupir(e.target.value)}
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                      Plat Nomor
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Plat Kendaraan..."
+                      value={platNomor}
+                      onChange={(e) => setPlatNomor(e.target.value)}
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
@@ -690,7 +762,10 @@ export default function POEditModal({
                   <Select
                     options={regionalOptions}
                     value={regional}
-                    onChange={(v) => setRegional(v)}
+                    onChange={(v) => {
+                      setRegional(v);
+                      setSiteArea(""); // Reset site area agar tidak nyangkut dari regional sebelumnya
+                    }}
                     placeholder="Pilih Regional"
                     leftIcon={<MapPin size={16} />}
                   />
@@ -712,9 +787,7 @@ export default function POEditModal({
                 />
               </div>
 
-              <div className="hidden md:block" />
-
-              <div className="md:col-span-2 space-y-1">
+              <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                   {PO_FORM_LABELS.linkPo}
                 </label>
@@ -727,10 +800,22 @@ export default function POEditModal({
                     type="url"
                     placeholder="https://..."
                     value={linkPo}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                     onChange={(e) => setLinkPo(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  {PO_FORM_LABELS.noPo}
+                </label>
+                <input
+                  value={noPoValue}
+                  onChange={(e) => setNoPoValue(e.target.value)}
+                  placeholder="Masukkan Nomor PO..."
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                />
               </div>
 
               <div className="space-y-1">
@@ -739,21 +824,48 @@ export default function POEditModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="INV-202X"
+                  placeholder="Nomor Invoice..."
                   value={noInvoice}
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
-                  onChange={(e) => setNoInvoice(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setNoInvoice(v);
+                    if (v.trim()) setStatus((p) => ({ ...p, inv: true }));
+                  }}
                 />
               </div>
 
-              <div className="md:col-span-3 space-y-1">
+              <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  {PO_FORM_LABELS.noPo}
+                  Bukti Tagih
                 </label>
                 <input
-                  value={noPoValue}
-                  onChange={(e) => setNoPoValue(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                  type="text"
+                  placeholder="Ref Tagihan..."
+                  value={buktiTagih}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setBuktiTagih(v);
+                    if (v.trim()) setStatus((p) => ({ ...p, tagih: true }));
+                  }}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  Bukti Bayar
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ref Bayar..."
+                  value={buktiBayar}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setBuktiBayar(v);
+                    if (v.trim()) setStatus((p) => ({ ...p, bayar: true }));
+                  }}
                 />
               </div>
             </div>

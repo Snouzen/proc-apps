@@ -75,7 +75,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Forbidden: Unauthorized role for scheduling" }, { status: 403 });
     }
 
-    const { id, tglKirim } = await request.json();
+    const { id, tglKirim, namaSupir, platNomor } = await request.json();
     if (!id) {
       return NextResponse.json({ error: "ID PO wajib diisi" }, { status: 400 });
     }
@@ -87,6 +87,8 @@ export async function PATCH(request: Request) {
       where: { id },
       data: {
         tglkirim: parsedDate,
+        namaSupir: namaSupir || null,
+        platNomor: platNomor || null,
         updatedAt: new Date()
       }
     });

@@ -1,3 +1,5 @@
+import { Info } from "lucide-react";
+
 interface StatCardProps {
   title: string;
   value: string;
@@ -8,6 +10,7 @@ interface StatCardProps {
   variant: "amber" | "blue" | "emerald" | "rose";
   onClick?: () => void;
   clickable?: boolean;
+  tooltip?: string;
 }
 
 export default function StatCard({
@@ -20,6 +23,7 @@ export default function StatCard({
   variant,
   onClick,
   clickable,
+  tooltip,
 }: StatCardProps) {
   const variants = {
     amber:
@@ -53,9 +57,28 @@ export default function StatCard({
   const content = (
     <>
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-sm font-bold text-slate-600 tracking-tight">
-          {title}
-        </h3>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5 relative group/tooltip">
+            <h3 className="text-sm font-bold text-slate-600 tracking-tight">
+              {title}
+            </h3>
+            {tooltip && (
+              <>
+                <div className="cursor-help">
+                  <Info size={14} className="text-slate-400 hover:text-slate-600 transition-colors" />
+                </div>
+                {/* Custom Premium Tooltip */}
+                <div className="absolute bottom-full left-0 mb-2 w-48 p-2.5 bg-white/90 backdrop-blur-md border border-slate-200 rounded-xl shadow-xl opacity-0 group-hover/tooltip:opacity-100 group-hover/tooltip:translate-y-0 translate-y-2 pointer-events-none transition-all duration-200 z-[100]">
+                  <p className="text-[11px] font-medium leading-relaxed text-slate-600">
+                    {tooltip}
+                  </p>
+                  {/* Tooltip Arrow */}
+                  <div className="absolute -bottom-1 left-3 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45" />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
         <div className={`p-2 rounded-xl ${iconColors[variant]}`}>{icon}</div>
       </div>
 

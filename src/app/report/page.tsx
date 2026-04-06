@@ -29,17 +29,22 @@ type Row = {
   noPo: string;
   company: string;
   inisial: string;
-  tujuan: string;
-  tglPo: string;
-  expiredTgl: string;
-  siteArea: string;
   regional: string;
+  siteArea: string;
+  tglPo: string;
+  tglkirim: string;
+  expiredTgl: string;
+
   noInvoice: string;
+  buktiTagih: string;
+  buktiBayar: string;
+
+  namaSupir: string;
+  platNomor: string;
+  tujuanDetail: string;
+  remarks: string;
   linkPo: string;
-  productList: string[];
-  products: string;
-  totalNominal: number;
-  totalTagihan: number;
+
   statusKirim: boolean;
   statusSdif: boolean;
   statusPo: boolean;
@@ -48,10 +53,21 @@ type Row = {
   statusInv: boolean;
   statusTagih: boolean;
   statusBayar: boolean;
+
+  namaProduk: string;
+  pcs: number;
+  pcsKirim: number;
+  satuanKg: number;
+  kg: number;
+  hargaPcs: number;
+  hargaKg: number;
+  nominal: number;
+  discount: number;
+  rpTagih: number;
+
   updatedAt: string;
   createdAt: string;
   submitDate: string;
-  pcsKirim: number;
 };
 
 type Column = {
@@ -97,23 +113,23 @@ const formatCurrency = (n: number) =>
 
 const EXCLUDED_FILTER_COLS = [
   "tglPo",
+  "tglkirim",
   "expiredTgl",
   "createdAt",
   "updatedAt",
   "submitDate",
-  "totalNominal",
-  "totalTagihan",
   "no",
   "linkPo",
-  "kg",
   "pcs",
-  "hargaKg",
   "pcsKirim",
+  "satuanKg",
+  "kg",
   "hargaPcs",
-  "discount",
+  "hargaKg",
   "nominal",
-  "kirim",
+  "discount",
   "rpTagih",
+  "statusKirim",
   "statusSdif",
   "statusPo",
   "statusFp",
@@ -121,7 +137,6 @@ const EXCLUDED_FILTER_COLS = [
   "statusInv",
   "statusTagih",
   "statusBayar",
-  "statusKirim",
 ];
 
 function CustomFilterDropdown({
@@ -325,170 +340,52 @@ export default function ReportPage() {
 
   const columns: Column[] = useMemo(
     () => [
-      {
-        id: "no",
-        label: "No",
-        kind: "number",
-        defaultVisible: true,
-        value: (r) => r.no,
-      },
-      {
-        id: "noPo",
-        label: "No PO",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.noPo,
-      },
-      {
-        id: "company",
-        label: "Company",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.company,
-      },
-      {
-        id: "inisial",
-        label: "Inisial",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.inisial,
-      },
-      {
-        id: "tujuan",
-        label: "Tujuan",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.tujuan,
-      },
-      {
-        id: "tglPo",
-        label: "Tgl PO",
-        kind: "date",
-        defaultVisible: true,
-        value: (r) => r.tglPo,
-      },
-      {
-        id: "expiredTgl",
-        label: "Expired",
-        kind: "date",
-        defaultVisible: true,
-        value: (r) => r.expiredTgl,
-      },
-      {
-        id: "siteArea",
-        label: "Site Area",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.siteArea,
-      },
-      {
-        id: "regional",
-        label: "Regional",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.regional,
-      },
-      {
-        id: "noInvoice",
-        label: "No Invoice",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.noInvoice,
-      },
-      {
-        id: "linkPo",
-        label: "Link PO",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.linkPo,
-      },
-      {
-        id: "products",
-        label: "Nama Produk",
-        kind: "text",
-        defaultVisible: true,
-        value: (r) => r.products,
-      },
-      {
-        id: "pcsKirim",
-        label: "PCS Kirim",
-        kind: "number",
-        defaultVisible: true,
-        value: (r) => {
-          // Relational logic: show the sum or the specific value if it's already mapped
-          return r.pcsKirim;
-        },
-      },
-      {
-        id: "totalNominal",
-        label: "Total Nominal",
-        kind: "number",
-        defaultVisible: true,
-        value: (r) => r.totalNominal,
-      },
-      {
-        id: "totalTagihan",
-        label: "Total Tagihan",
-        kind: "number",
-        defaultVisible: true,
-        value: (r) => r.totalTagihan,
-      },
-      {
-        id: "statusKirim",
-        label: "Kirim",
-        kind: "bool",
-        defaultVisible: true,
-        value: (r) => r.statusKirim,
-      },
-      {
-        id: "statusPo",
-        label: "PO",
-        kind: "bool",
-        defaultVisible: true,
-        value: (r) => r.statusPo,
-      },
-      {
-        id: "statusInv",
-        label: "Inv",
-        kind: "bool",
-        defaultVisible: true,
-        value: (r) => r.statusInv,
-      },
-      {
-        id: "statusBayar",
-        label: "Bayar",
-        kind: "bool",
-        defaultVisible: true,
-        value: (r) => r.statusBayar,
-      },
-      {
-        id: "statusSdif",
-        label: "SDIF",
-        kind: "bool",
-        defaultVisible: true,
-        value: (r) => r.statusSdif,
-      },
-      {
-        id: "statusFp",
-        label: "FP",
-        kind: "bool",
-        defaultVisible: true,
-        value: (r) => r.statusFp,
-      },
-      {
-        id: "statusKwi",
-        label: "Kwi",
-        kind: "bool",
-        defaultVisible: true,
-        value: (r) => r.statusKwi,
-      },
-      {
-        id: "statusTagih",
-        label: "Tagih",
-        kind: "bool",
-        defaultVisible: true,
-        value: (r) => r.statusTagih,
-      },
+      // ─── INFO PO ───
+      { id: "no", label: "No", kind: "number", defaultVisible: true, value: (r) => r.no },
+      { id: "noPo", label: "No PO", kind: "text", defaultVisible: true, value: (r) => r.noPo },
+      { id: "company", label: "Company", kind: "text", defaultVisible: true, value: (r) => r.company },
+      { id: "inisial", label: "Inisial", kind: "text", defaultVisible: true, value: (r) => r.inisial },
+      { id: "regional", label: "Regional", kind: "text", defaultVisible: true, value: (r) => r.regional },
+      { id: "siteArea", label: "Site Area", kind: "text", defaultVisible: true, value: (r) => r.siteArea },
+
+      // ─── TIMELINE ───
+      { id: "tglPo", label: "Tgl PO", kind: "date", defaultVisible: true, value: (r) => r.tglPo },
+      { id: "tglkirim", label: "Tgl Kirim", kind: "date", defaultVisible: true, value: (r) => r.tglkirim },
+      { id: "expiredTgl", label: "Expired", kind: "date", defaultVisible: true, value: (r) => r.expiredTgl },
+
+      // ─── DOKUMEN & KEUANGAN ───
+      { id: "noInvoice", label: "No Invoice", kind: "text", defaultVisible: true, value: (r) => r.noInvoice },
+      { id: "buktiTagih", label: "Bukti Tagih", kind: "text", defaultVisible: true, value: (r) => r.buktiTagih },
+      { id: "buktiBayar", label: "Bukti Bayar", kind: "text", defaultVisible: true, value: (r) => r.buktiBayar },
+      { id: "linkPo", label: "Link PO", kind: "text", defaultVisible: true, value: (r) => r.linkPo },
+
+      // ─── LOGISTIK ───
+      { id: "namaSupir", label: "Nama Supir", kind: "text", defaultVisible: true, value: (r) => r.namaSupir },
+      { id: "platNomor", label: "Plat Nomor", kind: "text", defaultVisible: true, value: (r) => r.platNomor },
+      { id: "tujuanDetail", label: "Tujuan Detail", kind: "text", defaultVisible: true, value: (r) => r.tujuanDetail },
+      { id: "remarks", label: "Remarks", kind: "text", defaultVisible: true, value: (r) => r.remarks },
+
+      // ─── STATUS ───
+      { id: "statusKirim", label: "Kirim", kind: "bool", defaultVisible: true, value: (r) => r.statusKirim },
+      { id: "statusPo", label: "PO", kind: "bool", defaultVisible: true, value: (r) => r.statusPo },
+      { id: "statusInv", label: "Inv", kind: "bool", defaultVisible: true, value: (r) => r.statusInv },
+      { id: "statusBayar", label: "Bayar", kind: "bool", defaultVisible: true, value: (r) => r.statusBayar },
+      { id: "statusSdif", label: "SDIF", kind: "bool", defaultVisible: true, value: (r) => r.statusSdif },
+      { id: "statusFp", label: "FP", kind: "bool", defaultVisible: true, value: (r) => r.statusFp },
+      { id: "statusKwi", label: "Kwi", kind: "bool", defaultVisible: true, value: (r) => r.statusKwi },
+      { id: "statusTagih", label: "Tagih", kind: "bool", defaultVisible: true, value: (r) => r.statusTagih },
+
+      // ─── DETAIL ITEM (FLAT) ───
+      { id: "namaProduk", label: "Produk", kind: "text", defaultVisible: true, value: (r) => r.namaProduk },
+      { id: "pcs", label: "PCS", kind: "number", defaultVisible: true, value: (r) => r.pcs },
+      { id: "pcsKirim", label: "PCS Kirim", kind: "number", defaultVisible: true, value: (r) => r.pcsKirim },
+      { id: "satuanKg", label: "Berat Satuan (Kg)", kind: "number", defaultVisible: true, value: (r) => r.satuanKg },
+      { id: "kg", label: "Total Kg", kind: "number", defaultVisible: true, value: (r) => r.kg },
+      { id: "hargaPcs", label: "Harga/Pcs", kind: "number", defaultVisible: true, value: (r) => r.hargaPcs },
+      { id: "hargaKg", label: "Harga/Kg", kind: "number", defaultVisible: true, value: (r) => r.hargaKg },
+      { id: "discount", label: "Diskon", kind: "number", defaultVisible: true, value: (r) => r.discount },
+      { id: "nominal", label: "Nominal", kind: "number", defaultVisible: true, value: (r) => r.nominal },
+      { id: "rpTagih", label: "Rp Tagih", kind: "number", defaultVisible: true, value: (r) => r.rpTagih },
     ],
     [],
   );
@@ -611,62 +508,66 @@ export default function ReportPage() {
 
   const rows: Row[] = useMemo(() => {
     const arr = Array.isArray(raw) ? raw : [];
-    return arr.map((po: any, index: number) => {
-      const items = Array.isArray(po?.Items) ? po.Items : [];
-      const productList = items
-        .map((it: any) => upperClean(it?.Product?.name || ""))
-        .filter((s: string) => s.trim().length > 0);
-      const totalTagihan =
-        Number(po?.totalTagihan) ||
-        items.reduce(
-          (acc: number, it: any) => acc + (Number(it?.rpTagih) || 0),
-          0,
-        );
-      const totalNominal =
-        Number(po?.totalNominal) ||
-        items.reduce(
-          (acc: number, it: any) => acc + (Number(it?.nominal) || 0),
-          0,
-        );
-      return {
-        no: (page - 1) * rowsPerPage + index + 1,
-        id: String(po?.id || po?.noPo || crypto.randomUUID()),
-        noPo: upperClean(po?.noPo || "-"),
-        company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
-        inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || ""),
-        tujuan: upperClean(po?.tujuanDetail || po?.tujuan || ""),
-        tglPo: toYMD(po?.tglPo || null),
-        expiredTgl: toYMD(po?.expiredTgl || null),
-        siteArea: upperClean(
-          po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
-            ? po.UnitProduksi.siteArea
-            : "",
-        ),
-        regional: upperClean(
-          po?.regional || po?.UnitProduksi?.namaRegional || "",
-        ),
-        noInvoice: upperClean(po?.noInvoice || ""),
-        linkPo: String(po?.linkPo || ""),
-        productList,
-        products: productList.join(", "),
-        totalNominal,
-        totalTagihan,
-        statusKirim: !!po?.statusKirim,
-        statusSdif: !!po?.statusSdif,
-        statusPo: !!po?.statusPo,
-        statusFp: !!po?.statusFp,
-        statusKwi: !!po?.statusKwi,
-        statusInv: !!po?.statusInv,
-        statusTagih: !!po?.statusTagih,
-        statusBayar: !!po?.statusBayar,
-        updatedAt: toYMD(po?.updatedAt || null),
-        createdAt: toYMD(po?.createdAt || null),
-        submitDate: toYMD(po?.createdAt || po?.updatedAt || po?.tglPo || null),
-        pcsKirim: items.reduce(
-          (acc: number, it: any) => acc + (Number(it?.pcsKirim) || 0),
-          0,
-        ),
-      };
+    return arr.flatMap((po: any, poIndex: number) => {
+      const items = Array.isArray(po?.Items) && po.Items.length > 0 ? po.Items : [null];
+      
+      return items.map((it: any, itemIndex: number) => {
+        return {
+          no: (page - 1) * rowsPerPage + poIndex + 1,
+          id: String(po?.id || po?.noPo || crypto.randomUUID()) + `-${itemIndex}`,
+          
+          // INFO PO
+          noPo: upperClean(po?.noPo || "-"),
+          company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
+          inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || ""),
+          regional: upperClean(po?.regional || po?.UnitProduksi?.namaRegional || ""),
+          siteArea: upperClean(po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN" ? po.UnitProduksi.siteArea : ""),
+
+          // TIMELINE
+          tglPo: toYMD(po?.tglPo),
+          tglkirim: toYMD(po?.tglkirim),
+          expiredTgl: toYMD(po?.expiredTgl),
+
+          // DOKUMEN & KEUANGAN
+          noInvoice: upperClean(po?.noInvoice || ""),
+          buktiTagih: po?.buktiTagih || "-",
+          buktiBayar: po?.buktiBayar || "-",
+          linkPo: String(po?.linkPo || "-"),
+
+          // LOGISTIK
+          namaSupir: po?.namaSupir || "-",
+          platNomor: po?.platNomor || "-",
+          tujuanDetail: po?.tujuanDetail || po?.tujuan || "-",
+          remarks: po?.remarks || "-",
+
+          // STATUS
+          statusKirim: !!po?.statusKirim,
+          statusSdif: !!po?.statusSdif,
+          statusPo: !!po?.statusPo,
+          statusFp: !!po?.statusFp,
+          statusKwi: !!po?.statusKwi,
+          statusInv: !!po?.statusInv,
+          statusTagih: !!po?.statusTagih,
+          statusBayar: !!po?.statusBayar,
+
+          // DETAIL ITEM (FLAT)
+          namaProduk: it?.Product?.name || it?.namaProduk || "-",
+          pcs: Number(it?.pcs) || 0,
+          pcsKirim: Number(it?.pcsKirim) || 0,
+          satuanKg: Number(it?.Product?.satuanKg) || 0,
+          kg: (Number(it?.pcs) || 0) * (Number(it?.Product?.satuanKg) || 0),
+          hargaPcs: Number(it?.hargaPcs) || 0,
+          hargaKg: Number(it?.hargaKg) || 0,
+          nominal: Number(it?.nominal) || ((Number(it?.pcs) || 0) * (Number(it?.hargaPcs) || 0)),
+          discount: Number(it?.discount) || 0,
+          rpTagih: Number(it?.rpTagih) || 0,
+
+          // METADATA
+          updatedAt: toYMD(po?.updatedAt),
+          createdAt: toYMD(po?.createdAt),
+          submitDate: toYMD(po?.createdAt || po?.updatedAt || po?.tglPo),
+        };
+      });
     });
   }, [raw, page, rowsPerPage]);
 
@@ -707,11 +608,13 @@ export default function ReportPage() {
           r.noPo,
           r.company,
           r.inisial,
-          r.tujuan,
+          r.tujuanDetail,
           r.siteArea,
           r.regional,
           r.noInvoice,
-          r.products,
+          r.namaProduk,
+          r.namaSupir,
+          r.platNomor,
         ]
           .map((x) => upperClean(x))
           .join(" ");
@@ -856,91 +759,84 @@ export default function ReportPage() {
         if (list.length < chunk) break;
       }
 
-      const mapped: Row[] = (Array.isArray(all) ? all : []).map(
-        (po: any, i: number) => {
-          const items = Array.isArray(po?.Items) ? po.Items : [];
-          const productList = items
-            .map((it: any) => upperClean(it?.Product?.name || ""))
-            .filter((s: string) => s.trim().length > 0);
-          const totalTagihan =
-            Number(po?.totalTagihan) ||
-            items.reduce(
-              (acc: number, it: any) => acc + (Number(it?.rpTagih) || 0),
-              0,
-            );
-          const totalNominal =
-            Number(po?.totalNominal) ||
-            items.reduce(
-              (acc: number, it: any) => acc + (Number(it?.nominal) || 0),
-              0,
-            );
-          return {
-            no: i + 1,
-            id: String(po?.id || po?.noPo || crypto.randomUUID()),
-            noPo: upperClean(po?.noPo || "-"),
-            company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
-            inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || ""),
-            tujuan: upperClean(po?.tujuanDetail || po?.tujuan || ""),
-            tglPo: toYMD(po?.tglPo || null),
-            expiredTgl: toYMD(po?.expiredTgl || null),
-            siteArea: upperClean(
-              po?.UnitProduksi?.siteArea &&
-                po.UnitProduksi.siteArea !== "UNKNOWN"
-                ? po.UnitProduksi.siteArea
-                : "",
-            ),
-            regional: upperClean(
-              po?.regional || po?.UnitProduksi?.namaRegional || "",
-            ),
-            noInvoice: upperClean(po?.noInvoice || ""),
-            linkPo: String(po?.linkPo || ""),
-            productList,
-            products: productList.join(", "),
-            totalNominal,
-            totalTagihan,
-            statusKirim: !!po?.statusKirim,
-            statusSdif: !!po?.statusSdif,
-            statusPo: !!po?.statusPo,
-            statusFp: !!po?.statusFp,
-            statusKwi: !!po?.statusKwi,
-            statusInv: !!po?.statusInv,
-            statusTagih: !!po?.statusTagih,
-            statusBayar: !!po?.statusBayar,
-            updatedAt: toYMD(po?.updatedAt || null),
-            createdAt: toYMD(po?.createdAt || null),
-            submitDate: toYMD(
-              po?.createdAt || po?.updatedAt || po?.tglPo || null,
-            ),
-            pcsKirim: items.reduce(
-              (acc: number, it: any) => acc + (Number(it?.pcsKirim) || 0),
-              0,
-            ),
-          };
+      let currentRowNo = 0;
+      const mapped: Row[] = (Array.isArray(all) ? all : []).flatMap(
+        (po: any) => {
+          const items = Array.isArray(po?.Items) && po.Items.length > 0 ? po.Items : [null];
+          
+          return items.map((it: any, itemIndex: number) => {
+            currentRowNo += 1;
+            return {
+              no: currentRowNo,
+              id: String(po?.id || po?.noPo || crypto.randomUUID()) + `-${itemIndex}`,
+              
+              // INFO PO
+              noPo: upperClean(po?.noPo || "-"),
+              company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
+              inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || ""),
+              regional: upperClean(po?.regional || po?.UnitProduksi?.namaRegional || ""),
+              siteArea: upperClean(po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN" ? po.UnitProduksi.siteArea : ""),
+
+              // TIMELINE
+              tglPo: toYMD(po?.tglPo),
+              tglkirim: toYMD(po?.tglkirim),
+              expiredTgl: toYMD(po?.expiredTgl),
+
+              // DOKUMEN & KEUANGAN
+              noInvoice: upperClean(po?.noInvoice || ""),
+              buktiTagih: po?.buktiTagih || "-",
+              buktiBayar: po?.buktiBayar || "-",
+              linkPo: String(po?.linkPo || "-"),
+
+              // LOGISTIK
+              namaSupir: po?.namaSupir || "-",
+              platNomor: po?.platNomor || "-",
+              tujuanDetail: po?.tujuanDetail || po?.tujuan || "-",
+              remarks: po?.remarks || "-",
+
+              // STATUS
+              statusKirim: !!po?.statusKirim,
+              statusSdif: !!po?.statusSdif,
+              statusPo: !!po?.statusPo,
+              statusFp: !!po?.statusFp,
+              statusKwi: !!po?.statusKwi,
+              statusInv: !!po?.statusInv,
+              statusTagih: !!po?.statusTagih,
+              statusBayar: !!po?.statusBayar,
+
+              // DETAIL ITEM (FLAT)
+              namaProduk: it?.Product?.name || it?.namaProduk || "-",
+              pcs: Number(it?.pcs) || 0,
+              pcsKirim: Number(it?.pcsKirim) || 0,
+              satuanKg: Number(it?.Product?.satuanKg) || 0,
+              kg: (Number(it?.pcs) || 0) * (Number(it?.Product?.satuanKg) || 0),
+              hargaPcs: Number(it?.hargaPcs) || 0,
+              hargaKg: Number(it?.hargaKg) || 0,
+              nominal: Number(it?.nominal) || ((Number(it?.pcs) || 0) * (Number(it?.hargaPcs) || 0)),
+              discount: Number(it?.discount) || 0,
+              rpTagih: Number(it?.rpTagih) || 0,
+
+              // METADATA
+              updatedAt: toYMD(po?.updatedAt),
+              createdAt: toYMD(po?.createdAt),
+              submitDate: toYMD(po?.createdAt || po?.updatedAt || po?.tglPo),
+            };
+          });
         },
       );
 
-      const data = mapped.flatMap((r) => {
-        const products =
-          Array.isArray(r.productList) && r.productList.length > 0
-            ? r.productList
-            : [""];
-        return products.map((p) => {
-          const row: Record<string, any> = {};
-          cols.forEach((c) => {
-            if (String(c.id) === "products") {
-              row[c.label] = String(p || "");
-              return;
-            }
-            const v = c.value(r);
-            if (c.kind === "number") row[c.label] = Number(v) || 0;
-            else if (c.kind === "bool") row[c.label] = !!v;
-            else if (c.kind === "date") {
-              // Convert string YYYY-MM-DD to Date object for Excel
-              row[c.label] = v && v !== "-" ? new Date(v as any) : null;
-            } else row[c.label] = String(v ?? "");
-          });
-          return row;
+      const data = mapped.map((r) => {
+        const row: Record<string, any> = {};
+        cols.forEach((c) => {
+          const v = c.value(r);
+          if (c.kind === "number") row[c.label] = Number(v) || 0;
+          else if (c.kind === "bool") row[c.label] = !!v;
+          else if (c.kind === "date") {
+            // Convert string YYYY-MM-DD to Date object for Excel
+            row[c.label] = v && v !== "-" ? new Date(v as any) : null;
+          } else row[c.label] = String(v ?? "");
         });
+        return row;
       });
 
       const ws = XLSX.utils.json_to_sheet(data, { cellDates: true });
@@ -1273,14 +1169,17 @@ export default function ReportPage() {
           <table className="min-w-full text-sm text-left">
             <thead className="sticky top-0 z-20 bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-wider">
               <tr>
-                {visibleColumns.map((c) => (
-                  <th
-                    key={String(c.id)}
-                    className="px-4 py-3 whitespace-nowrap bg-slate-50"
-                  >
-                    {c.label}
-                  </th>
-                ))}
+                {visibleColumns.map((c) => {
+                  const isItemField = ['namaProduk', 'pcs', 'pcsKirim', 'satuanKg', 'kg', 'hargaPcs', 'hargaKg', 'discount', 'nominal', 'rpTagih'].includes(String(c.id));
+                  return (
+                    <th
+                      key={String(c.id)}
+                      className={`px-4 py-3 whitespace-nowrap bg-slate-50 ${isItemField ? "text-indigo-600" : ""}`}
+                    >
+                      {c.label}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 uppercase">
@@ -1292,7 +1191,7 @@ export default function ReportPage() {
                         key={`${i}-${String(c.id)}`}
                         className="px-4 py-3 whitespace-nowrap"
                       >
-                        <div className="h-4 w-full max-w-[160px] bg-slate-100 rounded" />
+                        <div className="h-4 w-full min-w-[60px] bg-slate-100 rounded" />
                       </td>
                     ))}
                   </tr>
@@ -1308,24 +1207,22 @@ export default function ReportPage() {
                 </tr>
               ) : (
                 pageRows.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/60">
+                  <tr key={r.id} className="hover:bg-slate-50/60 text-[12px] border-b border-slate-50">
                     {visibleColumns.map((c) => {
                       const v = c.value(r);
-                      const isStatus = c.id.toString().startsWith("status");
+                      const isStatus = c.kind === "bool" || c.id.toString().startsWith("status");
+                      const isItemField = ['namaProduk', 'pcs', 'pcsKirim', 'satuanKg', 'kg', 'hargaPcs', 'hargaKg', 'discount', 'nominal', 'rpTagih'].includes(String(c.id));
+                      
                       const text =
                         c.kind === "number"
-                          ? c.id === "totalNominal" || c.id === "totalTagihan"
+                          ? c.id === "nominal" || c.id === "rpTagih" || c.id === "hargaPcs" || c.id === "hargaKg" || c.id === "discount"
                             ? formatCurrency(Number(v) || 0)
                             : formatNumber(Number(v) || 0)
                           : c.kind === "date"
                             ? v
                               ? formatDateId(v)
                               : "-"
-                            : c.kind === "bool"
-                              ? !!v
-                                ? "Ya"
-                                : "Tidak"
-                              : String(v ?? "");
+                            : String(v ?? "-") || "-";
 
                       const filterVal = colFilters[String(c.id)] || "";
                       const highlightTerm =
@@ -1333,12 +1230,12 @@ export default function ReportPage() {
                           ? query
                           : filterVal;
 
-                      const shouldClamp =
-                        c.id === "products" || c.id === "tujuan";
                       return (
                         <td
                           key={String(c.id)}
                           className={`px-4 py-3 whitespace-nowrap ${
+                            isItemField ? "bg-indigo-50/30" : ""
+                          } ${
                             c.kind === "number" && c.id !== "no"
                               ? "text-right"
                               : ""
@@ -1363,32 +1260,12 @@ export default function ReportPage() {
                             ) : (
                               "-"
                             )
-                          ) : text === "-" || isStatus || c.kind !== "text" ? (
-                            shouldClamp ? (
-                              <div
-                                className="max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-                                title={String(text)}
-                              >
-                                {text}
-                              </div>
-                            ) : (
-                              text
-                            )
-                          ) : shouldClamp ? (
-                            <div
-                              className="max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-                              title={String(text)}
-                            >
-                              <HighlightText
-                                text={text}
-                                highlight={highlightTerm}
-                              />
-                            </div>
+                          ) : isStatus ? (
+                            <StatusBadge label={c.label.toUpperCase()} checked={!!v} />
+                          ) : c.kind === "text" && highlightTerm ? (
+                            <HighlightText text={text} highlight={highlightTerm} />
                           ) : (
-                            <HighlightText
-                              text={text}
-                              highlight={highlightTerm}
-                            />
+                            text
                           )}
                         </td>
                       );
@@ -1401,5 +1278,17 @@ export default function ReportPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function StatusBadge({ label, checked }: { label: string; checked: boolean }) {
+  return (
+    <span className={`px-2 py-0.5 rounded-lg font-black text-[9px] border ${
+      checked 
+        ? "bg-emerald-50 text-emerald-600 border-emerald-200" 
+        : "bg-slate-50 text-slate-300 border-slate-100"
+    }`}>
+      {label}
+    </span>
   );
 }

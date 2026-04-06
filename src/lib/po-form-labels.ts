@@ -5,6 +5,7 @@ export const PO_FORM_LABELS = {
   noPo: "Nomor PO",
   tglPo: "Tanggal PO",
   expiredTgl: "Tanggal Expired",
+  tglKirim: "Tanggal Kirim",
   regional: "Regional",
   siteArea: "Site Area",
   linkPo: "Link PO (GDrive)",
