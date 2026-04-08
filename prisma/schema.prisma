@@ -87,6 +87,7 @@ model UnitProduksi {
   idRegional    String          @id @default(cuid())
   namaRegional  String
   siteArea      String
+  alamat        String?         @default("")
   createdAt     DateTime        @default(now())
   updatedAt     DateTime
   PurchaseOrder PurchaseOrder[]
