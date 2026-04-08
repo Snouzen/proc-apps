@@ -15,7 +15,7 @@ export async function GET() {
     const data = await singleFlight(cacheKey, () =>
       db.unitProduksi.findMany({
         // [PERF] Only select fields needed by the client
-        select: { idRegional: true, namaRegional: true, siteArea: true, createdAt: true, updatedAt: true },
+        select: { idRegional: true, namaRegional: true, siteArea: true, alamat: true, createdAt: true, updatedAt: true },
         where: {
           // [GUARD] Exclude placeholder/junk rows from Master Data dropdown
           NOT: {
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     // Destructuring sesuai apa yang dikirim frontend (page.tsx)
-    let { regional, siteArea } = body;
+    let { regional, siteArea, alamat } = body;
     if (!regional || siteArea === undefined || siteArea === null) {
       return NextResponse.json(
         { error: "regional wajib diisi. siteArea boleh kosong." },
@@ -75,8 +75,9 @@ export async function POST(req: Request) {
 
     const newUnit = await db.unitProduksi.create({
       data: {
-        namaRegional: regional, // Petakan ke nama kolom prisma lu
+        namaRegional: regional, 
         siteArea: siteArea,
+        alamat: alamat || "",
         updatedAt: new Date(),
       },
     });
@@ -193,10 +194,12 @@ export async function DELETE(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { namaRegional, siteArea, newSiteArea } = body as {
+    const { namaRegional, siteArea, newRegionalName, newSiteArea, alamat } = body as {
       namaRegional?: string;
       siteArea?: string;
+      newRegionalName?: string;
       newSiteArea?: string;
+      alamat?: string;
     };
     if (!namaRegional || !siteArea || !newSiteArea) {
       return NextResponse.json(
@@ -206,7 +209,12 @@ export async function PATCH(req: Request) {
     }
     await db.unitProduksi.updateMany({
       where: { namaRegional, siteArea },
-      data: { siteArea: String(newSiteArea).trim(), updatedAt: new Date() },
+      data: { 
+        namaRegional: newRegionalName ? String(newRegionalName).trim() : namaRegional,
+        siteArea: newSiteArea ? String(newSiteArea).trim() : siteArea, 
+        alamat: alamat !== undefined ? String(alamat).trim() : undefined,
+        updatedAt: new Date() 
+      },
     });
     cacheClearPrefix("unit_produksi:");
     return NextResponse.json({ ok: true });

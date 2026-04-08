@@ -111,6 +111,18 @@ const formatCurrency = (n: number) =>
     minimumFractionDigits: 0,
   }).format(n);
 
+const formatDateExcel = (dateValue: any) => {
+  if (!dateValue || dateValue === "-") return "-";
+  const d = new Date(dateValue);
+  if (isNaN(d.getTime())) return "-";
+  
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  
+  return `${day}/${month}/${year}`;
+};
+
 const EXCLUDED_FILTER_COLS = [
   "tglPo",
   "tglkirim",
@@ -832,21 +844,14 @@ export default function ReportPage() {
           if (c.kind === "number") row[c.label] = Number(v) || 0;
           else if (c.kind === "bool") row[c.label] = !!v;
           else if (c.kind === "date") {
-            // Convert string YYYY-MM-DD to Date object for Excel
-            row[c.label] = v && v !== "-" ? new Date(v as any) : null;
+            row[c.label] = formatDateExcel(v);
           } else row[c.label] = String(v ?? "");
         });
         return row;
       });
 
-      const ws = XLSX.utils.json_to_sheet(data, { cellDates: true });
+      const ws = XLSX.utils.json_to_sheet(data);
 
-      // Apply Native Excel Date Formatting (dd/mm/yyyy)
-      Object.keys(ws).forEach((key) => {
-        if (ws[key] && ws[key].t === "d") {
-          ws[key].z = "dd/mm/yyyy";
-        }
-      });
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
       ws["!autofilter"] = {
         ref: XLSX.utils.encode_range({

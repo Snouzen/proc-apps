@@ -823,6 +823,9 @@ function TableUnderChart({
             : undefined,
       },
     }));
+
+    const isShipped = mappedItems.some((it: any) => it.pcsKirim > 0);
+
     setDetailData({
       id: fullPo?.id || "",
       noPo: fullPo?.noPo || fullPo?.nopo || "-",
@@ -841,8 +844,14 @@ function TableUnderChart({
       tujuanDetail: fullPo?.tujuanDetail || null,
       regional: fullPo?.regional || fullPo?.UnitProduksi?.namaRegional || null,
       Items: mappedItems,
+
+      buktiTagih: fullPo?.buktiTagih || null,
+      buktiBayar: fullPo?.buktiBayar || null,
+      namaSupir: fullPo?.namaSupir || null,
+      platNomor: fullPo?.platNomor || null,
+
       status: {
-        kirim: !!fullPo?.statusKirim,
+        kirim: !!fullPo?.statusKirim || isShipped,
         sdif: !!fullPo?.statusSdif,
         po: !!fullPo?.statusPo,
         fp: !!fullPo?.statusFp,
@@ -956,7 +965,7 @@ function TableUnderChart({
                     onSearchChange={handleSearchChange}
                     dateFrom={dateFrom}
                     dateTo={dateTo}
-                    regionalValue={regionalFilter}
+                    regionalValue={role === "rm" ? (regional || "") : regionalFilter}
                     siteAreaValue={siteAreaFilter}
                     regionalLocked={role === "rm"}
                     onFilterChange={handleFilterChange}

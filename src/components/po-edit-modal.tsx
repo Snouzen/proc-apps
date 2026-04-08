@@ -6,7 +6,7 @@ import { getMe, getMeSync } from "@/lib/me";
 import Modal from "@/components/modal";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
-import { LinkIcon, MapPin, Minus, Plus, Copy } from "lucide-react";
+import { LinkIcon, MapPin, Minus, Plus, Copy, Truck } from "lucide-react";
 import { PO_FORM_LABELS } from "@/lib/po-form-labels";
 import DateInputHybrid from "@/components/DateInputHybrid";
 
@@ -435,6 +435,20 @@ export default function POEditModal({
     };
   }, [open, noPo]);
 
+  // Smart Auto-Check KIRIM (Logika Longgar)
+  useEffect(() => {
+    // 1. Pastikan array items ada isinya
+    if (!items || items.length === 0) return;
+
+    // 2. Logika Baru: True asalkan ada minimal 1 produk yang Pcs Kirim > 0
+    const isShipped = items.some((item) => (Number(item.pcsKirim) || 0) > 0);
+
+    // 3. Sinkronisasi ke state status (Cegah infinite loop)
+    if (status.kirim !== isShipped) {
+      setStatus((prevStatus) => ({ ...prevStatus, kirim: isShipped }));
+    }
+  }, [items, status.kirim]);
+
   useEffect(() => {
     if (!open) return;
     setToast(null);
@@ -710,35 +724,7 @@ export default function POEditModal({
                 />
               </div>
 
-              {noPo && (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                      Nama Supir
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Identitas Supir..."
-                      value={namaSupir}
-                      onChange={(e) => setNamaSupir(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                      Plat Nomor
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Plat Kendaraan..."
-                      value={platNomor}
-                      onChange={(e) => setPlatNomor(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                    />
-                  </div>
-                </>
-              )}
+              {/* Nama Supir & Plat Nomor dipindah ke bawah Remarks */}
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
@@ -835,39 +821,7 @@ export default function POEditModal({
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Bukti Tagih
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ref Tagihan..."
-                  value={buktiTagih}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setBuktiTagih(v);
-                    if (v.trim()) setStatus((p) => ({ ...p, tagih: true }));
-                  }}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Bukti Bayar
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ref Bayar..."
-                  value={buktiBayar}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setBuktiBayar(v);
-                    if (v.trim()) setStatus((p) => ({ ...p, bayar: true }));
-                  }}
-                />
-              </div>
+              {/* Input Bukti Tagih & Bayar dipindahkan inline ke Checklist Dokumen */}
             </div>
           </section>
 
@@ -1175,6 +1129,65 @@ export default function POEditModal({
                 {Object.keys(status).map((key) => {
                   const checked = status[key as keyof typeof status];
                   const label = key === "sdif" ? "SDI/F" : key.toUpperCase();
+                  
+                  if (key === 'tagih') {
+                    return (
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white">
+                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                          <input 
+                            type="checkbox" 
+                            checked={checked} 
+                            onChange={() => handleChecklist(key)}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-bold text-slate-700">TAGIH</span>
+                        </label>
+                        <div className="flex-1">
+                          <input 
+                            type="text"
+                            placeholder="Masukkan Ref Tagihan..."
+                            value={buktiTagih || ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setBuktiTagih(v);
+                              if (v.trim() && !checked) setStatus(prev => ({ ...prev, tagih: true }));
+                            }}
+                            className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (key === 'bayar') {
+                    return (
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white">
+                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                          <input 
+                            type="checkbox" 
+                            checked={checked} 
+                            onChange={() => handleChecklist(key)}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-bold text-slate-700">BAYAR</span>
+                        </label>
+                        <div className="flex-1">
+                          <input 
+                            type="text"
+                            placeholder="Masukkan Ref Bayar..."
+                            value={buktiBayar || ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setBuktiBayar(v);
+                              if (v.trim() && !checked) setStatus(prev => ({ ...prev, bayar: true }));
+                            }}
+                            className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <label
                       key={key}
@@ -1208,6 +1221,33 @@ export default function POEditModal({
                 className="w-full px-6 py-4 bg-slate-50 rounded-[24px] focus:ring-2 focus:ring-slate-200 outline-none text-sm font-medium transition-all"
                 onChange={(e) => setRemarks(e.target.value)}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                <div className="col-span-1 md:col-span-2 flex items-center gap-2 mb-2">
+                  <Truck size={16} className="text-sky-600" />
+                  <h3 className="font-bold text-slate-700 text-sm">Logistik & Ekspedisi</h3>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Supir</label>
+                  <input 
+                    type="text" 
+                    placeholder="Identitas Supir..." 
+                    value={namaSupir || ""} 
+                    onChange={(e) => setNamaSupir(e.target.value)} 
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Plat Nomor</label>
+                  <input 
+                    type="text" 
+                    placeholder="Plat Kendaraan..." 
+                    value={platNomor || ""} 
+                    onChange={(e) => setPlatNomor(e.target.value)} 
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 uppercase" 
+                  />
+                </div>
+              </div>
             </section>
           </div>
 

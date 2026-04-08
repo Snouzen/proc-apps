@@ -736,23 +736,11 @@ export async function GET(request: Request) {
     }
     if (siteAreaParam && siteAreaParam.trim()) {
       const sa = siteAreaParam.trim();
-      const saFilter =
-        safeRole === "rm" && overrideRegional
-          ? {
-              AND: [
-                {
-                  UnitProduksi: {
-                    siteArea: { contains: sa, mode: "insensitive" as const },
-                    namaRegional: { equals: overrideRegional, mode: "insensitive" as const },
-                  },
-                },
-              ],
-            }
-          : {
-              UnitProduksi: {
-                siteArea: { contains: sa, mode: "insensitive" as const },
-              },
-            };
+      const saFilter = {
+        UnitProduksi: {
+          siteArea: { contains: sa, mode: "insensitive" as const },
+        },
+      };
       where.AND = [...(Array.isArray(where.AND) ? where.AND : []), saFilter];
     }
     if (company && company.trim()) {
@@ -1101,7 +1089,7 @@ export async function GET(request: Request) {
                     select: { namaPt: true, inisial: true, tujuan: true },
                   },
                   UnitProduksi: {
-                    select: { siteArea: true, namaRegional: true },
+                    select: { siteArea: true, namaRegional: true, alamat: true },
                   },
                   Items: {
                     select: {
@@ -1168,7 +1156,7 @@ export async function GET(request: Request) {
                     select: { id: true, namaPt: true, inisial: true, tujuan: true },
                   },
                   UnitProduksi: {
-                    select: { idRegional: true, namaRegional: true, siteArea: true },
+                    select: { idRegional: true, namaRegional: true, siteArea: true, alamat: true },
                   },
                 },
                 orderBy,

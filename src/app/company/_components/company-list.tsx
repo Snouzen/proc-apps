@@ -390,6 +390,9 @@ export default function CompanyList({
     const totalTagih =
       items.reduce((acc: number, curr: any) => acc + (curr?.rpTagih || 0), 0) ||
       0;
+
+    const isShipped = items.some((it: any) => (Number(it?.pcsKirim) || 0) > 0);
+
     setSelectedPO({
       ...fullPo,
       company: fullPo?.RitelModern?.namaPt || fullPo?.company || "Unknown",
@@ -405,7 +408,7 @@ export default function CompanyList({
       Items: items,
       rpTagih: totalTagih,
       status: {
-        kirim: !!fullPo.statusKirim,
+        kirim: !!fullPo.statusKirim || isShipped,
         sdif: !!fullPo.statusSdif,
         po: !!fullPo.statusPo,
         fp: !!fullPo.statusFp,

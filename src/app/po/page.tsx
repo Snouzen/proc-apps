@@ -485,6 +485,28 @@ function InputPODetailPageInner() {
     });
   }, [formData.noPo, formData.noInvoice, formData.buktiTagih, formData.buktiBayar]);
 
+  // SMART AUTO-CHECK: Sync KIRIM status with items delivery progress
+  useEffect(() => {
+    setFormData((prev) => {
+      const newStatus = { ...prev.status };
+      let hasChanges = false;
+
+      // 1. Cek apakah ada barang di keranjang
+      const hasItems = items && items.length > 0;
+
+      // 2. Logika Baru (Lebih Longgar): 
+      // isShipped bernilai TRUE jika ada MINIMAL SATU barang yang Pcs Kirim-nya > 0
+      const isShipped = hasItems && items.some((item) => (Number(item.pcsKirim) || 0) > 0);
+
+      if (newStatus.kirim !== isShipped) {
+        newStatus.kirim = isShipped;
+        hasChanges = true;
+      }
+
+      return hasChanges ? { ...prev, status: newStatus } : prev;
+    });
+  }, [items]);
+
   const norm = (s: any) =>
     String(s ?? "")
       .trim()
@@ -1587,12 +1609,13 @@ function InputPODetailPageInner() {
                                         <input
                                           type="number"
                                           value={editItem.pcsKirim}
-                                          onChange={(e) =>
+                                          onChange={(e) => {
+                                            const val = e.target.value;
                                             setEditItem((p) => ({
                                               ...p,
-                                              pcsKirim: e.target.value,
-                                            }))
-                                          }
+                                              pcsKirim: val,
+                                            }));
+                                          }}
                                           className={`mt-1 w-full px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
                                         />
                                       ) : (

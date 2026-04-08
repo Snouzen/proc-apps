@@ -36,6 +36,7 @@ export const saveRitel = async (payload: any, signal?: AbortSignal) => {
 export const saveUnitProduksi = async (payload: {
   regional: string;
   siteArea: string;
+  alamat?: string;
 }) => {
   const response = await fetch("/api/unit-produksi", {
     method: "POST",

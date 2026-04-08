@@ -11,12 +11,16 @@ import {
   Search,
   Trash2,
   X,
+  Globe2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { saveUnitProduksi } from "@/lib/api"; // Pastikan fungsi ini ada di api.ts
+import React, { useEffect, useState, useMemo } from "react";
+import { saveUnitProduksi } from "@/lib/api"; 
 import { StatefulButton } from "@/components/ui/stateful-button";
 import ExcelBulkModal from "@/components/excel-bulk-modal";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
+import SmoothSelect from "@/components/ui/smooth-select";
 
 export default function UnitProduksiPage() {
   const refreshTick = useAutoRefreshTick();
@@ -24,6 +28,11 @@ export default function UnitProduksiPage() {
   const [modalMode, setModalMode] = useState<"addSite" | "addRegional">("addSite");
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [viewRegional, setViewRegional] = useState<{
     nama: string;
     sites: string[];
@@ -43,23 +52,34 @@ export default function UnitProduksiPage() {
 
   const [selectedRegional, setSelectedRegional] = useState("");
   const [siteName, setSiteName] = useState("");
+  const [siteAlamat, setSiteAlamat] = useState("");
+  const [viewedSite, setViewedSite] = useState<any>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [openExcelBulk, setOpenExcelBulk] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: "", type: "success" as "success" | "error" });
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+  };
 
   // Data State dari Database (Gue asumsikan lu ambil data lewat useEffect nanti)
   const [dataUnit, setDataUnit] = useState<any[]>([]);
   const [editSite, setEditSite] = useState<{
     regional: string;
     site: string;
+    alamat: string;
   } | null>(null);
   const [deleteSite, setDeleteSite] = useState<{
     regional: string;
     site: string;
   } | null>(null);
   const [newSiteName, setNewSiteName] = useState("");
+  const [newSiteAlamat, setNewSiteAlamat] = useState("");
+  const [newRegionalName, setNewRegionalName] = useState("");
 
   // 1. Helper: Cari Header Excel secara fleksibel
   const findColumnKey = (row: any, aliases: string[]): string | null => {
@@ -131,21 +151,34 @@ export default function UnitProduksiPage() {
   const groupedData = safeDataUnit.reduce(
     (acc: any[], item: any) => {
       const regionalName = item?.namaRegional ?? item?.regional ?? "";
-      const site = item?.siteArea ?? item?.site ?? "";
+      const siteObj = {
+        name: item?.siteArea ?? item?.site ?? "",
+        alamat: item?.alamat ?? "",
+      };
       const existingGroup = acc.find((g) => g.nama === regionalName);
       if (existingGroup) {
-        existingGroup.sites.push(site);
+        existingGroup.sites.push(siteObj);
       } else {
         acc.push({
-          id: item?.idRegional ?? regionalName.replace(/\s+/g, "-"), // gunakan id jika ada
+          id: item?.idRegional ?? regionalName.replace(/\s+/g, "-"),
           nama: regionalName,
-          sites: [site],
+          sites: [siteObj],
         });
       }
       return acc;
     },
-    [...baseRegions],
+    [
+      { id: "REG-1-BANDUNG", nama: "REG 1 BANDUNG", sites: [] as any[] },
+      { id: "REG-2-SURABAYA", nama: "REG 2 SURABAYA", sites: [] as any[] },
+      { id: "REG-3-MAKASSAR", nama: "REG 3 MAKASSAR", sites: [] as any[] },
+    ],
   );
+
+  const regionalOptions = useMemo(() => {
+    return Array.from(new Set(groupedData.map((g: any) => g.nama)))
+      .filter(Boolean)
+      .map((name: string) => ({ value: name, label: name }));
+  }, [groupedData]);
 
   // 4. Search & Pagination Logic
   const filteredData = groupedData.filter(
@@ -186,7 +219,7 @@ export default function UnitProduksiPage() {
       const siteKey = findColumnKey(jsonData[0], siteAreaAliases);
 
       if (!regKey || !siteKey) {
-        alert("Format Excel Salah! Gunakan Header 'Regional' dan 'Site Area'");
+        showToast("Format Excel Salah! Gunakan Header 'Regional' dan 'Site Area'", "error");
         return;
       }
 
@@ -254,12 +287,10 @@ export default function UnitProduksiPage() {
         }
         await saveUnitProduksi(payload);
       }
-      alert(
-        `Bulk Upload selesai.\nDuplikat: ${dupeCount}.\nMode: ${replaceDupes ? "REPLACE" : "SKIP"}.`,
-      );
-      window.location.reload();
+      showToast(`Bulk Upload selesai. Mode: ${replaceDupes ? "REPLACE" : "SKIP"}.`);
+      setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
-      alert("Terjadi kesalahan saat upload.");
+      showToast("Terjadi kesalahan saat upload.", "error");
     } finally {
       setIsLoading(false);
       setBulkDialog(null);
@@ -288,6 +319,8 @@ export default function UnitProduksiPage() {
       alert("Gagal simpan data");
     }
   };
+
+  if (!isMounted) return null;
 
   return (
     <div className="space-y-6">
@@ -488,24 +521,33 @@ export default function UnitProduksiPage() {
                       <tr className="bg-slate-50/50">
                         <td colSpan={3} className="px-16 py-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-1">
-                            {reg.sites.map((site: string, index: number) => (
+                            {reg.sites.map((site: any, index: number) => (
                               <div
                                 key={index}
-                                className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-3 justify-between shadow-sm group hover:border-blue-400 transition-all"
+                                className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-3 justify-between shadow-sm group hover:border-indigo-400 transition-all"
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                                     <MapPin size={16} />
                                   </div>
                                   <span className="text-sm font-bold text-slate-700">
-                                    {site}
+                                    {site.name}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                                   <button
+                                    onClick={() => setViewedSite({ ...site, regional: reg.nama })}
+                                    className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
+                                    title="View Detail"
+                                  >
+                                    <Eye size={14} />
+                                  </button>
+                                  <button
                                     onClick={() => {
-                                      setEditSite({ regional: reg.nama, site });
-                                      setNewSiteName(site);
+                                      setEditSite({ regional: reg.nama, site: site.name, alamat: site.alamat });
+                                      setNewRegionalName(reg.nama);
+                                      setNewSiteName(site.name);
+                                      setNewSiteAlamat(site.alamat);
                                     }}
                                     className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
                                     title="Edit Site"
@@ -516,7 +558,7 @@ export default function UnitProduksiPage() {
                                     onClick={() =>
                                       setDeleteSite({
                                         regional: reg.nama,
-                                        site,
+                                        site: site.name,
                                       })
                                     }
                                     className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
@@ -635,29 +677,63 @@ export default function UnitProduksiPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setEditSite(null)}
           />
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800">
-                Ubah Nama Site
-              </h3>
+          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-50 bg-indigo-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-600 text-white rounded-2xl">
+                  <Edit2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-800">Edit Site Area</h3>
+                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Update Informasi Site</p>
+                </div>
+              </div>
               <button
                 onClick={() => setEditSite(null)}
-                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
+                className="p-2 rounded-xl hover:bg-white text-slate-400 hover:text-rose-500 transition-colors"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500">
-                Regional: <span className="font-bold">{editSite.regional}</span>
-              </p>
-              <input
-                type="text"
-                value={newSiteName}
-                onChange={(e) => setNewSiteName(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
-              />
-              <div className="flex gap-2">
+            <div className="p-6 space-y-5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Globe2 size={12} /> Regional
+                </label>
+                <SmoothSelect
+                  value={newRegionalName}
+                  onChange={(v) => setNewRegionalName(v)}
+                  options={regionalOptions}
+                  width={400}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <MapPin size={12} /> Nama Site Area
+                </label>
+                <input
+                  type="text"
+                  value={newSiteName}
+                  onChange={(e) => setNewSiteName(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Edit2 size={12} /> Alamat Lengkap
+                </label>
+                <textarea
+                  rows={3}
+                  value={newSiteAlamat}
+                  onChange={(e) => setNewSiteAlamat(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 resize-none"
+                  placeholder="Masukkan alamat lengkap gudang/pabrik..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
                 <StatefulButton
                   variant="cancel"
                   onClick={() => setEditSite(null)}
@@ -668,6 +744,10 @@ export default function UnitProduksiPage() {
                 <StatefulButton
                   variant="submit"
                   onClick={async () => {
+                    if (!newRegionalName || !newSiteName) {
+                      showToast("Regional dan Site Area wajib diisi!", "error");
+                      return;
+                    }
                     try {
                       await fetch("/api/unit-produksi", {
                         method: "PATCH",
@@ -675,23 +755,29 @@ export default function UnitProduksiPage() {
                         body: JSON.stringify({
                           namaRegional: editSite.regional,
                           siteArea: editSite.site,
+                          newRegionalName: newRegionalName,
                           newSiteArea: newSiteName,
+                          alamat: newSiteAlamat,
                         }),
                       });
+                      showToast("Data site berhasil diperbarui! 🚀");
                       setEditSite(null);
                       setDataUnit((prev) =>
                         prev.map((x) =>
                           String(x?.namaRegional) === editSite.regional &&
                           String(x?.siteArea) === editSite.site
-                            ? { ...x, siteArea: newSiteName }
+                            ? { ...x, namaRegional: newRegionalName, siteArea: newSiteName, alamat: newSiteAlamat }
                             : x,
                         ),
                       );
-                    } catch {}
+                      setTimeout(() => window.location.reload(), 800);
+                    } catch {
+                      showToast("Gagal memperbarui data.", "error");
+                    }
                   }}
                   className="flex-1"
                 >
-                  Simpan
+                  Simpan Perubahan
                 </StatefulButton>
               </div>
             </div>
@@ -814,31 +900,22 @@ export default function UnitProduksiPage() {
                       : "-translate-x-full opacity-0 absolute inset-0 pointer-events-none"
                   } space-y-5`}
                 >
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Regional
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <Globe2 size={12} /> Regional
                     </label>
-                    <select
-                      required={modalMode === "addSite"}
+                    <SmoothSelect
                       value={selectedRegional}
-                      onChange={(e) => setSelectedRegional(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm appearance-none cursor-pointer"
+                      onChange={(v) => setSelectedRegional(v)}
+                      options={regionalOptions}
+                      width={400}
                       disabled={!!contextRegional}
-                    >
-                      <option value="">Pilih Regional</option>
-                      {Array.from(new Set(groupedData.map((g: any) => g.nama)))
-                        .filter(Boolean)
-                        .map((regName: any) => (
-                          <option key={regName} value={regName}>
-                            {regName}
-                          </option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Nama Site
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <MapPin size={12} /> Nama Site
                     </label>
                     <input
                       required={modalMode === "addSite"}
@@ -846,7 +923,20 @@ export default function UnitProduksiPage() {
                       placeholder="Contoh: SPP Kendal"
                       value={siteName}
                       onChange={(e) => setSiteName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <Edit2 size={12} /> Alamat Site Area
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Masukkan alamat lengkap gudang/pabrik..."
+                      value={siteAlamat}
+                      onChange={(e) => setSiteAlamat(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 resize-none"
                     />
                   </div>
                   
@@ -912,35 +1002,36 @@ export default function UnitProduksiPage() {
                   variant="submit"
                   onClick={async () => {
                     if (modalMode === "addSite" && (!selectedRegional || !siteName)) {
-                      alert("Regional dan Site Area wajib diisi!");
+                      showToast("Regional dan Site Area wajib diisi!", "error");
                       return;
                     }
                     if (modalMode === "addRegional" && !selectedRegional) {
-                      alert("Nama Regional wajib diisi!");
+                      showToast("Nama Regional wajib diisi!", "error");
                       return;
                     }
                     try {
                       const payload = {
                         regional: selectedRegional,
                         siteArea: modalMode === "addRegional" ? "-" : siteName,
+                        alamat: modalMode === "addRegional" ? "" : siteAlamat,
                       };
                       const created = await saveUnitProduksi(payload);
                       setIsModalOpen(false);
                       setSelectedRegional("");
                       setSiteName("");
+                      setSiteAlamat("");
                       
                       // Biar langsung update di UI, pastikan endpoint mengembalikan raw yg benar
                       const isRegionalExist = dataUnit.some(d => String(d?.namaRegional || d?.regional) === created?.namaRegional);
                       setDataUnit((prev) => [...prev, created]);
                       
-                      if (modalMode === "addRegional" && !isRegionalExist) {
-                         alert(`Regional '${created?.namaRegional || payload.regional}' berhasil dibuat!`);
-                      } else {
-                         alert(`Site '${payload.siteArea}' berhasil ditambahkan ke ${payload.regional}!`);
-                      }
-                      window.location.reload();
+                      showToast(modalMode === "addRegional" 
+                        ? `Regional '${created?.namaRegional || payload.regional}' berhasil dibuat!` 
+                        : `Site '${payload.siteArea}' berhasil ditambahkan!`);
+                      
+                      setTimeout(() => window.location.reload(), 1000);
                     } catch (err: any) {
-                      alert(err?.message || "Gagal menyimpan data");
+                      showToast(err?.message || "Gagal menyimpan data", "error");
                     }
                   }}
                   className="flex-1"
@@ -1057,9 +1148,10 @@ export default function UnitProduksiPage() {
                     });
                     const j = await res.json().catch(() => ({}));
                     if (!res.ok) {
-                      alert(j?.error || "Gagal menghapus data");
+                      showToast(j?.error || "Gagal menghapus data", "error");
                       return;
                     }
+                    showToast("Data regional berhasil dihapus!");
                     // Refresh local state
                     setDataUnit((prev) =>
                       prev.filter(
@@ -1077,6 +1169,76 @@ export default function UnitProduksiPage() {
                 Hapus
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {viewedSite && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setViewedSite(null)}
+          />
+          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-50 bg-indigo-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-600 text-white rounded-2xl">
+                  <MapPin size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-800">Detail Site Area</h3>
+                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{viewedSite.regional}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewedSite(null)}
+                className="p-2 rounded-xl hover:bg-white text-slate-400 hover:text-rose-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nama Site Area</label>
+                <p className="text-xl font-black text-slate-800">{viewedSite.name}</p>
+              </div>
+              <div className="space-y-1 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Alamat Lengkap</label>
+                <p className="text-sm font-semibold text-slate-600 leading-relaxed italic">
+                  {viewedSite.alamat || "Alamat belum ditambahkan."}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewedSite(null)}
+                className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+              >
+                Tutup Detail
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Toast Notification */}
+      {toast.show && (
+        <div className="fixed top-8 right-8 z-[9999] animate-in fade-in slide-in-from-right-10 duration-500">
+          <div className={`flex items-center gap-4 px-6 py-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border backdrop-blur-md ${
+            toast.type === "error" 
+              ? "bg-rose-50/90 border-rose-100 text-rose-700" 
+              : "bg-emerald-50/90 border-emerald-100 text-emerald-700"
+          }`}>
+            <div className={`p-2 rounded-2xl ${toast.type === "error" ? "bg-rose-100" : "bg-emerald-100"}`}>
+              {toast.type === "error" ? <AlertCircle size={24} /> : <CheckCircle2 size={24} />}
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-0.5">Notification</p>
+              <p className="text-sm font-black leading-none">{toast.message}</p>
+            </div>
+            <button 
+              onClick={() => setToast({ ...toast, show: false })} 
+              className="ml-4 p-2 hover:bg-black/5 rounded-xl transition-colors"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
       )}

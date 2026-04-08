@@ -94,9 +94,7 @@ export default function Sidebar({
   const menuItems =
     role === "spb_dki"
       ? [baseMenu[0], baseMenu[1]] // ONLY Dashboard & Schedule for spb_dki
-      : role === "rm"
-        ? baseMenu.filter((m) => m.name !== "Schedule")
-        : baseMenu;
+      : baseMenu;
 
   const subItems =
     role === "rm" || !role
