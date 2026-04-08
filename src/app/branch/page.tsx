@@ -501,7 +501,6 @@ export default function BranchPage() {
                   value={selectedRegional}
                   onChange={handleRegionalChange}
                   options={regionalOptions}
-                  placeholder="Pilih Regional..."
                 />
               </div>
             )}
@@ -516,11 +515,6 @@ export default function BranchPage() {
                   setSelectedDateKey(null);
                 }}
                 options={siteAreaOptions}
-                placeholder={
-                  !selectedRegional
-                    ? "Pilih regional dulu"
-                    : "Pilih Site Area..."
-                }
                 disabled={!selectedRegional}
               />
             </div>
