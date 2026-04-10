@@ -16,7 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import React, { useEffect, useState, useMemo } from "react";
-import { saveUnitProduksi } from "@/lib/api"; 
+import { saveUnitProduksi } from "@/lib/api";
 import { StatefulButton } from "@/components/ui/stateful-button";
 import ExcelBulkModal from "@/components/excel-bulk-modal";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
@@ -25,7 +25,9 @@ import SmoothSelect from "@/components/ui/smooth-select";
 export default function UnitProduksiPage() {
   const refreshTick = useAutoRefreshTick();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"addSite" | "addRegional">("addSite");
+  const [modalMode, setModalMode] = useState<"addSite" | "addRegional">(
+    "addSite",
+  );
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -59,9 +61,16 @@ export default function UnitProduksiPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [openExcelBulk, setOpenExcelBulk] = useState(false);
-  const [toast, setToast] = useState({ show: false, message: "", type: "success" as "success" | "error" });
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success" as "success" | "error",
+  });
 
-  const showToast = (message: string, type: "success" | "error" = "success") => {
+  const showToast = (
+    message: string,
+    type: "success" | "error" = "success",
+  ) => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
@@ -100,45 +109,27 @@ export default function UnitProduksiPage() {
 
   // Normalisasi nama regional agar konsisten ke 3 pilihan tetap
   const normalizeRegional = (value: string): string => {
-    const v = value.trim().toLowerCase().replace(/\s+/g, " ");
-    // Deteksi angka/regional dan kota kunci
-    const has1 = /(^|\s)1(\s|$)/.test(v) || v.includes("reg 1");
-    const has2 = /(^|\s)2(\s|$)/.test(v) || v.includes("reg 2");
-    const has3 = /(^|\s)3(\s|$)/.test(v) || v.includes("reg 3");
-    const bdg = v.includes("bandung");
-    const sby = v.includes("surabaya");
-    const mks = v.includes("makassar");
-
-    if (has1 || bdg) return "REG 1 BANDUNG";
-    if (has2 || sby) return "REG 2 SURABAYA";
-    if (has3 || mks) return "REG 3 MAKASSAR";
-    // Fallback: coba regex "reg x <nama>"
-    const m = v.match(/reg\s*([123])/);
-    if (m) {
-      if (m[1] === "1") return "REG 1 BANDUNG";
-      if (m[1] === "2") return "REG 2 SURABAYA";
-      if (m[1] === "3") return "REG 3 MAKASSAR";
-    }
-    // Jika tidak terdeteksi, kembalikan apa adanya (akan tetap tampil)
-    return value;
+    if (!value) return "";
+    return value.trim().toUpperCase().replace(/\s+/g, " ");
   };
 
   // 2. Load Data (Opsional, sesuaikan dengan endpoint lu)
+  const loadData = React.useCallback(async () => {
+    setIsLoading((v) => v || dataUnit.length === 0);
+    try {
+      const res = await fetch("/api/unit-produksi");
+      const result = await res.json();
+      setDataUnit(Array.isArray(result) ? result : result.data || []);
+    } catch (err) {
+      console.error("Gagal load unit produksi:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dataUnit.length]);
+
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading((v) => v || dataUnit.length === 0);
-      try {
-        const res = await fetch("/api/unit-produksi");
-        const result = await res.json();
-        setDataUnit(Array.isArray(result) ? result : result.data || []);
-      } catch (err) {
-        console.error("Gagal load unit produksi:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     loadData();
-  }, [refreshTick]);
+  }, [refreshTick, loadData]);
 
   // 3. Logic Pengelompokan Data (Regional -> Sites)
   const safeDataUnit = Array.isArray(dataUnit) ? dataUnit : [];
@@ -148,31 +139,24 @@ export default function UnitProduksiPage() {
     { id: "REG-3-MAKASSAR", nama: "REG 3 MAKASSAR", sites: [] as string[] },
   ];
 
-  const groupedData = safeDataUnit.reduce(
-    (acc: any[], item: any) => {
-      const regionalName = item?.namaRegional ?? item?.regional ?? "";
-      const siteObj = {
-        name: item?.siteArea ?? item?.site ?? "",
-        alamat: item?.alamat ?? "",
-      };
-      const existingGroup = acc.find((g) => g.nama === regionalName);
-      if (existingGroup) {
-        existingGroup.sites.push(siteObj);
-      } else {
-        acc.push({
-          id: item?.idRegional ?? regionalName.replace(/\s+/g, "-"),
-          nama: regionalName,
-          sites: [siteObj],
-        });
-      }
-      return acc;
-    },
-    [
-      { id: "REG-1-BANDUNG", nama: "REG 1 BANDUNG", sites: [] as any[] },
-      { id: "REG-2-SURABAYA", nama: "REG 2 SURABAYA", sites: [] as any[] },
-      { id: "REG-3-MAKASSAR", nama: "REG 3 MAKASSAR", sites: [] as any[] },
-    ],
-  );
+  const groupedData = safeDataUnit.reduce((acc: any[], item: any) => {
+    const regionalName = item?.namaRegional ?? item?.regional ?? "";
+    const siteObj = {
+      name: item?.siteArea ?? item?.site ?? "",
+      alamat: item?.alamat ?? "",
+    };
+    const existingGroup = acc.find((g) => g.nama === regionalName);
+    if (existingGroup) {
+      existingGroup.sites.push(siteObj);
+    } else {
+      acc.push({
+        id: item?.idRegional ?? regionalName.replace(/\s+/g, "-"),
+        nama: regionalName,
+        sites: [siteObj],
+      });
+    }
+    return acc;
+  }, []);
 
   const regionalOptions = useMemo(() => {
     return Array.from(new Set(groupedData.map((g: any) => g.nama)))
@@ -219,7 +203,10 @@ export default function UnitProduksiPage() {
       const siteKey = findColumnKey(jsonData[0], siteAreaAliases);
 
       if (!regKey || !siteKey) {
-        showToast("Format Excel Salah! Gunakan Header 'Regional' dan 'Site Area'", "error");
+        showToast(
+          "Format Excel Salah! Gunakan Header 'Regional' dan 'Site Area'",
+          "error",
+        );
         return;
       }
 
@@ -279,7 +266,10 @@ export default function UnitProduksiPage() {
         }
         if (isDupe && replaceDupes) {
           try {
-            const delParams = new URLSearchParams({ namaRegional: payload.regional, siteArea: payload.siteArea }); // REFACTOR: DELETE via query params
+            const delParams = new URLSearchParams({
+              namaRegional: payload.regional,
+              siteArea: payload.siteArea,
+            }); // REFACTOR: DELETE via query params
             await fetch(`/api/unit-produksi?${delParams.toString()}`, {
               method: "DELETE",
             });
@@ -287,7 +277,9 @@ export default function UnitProduksiPage() {
         }
         await saveUnitProduksi(payload);
       }
-      showToast(`Bulk Upload selesai. Mode: ${replaceDupes ? "REPLACE" : "SKIP"}.`);
+      showToast(
+        `Bulk Upload selesai. Mode: ${replaceDupes ? "REPLACE" : "SKIP"}.`,
+      );
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
       showToast("Terjadi kesalahan saat upload.", "error");
@@ -536,7 +528,12 @@ export default function UnitProduksiPage() {
                                 </div>
                                 <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                                   <button
-                                    onClick={() => setViewedSite({ ...site, regional: reg.nama })}
+                                    onClick={() =>
+                                      setViewedSite({
+                                        ...site,
+                                        regional: reg.nama,
+                                      })
+                                    }
                                     className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
                                     title="View Detail"
                                   >
@@ -544,7 +541,11 @@ export default function UnitProduksiPage() {
                                   </button>
                                   <button
                                     onClick={() => {
-                                      setEditSite({ regional: reg.nama, site: site.name, alamat: site.alamat });
+                                      setEditSite({
+                                        regional: reg.nama,
+                                        site: site.name,
+                                        alamat: site.alamat,
+                                      });
                                       setNewRegionalName(reg.nama);
                                       setNewSiteName(site.name);
                                       setNewSiteAlamat(site.alamat);
@@ -684,8 +685,12 @@ export default function UnitProduksiPage() {
                   <Edit2 size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-800">Edit Site Area</h3>
-                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Update Informasi Site</p>
+                  <h3 className="text-lg font-black text-slate-800">
+                    Edit Site Area
+                  </h3>
+                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
+                    Update Informasi Site
+                  </p>
                 </div>
               </div>
               <button
@@ -766,7 +771,12 @@ export default function UnitProduksiPage() {
                         prev.map((x) =>
                           String(x?.namaRegional) === editSite.regional &&
                           String(x?.siteArea) === editSite.site
-                            ? { ...x, namaRegional: newRegionalName, siteArea: newSiteName, alamat: newSiteAlamat }
+                            ? {
+                                ...x,
+                                namaRegional: newRegionalName,
+                                siteArea: newSiteName,
+                                alamat: newSiteAlamat,
+                              }
                             : x,
                         ),
                       );
@@ -811,21 +821,37 @@ export default function UnitProduksiPage() {
                 variant="submit"
                 onClick={async () => {
                   try {
-                    const delParams = new URLSearchParams({ namaRegional: deleteSite.regional, siteArea: deleteSite.site }); // REFACTOR: DELETE via query params
-                    await fetch(`/api/unit-produksi?${delParams.toString()}`, {
-                      method: "DELETE",
+                    const delParams = new URLSearchParams({
+                      namaRegional: deleteSite.regional,
+                      siteArea: deleteSite.site,
                     });
-                    setDeleteSite(null);
-                    setDataUnit((prev) =>
-                      prev.filter(
-                        (x) =>
-                          !(
-                            String(x?.namaRegional) === deleteSite.regional &&
-                            String(x?.siteArea) === deleteSite.site
-                          ),
-                      ),
+                    const res = await fetch(
+                      `/api/unit-produksi?${delParams.toString()}`,
+                      {
+                        method: "DELETE",
+                      },
                     );
-                  } catch {}
+
+                    if (!res.ok) {
+                      const errorData = await res.json().catch(() => ({}));
+                      throw new Error(
+                        errorData.error ||
+                          errorData.message ||
+                          "Gagal menghapus site area.",
+                      );
+                    }
+
+                    showToast("Site area berhasil dihapus!");
+                    await loadData(); // Refresh total agar UI sinkron 100%
+                  } catch (error: any) {
+                    console.error("Delete Site Error:", error);
+                    showToast(
+                      error.message || "Gagal menghapus site area",
+                      "error",
+                    );
+                  } finally {
+                    setDeleteSite(null);
+                  }
                 }}
                 className="bg-rose-600 hover:bg-rose-700"
               >
@@ -892,7 +918,17 @@ export default function UnitProduksiPage() {
               onSubmit={(e) => e.preventDefault()}
               className="p-6 space-y-5"
             >
-              <div className="relative overflow-hidden" style={{ minHeight: modalMode === "addSite" ? (contextRegional ? "160px" : "190px") : "120px" }}>
+              <div
+                className="relative overflow-hidden"
+                style={{
+                  minHeight:
+                    modalMode === "addSite"
+                      ? contextRegional
+                        ? "160px"
+                        : "190px"
+                      : "120px",
+                }}
+              >
                 <div
                   className={`transition-all duration-300 transform ${
                     modalMode === "addSite"
@@ -939,7 +975,7 @@ export default function UnitProduksiPage() {
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 resize-none"
                     />
                   </div>
-                  
+
                   {!contextRegional && (
                     <button
                       type="button"
@@ -975,7 +1011,7 @@ export default function UnitProduksiPage() {
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                     />
                   </div>
-                  
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1001,7 +1037,10 @@ export default function UnitProduksiPage() {
                 <StatefulButton
                   variant="submit"
                   onClick={async () => {
-                    if (modalMode === "addSite" && (!selectedRegional || !siteName)) {
+                    if (
+                      modalMode === "addSite" &&
+                      (!selectedRegional || !siteName)
+                    ) {
                       showToast("Regional dan Site Area wajib diisi!", "error");
                       return;
                     }
@@ -1020,18 +1059,27 @@ export default function UnitProduksiPage() {
                       setSelectedRegional("");
                       setSiteName("");
                       setSiteAlamat("");
-                      
+
                       // Biar langsung update di UI, pastikan endpoint mengembalikan raw yg benar
-                      const isRegionalExist = dataUnit.some(d => String(d?.namaRegional || d?.regional) === created?.namaRegional);
+                      const isRegionalExist = dataUnit.some(
+                        (d) =>
+                          String(d?.namaRegional || d?.regional) ===
+                          created?.namaRegional,
+                      );
                       setDataUnit((prev) => [...prev, created]);
-                      
-                      showToast(modalMode === "addRegional" 
-                        ? `Regional '${created?.namaRegional || payload.regional}' berhasil dibuat!` 
-                        : `Site '${payload.siteArea}' berhasil ditambahkan!`);
-                      
+
+                      showToast(
+                        modalMode === "addRegional"
+                          ? `Regional '${created?.namaRegional || payload.regional}' berhasil dibuat!`
+                          : `Site '${payload.siteArea}' berhasil ditambahkan!`,
+                      );
+
                       setTimeout(() => window.location.reload(), 1000);
                     } catch (err: any) {
-                      showToast(err?.message || "Gagal menyimpan data", "error");
+                      showToast(
+                        err?.message || "Gagal menyimpan data",
+                        "error",
+                      );
                     }
                   }}
                   className="flex-1"
@@ -1143,23 +1191,30 @@ export default function UnitProduksiPage() {
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch(`/api/unit-produksi?namaRegional=${encodeURIComponent(deleteRegional!)}`, { // REFACTOR: DELETE via query param
-                      method: "DELETE",
-                    });
-                    const j = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                      showToast(j?.error || "Gagal menghapus data", "error");
-                      return;
-                    }
-                    showToast("Data regional berhasil dihapus!");
-                    // Refresh local state
-                    setDataUnit((prev) =>
-                      prev.filter(
-                        (x: any) => x?.namaRegional !== deleteRegional,
-                      ),
+                    const res = await fetch(
+                      `/api/unit-produksi?namaRegional=${encodeURIComponent(deleteRegional!)}`,
+                      {
+                        method: "DELETE",
+                      },
                     );
-                  } catch {
-                    alert("Gagal menghapus data");
+
+                    if (!res.ok) {
+                      const errorData = await res.json().catch(() => ({}));
+                      throw new Error(
+                        errorData.error ||
+                          errorData.message ||
+                          "Gagal menghapus data. Regional mungkin masih digunakan.",
+                      );
+                    }
+
+                    showToast("Data regional berhasil dihapus!");
+                    await loadData(); // Refresh data dari server agar sinkron
+                  } catch (error: any) {
+                    console.error("Delete Regional Error:", error);
+                    showToast(
+                      error.message || "Gagal menghapus regional",
+                      "error",
+                    );
                   } finally {
                     setDeleteRegional(null);
                   }
@@ -1185,8 +1240,12 @@ export default function UnitProduksiPage() {
                   <MapPin size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-800">Detail Site Area</h3>
-                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{viewedSite.regional}</p>
+                  <h3 className="text-lg font-black text-slate-800">
+                    Detail Site Area
+                  </h3>
+                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
+                    {viewedSite.regional}
+                  </p>
                 </div>
               </div>
               <button
@@ -1198,11 +1257,17 @@ export default function UnitProduksiPage() {
             </div>
             <div className="p-6 space-y-6">
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nama Site Area</label>
-                <p className="text-xl font-black text-slate-800">{viewedSite.name}</p>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                  Nama Site Area
+                </label>
+                <p className="text-xl font-black text-slate-800">
+                  {viewedSite.name}
+                </p>
               </div>
               <div className="space-y-1 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Alamat Lengkap</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  Alamat Lengkap
+                </label>
                 <p className="text-sm font-semibold text-slate-600 leading-relaxed italic">
                   {viewedSite.alamat || "Alamat belum ditambahkan."}
                 </p>
@@ -1221,20 +1286,30 @@ export default function UnitProduksiPage() {
       {/* Modern Toast Notification */}
       {toast.show && (
         <div className="fixed top-8 right-8 z-[9999] animate-in fade-in slide-in-from-right-10 duration-500">
-          <div className={`flex items-center gap-4 px-6 py-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border backdrop-blur-md ${
-            toast.type === "error" 
-              ? "bg-rose-50/90 border-rose-100 text-rose-700" 
-              : "bg-emerald-50/90 border-emerald-100 text-emerald-700"
-          }`}>
-            <div className={`p-2 rounded-2xl ${toast.type === "error" ? "bg-rose-100" : "bg-emerald-100"}`}>
-              {toast.type === "error" ? <AlertCircle size={24} /> : <CheckCircle2 size={24} />}
+          <div
+            className={`flex items-center gap-4 px-6 py-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border backdrop-blur-md ${
+              toast.type === "error"
+                ? "bg-rose-50/90 border-rose-100 text-rose-700"
+                : "bg-emerald-50/90 border-emerald-100 text-emerald-700"
+            }`}
+          >
+            <div
+              className={`p-2 rounded-2xl ${toast.type === "error" ? "bg-rose-100" : "bg-emerald-100"}`}
+            >
+              {toast.type === "error" ? (
+                <AlertCircle size={24} />
+              ) : (
+                <CheckCircle2 size={24} />
+              )}
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-0.5">Notification</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-0.5">
+                Notification
+              </p>
               <p className="text-sm font-black leading-none">{toast.message}</p>
             </div>
-            <button 
-              onClick={() => setToast({ ...toast, show: false })} 
+            <button
+              onClick={() => setToast({ ...toast, show: false })}
               className="ml-4 p-2 hover:bg-black/5 rounded-xl transition-colors"
             >
               <X size={18} />

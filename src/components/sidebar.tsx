@@ -23,7 +23,7 @@ import { getMe } from "@/lib/me";
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  initialRole?: "pusat" | "rm" | "spb_dki" | null;
+  initialRole?: "pusat" | "rm" | "spb_dki" | "sitearea" | null;
   initialRegional?: string | null;
 }
 
@@ -35,7 +35,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [poMenuOpen, setPoMenuOpen] = useState(false);
-  const [role, setRole] = useState<"pusat" | "rm" | "spb_dki" | null>(
+  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | "spb_dki" | null>(
     initialRole || null,
   );
   const [regional, setRegional] = useState<string | null>(
@@ -58,15 +58,12 @@ export default function Sidebar({
     (async () => {
       try {
         const data = await getMe();
-        if (data?.authenticated && data?.role === "spb_dki") {
-          setRole("spb_dki");
+        if (data?.authenticated) {
+          const r = (data.role === "rm" || data.role === "sitearea" || data.role === "spb_dki") 
+            ? data.role 
+            : "pusat";
+          setRole(r as any);
           setRegional(data?.regional || null);
-        } else if (data?.authenticated && data?.role === "rm") {
-          setRole("rm");
-          setRegional(data?.regional || null);
-        } else if (data?.authenticated) {
-          setRole("pusat");
-          setRegional(null);
         } else {
           setRole(null);
           setRegional(null);
@@ -92,8 +89,13 @@ export default function Sidebar({
   ];
 
   const menuItems =
-    role === "spb_dki"
-      ? [baseMenu[0], baseMenu[1]] // ONLY Dashboard & Schedule for spb_dki
+    role === "spb_dki" || role === "sitearea"
+      ? [
+          baseMenu[0], // Dashboard
+          baseMenu[1], // Schedule
+          baseMenu[4], // Report
+          baseMenu[5], // Branch Plan
+        ]
       : baseMenu;
 
   const subItems =

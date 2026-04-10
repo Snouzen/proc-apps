@@ -22,7 +22,7 @@ export default function ClientLayout({
   const isFullWidthPage = pathname === "/po" || pathname.startsWith("/po/");
 
   const [profileRole, setProfileRole] = useState<
-    "pusat" | "rm" | "spb_dki" | null
+    "pusat" | "rm" | "spb_dki" | "sitearea" | null
   >(null);
   const [profileRegional, setProfileRegional] = useState<string | null>(null);
 
@@ -54,10 +54,12 @@ export default function ClientLayout({
     };
   }, []);
 
-  // SECURITY: Redirect if spb_dki tries to access restricted routes
+  // SECURITY: Redirect logic moved to page-level if needed.
+  // Whitelist roles have been expanded in sidebar and shared layouts.
   useEffect(() => {
-    if (profileRole === "spb_dki") {
-      const restricted = ["/po", "/report", "/company", "/need-assign"];
+    if (profileRole === "spb_dki" || profileRole === "sitearea") {
+      // Allow /report, /branch, /po for these roles
+      const restricted = ["/master-data"]; // Keep master-data restricted
       if (restricted.some((p) => pathname.startsWith(p))) {
         router.push("/");
       }

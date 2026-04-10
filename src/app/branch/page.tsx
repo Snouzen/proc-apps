@@ -59,8 +59,9 @@ const formatDateId = (d: any) => {
    ────────────────────────────────────────────── */
 export default function BranchPage() {
   // ── Role & User State ──
-  const [role, setRole] = useState<"pusat" | "rm" | null>(null);
+  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | "spb_dki" | null>(null);
   const [userRegional, setUserRegional] = useState<string | null>(null);
+  const [userSiteArea, setUserSiteArea] = useState<string | null>(null);
 
   // ── Dynamic Data ──
   const [regionalData, setRegionalData] = useState<Record<string, string[]>>(
@@ -129,26 +130,37 @@ export default function BranchPage() {
     (async () => {
       try {
         const me = await getMe();
-        const r = me?.role === "rm" ? "rm" : "pusat";
-        setRole(r);
-        const reg = me?.regional || null;
-        setUserRegional(reg);
+        const r = me?.role === "rm" || me?.role === "sitearea" || me?.role === "spb_dki" 
+          ? (me.role as "rm" | "sitearea" | "spb_dki") 
+          : "pusat";
+        
+        setRole(r as any);
 
-        if (r === "rm" && reg) {
+        // Ekstrak data asli
+        const reg = me?.regional || "";
+        const site = me?.siteArea || "";
+        setUserRegional(reg);
+        setUserSiteArea(site);
+
+        // KUNCI STATE ABSOLUT
+        if (r === "sitearea" || r === "spb_dki") {
+          setSelectedRegional(reg);
+          // Jika token kosong sementara, fallback ke string aman agar tidak jebol ke 'ALL'
+          setSelectedSiteArea(site || "SPB DKI"); 
+        } else if (r === "rm") {
           setSelectedRegional(reg);
           setSelectedSiteArea("ALL");
-        } else if (r === "pusat") {
-          // 👇 DEFAULT PUSAT LANGSUNG "ALL"
+        } else {
           setSelectedRegional("ALL");
           setSelectedSiteArea("ALL");
         }
       } catch {
         setRole("pusat");
-        setSelectedRegional("ALL");
-        setSelectedSiteArea("ALL");
       }
     })();
   }, []);
+
+
 
   // ── Fetch Regional Data from API ──
   const JUNK_VALUES = [
@@ -242,48 +254,30 @@ export default function BranchPage() {
 
   // ── Derived Options ──
   const regionalOptions = useMemo(() => {
-    const base = Object.keys(regionalData)
-      .sort()
-      .map((r) => ({ value: r, label: r }));
-    return role === "pusat"
-      ? [{ value: "ALL", label: "Semua Regional" }, ...base]
-      : base;
-  }, [regionalData, role]);
+    // JIKA BUKAN PUSAT, KUNCI MATI HANYA DI REGIONAL MILIKNYA
+    if (role !== "pusat" && selectedRegional) {
+      return [{ value: selectedRegional, label: selectedRegional }];
+    }
+    
+    const base = Object.keys(regionalData).sort().map((r) => ({ value: r, label: r }));
+    return [{ value: "ALL", label: "Semua Regional" }, ...base];
+  }, [regionalData, role, selectedRegional]);
 
   const siteAreaOptions = useMemo(() => {
+    // KUNCI MATI UNTUK CABANG: HANYA ADA 1 OPSI
+    if (role === "sitearea" || role === "spb_dki") {
+      const siteLabel = userSiteArea || selectedSiteArea || "SPB DKI";
+      return [{ value: siteLabel, label: siteLabel }];
+    }
+
     if (!selectedRegional || selectedRegional === "ALL") {
       return [{ value: "ALL", label: "Semua Site Area" }];
     }
-
-    // 1. Coba cari exact match atau case-insensitive match dulu
-    let matchedKey = Object.keys(regionalData).find(
-      (k) => k.toLowerCase() === selectedRegional.toLowerCase()
-    );
-
-    // 2. Fallback: Gunakan Kamus Sinonim (Anti-Bocor)
-    if (!matchedKey) {
-      const sr = selectedRegional.toLowerCase();
-      const isReg1 = sr.includes("bandung") || sr.includes("reg 1") || sr.includes("regional 1") || sr.includes(" i");
-      const isReg2 = sr.includes("surabaya") || sr.includes("reg 2") || sr.includes("regional 2") || sr.includes(" ii");
-      const isReg3 = sr.includes("makassar") || sr.includes("reg 3") || sr.includes("regional 3") || sr.includes(" iii");
-
-      matchedKey = Object.keys(regionalData).find((k) => {
-        const kl = k.toLowerCase();
-        if (isReg1 && (kl.includes("bandung") || kl.includes("reg 1") || kl.includes("regional 1") || kl.includes(" i"))) return true;
-        if (isReg2 && (kl.includes("surabaya") || kl.includes("reg 2") || kl.includes("regional 2") || kl.includes(" ii"))) return true;
-        if (isReg3 && (kl.includes("makassar") || kl.includes("reg 3") || kl.includes("regional 3") || kl.includes(" iii"))) return true;
-        return false;
-      });
-    }
-
-    // 3. Jika tetap tidak ketemu, kembalikan default
-    if (!matchedKey || !regionalData[matchedKey]) {
-      return [{ value: "ALL", label: "Semua Site Area" }];
-    }
-
-    const base = regionalData[matchedKey].map((s) => ({ value: s, label: s }));
+    
+    const sites = regionalData[selectedRegional] || [];
+    const base = sites.map((s) => ({ value: s, label: s }));
     return [{ value: "ALL", label: "Semua Site Area" }, ...base];
-  }, [selectedRegional, regionalData, role]);
+  }, [selectedRegional, regionalData, role, userSiteArea, selectedSiteArea]);
 
   const monthOptions = MONTH_NAMES.map((m, i) => ({
     value: String(i + 1),
@@ -471,14 +465,6 @@ export default function BranchPage() {
             Visualisasi jadwal pengiriman PO berdasarkan wilayah dan periode.
           </p>
         </div>
-        {role === "rm" && userRegional && (
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full">
-            <Globe2 size={14} className="text-indigo-600" />
-            <span className="text-xs font-bold text-indigo-700">
-              {userRegional}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* ─── Filter Section ─── */}
@@ -492,7 +478,8 @@ export default function BranchPage() {
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {role === "pusat" && (
+            {/* SEMBUNYIKAN REGIONAL JIKA ROLE ADALAH CABANG */}
+            {role !== "sitearea" && role !== "spb_dki" && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                   <Globe2 size={12} /> Regional
@@ -501,9 +488,12 @@ export default function BranchPage() {
                   value={selectedRegional}
                   onChange={handleRegionalChange}
                   options={regionalOptions}
+                  disabled={role !== "pusat"} // 👈 HANYA PUSAT YANG BISA UBAH REGIONAL
                 />
               </div>
             )}
+            
+            {/* SITE AREA DIKUNCI JIKA CABANG */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                 <MapPin size={12} /> Site Area
@@ -515,7 +505,7 @@ export default function BranchPage() {
                   setSelectedDateKey(null);
                 }}
                 options={siteAreaOptions}
-                disabled={!selectedRegional}
+                disabled={role === "sitearea" || role === "spb_dki"}
               />
             </div>
             <div className="flex flex-col gap-1.5">

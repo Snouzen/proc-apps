@@ -12,11 +12,14 @@ import {
   CalendarDays,
   MapPin,
   X,
+  FileDown,
+  Eye,
 } from "lucide-react";
 import { getMe } from "@/lib/me";
 import { format } from "date-fns";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import PODetailModal from "@/components/po-detail-modal";
+import { generateInvoicePdf } from "@/lib/generateInvoice";
 
 // ── Helper: strip junk site area text ──────────────────────────────────────
 function cleanSiteArea(val?: string | null): string {
@@ -60,6 +63,7 @@ export default function SchedulePage() {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailData, setDetailData] = useState<any>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   
   // -- Filter State --
   const [activeFilter, setActiveFilter] = useState<'all' | 'scheduled' | 'unscheduled'>('all');
@@ -118,6 +122,40 @@ export default function SchedulePage() {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const handleDownloadInvoice = async (po: any) => {
+    // Memastikan data item lengkap sebelum generate
+    if (!po.Items || po.Items.length === 0) {
+      try {
+        const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`);
+        const data = await res.json();
+        const fullPo = Array.isArray(data?.data) ? data.data[0] : Array.isArray(data) ? data[0] : null;
+        if (fullPo) {
+          generateInvoicePdf(fullPo, 'download');
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to fetch full PO for invoice:", err);
+      }
+    }
+    generateInvoicePdf(po, 'download');
+  };
+
+  const handlePreviewPdf = async (po: any) => {
+    let targetPo = po;
+    if (!po.Items || po.Items.length === 0) {
+      try {
+        const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`);
+        const data = await res.json();
+        const fullPo = Array.isArray(data?.data) ? data.data[0] : Array.isArray(data) ? data[0] : null;
+        if (fullPo) targetPo = fullPo;
+      } catch (err) {
+        console.error("Failed to fetch full PO for preview:", err);
+      }
+    }
+    const blobUrl = generateInvoicePdf(targetPo, 'preview');
+    if (blobUrl) setPdfPreviewUrl(blobUrl as string);
   };
 
   const handleViewRow = async (po: any) => {
@@ -396,26 +434,54 @@ export default function SchedulePage() {
 
                       {/* Action Button */}
                       <td className="px-5 py-3.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPo(po);
-                            setSelectedDate(
-                              po.tglkirim ? po.tglkirim.split("T")[0] : ""
-                            );
-                            setNamaSupir(po.namaSupir || "");
-                            setPlatNomor(po.platNomor || "");
-                            setModalOpen(true);
-                          }}
-                          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 shadow-sm active:scale-95 ${
-                            isScheduled
-                              ? "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-600 hover:text-white hover:border-slate-600"
-                              : "bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600"
-                          }`}
-                        >
-                          <Calendar size={12} />
-                          {isScheduled ? "Update" : "Set Schedule"}
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPo(po);
+                              setSelectedDate(
+                                po.tglkirim ? po.tglkirim.split("T")[0] : ""
+                              );
+                              setNamaSupir(po.namaSupir || "");
+                              setPlatNomor(po.platNomor || "");
+                              setModalOpen(true);
+                            }}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 shadow-sm active:scale-95 ${
+                              isScheduled
+                                ? "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-600 hover:text-white hover:border-slate-600"
+                                : "bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600"
+                            }`}
+                          >
+                            <Calendar size={12} />
+                            {isScheduled ? "Update" : "Set Schedule"}
+                          </button>
+                          
+                          {isScheduled && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePreviewPdf(po);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-all text-[10px] border border-slate-200 shadow-sm active:scale-95 whitespace-nowrap"
+                                title="Preview Invoice"
+                              >
+                                <Eye size={12} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadInvoice(po);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 transition-all text-[10px] border border-indigo-200 shadow-sm active:scale-95 whitespace-nowrap"
+                                title="Download Invoice"
+                              >
+                                <FileDown size={12} />
+                                INV
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -601,6 +667,38 @@ export default function SchedulePage() {
             : null
         }
       />
+
+      {/* ── Live Preview Modal ─────────────────────────────────────────── */}
+      {pdfPreviewUrl && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-10 animate-in fade-in duration-200">
+          <div className="bg-slate-100 w-full max-w-5xl h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-indigo-50 rounded-lg">
+                  <Eye className="text-indigo-600" size={18} />
+                </div>
+                <h3 className="font-bold text-slate-800">Live Preview Invoice</h3>
+              </div>
+              <button 
+                onClick={() => setPdfPreviewUrl(null)}
+                className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* PDF Viewer (Iframe) */}
+            <div className="flex-1 w-full h-full bg-slate-200">
+              <iframe 
+                src={pdfPreviewUrl} 
+                className="w-full h-full border-none"
+                title="PDF Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

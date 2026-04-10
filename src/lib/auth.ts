@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 
-export type Role = "pusat" | "rm" | "spb_dki";
+export type Role = "pusat" | "rm" | "spb_dki" | "sitearea";
 
 export interface SessionPayload {
   email: string;
