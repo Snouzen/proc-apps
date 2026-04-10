@@ -3,7 +3,7 @@
 type Me = {
   authenticated: boolean;
   email?: string;
-  role?: "pusat" | "rm" | "spb_dki" | "sitearea";
+  role?: "pusat" | "rm" | "sitearea";
   regional?: string | null;
   siteArea?: string | null;
 };

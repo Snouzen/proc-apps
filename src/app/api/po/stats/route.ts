@@ -75,12 +75,12 @@ export async function GET(request: Request) {
   console.log("🚨 [DEBUG API] EMAIL:", email, "| DB_USER:", dbUser ? "KETEMU" : "KOSONG", "| SAFE_ROLE:", safeRole);
 
 
-  // 5. Tentukan Wilayah (Dengan Fallback ke Token Metadata jika ada)
+// 5. Tentukan Wilayah (Dengan Fallback ke Token Metadata jika ada)
   let overrideRegional: string | null = null;
   let overrideSiteArea: string | null = null;
-  if (safeRole === 'picsite' || safeRole === 'spbdki') {
-    overrideRegional = dbUser?.regional || (sessionObj as any)?.user_metadata?.regional || "Regional 1 Bandung";
-    overrideSiteArea = dbUser?.siteArea || (sessionObj as any)?.user_metadata?.siteArea || "SPB DKI";
+  if (safeRole === 'sitearea') {
+    overrideRegional = dbUser?.regional || (sessionObj as any)?.user_metadata?.regional || null;
+    overrideSiteArea = dbUser?.siteArea || (sessionObj as any)?.user_metadata?.siteArea || null;
   } else if (safeRole === 'rm') {
     overrideRegional = dbUser?.regional || (sessionObj as any)?.regional || null;
   }

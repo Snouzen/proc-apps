@@ -70,7 +70,7 @@ export default function Home() {
   const [poData, setPoData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [role, setRole] = useState<"pusat" | "rm" | "spb_dki" | null>(null);
+  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | null>(null);
   const [regional, setRegional] = useState<string | null>(null);
   const [siteArea, setSiteArea] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
@@ -158,10 +158,10 @@ export default function Home() {
   const statsParams = useMemo(() => {
     const params = new URLSearchParams();
     params.set("includeUnknown", "true");
-    if ((role === "rm" || role === "spb_dki") && regional) {
+    if ((role === "rm" || role === "sitearea") && regional) {
       params.set("regional", regional);
     }
-    if (role === "spb_dki" && siteArea) {
+    if (role === "sitearea" && siteArea) {
       params.set("siteArea", siteArea);
     }
     if (dateFrom) params.set("tglFrom", dateFrom);
@@ -388,7 +388,7 @@ function TableUnderChart({
   counts,
 }: {
   refreshTick: number;
-  role: "pusat" | "rm" | "spb_dki" | null;
+  role: "pusat" | "rm" | "sitearea" | null;
   regional: string | null;
   siteArea: string | null;
   units: any[];
@@ -564,10 +564,10 @@ function TableUnderChart({
         params.set("group", group);
         params.set("limit", String(rowsPerPage));
         params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
-        if ((role === "rm" || role === "spb_dki") && regional) {
+        if ((role === "rm" || role === "sitearea") && regional) {
           params.set("regional", regional);
         }
-        if (role === "spb_dki" && siteArea) {
+        if (role === "sitearea" && siteArea) {
           params.set("siteArea", siteArea);
         }
         if (regionalFilter) params.set("regional", regionalFilter);
@@ -909,7 +909,7 @@ function TableUnderChart({
           <div className="flex flex-wrap items-center gap-2 w-full">
             {!modalOpen && (
               <>
-                <div className="w-full md:w-auto z-[70]">
+                <div className="w-full md:w-auto z-20">
                   <SmoothSelect
                     width={172}
                     value={group}
@@ -965,13 +965,14 @@ function TableUnderChart({
                     onSearchChange={handleSearchChange}
                     dateFrom={dateFrom}
                     dateTo={dateTo}
-                    regionalValue={role === "rm" ? (regional || "") : regionalFilter}
-                    siteAreaValue={siteAreaFilter}
-                    regionalLocked={role === "rm"}
+                    regionalValue={role === "rm" || role === "sitearea" ? (regional || "") : regionalFilter}
+                    siteAreaValue={role === "sitearea" ? (siteArea || "") : siteAreaFilter}
+                    regionalLocked={role === "rm" || role === "sitearea"}
+                    siteAreaLocked={role === "sitearea"}
                     onFilterChange={handleFilterChange}
                   />
                 </div>
-                <div className="relative w-full md:w-auto z-[50]">
+                <div className="relative w-full md:w-auto z-10">
                   <button
                     className="w-full md:w-auto px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold bg-white hover:bg-gray-50"
                     onClick={() => setColsOpen((o) => !o)}
@@ -979,7 +980,7 @@ function TableUnderChart({
                     Customize Columns
                   </button>
                   {colsOpen && !modalOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-[60]">
+                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-20">
                       {columnDefs.map((c) => (
                         <label
                           key={c.key}

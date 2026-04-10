@@ -59,7 +59,7 @@ export default function Sidebar({
       try {
         const data = await getMe();
         if (data?.authenticated) {
-          const r = (data.role === "rm" || data.role === "sitearea" || data.role === "spb_dki") 
+          const r = (data.role === "rm" || data.role === "sitearea") 
             ? data.role 
             : "pusat";
           setRole(r as any);
@@ -89,12 +89,12 @@ export default function Sidebar({
   ];
 
   const menuItems =
-    role === "spb_dki" || role === "sitearea"
+    role === "sitearea"
       ? [
           baseMenu[0], // Dashboard
           baseMenu[1], // Schedule
-          baseMenu[4], // Report
-          baseMenu[5], // Branch Plan
+          baseMenu[4], // Report (index 4)
+          baseMenu[5], // Branch Plan (index 5)
         ]
       : baseMenu;
 
@@ -181,7 +181,7 @@ export default function Sidebar({
 
           {/* Collapsible Master Data (hide for RM) */}
           <div className="space-y-1">
-            {role !== "rm" && role !== "spb_dki" && (
+            {role !== "rm" && role !== "sitearea" && (
               <>
                 <div
                   onClick={() =>

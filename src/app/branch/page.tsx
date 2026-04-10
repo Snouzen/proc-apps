@@ -59,7 +59,7 @@ const formatDateId = (d: any) => {
    ────────────────────────────────────────────── */
 export default function BranchPage() {
   // ── Role & User State ──
-  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | "spb_dki" | null>(null);
+  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | null>(null);
   const [userRegional, setUserRegional] = useState<string | null>(null);
   const [userSiteArea, setUserSiteArea] = useState<string | null>(null);
 
@@ -130,23 +130,33 @@ export default function BranchPage() {
     (async () => {
       try {
         const me = await getMe();
-        const r = me?.role === "rm" || me?.role === "sitearea" || me?.role === "spb_dki" 
-          ? (me.role as "rm" | "sitearea" | "spb_dki") 
+        const r = me?.role === "rm" || me?.role === "sitearea" 
+          ? (me.role as "rm" | "sitearea") 
           : "pusat";
         
         setRole(r as any);
 
-        // Ekstrak data asli
+        // Ekstrak data asli & Normalisasi Fallback
         const reg = me?.regional || "";
-        const site = me?.siteArea || "";
+        const emailPrefix = me?.email ? me.email.split('@')[0].toUpperCase() : "";
+        
+        // Normalisasi: SPPSUMBAWA -> SPP SUMBAWA, SPBDKI -> SPB DKI
+        let formattedSite = emailPrefix;
+        if (emailPrefix.startsWith("SPP") && emailPrefix.length > 3) {
+            formattedSite = "SPP " + emailPrefix.substring(3);
+        } else if (emailPrefix.startsWith("SPB") && emailPrefix.length > 3) {
+            formattedSite = "SPB " + emailPrefix.substring(3);
+        }
+
+        const site = me?.siteArea || formattedSite;
+        
         setUserRegional(reg);
         setUserSiteArea(site);
 
         // KUNCI STATE ABSOLUT
-        if (r === "sitearea" || r === "spb_dki") {
+        if (r === "sitearea") {
           setSelectedRegional(reg);
-          // Jika token kosong sementara, fallback ke string aman agar tidak jebol ke 'ALL'
-          setSelectedSiteArea(site || "SPB DKI"); 
+          setSelectedSiteArea(site); 
         } else if (r === "rm") {
           setSelectedRegional(reg);
           setSelectedSiteArea("ALL");
@@ -265,8 +275,8 @@ export default function BranchPage() {
 
   const siteAreaOptions = useMemo(() => {
     // KUNCI MATI UNTUK CABANG: HANYA ADA 1 OPSI
-    if (role === "sitearea" || role === "spb_dki") {
-      const siteLabel = userSiteArea || selectedSiteArea || "SPB DKI";
+    if (role === "sitearea") {
+      const siteLabel = userSiteArea || selectedSiteArea;
       return [{ value: siteLabel, label: siteLabel }];
     }
 
@@ -479,7 +489,7 @@ export default function BranchPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* SEMBUNYIKAN REGIONAL JIKA ROLE ADALAH CABANG */}
-            {role !== "sitearea" && role !== "spb_dki" && (
+            {role !== "sitearea" && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                   <Globe2 size={12} /> Regional
@@ -501,11 +511,13 @@ export default function BranchPage() {
               <SmoothSelect
                 value={selectedSiteArea}
                 onChange={(v) => {
-                  setSelectedSiteArea(v);
-                  setSelectedDateKey(null);
+                  if (role !== "sitearea") {
+                    setSelectedSiteArea(v);
+                    setSelectedDateKey(null);
+                  }
                 }}
                 options={siteAreaOptions}
-                disabled={role === "sitearea" || role === "spb_dki"}
+                disabled={role === "sitearea"}
               />
             </div>
             <div className="flex flex-col gap-1.5">

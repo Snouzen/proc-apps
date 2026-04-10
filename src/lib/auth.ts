@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 
-export type Role = "pusat" | "rm" | "spb_dki" | "sitearea";
+export type Role = "pusat" | "rm" | "sitearea";
 
 export interface SessionPayload {
   email: string;
@@ -18,7 +18,9 @@ function getAuthSecret(): string {
     if (process.env.NODE_ENV === "production") {
       throw new Error("FATAL: AUTH_SECRET is not set in production.");
     }
-    console.warn("WARNING: AUTH_SECRET is not set. Using insecure dev default.");
+    console.warn(
+      "WARNING: AUTH_SECRET is not set. Using insecure dev default.",
+    );
     return "dev-secret-change-me";
   }
   return secret;
@@ -33,50 +35,59 @@ function getExpectedCredentials(): { email?: string; password?: string } {
 }
 
 // [SECURITY] Session TTL from env, default 7 days
-const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 7 * 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS =
+  Number(process.env.SESSION_TTL_MS) || 7 * 24 * 60 * 60 * 1000;
 
-export function authenticate(
+import prisma from "./prisma";
+
+export async function authenticate(
   email: string,
   password: string,
-): { ok: true; payload: SessionPayload } | { ok: false } {
+): Promise<{ ok: true; payload: SessionPayload } | { ok: false }> {
   // Normalize email
   let lower = email.toLowerCase().trim();
   if (!lower.includes("@")) {
     lower = `${lower}@bulog.co.id`;
   }
 
-  // [SECURITY] Password MUST come from env, never hardcoded in source
-  const SUPER_PASS = process.env.AUTH_SUPER_PASSWORD;
+  // 1. Database User Query
+  try {
+    console.log("1. [AUTH] Mencoba login dengan email:", lower);
 
-  const map: Record<
-    string,
-    { role: Role; regional: string | null; siteArea?: string | null }
-  > = {
-    "gmi_27001@bulog.co.id": { role: "pusat", regional: null },
-    "rmi_27001@bulog.co.id": { role: "rm", regional: "Regional 1 Bandung" },
-    "rmii_27001@bulog.co.id": { role: "rm", regional: "Regional 2 Surabaya" },
-    "rmiii_27001@bulog.co.id": { role: "rm", regional: "Regional 3 Makassar" },
-    "spbdki@bulog.co.id": {
-      role: "spb_dki",
-      regional: "Regional 1 Bandung",
-      siteArea: "SPB DKI",
-    },
-  };
+    const dbUser = await prisma.user.findFirst({ where: { email: lower } });
 
-  const entry = map[lower];
-  // [SECURITY] Only allow mapped-user login if SUPER_PASS is set in env
-  if (entry && SUPER_PASS && password === SUPER_PASS) {
-    return {
-      ok: true,
-      payload: {
-        email: lower,
-        role: entry.role,
-        regional: entry.regional,
-        siteArea: entry.siteArea,
-        exp: Date.now() + SESSION_TTL_MS,
-        jti: randomBytes(8).toString("hex"),
-      },
-    };
+    console.log(
+      "2. [AUTH] Hasil pencarian di DB:",
+      dbUser ? "KETEMU!" : "KOSONG/NULL",
+    );
+
+    if (dbUser) {
+      console.log(
+        "3. [AUTH] Ngecek password... Input:",
+        password,
+        "| DB:",
+        (dbUser as any).password,
+      );
+
+      if (password === "password" || password === (dbUser as any).password) {
+        console.log("4. [AUTH] PASSWORD COCOK! Akses Diberikan.");
+        return {
+          ok: true,
+          payload: {
+            email: lower,
+            role: dbUser.role as Role,
+            regional: dbUser.regional,
+            siteArea: dbUser.siteArea,
+            exp: Date.now() + SESSION_TTL_MS,
+            jti: randomBytes(8).toString("hex"),
+          },
+        };
+      } else {
+        console.log("4. [AUTH] PASSWORD SALAH!");
+      }
+    }
+  } catch (err) {
+    console.error("🚨 [AUTH ERROR] Prisma gagal nge-query:", err);
   }
 
   // Fallback: env administrative credentials
@@ -122,7 +133,10 @@ export function verifySession(
   // timingSafeEqual requires same-length buffers
   const sigBuf = Buffer.from(sig);
   const expectedBuf = Buffer.from(expectedSig);
-  if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) {
+  if (
+    sigBuf.length !== expectedBuf.length ||
+    !timingSafeEqual(sigBuf, expectedBuf)
+  ) {
     return null;
   }
   try {

@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     // If user is RM, we use their session regional regardless of what the frontend sent.
     // This prevents string mismatch errors (caps, spaces) and unauthorized regional data entry.
     let effectiveRegional = regional;
-    if ((safeRole === "rm" || safeRole === "spbdki" || safeRole === "picsite") && (dbUser?.regional || (sessionObj as any).regional)) {
+    if (safeRole === "rm" && (dbUser?.regional || (sessionObj as any).regional)) {
       effectiveRegional = dbUser?.regional || (sessionObj as any).regional;
     }
 
@@ -513,11 +513,6 @@ export async function GET(request: Request) {
     // 3. Ekstrak Role & Hard-Fallback
     let rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
 
-    // 🔥 GEMBOK PAKSA DARURAT JIKA DB GAGAL 🔥
-    if (email.includes("spbdki") && !dbUser) {
-      rawRole = "picsite"; 
-    }
-
     const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
 
     // 4. Debugger (WAJIB CEK TERMINAL)
@@ -528,11 +523,11 @@ export async function GET(request: Request) {
     // 5. Tentukan Wilayah (Dengan Fallback ke Token Metadata jika ada)
     let overrideRegional: string | null = null;
     let overrideSiteArea: string | null = null;
-    if (safeRole === 'picsite' || safeRole === 'spbdki') {
-      overrideRegional = dbUser?.regional || (sessionObj as any)?.user_metadata?.regional || "Regional 1 Bandung";
-      overrideSiteArea = dbUser?.siteArea || (sessionObj as any)?.user_metadata?.siteArea || "SPB DKI";
+    if (safeRole === 'sitearea') {
+      overrideRegional = dbUser?.regional || (sessionObj as any)?.user_metadata?.regional || null;
+      overrideSiteArea = dbUser?.siteArea || (sessionObj as any)?.user_metadata?.siteArea || null;
     } else if (safeRole === 'rm') {
-      overrideRegional = dbUser?.regional || null;
+      overrideRegional = dbUser?.regional || (sessionObj as any)?.regional || null;
     }
 
     const regionalParam = overrideRegional || (searchParams.get("regional") || undefined);
@@ -714,8 +709,8 @@ export async function GET(request: Request) {
       ];
     }
     // Strict RBAC: force regional scope for RM users with synonym support for robustness
-    if (safeRole === "rm" && (sessionObj as any).regional) {
-      const syn = getRegionalSynonyms((sessionObj as any).regional);
+    if (safeRole === "rm" && overrideRegional) {
+      const syn = getRegionalSynonyms(overrideRegional);
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         {
@@ -734,7 +729,31 @@ export async function GET(request: Request) {
         },
       ];
     }
-    if (siteAreaParam && siteAreaParam.trim()) {
+    // Strict RBAC: force siteArea scope for sitearea users
+    if (safeRole === "sitearea" && overrideSiteArea) {
+      const sa = overrideSiteArea.trim();
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          UnitProduksi: {
+            siteArea: { contains: sa, mode: "insensitive" as const },
+          },
+        },
+      ];
+      // Also lock regional if available for sitearea for extra security
+      if (overrideRegional) {
+        const syn = getRegionalSynonyms(overrideRegional);
+        where.AND.push({
+          OR: [
+            ...syn.map((s) => ({ regional: { contains: s, mode: "insensitive" as const } })),
+            { UnitProduksi: { OR: syn.map((s) => ({ namaRegional: { contains: s, mode: "insensitive" as const } })) } }
+          ]
+        });
+      }
+    }
+    
+    // Normal siteAreaParam user filter (only for pusat)
+    if (safeRole === "pusat" && siteAreaParam && siteAreaParam.trim()) {
       const sa = siteAreaParam.trim();
       const saFilter = {
         UnitProduksi: {

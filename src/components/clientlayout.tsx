@@ -22,32 +22,42 @@ export default function ClientLayout({
   const isFullWidthPage = pathname === "/po" || pathname.startsWith("/po/");
 
   const [profileRole, setProfileRole] = useState<
-    "pusat" | "rm" | "spb_dki" | "sitearea" | null
+    "pusat" | "rm" | "sitearea" | null
   >(null);
   const [profileRegional, setProfileRegional] = useState<string | null>(null);
+  const [profileSiteArea, setProfileSiteArea] = useState<string | null>(null);
+  const [profileEmail, setProfileEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     const cached = getMeSync();
     if (mounted && cached?.authenticated && cached.role) {
-      setProfileRole(cached.role);
+      setProfileRole(cached.role as any);
       setProfileRegional(cached.regional || null);
+      setProfileSiteArea(cached.siteArea || null);
+      setProfileEmail(cached.email || null);
     }
     getMe()
       .then((data) => {
         if (!mounted) return;
         if (data?.authenticated && data?.role) {
-          setProfileRole(data.role);
+          setProfileRole(data.role as any);
           setProfileRegional(data.regional || null);
+          setProfileSiteArea(data.siteArea || null);
+          setProfileEmail(data.email || null);
         } else {
           setProfileRole(null);
           setProfileRegional(null);
+          setProfileSiteArea(null);
+          setProfileEmail(null);
         }
       })
       .catch(() => {
         if (!mounted) return;
         setProfileRole(null);
         setProfileRegional(null);
+        setProfileSiteArea(null);
+        setProfileEmail(null);
       });
     return () => {
       mounted = false;
@@ -57,7 +67,7 @@ export default function ClientLayout({
   // SECURITY: Redirect logic moved to page-level if needed.
   // Whitelist roles have been expanded in sidebar and shared layouts.
   useEffect(() => {
-    if (profileRole === "spb_dki" || profileRole === "sitearea") {
+    if (profileRole === "sitearea") {
       // Allow /report, /branch, /po for these roles
       const restricted = ["/master-data"]; // Keep master-data restricted
       if (restricted.some((p) => pathname.startsWith(p))) {
@@ -114,69 +124,40 @@ export default function ClientLayout({
                 <div className="flex items-center gap-4">
                   {/* Info Teks */}
                   <div className="text-right hidden sm:block leading-tight">
-                    <p className="text-sm font-black text-slate-800">
-                      {profileRole === "rm"
-                        ? (() => {
-                            let reg = String(profileRegional || "");
-                            if (reg.startsWith("Reg "))
-                              reg = reg.replace(/^Reg\s+/i, "Regional ");
-                            // Tambahkan kota default jika belum ada
-                            const low = reg.toLowerCase();
-                            if (
-                              /regional\s*1\b/i.test(reg) &&
-                              !low.includes("bandung")
-                            )
-                              reg = reg + " Bandung";
-                            if (
-                              /regional\s*2\b/i.test(reg) &&
-                              !low.includes("surabaya")
-                            )
-                              reg = reg + " Surabaya";
-                            if (
-                              /regional\s*3\b/i.test(reg) &&
-                              !low.includes("makassar")
-                            )
-                              reg = reg + " Makassar";
-                            return reg.trim();
-                          })()
-                        : profileRole === "spb_dki"
-                          ? "SPB DKI"
-                          : profileRole === "pusat"
-                            ? "Admin Pusat"
-                            : ""}
+                    <p className="text-sm font-black text-slate-800 uppercase">
+                      {profileRole === "sitearea"
+                        ? profileEmail
+                          ? profileEmail.split("@")[0]
+                          : "ADMIN CABANG"
+                        : profileRole === "rm"
+                          ? profileRegional || "Regional Manager"
+                          : "ADMIN PUSAT"}
                     </p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      {profileRole === "rm"
-                        ? (() => {
-                            const reg = String(profileRegional || "");
-                            const m =
-                              reg.match(/\bReg(?:ional)?\s+(\d+)/i) ||
-                              reg.match(/\b(\d+)\b/);
-                            const num = m && m[1] ? m[1] : "";
-                            return `RM ${num}`.trim();
-                          })()
-                        : profileRole === "spb_dki"
-                          ? "SPB"
-                          : profileRole === "pusat"
-                            ? "Super Admin"
-                            : ""}
+                      {profileRole === "sitearea"
+                        ? profileRegional || "-"
+                        : profileRole === "rm"
+                          ? "Regional Manager"
+                          : "Super Admin"}
+                      {/* Email disembunyiin buat sitearea (sudah di judul) dan pusat (permintaan user) */}
+                      {profileRole === "rm" &&
+                        profileEmail &&
+                        ` • ${profileEmail.split("@")[0]}`}
                     </p>
                   </div>
-
                   {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full border-2 border-[#004a87] p-0.5 shadow-sm">
+                  <div
+                    className="w-10 h-10 rounded-full border-2 border-[#004a87] p-0.5 shadow-sm overflow-hidden"
+                    title={profileEmail || ""}
+                  >
                     {profileRole ? (
-                      <img
-                        src={
-                          profileRole === "spb_dki"
-                            ? "https://ui-avatars.com/api/?name=SD&background=004a87&color=fff"
-                            : profileRole === "rm"
-                              ? "https://ui-avatars.com/api/?name=RM&background=004a87&color=fff"
-                              : "https://ui-avatars.com/api/?name=Administrator+Pusat&background=004a87&color=fff"
-                        }
-                        alt="user"
-                        className="w-full h-full rounded-full object-cover"
-                      />
+                      <div className="w-full h-full rounded-full bg-[#004a87] flex items-center justify-center text-white font-bold text-xs">
+                        {profileRole === "sitearea"
+                          ? "SC"
+                          : profileRole === "rm"
+                            ? "RM"
+                            : "AD"}
+                      </div>
                     ) : (
                       <div className="w-full h-full rounded-full bg-slate-200 animate-pulse" />
                     )}

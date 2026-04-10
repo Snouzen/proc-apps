@@ -22,6 +22,7 @@ export default function POFilters({
   siteAreaValue,
   onFilterChange,
   regionalLocked = false,
+  siteAreaLocked = false,
 }: {
   unitData: UnitLike[];
   searchValue: string;
@@ -37,6 +38,7 @@ export default function POFilters({
     siteAreaValue?: string;
   }) => void;
   regionalLocked?: boolean;
+  siteAreaLocked?: boolean;
 }) {
   const [draftSearch, setDraftSearch] = useState(searchValue);
 
@@ -107,6 +109,7 @@ export default function POFilters({
         value={siteAreaValue}
         onChange={(v) => onFilterChange({ siteAreaValue: String(v || "") })}
         options={siteAreaOptions}
+        disabled={siteAreaLocked}
       />
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-600">Date</span>

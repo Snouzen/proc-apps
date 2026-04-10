@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     if (typeof email !== "string" || typeof password !== "string") {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
-    const result = authenticate(email, password);
+    const result = await authenticate(email, password);
     if (!result.ok) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
