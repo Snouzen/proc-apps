@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Calendar,
   CalendarCheck,
@@ -14,12 +15,14 @@ import {
   X,
   FileDown,
   Eye,
+  RotateCcw,
 } from "lucide-react";
 import { getMe } from "@/lib/me";
 import { format } from "date-fns";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import PODetailModal from "@/components/po-detail-modal";
 import { generateInvoicePdf } from "@/lib/generateInvoice";
+import Swal from "sweetalert2";
 
 // ── Helper: strip junk site area text ──────────────────────────────────────
 function cleanSiteArea(val?: string | null): string {
@@ -39,16 +42,19 @@ function cleanSiteArea(val?: string | null): string {
 function SkeletonRow() {
   return (
     <tr className="animate-pulse border-b border-slate-50">
-      {["w-8", "w-48", "w-16", "w-24", "w-24", "w-24", "w-28", "w-24"].map((w, i) => (
-        <td key={i} className="px-5 py-3.5">
-          <div className={`h-3.5 bg-slate-100 rounded-md ${w}`} />
-        </td>
-      ))}
+      {["w-8", "w-48", "w-16", "w-24", "w-24", "w-24", "w-28", "w-24"].map(
+        (w, i) => (
+          <td key={i} className="px-5 py-3.5">
+            <div className={`h-3.5 bg-slate-100 rounded-md ${w}`} />
+          </td>
+        ),
+      )}
     </tr>
   );
 }
 
 export default function SchedulePage() {
+  const router = useRouter();
   const [poData, setPoData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -58,16 +64,19 @@ export default function SchedulePage() {
   const [selectedPo, setSelectedPo] = useState<any>(null);
   const [namaSupir, setNamaSupir] = useState("");
   const [platNomor, setPlatNomor] = useState("");
-  
+  const [savingPcsId, setSavingPcsId] = useState<string | null>(null);
+
   // -- Action State --
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailData, setDetailData] = useState<any>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  
+
   // -- Filter State --
-  const [activeFilter, setActiveFilter] = useState<'all' | 'scheduled' | 'unscheduled'>('all');
-  
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "scheduled" | "unscheduled"
+  >("all");
+
   // -- Pagination State --
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -75,17 +84,18 @@ export default function SchedulePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // [FIX] Hapus limit=100 agar semua PO aktif terambil.
-      // group=active → filter langsung di DB (noInvoice kosong = belum ada invoice)
-      // summary=true → select ringan, tanpa semua item detail
-      // includeItems=false → performa lebih baik untuk data masif
+      // [FIX] Gunakan kriteria yang tepat agar pcsKirimTotal & pcsTotal terisi dari DB Aggregation
       const res = await fetch(
         "/api/po?group=active&summary=true&includeItems=false",
-        { cache: "no-store" }
+        { cache: "no-store" },
       );
       const data = await res.json();
       // API no-limit path returns array directly; paged path returns { data, total }
-      const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
       setPoData(list);
     } catch (err) {
       console.error("Failed to fetch PO data:", err);
@@ -124,37 +134,149 @@ export default function SchedulePage() {
     }
   };
 
+  const handleUpdatePcsKirim = async (id: string, value: string) => {
+    const pcs = Number(value);
+    if (isNaN(pcs) || pcs < 0) return;
+    
+    setSavingPcsId(id);
+    try {
+      const res = await fetch("/api/po/pcs-kirim", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, pcsKirim: pcs }),
+      });
+      
+      if (res.ok) {
+        // Refetch to sync aggregate totals (pcsKirimTotal)
+        fetchData();
+        router.refresh();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Gagal update Pcs Kirim");
+      }
+    } catch (err) {
+      console.error("Update Pcs Kirim failed:", err);
+    } finally {
+      setSavingPcsId(null);
+    }
+  };
+
+  const handleRejectPo = async (po: any) => {
+    const result = await Swal.fire({
+      title: "Yakin ingin Reject?",
+      text: `PO #${po.noPo} akan dikembalikan ke antrean pusat dan data Site Area akan dikosongkan.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48", // rose-600
+      cancelButtonColor: "#64748b", // slate-500
+      confirmButtonText: "Ya, Reject PO",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+      background: "#ffffff",
+      customClass: {
+        popup: "rounded-[24px] border border-slate-100 shadow-2xl",
+        title: "text-slate-900 font-bold",
+        htmlContainer: "text-slate-500 text-sm",
+        confirmButton: "rounded-xl font-bold px-6 py-2.5",
+        cancelButton: "rounded-xl font-semibold px-6 py-2.5",
+      },
+    });
+
+    if (!result.isConfirmed) return;
+
+    const Toast = Swal.mixin({
+      toast: true,
+      position: "top-end",
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true,
+    });
+
+    setUpdatingId(po.id);
+    try {
+      const res = await fetch("/api/po/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: po.id }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        // [UX FIX] Instant UI Removal: Hapus data dari state lokal secara instan
+        setPoData((prev) => prev.filter((item) => item.id !== po.id));
+
+        Toast.fire({
+          icon: "success",
+          title: "PO Berhasil Direject!",
+          text: "Data telah dikembalikan ke antrean pusat.",
+          background: "#ecfdf5", // emerald-50
+        });
+
+        // Trigger Revalidation server-side
+        router.refresh();
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Gagal Reject",
+          text: data.error || "Terjadi kesalahan pada server.",
+          confirmButtonColor: "#6366f1",
+        });
+      }
+    } catch (err) {
+      console.error("Reject failure:", err);
+      Toast.fire({
+        icon: "error",
+        title: "Kesalahan Network",
+        background: "#fff1f2", // rose-50
+      });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const handleDownloadInvoice = async (po: any) => {
     // Memastikan data item lengkap sebelum generate
     if (!po.Items || po.Items.length === 0) {
       try {
-        const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`);
+        const res = await fetch(
+          `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
+        );
         const data = await res.json();
-        const fullPo = Array.isArray(data?.data) ? data.data[0] : Array.isArray(data) ? data[0] : null;
+        const fullPo = Array.isArray(data?.data)
+          ? data.data[0]
+          : Array.isArray(data)
+            ? data[0]
+            : null;
         if (fullPo) {
-          generateInvoicePdf(fullPo, 'download');
+          generateInvoicePdf(fullPo, "download");
           return;
         }
       } catch (err) {
         console.error("Failed to fetch full PO for invoice:", err);
       }
     }
-    generateInvoicePdf(po, 'download');
+    generateInvoicePdf(po, "download");
   };
 
   const handlePreviewPdf = async (po: any) => {
     let targetPo = po;
     if (!po.Items || po.Items.length === 0) {
       try {
-        const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`);
+        const res = await fetch(
+          `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
+        );
         const data = await res.json();
-        const fullPo = Array.isArray(data?.data) ? data.data[0] : Array.isArray(data) ? data[0] : null;
+        const fullPo = Array.isArray(data?.data)
+          ? data.data[0]
+          : Array.isArray(data)
+            ? data[0]
+            : null;
         if (fullPo) targetPo = fullPo;
       } catch (err) {
         console.error("Failed to fetch full PO for preview:", err);
       }
     }
-    const blobUrl = generateInvoicePdf(targetPo, 'preview');
+    const blobUrl = generateInvoicePdf(targetPo, "preview");
     if (blobUrl) setPdfPreviewUrl(blobUrl as string);
   };
 
@@ -164,9 +286,15 @@ export default function SchedulePage() {
     setIsViewOpen(true);
     setLoadingDetail(true);
     try {
-      const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`);
+      const res = await fetch(
+        `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
+      );
       const data = await res.json();
-      const first = Array.isArray(data?.data) ? data.data[0] : Array.isArray(data) ? data[0] : null;
+      const first = Array.isArray(data?.data)
+        ? data.data[0]
+        : Array.isArray(data)
+          ? data[0]
+          : null;
       if (first) {
         setDetailData(first);
       }
@@ -180,19 +308,23 @@ export default function SchedulePage() {
   const filteredPo = useMemo(() => {
     // Tahap 1: Filter berdasarkan Card yang diklik
     let categoryFiltered = poData;
-    if (activeFilter === 'scheduled') {
-      categoryFiltered = poData.filter(po => po.tglkirim);
-    } else if (activeFilter === 'unscheduled') {
-      categoryFiltered = poData.filter(po => !po.tglkirim);
+    if (activeFilter === "scheduled") {
+      categoryFiltered = poData.filter((po) => po.tglkirim);
+    } else if (activeFilter === "unscheduled") {
+      categoryFiltered = poData.filter((po) => !po.tglkirim);
     }
 
     // Tahap 2: Filter berdasarkan Search Bar
     if (!search.trim()) return categoryFiltered;
-    
+
     const query = search.toLowerCase();
     return categoryFiltered.filter((po) => {
-      const siteArea = String(po.UnitProduksi?.siteArea || po.siteArea || "").toLowerCase();
-      const company = String(po.RitelModern?.namaPt || po.company || "").toLowerCase();
+      const siteArea = String(
+        po.UnitProduksi?.siteArea || po.siteArea || "",
+      ).toLowerCase();
+      const company = String(
+        po.RitelModern?.namaPt || po.company || "",
+      ).toLowerCase();
       const inisial = String(po.RitelModern?.inisial || "").toLowerCase();
       const noPo = String(po.noPo || "").toLowerCase();
       const noInvoice = String(po.noInvoice || "").toLowerCase();
@@ -230,7 +362,6 @@ export default function SchedulePage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-7">
-
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -262,40 +393,40 @@ export default function SchedulePage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           {
-            id: 'all',
+            id: "all",
             label: "Total PO",
             value: stats.total,
             icon: <Truck size={18} className="text-blue-500" />,
             bg: "bg-blue-50",
             text: "text-blue-600",
-            ring: "ring-blue-500"
+            ring: "ring-blue-500",
           },
           {
-            id: 'scheduled',
+            id: "scheduled",
             label: "Sudah Dijadwalkan",
             value: stats.scheduled,
             icon: <CalendarCheck size={18} className="text-emerald-500" />,
             bg: "bg-emerald-50",
             text: "text-emerald-600",
-            ring: "ring-emerald-500"
+            ring: "ring-emerald-500",
           },
           {
-            id: 'unscheduled',
+            id: "unscheduled",
             label: "Belum Dijadwalkan",
             value: stats.pending,
             icon: <Clock size={18} className="text-amber-500" />,
             bg: "bg-amber-50",
             text: "text-amber-600",
-            ring: "ring-amber-500"
+            ring: "ring-amber-500",
           },
         ].map((stat) => (
           <div
             key={stat.id}
             onClick={() => setActiveFilter(stat.id as any)}
             className={`cursor-pointer bg-white px-5 py-4 rounded-2xl border border-slate-100 flex items-center gap-4 transition-all duration-200 ${
-              activeFilter === stat.id 
-                ? `ring-2 ${stat.ring} shadow-md scale-[1.02]` 
-                : 'hover:bg-slate-50 shadow-sm'
+              activeFilter === stat.id
+                ? `ring-2 ${stat.ring} shadow-md scale-[1.02]`
+                : "hover:bg-slate-50 shadow-sm"
             }`}
           >
             <div className={`p-2.5 rounded-xl ${stat.bg} shrink-0`}>
@@ -305,9 +436,7 @@ export default function SchedulePage() {
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
                 {stat.label}
               </p>
-              <p className={`text-2xl font-bold ${stat.text}`}>
-                {stat.value}
-              </p>
+              <p className={`text-2xl font-bold ${stat.text}`}>{stat.value}</p>
             </div>
           </div>
         ))}
@@ -340,6 +469,12 @@ export default function SchedulePage() {
                 <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[160px]">
                   Status
                 </th>
+                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center w-[80px]">
+                  Pcs
+                </th>
+                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center w-[110px]">
+                  Pcs Kirim
+                </th>
                 <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-right w-[120px]">
                   Action
                 </th>
@@ -350,7 +485,9 @@ export default function SchedulePage() {
                 Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
               ) : paginatedPOs.length > 0 ? (
                 paginatedPOs.map((po, index) => {
-                  const site = cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea);
+                  const site = cleanSiteArea(
+                    po.UnitProduksi?.siteArea || po.siteArea,
+                  );
                   const isScheduled = !!po.tglkirim;
 
                   return (
@@ -385,9 +522,14 @@ export default function SchedulePage() {
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           {site !== "-" && (
-                            <MapPin size={11} className="text-slate-300 shrink-0" />
+                            <MapPin
+                              size={11}
+                              className="text-slate-300 shrink-0"
+                            />
                           )}
-                          <span className={`text-xs font-medium ${site === "-" ? "text-slate-300" : "text-slate-600"}`}>
+                          <span
+                            className={`text-xs font-medium ${site === "-" ? "text-slate-300" : "text-slate-600"}`}
+                          >
                             {site}
                           </span>
                         </div>
@@ -432,20 +574,61 @@ export default function SchedulePage() {
                         )}
                       </td>
 
+                      {/* Kolom Pcs (Read-only) */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-center font-bold text-slate-600 text-xs">
+                        {Number(po.pcsTotal || 0).toLocaleString("id-ID")}
+                      </td>
+
+                      {/* Kolom Pcs Kirim (Inline Editable) */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative inline-block group/input">
+                          <input
+                            type="number"
+                            min="0"
+                            value={po.pcsKirimTotal ?? 0}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPoData(prev => prev.map(p => p.id === po.id ? { ...p, pcsKirimTotal: val } : p));
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            onBlur={(e) => {
+                              const val = parseInt(e.target.value.toString()) || 0;
+                              handleUpdatePcsKirim(po.id, val.toString());
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") e.currentTarget.blur();
+                            }}
+                            disabled={savingPcsId === po.id}
+                            className={`w-24 px-2 py-1.5 text-xs font-bold text-center bg-slate-50 border rounded-lg outline-none transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                               savingPcsId === po.id 
+                               ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse" 
+                               : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
+                            }`}
+                          />
+                          {savingPcsId !== po.id && Number(po.pcsKirimTotal) > 0 && (
+                             <div className="absolute -right-1 -top-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" title="Tersimpan" />
+                          )}
+                        </div>
+                      </td>
+
                       {/* Action Button */}
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                      <td
+                        className="px-5 py-3.5 whitespace-nowrap text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedPo(po);
                               setSelectedDate(
-                                po.tglkirim ? po.tglkirim.split("T")[0] : ""
+                                po.tglkirim ? po.tglkirim.split("T")[0] : "",
                               );
                               setNamaSupir(po.namaSupir || "");
                               setPlatNomor(po.platNomor || "");
                               setModalOpen(true);
                             }}
+                            disabled={updatingId === po.id}
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 shadow-sm active:scale-95 ${
                               isScheduled
                                 ? "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-600 hover:text-white hover:border-slate-600"
@@ -455,7 +638,24 @@ export default function SchedulePage() {
                             <Calendar size={12} />
                             {isScheduled ? "Update" : "Set Schedule"}
                           </button>
-                          
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRejectPo(po);
+                            }}
+                            disabled={updatingId === po.id}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-600 hover:text-white transition-all text-[11px] font-bold shadow-sm active:scale-95 whitespace-nowrap"
+                            title="Reject / Unassign PO"
+                          >
+                            {updatingId === po.id ? (
+                              <div className="w-3 h-3 border-2 border-rose-600/30 border-t-rose-600 rounded-full animate-spin" />
+                            ) : (
+                              <RotateCcw size={12} />
+                            )}
+                            Reject
+                          </button>
+
                           {isScheduled && (
                             <div className="flex items-center gap-1.5">
                               <button
@@ -477,7 +677,7 @@ export default function SchedulePage() {
                                 title="Download Invoice"
                               >
                                 <FileDown size={12} />
-                                INV
+                                Faktur Penjualan
                               </button>
                             </div>
                           )}
@@ -512,25 +712,60 @@ export default function SchedulePage() {
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
             <span className="text-xs text-slate-500 font-medium">
-              Menampilkan <span className="font-bold text-slate-700">{paginatedPOs.length}</span> dari <span className="font-bold text-slate-700">{filteredPo.length}</span> data
+              Menampilkan{" "}
+              <span className="font-bold text-slate-700">
+                {paginatedPOs.length}
+              </span>{" "}
+              dari{" "}
+              <span className="font-bold text-slate-700">
+                {filteredPo.length}
+              </span>{" "}
+              data
             </span>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            <div className="flex items-center gap-1">
+              {/* First Page */}
+              <button
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold text-slate-600"
+                onClick={() => setCurrentPage(1)}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                title="Halaman Pertama"
               >
-                Sebelumnya
+                «
               </button>
-              <div className="flex items-center justify-center px-3 py-1.5 min-w-[70px] text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg">
+
+              {/* Previous Page */}
+              <button
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-600"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                title="Sebelumnya"
+              >
+                ‹
+              </button>
+
+              {/* Info Page */}
+              <div className="flex items-center justify-center px-4 py-1.5 min-w-[80px] text-xs font-bold text-slate-700 bg-slate-50 border border-slate-100 rounded-lg mx-1 tabular-nums">
                 {currentPage} / {totalPages}
               </div>
-              <button 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+
+              {/* Next Page */}
+              <button
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-600"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                title="Selanjutnya"
               >
-                Selanjutnya
+                ›
+              </button>
+
+              {/* Last Page */}
+              <button
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold text-slate-600"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                title="Halaman Terakhir"
+              >
+                »
               </button>
             </div>
           </div>
@@ -541,7 +776,6 @@ export default function SchedulePage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-[28px] w-full max-w-md shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200 overflow-hidden">
-
             {/* Modal Header */}
             <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-slate-50">
               <div className="flex items-center gap-3">
@@ -678,20 +912,22 @@ export default function SchedulePage() {
                 <div className="p-2 bg-indigo-50 rounded-lg">
                   <Eye className="text-indigo-600" size={18} />
                 </div>
-                <h3 className="font-bold text-slate-800">Live Preview Invoice</h3>
+                <h3 className="font-bold text-slate-800">
+                  Live Preview Invoice
+                </h3>
               </div>
-              <button 
+              <button
                 onClick={() => setPdfPreviewUrl(null)}
                 className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             {/* PDF Viewer (Iframe) */}
             <div className="flex-1 w-full h-full bg-slate-200">
-              <iframe 
-                src={pdfPreviewUrl} 
+              <iframe
+                src={pdfPreviewUrl}
                 className="w-full h-full border-none"
                 title="PDF Preview"
               />
@@ -699,7 +935,6 @@ export default function SchedulePage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

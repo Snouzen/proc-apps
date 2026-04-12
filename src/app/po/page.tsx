@@ -268,8 +268,10 @@ function InputPODetailPageInner() {
       showToast("error", "PCS dan Harga/Pcs harus lebih dari 0");
       return;
     }
-    setItems((prev) =>
-      prev.map((it) =>
+
+    // 👇 INI YANG DIBENARIN (Bungkus pakai setItems)
+    setItems((prev) => {
+      const newItems = prev.map((it) =>
         it.id === item.id
           ? {
               ...it,
@@ -284,8 +286,15 @@ function InputPODetailPageInner() {
               rpTagih: d.rpTagih,
             }
           : it,
-      ),
-    );
+      );
+
+      // AUTO-CHECK KIRIM STATUS
+      const isShipped = newItems.some((it) => (Number(it.pcsKirim) || 0) > 0);
+      setFormData((f) => ({ ...f, status: { ...f.status, kirim: isShipped } }));
+
+      return newItems;
+    });
+
     setEditingItemId(null);
     setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
     showToast("success", "Item berhasil diupdate");
@@ -443,70 +452,6 @@ function InputPODetailPageInner() {
     loadPo();
   }, [searchParams]);
 
-  // SMART AUTO-CHECK: Sync document status with text inputs
-  useEffect(() => {
-    setFormData((prev) => {
-      const { noPo, noInvoice, buktiTagih, buktiBayar, status } = prev;
-      const newStatus = { ...status };
-      let hasChanges = false;
-
-      // 1. Auto-Check Dokumen PO (po)
-      const hasPoValue = !!noPo && noPo.trim() !== "";
-      if (hasPoValue !== status.po) {
-        newStatus.po = hasPoValue;
-        hasChanges = true;
-      }
-
-      // 2. Auto-Check Invoice (inv)
-      const hasInvValue = !!noInvoice && noInvoice.trim() !== "";
-      if (hasInvValue !== status.inv) {
-        newStatus.inv = hasInvValue;
-        hasChanges = true;
-      }
-
-      // 3. Auto-Check Tagih (tagih)
-      const hasTagihValue = !!buktiTagih && buktiTagih.trim() !== "";
-      if (hasTagihValue !== status.tagih) {
-        newStatus.tagih = hasTagihValue;
-        hasChanges = true;
-      }
-
-      // 4. Auto-Check Bayar (bayar)
-      const hasBayarValue = !!buktiBayar && buktiBayar.trim() !== "";
-      if (hasBayarValue !== status.bayar) {
-        newStatus.bayar = hasBayarValue;
-        hasChanges = true;
-      }
-
-      if (hasChanges) {
-        return { ...prev, status: newStatus };
-      }
-      return prev;
-    });
-  }, [formData.noPo, formData.noInvoice, formData.buktiTagih, formData.buktiBayar]);
-
-  // SMART AUTO-CHECK: Sync KIRIM status with items delivery progress
-  useEffect(() => {
-    setFormData((prev) => {
-      const newStatus = { ...prev.status };
-      let hasChanges = false;
-
-      // 1. Cek apakah ada barang di keranjang
-      const hasItems = items && items.length > 0;
-
-      // 2. Logika Baru (Lebih Longgar): 
-      // isShipped bernilai TRUE jika ada MINIMAL SATU barang yang Pcs Kirim-nya > 0
-      const isShipped = hasItems && items.some((item) => (Number(item.pcsKirim) || 0) > 0);
-
-      if (newStatus.kirim !== isShipped) {
-        newStatus.kirim = isShipped;
-        hasChanges = true;
-      }
-
-      return hasChanges ? { ...prev, status: newStatus } : prev;
-    });
-  }, [items]);
-
   const norm = (s: any) =>
     String(s ?? "")
       .trim()
@@ -588,8 +533,10 @@ function InputPODetailPageInner() {
             if (!formData.regional) return false;
 
             const sRaw = String(formData.regional).toLowerCase().trim();
-            const dRaw = String(u?.namaRegional || "").toLowerCase().trim();
-            
+            const dRaw = String(u?.namaRegional || "")
+              .toLowerCase()
+              .trim();
+
             const sNorm = norm(sRaw);
             const dNorm = norm(dRaw);
 
@@ -607,8 +554,7 @@ function InputPODetailPageInner() {
             const sKeywords = sNorm
               .split(/\s+/)
               .filter(
-                (w) =>
-                  !noise.includes(w) && isNaN(Number(w)) && w.length > 2,
+                (w) => !noise.includes(w) && isNaN(Number(w)) && w.length > 2,
               );
 
             // Jika ada kata kunci session yang terkandung dalam data DB, anggap match
@@ -710,7 +656,13 @@ function InputPODetailPageInner() {
       rpTagih: currentRpTagih,
     };
 
-    setItems((prev) => [...prev, newItem]);
+    setItems((prev) => {
+      const nextArr = [...prev, newItem];
+      // AUTO-CHECK KIRIM STATUS
+      const isShipped = nextArr.some((it) => (Number(it.pcsKirim) || 0) > 0);
+      setFormData((f) => ({ ...f, status: { ...f.status, kirim: isShipped } }));
+      return nextArr;
+    });
     // Reset current item form
     setCurrentItem({
       namaProduk: "",
@@ -722,7 +674,13 @@ function InputPODetailPageInner() {
   };
 
   const handleDeleteItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    setItems((prev) => {
+      const nextArr = prev.filter((item) => item.id !== id);
+      // AUTO-CHECK KIRIM STATUS
+      const isShipped = nextArr.some((it) => (Number(it.pcsKirim) || 0) > 0);
+      setFormData((f) => ({ ...f, status: { ...f.status, kirim: isShipped } }));
+      return nextArr;
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1074,9 +1032,7 @@ function InputPODetailPageInner() {
                   </label>
                   <DateInputHybrid
                     value={formData.tglKirim}
-                    onChange={(v) =>
-                      setFormData({ ...formData, tglKirim: v })
-                    }
+                    onChange={(v) => setFormData({ ...formData, tglKirim: v })}
                     className="w-full bg-white rounded-2xl"
                     placeholder="YYYY-MM-DD (opsional)"
                   />
@@ -1144,14 +1100,11 @@ function InputPODetailPageInner() {
                     value={formData.noInvoice}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setFormData({
-                        ...formData,
+                      setFormData((prev) => ({
+                        ...prev,
                         noInvoice: v,
-                        status: {
-                          ...formData.status,
-                          ...(v.trim() ? { inv: true } : {}),
-                        },
-                      });
+                        status: { ...prev.status, inv: !!v.trim() },
+                      }));
                     }}
                   />
                 </div>
@@ -1197,9 +1150,14 @@ function InputPODetailPageInner() {
                     placeholder="Masukkan Nomor PO..."
                     className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
                     value={formData.noPo}
-                    onChange={(e) =>
-                      setFormData({ ...formData, noPo: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        noPo: v,
+                        status: { ...prev.status, po: !!v.trim() },
+                      }));
+                    }}
                   />
                 </div>
                 <div className="md:col-span-4 space-y-1">
@@ -1396,7 +1354,10 @@ function InputPODetailPageInner() {
                         <th className="px-4 py-3 text-right" title="Input PCS">
                           Pcs
                         </th>
-                        <th className="px-4 py-3 text-right text-amber-600" title="PCS yang dikirim">
+                        <th
+                          className="px-4 py-3 text-right text-amber-600"
+                          title="PCS yang dikirim"
+                        >
                           Pcs Kirim
                         </th>
                         <th
@@ -1586,7 +1547,9 @@ function InputPODetailPageInner() {
                                     {getMeSync()?.role === "pusat" && (
                                       <button
                                         type="button"
-                                        onClick={() => handleDeleteItem(item.id)}
+                                        onClick={() =>
+                                          handleDeleteItem(item.id)
+                                        }
                                         className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                                         title="Hapus"
                                       >
@@ -1730,13 +1693,17 @@ function InputPODetailPageInner() {
 
               <div className="space-y-3">
                 {Object.keys(formData.status).map((key) => {
-                  const checked = formData.status[key as keyof typeof formData.status];
+                  const checked =
+                    formData.status[key as keyof typeof formData.status];
                   const label = key === "sdif" ? "SDI/F" : key.toUpperCase();
-                  
+
                   // Khusus untuk TAGIH dan BAYAR, render secara inline dengan input teks
                   if (key === "tagih") {
                     return (
-                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors">
+                      <div
+                        key={key}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors"
+                      >
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input
                             type="checkbox"
@@ -1744,7 +1711,9 @@ function InputPODetailPageInner() {
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">{label}</span>
+                          <span className="font-bold text-slate-700">
+                            {label}
+                          </span>
                         </label>
                         <div className="flex-1">
                           <input
@@ -1753,10 +1722,11 @@ function InputPODetailPageInner() {
                             value={formData.buktiTagih}
                             onChange={(e) => {
                               const v = e.target.value;
-                              setFormData({
-                                ...formData,
+                              setFormData((prev) => ({
+                                ...prev,
                                 buktiTagih: v,
-                              });
+                                status: { ...prev.status, tagih: !!v.trim() },
+                              }));
                             }}
                             className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
                           />
@@ -1767,7 +1737,10 @@ function InputPODetailPageInner() {
 
                   if (key === "bayar") {
                     return (
-                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors">
+                      <div
+                        key={key}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors"
+                      >
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input
                             type="checkbox"
@@ -1775,7 +1748,9 @@ function InputPODetailPageInner() {
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">{label}</span>
+                          <span className="font-bold text-slate-700">
+                            {label}
+                          </span>
                         </label>
                         <div className="flex-1">
                           <input
@@ -1784,10 +1759,11 @@ function InputPODetailPageInner() {
                             value={formData.buktiBayar}
                             onChange={(e) => {
                               const v = e.target.value;
-                              setFormData({
-                                ...formData,
+                              setFormData((prev) => ({
+                                ...prev,
                                 buktiBayar: v,
-                              });
+                                status: { ...prev.status, bayar: !!v.trim() },
+                              }));
                             }}
                             className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
                           />

@@ -511,7 +511,7 @@ export async function GET(request: Request) {
     }
 
     // 3. Ekstrak Role & Hard-Fallback
-    let rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
+    const rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
 
     const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
 
@@ -863,6 +863,13 @@ export async function GET(request: Request) {
         {
           OR: [{ expiredTgl: null }, { expiredTgl: { gte: startOfToday } }],
         },
+        // [SCHEDULE FIX] Data yang di-reject (kembali ke UNKNOWN) tidak boleh muncul di antrean Schedule (Active)
+        { unitProduksiId: { not: "UNKNOWN" } },
+        {
+          UnitProduksi: {
+            isNot: { siteArea: "UNKNOWN" }
+          }
+        }
       ];
     } else if (group === "almost_expired") {
       where.AND = [
@@ -1080,6 +1087,7 @@ export async function GET(request: Request) {
           summary
             ? ({
                 where,
+                take: 2000,
                 select: {
                   id: true,
                   noPo: true,
@@ -1110,24 +1118,13 @@ export async function GET(request: Request) {
                   UnitProduksi: {
                     select: { siteArea: true, namaRegional: true, alamat: true },
                   },
-                  Items: {
-                    select: {
-                      id: true,
-                      pcs: true,
-                      pcsKirim: true,
-                      hargaKg: true,
-                      hargaPcs: true,
-                      nominal: true,
-                      rpTagih: true,
-                      discount: true,
-                      Product: { select: { id: true, name: true, satuanKg: true } },
-                    },
-                  },
+                  // [PERF] Removed Items relation fetch in summary mode as we use aggregate SQL instead to save memory
                 },
                 orderBy,
               } as any)
             : ({
                 where,
+                take: 2000,
                 select: {
                   id: true,
                   noPo: true,
@@ -1231,19 +1228,7 @@ export async function GET(request: Request) {
                 UnitProduksi: {
                   select: { siteArea: true, namaRegional: true },
                 },
-                Items: {
-                  select: {
-                    id: true,
-                    pcs: true,
-                    pcsKirim: true,
-                    hargaKg: true,
-                    hargaPcs: true,
-                    nominal: true,
-                    rpTagih: true,
-                    discount: true,
-                    Product: { select: { id: true, name: true, satuanKg: true } },
-                  },
-                },
+                // [PERF] Removed Items relation fetch in summary mode to save memory as totals are aggregated via SQL
               },
               orderBy,
               take,

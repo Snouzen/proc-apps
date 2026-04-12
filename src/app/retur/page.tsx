@@ -1,0 +1,1371 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
+import { 
+  Plus, 
+  Upload, 
+  Search, 
+  Pencil, 
+  Trash2,
+  Package, 
+  LayoutList,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Loader2,
+  Building2,
+  ChevronDown,
+  ArrowLeft,
+  FileSpreadsheet,
+  X,
+  Check,
+  Calendar
+} from "lucide-react";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday } from "date-fns";
+import { id } from "date-fns/locale";
+import * as Popover from "@radix-ui/react-popover";
+import ExcelBulkModal from "@/components/excel-bulk-modal";
+
+// --- Custom Component: Smooth Date Picker ---
+function CustomInlineDatePicker({ value, onChange, placeholder = "Pilih Tanggal", colorScheme = "indigo" }: { value: any, onChange: (date: string) => void, placeholder?: string, colorScheme?: "indigo" | "rose" | "slate" }) {
+  const [currentMonth, setCurrentMonth] = useState(value ? new Date(value) : new Date());
+  
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(currentMonth));
+    const end = endOfWeek(endOfMonth(currentMonth));
+    return eachDayOfInterval({ start, end });
+  }, [currentMonth]);
+
+  const colors = {
+    indigo: "text-indigo-600 bg-indigo-50 border-indigo-100 ring-indigo-500/10 hover:border-indigo-300",
+    rose: "text-rose-600 bg-rose-50 border-rose-100 ring-rose-500/10 hover:border-rose-300",
+    slate: "text-slate-600 bg-slate-50 border-slate-100 ring-slate-500/10 hover:border-slate-300"
+  };
+
+  const activeColor = colors[colorScheme as keyof typeof colors] || colors.indigo;
+  const iconColor = colorScheme === 'rose' ? 'text-rose-400' : 'text-indigo-400';
+
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button className={`flex items-center justify-between w-full min-w-[150px] px-3 py-2.5 text-xs font-bold rounded-xl border-2 focus:outline-none focus:ring-4 transition-all shadow-sm bg-white ${activeColor}`}>
+          <span className={value ? "text-slate-700" : "text-slate-300 font-medium"}>
+            {value ? format(new Date(value), "dd MMM yyyy", { locale: id }) : placeholder}
+          </span>
+          <Calendar size={14} className={iconColor} />
+        </button>
+      </Popover.Trigger>
+      
+      <Popover.Portal>
+        <Popover.Content 
+          className="z-[150] w-72 bg-white rounded-[24px] shadow-2xl border border-slate-100 p-4 animate-in fade-in zoom-in-95 duration-200"
+          align="start"
+          sideOffset={5}
+        >
+          {/* Header Kalender */}
+          <div className="flex items-center justify-between mb-4 px-1">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setCurrentMonth(subMonths(currentMonth, 1)); }}
+              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">
+              {format(currentMonth, "MMMM yyyy", { locale: id })}
+            </h4>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setCurrentMonth(addMonths(currentMonth, 1)); }}
+              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* Label Hari */}
+          <div className="grid grid-cols-7 mb-2">
+            {['S', 'S', 'R', 'K', 'J', 'S', 'M'].map((day, i) => (
+              <div key={i} className="text-center text-[9px] font-black text-slate-300 uppercase py-1">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Grid Tanggal */}
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((day, i) => {
+              const isSelected = value && isSameDay(day, new Date(value));
+              const isCurrentMonth = isSameMonth(day, currentMonth);
+              const isTodayDate = isToday(day);
+
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    onChange(day.toISOString());
+                    // Popover otomatis tertutup jika Trigger-nya dikontrol, tp radix default close on interaksi luar
+                  }}
+                  className={`
+                    h-8 w-8 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all
+                    ${!isCurrentMonth ? 'text-slate-200 pointer-events-none' : 'text-slate-600 hover:bg-slate-50'}
+                    ${isSelected ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200' : ''}
+                    ${isTodayDate && !isSelected ? 'text-indigo-600 border border-indigo-100 bg-indigo-50/30' : ''}
+                  `}
+                >
+                  {format(day, 'd')}
+                </button>
+              );
+            })}
+          </div>
+          
+          <Popover.Arrow className="fill-white" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+
+export default function ReturPage() {
+  const router = useRouter();
+  const [data, setData] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [isFetchingPage, setIsFetchingPage] = useState(false);
+  const [page, setPage] = useState(1);
+  const [clientPage, setClientPage] = useState(1);
+  const [rowsPerPage] = useState(15);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  const [retailers, setRetailers] = useState<any[]>([]);
+  const [selectedRetailerId, setSelectedRetailerId] = useState<string | null>(null);
+  const [isGroupedMode, setIsGroupedMode] = useState(true);
+  
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkStep, setBulkStep] = useState(1); 
+  const [bulkRetailerId, setBulkRetailerId] = useState<string>("");
+  const [searchRetailerText, setSearchRetailerText] = useState("");
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isListOpen, setIsListOpen] = useState(false);
+  const [openExcelModal, setOpenExcelModal] = useState(false);
+  
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addRetailerId, setAddRetailerId] = useState("");
+  const [searchAddText, setSearchAddText] = useState("");
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  
+  const [products, setProducts] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [searchToko, setSearchToko] = useState("");
+  const [searchProduk, setSearchProduk] = useState("");
+  const [isTokoOpen, setIsTokoOpen] = useState(false);
+  const [isProdukOpen, setIsProdukOpen] = useState(false);
+  
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const comboRef = useRef<HTMLTableCellElement>(null);
+  const comboboxInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+      if (comboRef.current && !comboRef.current.contains(event.target as Node)) {
+        setIsListOpen(false);
+        setActiveIndex(-1);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/ritel").then(res => res.json()),
+      fetch("/api/product").then(res => res.json())
+    ]).then(([ritelJson, productJson]) => {
+      setRetailers(Array.isArray(ritelJson) ? ritelJson : (ritelJson?.data || []));
+      setProducts(Array.isArray(productJson) ? productJson : (productJson?.data || []));
+    });
+  }, []);
+
+  const fetchRetur = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    if (data.length > 0) {
+      setIsFetchingPage(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const params = new URLSearchParams();
+      params.set("page", isGroupedMode ? String(page) : "1"); 
+      if (selectedRetailerId) {
+        params.set("limit", "9999"); // Tarik semua data untuk client-side pagination
+      } else {
+        params.set("limit", String(rowsPerPage));
+      }
+      if (debouncedSearch) params.set("q", debouncedSearch);
+      if (selectedRetailerId) params.set("retailerId", selectedRetailerId);
+
+      const res = await fetch(`/api/retur?${params.toString()}`, {
+        signal: abortControllerRef.current.signal,
+      });
+      const json = await res.json();
+      
+      if (res.ok) {
+        setIsGroupedMode(json.isGrouped);
+        setData(json.data || []);
+        setTotal(json.total || 0);
+      }
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error("Fetch Retur Error:", err);
+      }
+    } finally {
+      setLoading(false);
+      setIsFetchingPage(false);
+    }
+  }, [page, debouncedSearch, rowsPerPage, selectedRetailerId]);
+
+  useEffect(() => {
+    fetchRetur();
+  }, [fetchRetur]);
+
+  const totalPages = Math.ceil(total / rowsPerPage);
+
+  const formatIDR = (val: any) => {
+    const num = Number(val) || 0;
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(num);
+  };
+
+  const formatDate = (date: any) => {
+    if (!date) return "-";
+    try {
+      return format(new Date(date), "dd MMM yyyy", { locale: id });
+    } catch {
+      return "-";
+    }
+  };
+
+  const formatNumber = (val: any) => {
+    const num = Number(val) || 0;
+    return num.toLocaleString("id-ID");
+  };
+
+  const filteredRetailers = useMemo(() => {
+    const unique = Array.from(new Map(retailers.map(r => [r.namaPt, r])).values());
+    return unique.filter(r => 
+      r.namaPt.toLowerCase().includes(searchRetailerText.toLowerCase())
+    );
+  }, [retailers, searchRetailerText]);
+
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [searchRetailerText]);
+
+  const handleSelectRetailer = (ritel: any) => {
+    setBulkRetailerId(ritel.id);
+    setSearchRetailerText(ritel.namaPt);
+    setIsDropdownOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const handleStartEdit = (item: any) => {
+    setEditingId(item.id);
+    setEditForm({ ...item });
+    setSearchToko(item.namaCompany || "");
+    setSearchProduk(item.produk || "");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditForm({});
+    setSearchToko("");
+    setSearchProduk("");
+    setIsTokoOpen(false);
+    setIsProdukOpen(false);
+  };
+
+  const handleSaveInline = async (id: string) => {
+    try {
+      setIsFetchingPage(true);
+      
+      // --- DATA SANITIZATION (PURGE RELATIONAL TRASH) ---
+      // Distinguish between pure data and relational objects that cause Prisma errors
+      const { 
+        RitelModern, 
+        LokasiBarang, 
+        Product, 
+        PembebananReturn, 
+        createdAt, 
+        updatedAt,
+        _count,
+        ...pureData 
+      } = editForm;
+
+      // --- STRICT TYPE CASTING FOR PRISMA (NULLABLE INT) ---
+      const cleanedPayload = {
+        ...pureData,
+        id, // Persistence
+        rtvCn: pureData.rtvCn ? Number(pureData.rtvCn.toString().replace(/[^0-9]/g, '')) : null,
+        kodeToko: pureData.kodeToko ? Number(pureData.kodeToko.toString().replace(/[^0-9]/g, '')) : null,
+        qtyReturn: Number(pureData.qtyReturn) || 0,
+        nominal: Number(pureData.nominal) || 0,
+        rpKg: Number(pureData.rpKg) || 0,
+        tanggalRtv: pureData.tanggalRtv ? new Date(pureData.tanggalRtv).toISOString() : null,
+        maxPickup: pureData.maxPickup ? new Date(pureData.maxPickup).toISOString() : null,
+        tanggalPembayaran: pureData.tanggalPembayaran ? new Date(pureData.tanggalPembayaran).toISOString() : null,
+        invoiceRekon: !!pureData.invoiceRekon
+      };
+
+      const res = await fetch(`/api/retur`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleanedPayload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Gagal menyimpan data");
+      }
+
+      setEditingId(null);
+      
+      // --- SUCCESS TOAST ---
+      Swal.fire({ 
+        icon: 'success', 
+        title: 'Data diperbarui', 
+        toast: true, 
+        position: 'top-end', 
+        timer: 1500, 
+        showConfirmButton: false,
+        background: '#f8fafc',
+        color: '#0f172a'
+      });
+
+      fetchRetur();
+    } catch (error: any) {
+      console.error(error);
+      // --- ERROR MODAL ---
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'Gagal Menyimpan', 
+        text: error.message || "Gagal menyimpan perubahan!", 
+        confirmButtonColor: '#4f46e5',
+        background: '#fff',
+        customClass: {
+          popup: 'rounded-[32px]',
+          confirmButton: 'rounded-xl px-10'
+        }
+      });
+    } finally {
+      setIsFetchingPage(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const result = await Swal.fire({
+      title: 'Hapus Data Retur?',
+      text: 'Data ini akan hilang permanen!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal',
+      background: '#fff',
+      customClass: {
+        popup: 'rounded-[32px]',
+        confirmButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest cursor-pointer',
+        cancelButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest cursor-pointer'
+      }
+    });
+
+    if (result.isConfirmed) {
+      try {
+        setIsFetchingPage(true);
+        const res = await fetch(`/api/retur?id=${id}`, { 
+          method: 'DELETE' 
+        });
+        
+        if (!res.ok) {
+          let errorMessage = "Gagal menghapus data";
+          try {
+            // Safe parse: don't crash if response is empty
+            const errData = await res.json();
+            errorMessage = errData.error || errorMessage;
+          } catch (e) {
+            // Ignore JSON parse error on failed request
+          }
+          throw new Error(errorMessage);
+        }
+
+        // --- BYPASS JSON PARSE (FORCE SUCCESS) ---
+        Swal.fire({
+          icon: 'success',
+          title: 'Data dihapus!',
+          toast: true,
+          position: 'top-end',
+          timer: 1500,
+          showConfirmButton: false
+        });
+
+        // Smart UI Cleanup: Instant removal from screen
+        setData(prevData => prevData.filter(item => item.id !== id));
+        
+        // Panggil fetch lagi untuk memastikan Card Ritel ter-update jika datanya 0
+        fetchRetur();
+
+      } catch (error: any) {
+        console.error(error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: error.message || 'Gagal menghapus data',
+          confirmButtonColor: '#ef4444'
+        });
+      } finally {
+        setIsFetchingPage(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    setPage(1);
+    setClientPage(1);
+  }, [selectedRetailerId]);
+
+  const masterTujuanList = useMemo(() => {
+    if (!selectedRetailerId || retailers.length === 0) return [];
+    const currentRetailer = retailers.find(r => r.id === selectedRetailerId);
+    if (!currentRetailer) return [];
+    
+    // Ambil semua tujuan dari Ritel Modern dengan PT yang sama
+    const list = retailers
+      .filter(r => r.namaPt === currentRetailer.namaPt && r.tujuan)
+      .map(r => r.tujuan);
+      
+    // Hilangkan duplikat
+    return Array.from(new Set(list));
+  }, [selectedRetailerId, retailers]);
+
+  const filteredTujuanItems = useMemo(() => {
+    if (!editForm.namaCompany) return masterTujuanList;
+    return masterTujuanList.filter(tj => 
+      tj.toLowerCase().includes(editForm.namaCompany.toLowerCase())
+    );
+  }, [masterTujuanList, editForm.namaCompany]);
+
+  const handleTujuanKeyDown = (e: React.KeyboardEvent) => {
+    if (!isListOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') setIsListOpen(true);
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(prev => (prev < filteredTujuanItems.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(prev => (prev > 0 ? prev - 1 : prev));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex !== -1 && filteredTujuanItems[activeIndex]) {
+        setEditForm({ ...editForm, namaCompany: filteredTujuanItems[activeIndex] });
+        setIsListOpen(false);
+        setActiveIndex(-1);
+      }
+    } else if (e.key === 'Escape') {
+      setIsListOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  const PRIORITY_PRODUCTS = useMemo(() => ["PUNOKAWAN 5 KG", "BEFOOD SETRA RAMOS 5 KG"], []);
+
+  const availableToko = useMemo(() => {
+    if (!editForm.id || retailers.length === 0) return [];
+    // Ambil PT dari item yang sedang diedit (lewat RitelModern relation)
+    const targetPt = editForm.RitelModern?.namaPt;
+    if (!targetPt) return [];
+
+    return Array.from(new Set(
+      retailers
+        .filter(r => r.namaPt === targetPt && r.tujuan)
+        .map(r => r.tujuan)
+    ));
+  }, [editForm.id, editForm.RitelModern, retailers]);
+
+  const filteredToko = useMemo(() => 
+    availableToko.filter(t => t.toLowerCase().includes(searchToko.toLowerCase())),
+    [availableToko, searchToko]
+  );
+
+  const filteredProductsInline = useMemo(() => {
+    const raw = products.filter(p => p.name.toLowerCase().includes(searchProduk.toLowerCase()));
+    return raw.sort((a, b) => {
+      const idxA = PRIORITY_PRODUCTS.indexOf(a.name.toUpperCase());
+      const idxB = PRIORITY_PRODUCTS.indexOf(b.name.toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [products, searchProduk, PRIORITY_PRODUCTS]);
+
+  const clientRowsPerPage = 10;
+  const clientTotalPages = Math.ceil(data.length / clientRowsPerPage) || 1;
+  const paginatedData = isGroupedMode ? data : data.slice((clientPage - 1) * clientRowsPerPage, clientPage * clientRowsPerPage);
+
+  const handleAddReturn = () => {
+    if (!selectedRetailerId) {
+      setShowAddModal(true);
+      setAddRetailerId("");
+      setSearchAddText("");
+    } else {
+      router.push(`/retur/new?ritelId=${selectedRetailerId}`);
+    }
+  };
+
+  const highlightMatch = (text: string, query: string) => {
+    if (!query) return text;
+    const parts = text.split(new RegExp(`(${query})`, "gi"));
+    return (
+      <span>
+        {parts.map((part, i) => 
+          part.toLowerCase() === query.toLowerCase() ? (
+            <mark key={i} className="bg-yellow-200 text-black px-0.5 rounded-sm">
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
+  };
+
+  return (
+    <div className="p-6 max-w-[1600px] mx-auto space-y-7 animate-in fade-in duration-500 overflow-x-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          {selectedRetailerId && (
+            <button 
+              onClick={() => setSelectedRetailerId(null)}
+              className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+              title="Back to List"
+            >
+              <ArrowLeft size={20} className="text-slate-600" />
+            </button>
+          )}
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+                 <LayoutList className="text-white" size={24} />
+              </div>
+              {selectedRetailerId ? `Retur: ${retailers.find(r => r.id === selectedRetailerId)?.namaPt || 'Detail'}` : 'Data Retur Barang'}
+            </h1>
+            <p className="text-slate-500 text-sm mt-1.5 font-medium">
+              Manajemen master data pengembalian barang cabang & toko.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => {
+              setBulkStep(1);
+              setBulkRetailerId("");
+              setSearchRetailerText("");
+              setShowBulkModal(true);
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-md active:scale-95 group"
+          >
+            <Upload size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+            Bulk Upload
+          </button>
+          <button 
+            onClick={handleAddReturn}
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-all shadow-md active:scale-95"
+          >
+            <Plus size={18} />
+            Add Return
+          </button>
+        </div>
+      </div>
+
+      {/* ── Filter & Search ─────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative group w-full md:w-[450px]">
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="Cari RTV/CN, Toko, atau Produk..."
+            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all text-sm shadow-sm font-medium"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        
+        {!isGroupedMode && (
+          <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
+             <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Record</span>
+             <span className="text-sm font-black text-indigo-700 tabular-nums">{total}</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Main Content Area ───────────────────────────────────────────── */}
+      {isGroupedMode ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-in slide-in-from-bottom-5 duration-700">
+          {loading ? (
+            Array.from({ length: 9 }).map((_, i) => (
+              <div key={i} className="bg-slate-50 border border-slate-100 rounded-[32px] p-6 animate-pulse h-32" />
+            ))
+          ) : data.length === 0 ? (
+            <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
+              Belum ada data retur yang tersimpan.
+            </div>
+          ) : (
+            data.map((ritel) => (
+              <div 
+                key={ritel.id}
+                onClick={() => setSelectedRetailerId(ritel.id)}
+                className="group relative bg-white border border-slate-100 p-6 rounded-[32px] shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all cursor-pointer active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-4 bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white rounded-[24px] transition-all duration-500">
+                    <Building2 size={24} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-slate-800 uppercase truncate group-hover:text-indigo-700 transition-colors">
+                      {ritel.namaPt}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                       <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-widest">
+                         {ritel._count.DataRetur} Records
+                       </span>
+                    </div>
+                  </div>
+                  <div className="text-slate-300 group-hover:translate-x-1 group-hover:text-indigo-400 transition-all">
+                    <ChevronRight size={20} />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-[32px] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden relative animate-in zoom-in-95 duration-500">
+          <div className="overflow-x-auto scrollbar-hide py-2">
+             <table className="w-full text-left border-collapse table-auto">
+               <thead>
+                 <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                   <th className="sticky left-0 z-20 bg-slate-50/95 backdrop-blur px-6 py-5 w-20 text-center border-r border-slate-100">NO</th>
+                   <th className="px-6 py-5 whitespace-nowrap">RTV/CN</th>
+                   <th className="px-6 py-5 whitespace-nowrap">TANGGAL RTV</th>
+                   <th className="px-6 py-5 whitespace-nowrap">MAX PICKUP</th>
+                   <th className="px-6 py-5 text-center">KODE TOKO</th>
+                   <th className="px-6 py-5">TOKO</th>
+                   <th className="px-6 py-5">LINK</th>
+                   <th className="px-6 py-5">PRODUK</th>
+                   <th className="px-6 py-5 text-center">QTY RETUR</th>
+                   <th className="px-6 py-5 text-right">NOMINAL</th>
+                   <th className="px-6 py-5 text-right">RP/KG</th>
+                   <th className="px-6 py-5">STATUS BARANG</th>
+                   <th className="px-6 py-5">REFERENSI/KET STATUS</th>
+                   <th className="px-6 py-5">LOKASI BARANG</th>
+                   <th className="px-6 py-5">PEMBEBANAN RETUR</th>
+                   <th className="px-6 py-5 text-center">INVOICE REKON</th>
+                   <th className="px-6 py-5">REFERENSI PEMBAYARAN</th>
+                    <th className="px-6 py-5">TANGGAL PEMBAYARAN</th>
+                    <th className="px-6 py-5">REMARKS</th>
+                    <th className="px-6 py-5">SDI RETUR</th>
+                    <th className="sticky right-0 z-20 bg-slate-50/95 backdrop-blur px-6 py-5 text-right border-l border-slate-100">AKSI</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y divide-slate-50 transition-all duration-300 ${isFetchingPage ? "opacity-50 pointer-events-none scale-[0.998]" : "opacity-100"}`}>
+                  {paginatedData.map((item, idx) => {
+                    const isEditing = editingId === item.id;
+                    return (
+                      <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors group ${isEditing ? 'bg-indigo-50/30' : ''}`}>
+                        <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 text-xs font-black text-slate-400 text-center tabular-nums border-r border-slate-100 transition-colors">
+                          {isGroupedMode ? (page - 1) * rowsPerPage + idx + 1 : (page - 1) * clientRowsPerPage + idx + 1}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <input 
+                              type="text"
+                              inputMode="numeric"
+                              className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                              value={editForm.rtvCn || ""}
+                              onChange={e => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setEditForm({...editForm, rtvCn: val});
+                              }}
+                            />
+                          ) : (
+                            <span className="font-mono font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg text-xs border border-indigo-100">{item.rtvCn || "-"}</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap uppercase tracking-tighter tabular-nums">
+                          {isEditing ? (
+                            <CustomInlineDatePicker 
+                              value={editForm.tanggalRtv}
+                              onChange={(date) => setEditForm({...editForm, tanggalRtv: date})}
+                              colorScheme="indigo"
+                            />
+                          ) : formatDate(item.tanggalRtv)}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-rose-600 whitespace-nowrap uppercase tracking-tighter tabular-nums">
+                          {isEditing ? (
+                            <CustomInlineDatePicker 
+                              value={editForm.maxPickup}
+                              onChange={(date) => setEditForm({...editForm, maxPickup: date})}
+                              colorScheme="rose"
+                            />
+                          ) : formatDate(item.maxPickup)}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {isEditing ? (
+                            <input 
+                              type="text"
+                              inputMode="numeric"
+                              className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                              value={editForm.kodeToko || ""}
+                              onChange={e => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setEditForm({...editForm, kodeToko: val});
+                              }}
+                            />
+                          ) : (
+                            <span className="font-bold text-slate-600">{item.kodeToko || "-"}</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <Popover.Root open={isTokoOpen} onOpenChange={setIsTokoOpen}>
+                              <Popover.Trigger asChild>
+                                <div className="relative w-full min-w-[200px]">
+                                  <input 
+                                    type="text"
+                                    value={searchToko}
+                                    onChange={(e) => {
+                                      setSearchToko(e.target.value);
+                                      setEditForm({...editForm, namaCompany: e.target.value});
+                                      setIsTokoOpen(true);
+                                    }}
+                                    placeholder="Cari Toko..."
+                                    className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
+                                  />
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+                                    <Search size={14} />
+                                  </div>
+                                </div>
+                              </Popover.Trigger>
+                              <Popover.Portal>
+                                <Popover.Content className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-64 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="start">
+                                  {filteredToko.length === 0 ? (
+                                    <div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Tidak ada hasil</div>
+                                  ) : (
+                                    filteredToko.map(t => (
+                                      <button 
+                                        key={t} 
+                                        onClick={() => {
+                                          setEditForm({...editForm, namaCompany: t});
+                                          setSearchToko(t);
+                                          setIsTokoOpen(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors uppercase tracking-tight"
+                                      >
+                                        {highlightMatch(t, searchToko)}
+                                      </button>
+                                    ))
+                                  )}
+                                </Popover.Content>
+                              </Popover.Portal>
+                            </Popover.Root>
+                          ) : (
+                            <div className="text-xs font-black text-slate-800 whitespace-nowrap truncate max-w-[200px]" title={item.namaCompany}>{item.namaCompany || "-"}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <input 
+                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                              value={editForm.link || ""}
+                              onChange={e => setEditForm({...editForm, link: e.target.value})}
+                            />
+                          ) : (
+                            item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-tighter hover:underline">View Result</a> : "-"
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <Popover.Root open={isProdukOpen} onOpenChange={setIsProdukOpen}>
+                              <Popover.Trigger asChild>
+                                <div className="relative w-full min-w-[200px]">
+                                  <input 
+                                    type="text"
+                                    value={searchProduk}
+                                    onChange={(e) => {
+                                      setSearchProduk(e.target.value);
+                                      setEditForm({...editForm, produk: e.target.value});
+                                      setIsProdukOpen(true);
+                                    }}
+                                    placeholder="Cari Produk..."
+                                    className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
+                                  />
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+                                    <Package size={14} />
+                                  </div>
+                                </div>
+                              </Popover.Trigger>
+                              <Popover.Portal>
+                                <Popover.Content className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-72 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="start">
+                                  {filteredProductsInline.length === 0 ? (
+                                    <div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Tidak ada produk</div>
+                                  ) : (
+                                    filteredProductsInline.map(p => (
+                                      <button 
+                                        key={p.id} 
+                                        onClick={() => {
+                                          setEditForm({...editForm, produk: p.name});
+                                          setSearchProduk(p.name);
+                                          setIsProdukOpen(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-emerald-600 hover:text-white rounded-xl transition-colors uppercase tracking-tight flex items-center justify-between group"
+                                      >
+                                        <span>{highlightMatch(p.name, searchProduk)}</span>
+                                        {PRIORITY_PRODUCTS.includes(p.name.toUpperCase()) && <Check size={12} className="text-emerald-400 group-hover:text-white" />}
+                                      </button>
+                                    ))
+                                  )}
+                                </Popover.Content>
+                              </Popover.Portal>
+                            </Popover.Root>
+                          ) : (
+                            <div className="text-xs font-bold text-slate-600 whitespace-nowrap max-w-[150px] truncate" title={item.produk}>{item.produk || "-"}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center font-black text-slate-800 tabular-nums text-xs">
+                          {isEditing ? (
+                            <input 
+                              type="number"
+                              className="w-full min-w-[100px] px-3 py-2 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer"
+                              value={editForm.qtyReturn || 0}
+                              onChange={e => {
+                                const v = e.target.value.replace(/^0+/, '');
+                                setEditForm({...editForm, qtyReturn: v === '' ? 0 : Number(v)});
+                              }}
+                            />
+                          ) : formatNumber(item.qtyReturn)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-black text-slate-900 tabular-nums text-xs">
+                          {isEditing ? (
+                            <input 
+                              type="number"
+                              className="w-full min-w-[120px] px-3 py-2 text-xs font-bold text-right text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer"
+                              value={editForm.nominal || 0}
+                              onChange={e => {
+                                const v = e.target.value.replace(/^0+/, '');
+                                setEditForm({...editForm, nominal: v === '' ? 0 : Number(v)});
+                              }}
+                            />
+                          ) : formatIDR(item.nominal)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-bold text-slate-500 tabular-nums text-xs italic">
+                          {isEditing ? (
+                            <input 
+                              type="number"
+                              className="w-full min-w-[120px] px-3 py-2 text-xs font-bold text-right text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer"
+                              value={editForm.rpKg || 0}
+                              onChange={e => {
+                                const v = e.target.value.replace(/^0+/, '');
+                                setEditForm({...editForm, rpKg: v === '' ? 0 : Number(v)});
+                              }}
+                            />
+                          ) : formatIDR(item.rpKg)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {isEditing ? (
+                            <select 
+                              className="w-full min-w-[120px] px-3 py-1.5 text-[10px] font-bold text-slate-700 uppercase bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.2em_1.2em] pr-8"
+                              value={editForm.statusBarang || ""}
+                              onChange={e => setEditForm({...editForm, statusBarang: e.target.value})}
+                            >
+                              <option value="Sudah Diambil">SUDAH DIAMBIL</option>
+                              <option value="Belum Diambil">BELUM DIAMBIL</option>
+                            </select>
+                          ) : (
+                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${item.statusBarang?.toLowerCase() === "sudah diambil" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"}`}>{item.statusBarang || "PENDING"}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-[10px] font-medium text-slate-400 whitespace-nowrap">
+                          {isEditing ? (
+                            <input 
+                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                              value={editForm.refKetStatus || ""}
+                              onChange={e => setEditForm({...editForm, refKetStatus: e.target.value})}
+                            />
+                          ) : (item.refKetStatus || "-")}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <select
+                              value={editForm.lokasiBarangId || ""}
+                              onChange={e => setEditForm({...editForm, lokasiBarangId: e.target.value})}
+                              className="w-full min-w-[200px] px-3 py-1.5 text-[10px] font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.2em_1.2em] pr-8"
+                            >
+                              <option value="">-- Pilih Tujuan/DC --</option>
+                              {masterTujuanList.map((tj, i) => (
+                                <option key={i} value={tj.idRegional}>
+                                  {tj.namaRegional} - {tj.siteArea}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{item.LokasiBarang?.siteArea || "-"}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4"><div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">{item.PembebananReturn?.siteArea || "-"}</div></td>
+                        <td className="px-6 py-4 text-center">
+                          {isEditing ? (
+                            <input 
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-indigo-200 text-indigo-600 focus:ring-indigo-500"
+                              checked={!!editForm.invoiceRekon}
+                              onChange={e => setEditForm({...editForm, invoiceRekon: e.target.checked})}
+                            />
+                          ) : (
+                            <div className={`w-2 h-2 rounded-full mx-auto ${item.invoiceRekon ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-200"}`} />
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-[11px] font-bold text-slate-700 whitespace-nowrap italic">
+                          {isEditing ? (
+                            <input 
+                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                              value={editForm.referensiPembayaran || ""}
+                              onChange={e => setEditForm({...editForm, referensiPembayaran: e.target.value})}
+                            />
+                          ) : (item.referensiPembayaran || "-")}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-slate-500 whitespace-nowrap">
+                          {isEditing ? (
+                            <CustomInlineDatePicker 
+                              value={editForm.tanggalPembayaran}
+                              onChange={(date) => setEditForm({...editForm, tanggalPembayaran: date})}
+                              colorScheme="slate"
+                            />
+                          ) : formatDate(item.tanggalPembayaran)}
+                        </td>
+                        <td className="px-6 py-4 text-[10px] font-medium text-slate-400 max-w-[150px] truncate" title={item.remarks}>
+                          {isEditing ? (
+                            <input 
+                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                              value={editForm.remarks || ""}
+                              onChange={e => setEditForm({...editForm, remarks: e.target.value})}
+                            />
+                          ) : (item.remarks || "-")}
+                        </td>
+                        <td className="px-6 py-4 text-[11px] font-bold text-amber-600 whitespace-nowrap">
+                          {isEditing ? (
+                            <input 
+                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                              value={editForm.sdiReturn || ""}
+                              onChange={e => setEditForm({...editForm, sdiReturn: e.target.value})}
+                            />
+                          ) : (item.sdiReturn || "-")}
+                        </td>
+                        <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 border-l border-slate-100 transition-colors">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {isEditing ? (
+                              <>
+                                <button 
+                                  onClick={() => handleSaveInline(item.id)} 
+                                  disabled={isFetchingPage}
+                                  className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-90 disabled:opacity-50"
+                                >
+                                  {isFetchingPage ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                                </button>
+                                <button onClick={handleCancelEdit} className="p-2 rounded-xl bg-slate-100 text-slate-400 hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-90">
+                                  <X size={15} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => handleStartEdit(item)} className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all shadow-sm active:scale-90">
+                                  <Pencil size={15} />
+                                </button>
+                                <button 
+                                  onClick={() => handleDelete(item.id)}
+                                  className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-90 cursor-pointer"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+             </table>
+          </div>
+
+          {!isGroupedMode && (
+             <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Menampilkan <span className="text-indigo-600">{(clientPage - 1) * clientRowsPerPage + 1}</span> - <span className="text-indigo-600">{Math.min(clientPage * clientRowsPerPage, data.length)}</span> dari <span className="text-slate-800 font-black">{data.length}</span> data
+                </div>
+                
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    onClick={() => setClientPage(1)} 
+                    disabled={clientPage === 1}
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
+                  >
+                    <ChevronsLeft size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setClientPage(p => Math.max(1, p - 1))} 
+                    disabled={clientPage === 1}
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  
+                  <div className="px-4 py-1.5 bg-white border border-slate-200 rounded-xl shadow-sm">
+                     <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter tabular-nums">
+                        Page {clientPage} of {clientTotalPages}
+                     </span>
+                  </div>
+                  
+                  <button 
+                    onClick={() => setClientPage(p => Math.min(clientTotalPages, p + 1))} 
+                    disabled={clientPage === clientTotalPages}
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setClientPage(clientTotalPages)} 
+                    disabled={clientPage === clientTotalPages}
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
+                  >
+                    <ChevronsRight size={16} />
+                  </button>
+                </div>
+             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── BULK UPLOAD MODAL (SWITCHABLE CONTROLLERS) ─────────────────── */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowBulkModal(false)} />
+          <div className="relative bg-white w-full max-w-xl rounded-[40px] shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-300 overflow-visible">
+            <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Bulk Upload Retur</h3>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Step {bulkStep} of 2: {bulkStep === 1 ? 'Pilih Ritel' : 'Upload File'}</p>
+              </div>
+              <button onClick={() => setShowBulkModal(false)} className="p-3 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-rose-500 transition-colors shadow-sm">
+                <ChevronDown size={20} />
+              </button>
+            </div>
+
+            <div className="p-8 overflow-visible">
+              {bulkStep === 1 ? (
+                <div className="space-y-8">
+                  <div className="bg-indigo-50/60 border border-indigo-100 text-indigo-700 p-5 rounded-[24px] text-xs font-bold leading-relaxed shadow-sm">
+                    Pilih perusahaan peritel (Modern Ritel) terlebih dahulu untuk memandu pemetaan data secara spesifik sebelum mengunggah berkas.
+                  </div>
+
+                  <div className="flex flex-col items-center max-w-md mx-auto w-full space-y-6 pb-2">
+                    <div className="w-full relative" ref={dropdownRef}>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">
+                        Pilih Ritel Modern
+                      </label>
+                      
+                      <div className="relative group">
+                        <input 
+                          type="text"
+                          placeholder="Ketik untuk mencari ritel..."
+                          value={searchRetailerText}
+                          onChange={(e) => {
+                            setSearchRetailerText(e.target.value);
+                            setIsDropdownOpen(true);
+                            if (!e.target.value) setBulkRetailerId("");
+                          }}
+                          onFocus={() => setIsDropdownOpen(true)}
+                          onKeyDown={(e) => {
+                             if (!isDropdownOpen) return;
+                             if (e.key === "ArrowDown") {
+                                setActiveIndex(prev => (prev < filteredRetailers.length - 1 ? prev + 1 : prev));
+                                e.preventDefault();
+                             } else if (e.key === "ArrowUp") {
+                                setActiveIndex(prev => (prev > 0 ? prev - 1 : prev));
+                                e.preventDefault();
+                             } else if (e.key === "Enter" && activeIndex >= 0) {
+                                handleSelectRetailer(filteredRetailers[activeIndex]);
+                                e.preventDefault();
+                             }
+                          }}
+                          className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all text-sm font-black text-slate-700 placeholder:text-slate-300 pr-24"
+                        />
+                        
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                          {searchRetailerText && (
+                            <button 
+                              onClick={() => {
+                                setSearchRetailerText("");
+                                setBulkRetailerId("");
+                                setIsDropdownOpen(true);
+                              }}
+                              className="p-1.5 bg-slate-200 text-slate-500 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                          <ChevronDown size={20} className={`text-slate-300 transition-transform duration-500 ${isDropdownOpen ? 'rotate-180' : 'rotate-0'}`} />
+                        </div>
+                      </div>
+
+                      {isDropdownOpen && (
+                        <ul className="absolute left-0 right-0 top-full mt-3 bg-white border border-slate-100 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] max-h-[250px] overflow-y-auto z-[999] py-2 animate-in fade-in slide-in-from-top-2 duration-300 scrollbar-hide">
+                          {filteredRetailers.length > 0 ? (
+                            filteredRetailers.map((r, idx) => (
+                              <li 
+                                key={r.id}
+                                onClick={() => handleSelectRetailer(r)}
+                                onMouseEnter={() => setActiveIndex(idx)}
+                                className={`px-5 py-3.5 cursor-pointer text-xs font-black uppercase tracking-tighter transition-all border-b border-slate-50 last:border-0 ${
+                                  bulkRetailerId === r.id || activeIndex === idx 
+                                  ? 'bg-indigo-600 text-white' 
+                                  : 'text-slate-600 hover:bg-slate-50'
+                                }`}
+                              >
+                                {highlightMatch(r.namaPt, searchRetailerText)}
+                                {bulkRetailerId === r.id && <div className={`mt-1 text-[8px] font-medium ${activeIndex === idx ? 'text-indigo-200' : 'text-indigo-400'} animate-pulse`}>SELECTED</div>}
+                              </li>
+                            ))
+                          ) : (
+                            <li className="px-5 py-10 text-center flex flex-col items-center gap-3">
+                               <div className="p-3 bg-slate-50 rounded-2xl text-slate-200"><Search size={24} /></div>
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                  Data &quot;{searchRetailerText}&quot; Tidak Ada
+                               </span>
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                    </div>
+
+                    <button 
+                      disabled={!bulkRetailerId}
+                      onClick={() => setBulkStep(2)}
+                      className={`w-full py-4.5 rounded-[22px] font-black text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                        bulkRetailerId 
+                        ? "bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5" 
+                        : "bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
+                      }`}
+                    >
+                      LANJUTKAN KE UPLOAD <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                  <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-[24px]">
+                     <div className="p-2 bg-emerald-500 text-white rounded-lg shadow-sm">
+                        <FileSpreadsheet size={18} />
+                     </div>
+                     <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest uppercase">
+                        Retailer: {retailers.find(r => r.id === bulkRetailerId)?.namaPt}
+                     </span>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-[32px] p-10 border border-dashed border-slate-300 flex flex-col items-center justify-center text-center gap-5">
+                    <div className="p-4 bg-indigo-100 text-indigo-600 rounded-full">
+                       <Upload size={32} />
+                    </div>
+                    <div>
+                       <p className="text-sm font-black text-slate-700">Sistem Sudah Siap</p>
+                       <p className="text-xs font-medium text-slate-500 mt-1 max-w-[250px] mx-auto">
+                          Klik tombol di bawah ini untuk memunculkan jendela upload file Excel.
+                       </p>
+                    </div>
+                    <button 
+                       onClick={() => {
+                          setShowBulkModal(false);
+                          setTimeout(() => setOpenExcelModal(true), 200);
+                       }}
+                       className="px-6 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center gap-2"
+                    >
+                       <FileSpreadsheet size={16} /> Buka Menu Upload
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                       setBulkStep(1);
+                       setIsDropdownOpen(true);
+                    }}
+                    className="w-full py-3 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-indigo-600 transition-colors flex items-center justify-center gap-1"
+                  >
+                    <ArrowLeft size={12} /> Ganti Retailer
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EXTERNAL MODAL (ROOT LEVEL) ────────────────────────────────── */}
+      {openExcelModal && (
+        <ExcelBulkModal 
+          open={openExcelModal}
+          onClose={() => setOpenExcelModal(false)}
+          variant="retur"
+          retailerId={bulkRetailerId}
+          onSuccess={() => {
+             setOpenExcelModal(false);
+             fetchRetur();
+          }}
+        />
+      )}
+
+      {/* ── ADD RETURN MODAL (MANUAL SELECTION) ────────────────────────── */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowAddModal(false)} />
+          <div className="relative bg-white w-full max-w-xl rounded-[40px] shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-300 overflow-visible">
+            <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Tambah Data Retur</h3>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Pilih Ritel Modern</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-3 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-rose-500 transition-colors shadow-sm">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-8 overflow-visible space-y-8">
+              <div className="bg-indigo-50/60 border border-indigo-100 text-indigo-700 p-5 rounded-[24px] text-xs font-bold leading-relaxed shadow-sm">
+                Pilih perusahaan peritel (Modern Ritel) terlebih dahulu sebelum mengisi form data retur baru.
+              </div>
+
+              <div className="flex flex-col items-center max-w-md mx-auto w-full space-y-6 pb-2">
+                <div className="w-full relative">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">
+                    Pilih Ritel Modern
+                  </label>
+                  
+                  <div className="relative group">
+                    <input 
+                      type="text"
+                      placeholder="Ketik untuk mencari ritel..."
+                      value={searchAddText}
+                      onChange={(e) => {
+                        setSearchAddText(e.target.value);
+                        setIsAddDropdownOpen(true);
+                        if (!e.target.value) setAddRetailerId("");
+                      }}
+                      onFocus={() => setIsAddDropdownOpen(true)}
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all text-sm font-black text-slate-700 placeholder:text-slate-300 pr-24"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                      {searchAddText && (
+                        <button 
+                          onClick={() => { setSearchAddText(""); setAddRetailerId(""); setIsAddDropdownOpen(true); }}
+                          className="p-1.5 bg-slate-200 text-slate-500 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                      <ChevronDown size={20} className={`text-slate-300 transition-transform duration-500 ${isAddDropdownOpen ? 'rotate-180' : 'rotate-0'}`} />
+                    </div>
+                  </div>
+
+                  {isAddDropdownOpen && (
+                    <ul className="absolute left-0 right-0 top-full mt-3 bg-white border border-slate-100 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] max-h-[250px] overflow-y-auto z-[999] py-2 animate-in fade-in slide-in-from-top-2 duration-300 scrollbar-hide">
+                      {filteredRetailers
+                        .filter(r => r.namaPt.toLowerCase().includes(searchAddText.toLowerCase()))
+                        .map((r, idx) => (
+                        <li 
+                          key={r.id}
+                          onClick={() => {
+                            setAddRetailerId(r.id);
+                            setSearchAddText(r.namaPt);
+                            setIsAddDropdownOpen(false);
+                          }}
+                          className={`px-5 py-3.5 cursor-pointer text-xs font-black uppercase tracking-tighter transition-all border-b border-slate-50 last:border-0 ${
+                            addRetailerId === r.id ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {r.namaPt}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <button 
+                  disabled={!addRetailerId}
+                  onClick={() => router.push(`/retur/new?ritelId=${addRetailerId}`)}
+                  className={`w-full py-4.5 rounded-[22px] font-black text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                    addRetailerId 
+                    ? "bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5" 
+                    : "bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
+                  }`}
+                >
+                  LANJUTKAN KE FORM INPUT <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Soft Loading Overlay */}
+      {isFetchingPage && (
+        <div className="fixed bottom-10 right-10 z-[110] animate-in slide-in-from-bottom-5 duration-500">
+           <div className="bg-white/90 backdrop-blur p-4 rounded-2xl shadow-2xl border border-slate-100 flex items-center gap-3">
+              <Loader2 className="text-indigo-600 animate-spin" size={20} />
+              <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Refreshing Data...</span>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+}

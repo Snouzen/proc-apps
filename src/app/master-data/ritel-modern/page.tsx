@@ -22,6 +22,24 @@ import Combobox from "@/components/combobox";
 import ExcelBulkModal from "@/components/excel-bulk-modal";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 
+const highlightText = (text: string, query: string) => {
+  if (!query) return text;
+  const parts = String(text).split(new RegExp(`(${query})`, "gi"));
+  return (
+    <span>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark key={i} className="bg-yellow-200 text-black rounded-sm px-0.5">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+};
+
 export default function RitelModernPage() {
   const refreshTick = useAutoRefreshTick();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -342,10 +360,12 @@ export default function RitelModernPage() {
 
   const filteredData = groupedData.filter((item) => {
     const term = searchTerm.toLowerCase();
-    return (
-      item.namaPt.toLowerCase().includes(term) ||
-      Object.keys(item.inisials).some((a) => a.toLowerCase().includes(term))
+    const matchPt = item.namaPt.toLowerCase().includes(term);
+    const matchAlias = Object.keys(item.inisials).some((a) => a.toLowerCase().includes(term));
+    const matchStore = Object.values(item.inisials).some((stores: any) => 
+      stores.some((s: any) => String(s.tujuan || "").toLowerCase().includes(term))
     );
+    return matchPt || matchAlias || matchStore;
   });
 
   // Pagination Logic
@@ -580,7 +600,7 @@ export default function RitelModernPage() {
                   </div>
                   <div>
                     <div className="text-sm font-bold text-slate-800">
-                      {group.namaPt}
+                      {highlightText(group.namaPt, searchTerm)}
                     </div>
                     <div className="text-[11px] text-slate-500">
                       {Object.keys(group.inisials).length} inisial

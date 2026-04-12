@@ -724,6 +724,9 @@ export default function CompanyList({
                                     <table className="w-full min-w-[1280px] text-left">
                                       <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
                                         <tr>
+                                          <th className="px-4 py-3 sticky top-0 bg-slate-50 w-16">
+                                            NO
+                                          </th>
                                           <th className="px-4 py-3 sticky top-0 bg-slate-50">
                                             No PO
                                           </th>
@@ -763,7 +766,7 @@ export default function CompanyList({
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-slate-100 text-sm uppercase">
-                                        {slice.map((po: any) => {
+                                        {slice.map((po: any, idx: number) => {
                                           const items = Array.isArray(po?.Items)
                                             ? po.Items
                                             : [];
@@ -840,6 +843,9 @@ export default function CompanyList({
                                               title="Klik baris untuk lihat detail"
                                               onClick={() => openModal(po)}
                                             >
+                                              <td className="px-4 py-3 font-semibold text-slate-500 tabular-nums">
+                                                {(pp - 1) * perPo + idx + 1}
+                                              </td>
                                               <td
                                                 className="px-4 py-3 font-mono font-bold text-slate-800 max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
                                                 title={String(po?.noPo || "-")}
@@ -970,8 +976,17 @@ export default function CompanyList({
                                       {Math.min(startPo + perPo, list.length)}{" "}
                                       of {list.length} PO
                                     </p>
-                                    <div className="flex gap-2">
+                                    <div className="flex items-center gap-1">
                                       <button
+                                        className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                        onClick={() => setPoPage((prev) => ({ ...prev, [key]: 1 }))}
+                                        disabled={pp === 1}
+                                        title="Halaman Pertama"
+                                      >
+                                        «
+                                      </button>
+                                      <button
+                                        className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                         onClick={() =>
                                           setPoPage((prev) => ({
                                             ...prev,
@@ -979,24 +994,33 @@ export default function CompanyList({
                                           }))
                                         }
                                         disabled={pp === 1}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 disabled:opacity-50 hover:bg-gray-50"
+                                        title="Sebelumnya"
                                       >
-                                        Previous
+                                        ‹
                                       </button>
+                                      <div className="flex items-center justify-center px-3 py-1.5 min-w-[70px] text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg mx-1">
+                                        {pp} / {totalPoPages}
+                                      </div>
                                       <button
+                                        className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                         onClick={() =>
                                           setPoPage((prev) => ({
                                             ...prev,
-                                            [key]: Math.min(
-                                              pp + 1,
-                                              totalPoPages,
-                                            ),
+                                            [key]: Math.min(pp + 1, totalPoPages),
                                           }))
                                         }
                                         disabled={pp === totalPoPages}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 disabled:opacity-50 hover:bg-gray-50"
+                                        title="Selanjutnya"
                                       >
-                                        Next
+                                        ›
+                                      </button>
+                                      <button
+                                        className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                        onClick={() => setPoPage((prev) => ({ ...prev, [key]: totalPoPages }))}
+                                        disabled={pp === totalPoPages}
+                                        title="Halaman Terakhir"
+                                      >
+                                        »
                                       </button>
                                     </div>
                                   </div>
@@ -1390,6 +1414,9 @@ export default function CompanyList({
                                                 <table className="w-full min-w-[1280px] text-left">
                                                   <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
                                                     <tr>
+                                                      <th className="px-4 py-3 sticky top-0 bg-slate-50 w-16">
+                                                        NO
+                                                      </th>
                                                       <th className="px-4 py-3 sticky top-0 bg-slate-50">
                                                         No PO
                                                       </th>
@@ -1429,7 +1456,7 @@ export default function CompanyList({
                                                     </tr>
                                                   </thead>
                                                   <tbody className="divide-y divide-slate-100 text-sm uppercase">
-                                                    {slice.map((po: any) => {
+                                                    {slice.map((po: any, idx: number) => {
                                                       const items =
                                                         Array.isArray(po?.Items)
                                                           ? po.Items
@@ -1595,6 +1622,9 @@ export default function CompanyList({
                                                             openModal(po)
                                                           }
                                                         >
+                                                           <td className="px-4 py-3 font-semibold text-slate-500 tabular-nums">
+                                                            {(pp - 1) * perPo + idx + 1}
+                                                          </td>
                                                           <td className="px-4 py-3 font-mono font-bold text-slate-800">
                                                             <div className="max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide">
                                                               {getHighlightedText(
@@ -1759,40 +1789,53 @@ export default function CompanyList({
                                                   )}{" "}
                                                   of {sortedList.length} PO
                                                 </p>
-                                                <div className="flex gap-2">
-                                                  <button
-                                                    onClick={() =>
-                                                      setPoPage((prev) => ({
-                                                        ...prev,
-                                                        [key]: Math.max(
-                                                          pp - 1,
-                                                          1,
-                                                        ),
-                                                      }))
-                                                    }
-                                                    disabled={pp === 1}
-                                                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 disabled:opacity-50 hover:bg-gray-50"
-                                                  >
-                                                    Previous
-                                                  </button>
-                                                  <button
-                                                    onClick={() =>
-                                                      setPoPage((prev) => ({
-                                                        ...prev,
-                                                        [key]: Math.min(
-                                                          pp + 1,
-                                                          totalPoPages,
-                                                        ),
-                                                      }))
-                                                    }
-                                                    disabled={
-                                                      pp === totalPoPages
-                                                    }
-                                                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 disabled:opacity-50 hover:bg-gray-50"
-                                                  >
-                                                    Next
-                                                  </button>
-                                                </div>
+                                                  <div className="flex items-center gap-1">
+                                                    <button
+                                                      className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                                      onClick={() => setPoPage((prev) => ({ ...prev, [key]: 1 }))}
+                                                      disabled={pp === 1}
+                                                      title="Halaman Pertama"
+                                                    >
+                                                      «
+                                                    </button>
+                                                    <button
+                                                      className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                                      onClick={() =>
+                                                        setPoPage((prev) => ({
+                                                          ...prev,
+                                                          [key]: Math.max(pp - 1, 1),
+                                                        }))
+                                                      }
+                                                      disabled={pp === 1}
+                                                      title="Sebelumnya"
+                                                    >
+                                                      ‹
+                                                    </button>
+                                                    <div className="flex items-center justify-center px-3 py-1.5 min-w-[70px] text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg mx-1">
+                                                      {pp} / {totalPoPages}
+                                                    </div>
+                                                    <button
+                                                      className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                                      onClick={() =>
+                                                        setPoPage((prev) => ({
+                                                          ...prev,
+                                                          [key]: Math.min(pp + 1, totalPoPages),
+                                                        }))
+                                                      }
+                                                      disabled={pp === totalPoPages}
+                                                      title="Selanjutnya"
+                                                    >
+                                                      ›
+                                                    </button>
+                                                    <button
+                                                      className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                                      onClick={() => setPoPage((prev) => ({ ...prev, [key]: totalPoPages }))}
+                                                      disabled={pp === totalPoPages}
+                                                      title="Halaman Terakhir"
+                                                    >
+                                                      »
+                                                    </button>
+                                                  </div>
                                               </div>
                                             ) : null}
                                           </>
@@ -1818,24 +1861,43 @@ export default function CompanyList({
                   {Math.min(indexOfLast, filteredGroups.length)} of{" "}
                   {filteredGroups.length} • Total PO: {totalUniquePo}
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(p + 1, totalPages))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
-                  >
-                    Next
-                  </button>
-                </div>
+                <div className="flex items-center gap-1">
+                                  <button
+                                    className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={currentPage === 1}
+                                    title="Halaman Pertama"
+                                  >
+                                    «
+                                  </button>
+                                  <button
+                                    className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    title="Sebelumnya"
+                                  >
+                                    ‹
+                                  </button>
+                                  <div className="flex items-center justify-center px-3 py-1.5 min-w-[70px] text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg mx-1">
+                                    {currentPage} / {totalPages}
+                                  </div>
+                                  <button
+                                    className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                    title="Selanjutnya"
+                                  >
+                                    ›
+                                  </button>
+                                  <button
+                                    className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={currentPage === totalPages}
+                                    title="Halaman Terakhir"
+                                  >
+                                    »
+                                  </button>
+                                </div>
               </div>
             ) : null}
           </>

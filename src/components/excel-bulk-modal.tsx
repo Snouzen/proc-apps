@@ -7,14 +7,15 @@ import { LoaderThree } from "@/components/ui/loader";
 import { FileSpreadsheet, Upload, X } from "lucide-react";
 import { saveRitel, saveUnitProduksi, saveProduct } from "@/lib/api";
 
-type Variant = "ritel" | "unit" | "produk";
+type Variant = "ritel" | "unit" | "produk" | "retur";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  title: string;
+  title?: string; // Judul optional
   variant: Variant;
+  retailerId?: string; // Khusus retur
 };
 
 function normalize(s: string) {
@@ -27,6 +28,7 @@ export default function ExcelBulkModal({
   onSuccess,
   title,
   variant,
+  retailerId,
 }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -56,6 +58,22 @@ export default function ExcelBulkModal({
     a: null,
     b: null,
     c: null,
+    rtvCn: null,
+    tanggalRtv: null,
+    maxPickup: null,
+    kodeToko: null,
+    namaCompany: null,
+    link: null,
+    rpKg: null,
+    statusBarang: null,
+    refKetStatus: null,
+    lokasiBarang: null,
+    pembebananReturn: null,
+    invoiceRekon: null,
+    referensiPembayaran: null,
+    tanggalPembayaran: null,
+    remarks: null,
+    sdiReturn: null
   });
 
   const readExcel = async (f: File) => {
@@ -89,50 +107,42 @@ export default function ExcelBulkModal({
 
   const detectKeys = (data: any[]) => {
     const first = data[0] || {};
+    let result: Record<string, string | null> = {
+      a: null, b: null, c: null,
+      rtvCn: null, tanggalRtv: null, maxPickup: null, kodeToko: null, namaCompany: null, link: null,
+      rpKg: null, statusBarang: null, refKetStatus: null, lokasiBarang: null, pembebananReturn: null,
+      invoiceRekon: null, referensiPembayaran: null, tanggalPembayaran: null, remarks: null, sdiReturn: null
+    };
+
     if (variant === "ritel") {
-      const namaPtKey = findKey(first, [
-        "nama pt",
-        "nama company",
-        "company",
-        "nama perusahaan",
-        "pt",
-      ]);
-      const tujuanKey = findKey(first, [
-        "tujuan",
-        "destination",
-        "lokasi",
-        "store",
-        "nama toko",
-        "dc",
-      ]);
-      const inisialKey = findKey(first, ["inisial", "initial"]);
-      return { a: namaPtKey, b: tujuanKey, c: inisialKey };
+      result.a = findKey(first, ["nama pt", "nama company", "company", "nama perusahaan", "pt"]);
+      result.b = findKey(first, ["tujuan", "destination", "lokasi", "store", "nama toko", "dc"]);
+      result.c = findKey(first, ["inisial", "initial"]);
+    } else if (variant === "retur") {
+      result.rtvCn = findKey(first, ["rtv", "cn", "rtv/cn", "no rtv", "no cn"]);
+      result.tanggalRtv = findKey(first, ["tanggal rtv", "tgl rtv", "date rtv"]);
+      result.maxPickup = findKey(first, ["max pickup", "tanggal pickup", "pickup"]);
+      result.kodeToko = findKey(first, ["kode toko", "id toko", "store code"]);
+      result.namaCompany = findKey(first, ["toko", "nama toko", "nama company", "store name"]);
+      result.link = findKey(first, ["link", "link result", "url"]);
+      result.a = findKey(first, ["produk", "product", "item"]);
+      result.b = findKey(first, ["qty retur", "qty", "jumlah retur", "quantity"]);
+      result.c = findKey(first, ["nominal", "amount", "total nominal"]);
+      result.rpKg = findKey(first, ["rp/kg", "harga/kg", "price group"]);
+      result.statusBarang = findKey(first, ["status barang", "status", "kondisi"]);
+      result.refKetStatus = findKey(first, ["referensi/ket status", "keterangan status", "remark status"]);
+      result.lokasiBarang = findKey(first, ["lokasi barang", "lokasi", "site"]);
+      result.pembebananReturn = findKey(first, ["pembebanan retur", "beban", "pembebanan"]);
+      result.invoiceRekon = findKey(first, ["invoice rekon", "rekon", "invoice"]);
+      result.referensiPembayaran = findKey(first, ["referensi pembayaran", "ref bayar", "no payment"]);
+      result.tanggalPembayaran = findKey(first, ["tanggal pembayaran", "tgl bayar", "pay date"]);
+      result.remarks = findKey(first, ["remarks", "keterangan", "catatan"]);
+      result.sdiReturn = findKey(first, ["sdi retur", "sdi"]);
+    } else {
+      result.a = findKey(first, ["produk", "product", "nama produk", "nama produk (sku)"]);
+      result.b = findKey(first, ["satuan kg", "satuan", "kg/pcs", "kg per pcs", "kg"]);
     }
-    if (variant === "unit") {
-      const regKey = findKey(first, ["regional", "region", "reg"]);
-      const siteKey = findKey(first, [
-        "site area",
-        "sitearea",
-        "lokasi",
-        "unit",
-        "site",
-      ]);
-      return { a: regKey, b: siteKey, c: null };
-    }
-    const productKey = findKey(first, [
-      "produk",
-      "product",
-      "nama produk",
-      "nama produk (sku)",
-    ]);
-    const satuanKey = findKey(first, [
-      "satuan kg",
-      "satuan",
-      "kg/pcs",
-      "kg per pcs",
-      "kg",
-    ]);
-    return { a: productKey, b: satuanKey, c: null };
+    return result;
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,6 +231,13 @@ export default function ExcelBulkModal({
         .filter((k) => set.has(k)).length;
       setDupeCount(count);
       return;
+    }
+    if (variant === "retur") {
+       // Untuk retur kita skip dulu de-duplikasi di level ExcelModal
+       // Kita biarkan API yang menangani atau user yang memfilter
+       setDupeCount(0);
+       setDupeGroups([]);
+       return;
     }
     const res = await fetch("/api/product");
     const list = await res.json();
@@ -376,30 +393,69 @@ export default function ExcelBulkModal({
         if (cancelRef.current) {
           throw new Error("Upload dibatalkan");
         }
-      } else if (variant === "unit") {
-        const res = await fetch("/api/unit-produksi");
-        const list = await res.json();
-        const all = Array.isArray(list) ? list : list?.data || [];
-        for (const r of rows) {
-          const regional = getCell(r, keys.a);
-          const siteArea = getCell(r, keys.b);
-          if (!regional || !siteArea) continue;
-          const match = all.find(
-            (x: any) =>
-              normalize(String(x?.namaRegional || "")) ===
-                normalize(regional) &&
-              normalize(String(x?.siteArea || "")) === normalize(siteArea),
-          );
-          if (match && !replaceDupes) continue;
-          if (match && replaceDupes) {
-            try {
-              const delParams = new URLSearchParams({ namaRegional: regional, siteArea }); // REFACTOR: DELETE via query params
-              await fetch(`/api/unit-produksi?${delParams.toString()}`, {
-                method: "DELETE",
-              });
-            } catch {}
+      } else if (variant === "retur") {
+        const toProcess = rows;
+        let done = 0;
+        setProgressOpen(true);
+        setProgressMeta({ batchIndex: 1, batchTotal: 1, done: 0, total: toProcess.length });
+
+        for (const rawRow of toProcess) {
+          if (cancelRef.current) break;
+
+          // 1. Normalisasi Keys (Hapus spasi, Uppercase) guna akurasi mapping
+          const row: any = {};
+          Object.keys(rawRow).forEach((key) => {
+            row[key.trim().toUpperCase()] = rawRow[key];
+          });
+
+          // 2. Validasi Wajib (Minimal Produk dan Qty)
+          if (!row["PRODUK"] || (!row["QTY RETUR"] && !row["QTY"])) {
+             done++;
+             continue; // Skip baris rusak tapi jangan error satu file
           }
-          await saveUnitProduksi({ regional, siteArea });
+
+          // 3. Mapping Data dengan Safe Fallback & Injection
+          const payload = {
+            ritelId: retailerId || null, 
+            namaCompany: String(row["TOKO"] || row["NAMA PERUSAHAAN"] || "").trim() || null,
+            
+            produk: String(row["PRODUK"] || "").trim() || null,
+            qtyReturn: row["QTY RETUR"] || row["QTY"] ? Number(row["QTY RETUR"] || row["QTY"]) : 0,
+            nominal: row["NOMINAL"] ? Number(row["NOMINAL"]) : 0,
+            rpKg: row["RP/KG"] ? Number(row["RP/KG"]) : 0,
+            
+            rtvCn: row["RTV/CN"] ? String(row["RTV/CN"]) : null,
+            tanggalRtv: row["TANGGAL RTV"] ? new Date(row["TANGGAL RTV"]) : null,
+            maxPickup: row["MAX PICKUP"] ? new Date(row["MAX PICKUP"]) : null,
+            kodeToko: row["KODE TOKO"] ? String(row["KODE TOKO"]) : null,
+            
+            link: String(row["LINK"] || "").trim() || null,
+            statusBarang: String(row["STATUS BARANG"] || "").trim() || "Sudah Diambil",
+            refKetStatus: String(row["REFERENSI/KET STATUS"] || "").trim() || null,
+            invoiceRekon: row["INVOICE REKON"] ? Boolean(row["INVOICE REKON"]) : false,
+            referensiPembayaran: String(row["REFERENSI PEMBAYARAN"] || "").trim() || null,
+            tanggalPembayaran: row["TANGGAL PEMBAYARAN"] ? new Date(row["TANGGAL PEMBAYARAN"]) : null,
+            remarks: String(row["REMARKS"] || "").trim() || null,
+            sdiReturn: String(row["SDI RETUR"] || "").trim() || null,
+          };
+
+          try {
+            const res = await fetch("/api/retur", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              throw new Error(errData.error || `HTTP Error ${res.status}`);
+            }
+          } catch (e: any) {
+            console.error(`Row Upload Fail pada baris ke-${done + 2}:`, e);
+          }
+
+          done++;
+          setProgressMeta(prev => prev ? { ...prev, done } : null);
         }
       } else {
         const res = await fetch("/api/product");
@@ -443,6 +499,7 @@ export default function ExcelBulkModal({
   const renderPreviewHeaders = () => {
     if (variant === "ritel") return ["Nama PT", "Inisial", "Tujuan"];
     if (variant === "unit") return ["Regional", "Site Area"];
+    if (variant === "retur") return ["Produk", "Qty", "Nominal"];
     return ["Produk", "Satuan (Kg)"];
   };
 
@@ -457,6 +514,12 @@ export default function ExcelBulkModal({
       const regional = getCell(row, keys.a);
       const siteArea = getCell(row, keys.b);
       return [regional, siteArea];
+    }
+    if (variant === "retur") {
+      const produk = getCell(row, keys.a);
+      const qty = getCell(row, keys.b);
+      const nominal = getCell(row, keys.c);
+      return [produk, qty, nominal];
     }
     const name = getCell(row, keys.a);
     const satuanRaw = keys.b ? Number(row[keys.b]) : 1;

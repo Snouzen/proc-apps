@@ -41,7 +41,8 @@ export const generateInvoicePdf = (
       0,
     ) || 0;
 
-  const rawRegional = data?.UnitProduksi?.namaRegional || "KANTOR WILAYAH BULOG"; 
+  const rawRegional =
+    data?.UnitProduksi?.namaRegional || "KANTOR WILAYAH BULOG";
   const regionalName = rawRegional.toUpperCase();
   const siteArea = data?.UnitProduksi?.siteArea
     ? `27100 - ${data.UnitProduksi.siteArea}`
@@ -84,8 +85,6 @@ export const generateInvoicePdf = (
 
   const startYBank = startYInvoice + 18;
   doc.setFont("helvetica", "bold");
-  doc.text("Bank BRI - 180501000026304", 15, startYBank);
-  doc.text("a.n Manajemen UB Industri Perum BULOG", 15, startYBank + 5);
 
   // --- 4. TITLE & NOMOR INVOICE ---
   const startYTitle = startYBank + 16;

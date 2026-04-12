@@ -12,6 +12,7 @@ import {
   FileText,
   Home,
   LayoutDashboard,
+  RotateCcw,
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -86,6 +87,7 @@ export default function Sidebar({
     },
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
     { name: "Branch Plan", icon: <CalendarDays size={20} />, path: "/branch" },
+    { name: "Data Retur", icon: <RotateCcw size={20} />, path: "/retur" },
   ];
 
   const menuItems =
@@ -95,6 +97,7 @@ export default function Sidebar({
           baseMenu[1], // Schedule
           baseMenu[4], // Report (index 4)
           baseMenu[5], // Branch Plan (index 5)
+          baseMenu[6], // Data Retur (index 6)
         ]
       : baseMenu;
 

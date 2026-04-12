@@ -468,8 +468,9 @@ function TableUnderChart({
   const [regionalFilter, setRegionalFilter] = useState("");
   const [siteAreaFilter, setSiteAreaFilter] = useState("");
   const [poLoadError, setPoLoadError] = useState<string | null>(null);
-  const [localPoData, setLocalPoData] = useState<any[]>([]);
+  const [allPoData, setAllPoData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isFetchingPage, setIsFetchingPage] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
   const [assignOpenId, setAssignOpenId] = useState<string | null>(null);
@@ -544,8 +545,6 @@ function TableUnderChart({
     debouncedSearch,
     regionalFilter,
     siteAreaFilter,
-    page,
-    rowsPerPage,
     sortDesc,
     alphaSort,
   ]);
@@ -562,8 +561,10 @@ function TableUnderChart({
         params.set("summary", "true");
         params.set("includeItems", "false");
         params.set("group", group);
+        // SERVER SIDE PAGINATION PARAMS
         params.set("limit", String(rowsPerPage));
         params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
+        
         if ((role === "rm" || role === "sitearea") && regional) {
           params.set("regional", regional);
         }
@@ -614,8 +615,6 @@ function TableUnderChart({
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
         return { list: [], total: 0, error: msg as string };
-      } finally {
-        setLoading(false);
       }
     },
     [
@@ -640,6 +639,14 @@ function TableUnderChart({
     if (typeof document !== "undefined" && !document.hasFocus()) return;
     let active = true;
     const controller = new AbortController();
+    
+    // SOFT LOADING LOGIC
+    if (allPoData.length === 0) {
+      setLoading(true);
+    } else {
+      setIsFetchingPage(true);
+    }
+
     const timer = setTimeout(() => {
       if (active) {
         fetchTable(controller.signal).then((out) => {
@@ -647,10 +654,12 @@ function TableUnderChart({
           if ((out as any).error) {
             setPoLoadError((out as any).error as string);
           } else {
-            setLocalPoData(out.list || []);
+            setAllPoData(out.list || []);
             setServerTotal(out.total || 0);
             setPoLoadError(null);
           }
+          setLoading(false);
+          setIsFetchingPage(false);
         });
       }
     }, 100);
@@ -659,13 +668,27 @@ function TableUnderChart({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [fetchKey, role, fetchTable]);
+  }, [
+    role,
+    group,
+    dateFrom,
+    dateTo,
+    debouncedSearch,
+    regionalFilter,
+    siteAreaFilter,
+    sortDesc,
+    alphaSort,
+    page,
+    rowsPerPage,
+    fetchTable,
+  ]);
 
   // Default group 'all' allowed for all roles; no auto override
 
+  // SERVER-SIDE PAGINATION LOGIC (NO SLICE)
   const totalPages = Math.max(1, Math.ceil(serverTotal / rowsPerPage));
   const start = (page - 1) * rowsPerPage;
-  const pageRows = Array.isArray(localPoData) ? localPoData : [];
+  const pageRows = allPoData;
 
   const getCompanyName = (po: any) => {
     const candidates = [
@@ -909,7 +932,7 @@ function TableUnderChart({
           <div className="flex flex-wrap items-center gap-2 w-full">
             {!modalOpen && (
               <>
-                <div className="w-full md:w-auto z-20">
+                <div className="relative w-full md:w-auto z-[60]">
                   <SmoothSelect
                     width={172}
                     value={group}
@@ -965,8 +988,14 @@ function TableUnderChart({
                     onSearchChange={handleSearchChange}
                     dateFrom={dateFrom}
                     dateTo={dateTo}
-                    regionalValue={role === "rm" || role === "sitearea" ? (regional || "") : regionalFilter}
-                    siteAreaValue={role === "sitearea" ? (siteArea || "") : siteAreaFilter}
+                    regionalValue={
+                      role === "rm" || role === "sitearea"
+                        ? regional || ""
+                        : regionalFilter
+                    }
+                    siteAreaValue={
+                      role === "sitearea" ? siteArea || "" : siteAreaFilter
+                    }
                     regionalLocked={role === "rm" || role === "sitearea"}
                     siteAreaLocked={role === "sitearea"}
                     onFilterChange={handleFilterChange}
@@ -1067,7 +1096,7 @@ function TableUnderChart({
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 text-[0.95rem]">
+          <tbody className={`divide-y divide-gray-100 text-[0.95rem] transition-opacity duration-200 ${isFetchingPage ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
             {loading
               ? Array.from({ length: 10 }).map((_, i) => {
                   const colCount =
@@ -1203,7 +1232,9 @@ function TableUnderChart({
                           Tgl Kirim
                         </span>
                         <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
-                          {toDate((po as any).tglkirim || (po as any).tglKirim)?.toLocaleDateString("id-ID") || "-"}
+                          {toDate(
+                            (po as any).tglkirim || (po as any).tglKirim,
+                          )?.toLocaleDateString("id-ID") || "-"}
                         </span>
                       </td>
                     )}
@@ -1261,13 +1292,13 @@ function TableUnderChart({
                     {visibleCols.actions && (
                       <td className="px-6 py-4 text-center align-top">
                         <div className="flex items-center justify-center gap-2">
-                          {(role === "rm" && group === "assign") ? (
+                          {role === "rm" && group === "assign" ? (
                             <AssignDropdown
                               po={po}
                               units={units}
                               regional={regional}
                               onAssigned={(unit: any) => {
-                                setLocalPoData((prev) =>
+                                setAllPoData((prev) =>
                                   prev.map((x) =>
                                     x.noPo === po.noPo
                                       ? {
@@ -1287,21 +1318,29 @@ function TableUnderChart({
                             />
                           ) : (
                             <>
-                              <button
-                                className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
-                                title="Edit"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const no = String(
-                                    po?.noPo || po?.nopo || po?.poNumber || "",
-                                  ).trim();
-                                  if (!no) return;
-                                  setEditNoPo(no);
-                                  setEditOpen(true);
-                                }}
-                              >
-                                <Pencil size={14} className="text-amber-500" />
-                              </button>
+                              {(role === "pusat" || role === "rm") && (
+                                <button
+                                  className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                                  title="Edit"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const no = String(
+                                      po?.noPo ||
+                                        po?.nopo ||
+                                        po?.poNumber ||
+                                        "",
+                                    ).trim();
+                                    if (!no) return;
+                                    setEditNoPo(no);
+                                    setEditOpen(true);
+                                  }}
+                                >
+                                  <Pencil
+                                    size={14}
+                                    className="text-amber-500"
+                                  />
+                                </button>
+                              )}
                               <button
                                 className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
                                 title="View Detail"
@@ -1322,7 +1361,10 @@ function TableUnderChart({
                                       openDetail(po);
                                     }}
                                   >
-                                    <RefreshCw size={14} className="text-blue-600" />
+                                    <RefreshCw
+                                      size={14}
+                                      className="text-blue-600"
+                                    />
                                   </button>
                                   <button
                                     className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
@@ -1332,7 +1374,10 @@ function TableUnderChart({
                                       openDetail(po);
                                     }}
                                   >
-                                    <CalendarClock size={14} className="text-emerald-600" />
+                                    <CalendarClock
+                                      size={14}
+                                      className="text-emerald-600"
+                                    />
                                   </button>
                                 </>
                               )}
@@ -1377,7 +1422,7 @@ function TableUnderChart({
           const updatedNo = norm(updated?.noPo || updated?.nopo || "");
           const originalNo = norm(updated?.__originalNoPo || "");
           if (!updatedNo) return;
-          setLocalPoData((prev) =>
+          setAllPoData((prev) =>
             prev.map((x) => {
               const xNo = norm(x?.noPo || x?.nopo || x?.poNumber || "");
               return xNo === updatedNo || (originalNo && xNo === originalNo)
@@ -1395,7 +1440,7 @@ function TableUnderChart({
               setPoLoadError((out as any).error as string);
               return;
             }
-            setLocalPoData(out.list || []);
+            setAllPoData(out.list || []);
             setServerTotal(out.total || 0);
             setPoLoadError(null);
           });
@@ -1426,18 +1471,36 @@ function TableUnderChart({
           </span>
           <div className="flex items-center gap-1">
             <button
-              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+              title="Halaman Pertama"
+            >
+              «
+            </button>
+            <button
+              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
+              title="Sebelumnya"
             >
               ‹
             </button>
             <button
-              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
+              title="Selanjutnya"
             >
               ›
+            </button>
+            <button
+              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages}
+              title="Halaman Terakhir"
+            >
+              »
             </button>
           </div>
         </div>

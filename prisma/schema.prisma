@@ -20,6 +20,7 @@ model Product {
   updatedAt          DateTime
   satuanKg           Float               @default(1)
   PurchaseOrderItems PurchaseOrderItem[]
+  DataRetur          DataRetur[]
 }
 
 model PurchaseOrder {
@@ -79,6 +80,7 @@ model RitelModern {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime
   PurchaseOrder PurchaseOrder[]
+  DataRetur     DataRetur[]
 
   @@map("ritel_modern")
 }
@@ -90,7 +92,9 @@ model UnitProduksi {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime
   alamat        String?         @default("")
-  PurchaseOrder PurchaseOrder[]
+  PurchaseOrder       PurchaseOrder[]
+  LokasiReturs        DataRetur[]     @relation("LokasiRetur")
+  PembebananReturs    DataRetur[]     @relation("PembebananRetur")
 }
 
 model User {
@@ -102,4 +106,36 @@ model User {
   password  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+model DataRetur {
+  id                  String        @id @default(cuid())
+  rtvCn               Int?
+  tanggalRtv          DateTime?
+  maxPickup           DateTime?
+  kodeToko            Int?
+  namaCompany         String?
+  ritelId             String?
+  RitelModern         RitelModern?  @relation(fields: [ritelId], references: [id])
+  link                String?
+  produk              String?
+  productId           String?
+  Product             Product?      @relation(fields: [productId], references: [id])
+  qtyReturn           Int?
+  nominal             Decimal?
+  rpKg                Decimal?
+  statusBarang        String? // "sudah diambil" | "dimusnahkan"
+  refKetStatus        String?
+  lokasiBarangId      String?
+  LokasiBarang        UnitProduksi? @relation("LokasiRetur", fields: [lokasiBarangId], references: [idRegional])
+  pembebananReturnId  String?
+  PembebananReturn    UnitProduksi? @relation("PembebananRetur", fields: [pembebananReturnId], references: [idRegional])
+  invoiceRekon        Boolean?      @default(false)
+  referensiPembayaran String?
+  tanggalPembayaran   DateTime?
+  remarks             String?
+  sdiReturn           String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@map("data_retur")
 }
