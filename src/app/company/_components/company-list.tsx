@@ -128,29 +128,17 @@ export default function CompanyList({
   }, []);
 
   useEffect(() => {
-    if (!isInitialLoad) return;
-    if (typeof document !== "undefined" && !document.hasFocus()) {
-      const onFocus = () => {
-        fetchData().finally(() => setIsInitialLoad(false));
-      };
-      window.addEventListener("focus", onFocus, { once: true });
-      return () => window.removeEventListener("focus", onFocus);
-    }
+    // Fetch hanya jalan 1x saat halaman dibuka
     fetchData().finally(() => setIsInitialLoad(false));
-  }, [fetchData, isInitialLoad]);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
-
-  useEffect(() => {
-    if (isInitialLoad) return;
-    if (typeof document !== "undefined" && !document.hasFocus()) return;
-    fetchData();
-  }, [debouncedSearch, fetchData, isInitialLoad, currentPage]);
+    // Auto-refresh hanya jika user pindah tab browser lalu balik lagi
+    const onFocus = () => {
+      if (document.hasFocus()) fetchData();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchData]);
+  // NOTE: Kita tidak lagi menaruh debouncedSearch dan currentPage di sini!
 
   const handlePOCreated = () => {
     fetchData();

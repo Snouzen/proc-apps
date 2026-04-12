@@ -1026,56 +1026,46 @@ export async function GET(request: Request) {
                 ? ({ tglPo: "asc" } as const)
                 : ({ createdAt: "desc" } as const);
 
-    const attachSummary = async (rows: any[]) => {
-      const ids = rows.map((r) => r.id).filter(Boolean);
-      if (ids.length === 0) return rows;
-      const rowsAgg = await prisma.$queryRaw<
-        Array<{
-          purchaseOrderId: string;
-          itemsCount: number;
-          totalNominal: number;
-          totalTagihan: number;
-          pcsTotal: number;
-          pcsKirimTotal: number;
-          totalDiscount: number;
-          totalKg: number;
-          totalKgKirim: number;
-          firstProductName: string | null;
-        }>
-      >(Prisma.sql`
-          SELECT
-            i."purchaseOrderId" as "purchaseOrderId",
-            COUNT(*)::int as "itemsCount",
-            COALESCE(SUM(i."nominal"), 0) as "totalNominal",
-            COALESCE(SUM(i."rpTagih"), 0) as "totalTagihan",
-            COALESCE(SUM(i."pcs"), 0) as "pcsTotal",
-            COALESCE(SUM(i."pcsKirim"), 0) as "pcsKirimTotal",
-            COALESCE(SUM(i."discount"), 0) as "totalDiscount",
-            COALESCE(SUM(i."pcs" * p."satuanKg"), 0)::float8 as "totalKg",
-            COALESCE(SUM(i."pcsKirim" * p."satuanKg"), 0)::float8 as "totalKgKirim",
-            (ARRAY_AGG(p."name" ORDER BY i."createdAt" ASC))[1] as "firstProductName"
-          FROM "PurchaseOrderItem" i
-          JOIN "Product" p ON p."id" = i."productId"
-          WHERE i."purchaseOrderId" IN (${Prisma.join(ids)})
-          GROUP BY i."purchaseOrderId"
-        `);
-      const byId = new Map<string, (typeof rowsAgg)[number]>();
-      for (const a of rowsAgg) byId.set(String(a.purchaseOrderId), a);
-      return rows.map((r) => {
-        const s = byId.get(r.id);
+    const attachSummary = (rows: any[]) => {
+      return rows.map((po) => {
+        const items = Array.isArray(po.Items) ? po.Items : [];
+        let totalNominal = 0;
+        let totalTagihan = 0;
+        let pcsTotal = 0;
+        let pcsKirimTotal = 0;
+        let totalDiscount = 0;
+        let totalKg = 0;
+        let totalKgKirim = 0;
+        let firstProductName = null;
+
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          if (i === 0 && it.Product?.name) firstProductName = it.Product.name;
+          totalNominal += Number(it.nominal) || 0;
+          totalTagihan += Number(it.rpTagih) || 0;
+          pcsTotal += Number(it.pcs) || 0;
+          pcsKirimTotal += Number(it.pcsKirim) || 0;
+          totalDiscount += Number(it.discount) || 0;
+          
+          const satuan = Number(it.Product?.satuanKg) || 1;
+          totalKg += (Number(it.pcs) || 0) * satuan;
+          totalKgKirim += (Number(it.pcsKirim) || 0) * satuan;
+        }
+
+        // Hapus array 'Items' dari payload agar JSON yang dikirim ke browser tetap kecil!
+        const { Items, ...purePo } = po; 
+        
         return {
-          ...r,
-          itemsCount: Number(s?.itemsCount) || 0,
-          totalNominal: Number(s?.totalNominal) || 0,
-          totalTagihan: Number(s?.totalTagihan) || 0,
-          pcsTotal: Number(s?.pcsTotal) || 0,
-          pcsKirimTotal: Number(s?.pcsKirimTotal) || 0,
-          totalDiscount: Number(s?.totalDiscount) || 0,
-          totalKg: Number(s?.totalKg) || 0,
-          totalKgKirim: Number(s?.totalKgKirim) || 0,
-          firstProductName: s?.firstProductName
-            ? String(s.firstProductName)
-            : null,
+          ...purePo,
+          itemsCount: items.length,
+          totalNominal,
+          totalTagihan,
+          pcsTotal,
+          pcsKirimTotal,
+          totalDiscount,
+          totalKg,
+          totalKgKirim,
+          firstProductName,
         };
       });
     };
@@ -1092,33 +1082,17 @@ export async function GET(request: Request) {
                   id: true,
                   noPo: true,
                   createdAt: true,
-                  updatedAt: true,
                   tglPo: true,
                   expiredTgl: true,
                   noInvoice: true,
                   tujuanDetail: true,
                   regional: true,
-                  unitProduksiId: true,
-                  statusKirim: true,
-                  statusSdif: true,
-                  statusPo: true,
-                  statusFp: true,
-                  statusKwi: true,
-                  statusInv: true,
-                  statusTagih: true,
-                  statusBayar: true,
-                  tglkirim: true,
-                  buktiTagih: true,
-                  buktiBayar: true,
-                  namaSupir: true,
-                  platNomor: true,
-                  RitelModern: {
-                    select: { namaPt: true, inisial: true, tujuan: true },
-                  },
-                  UnitProduksi: {
-                    select: { siteArea: true, namaRegional: true, alamat: true },
-                  },
-                  // [PERF] Removed Items relation fetch in summary mode as we use aggregate SQL instead to save memory
+                  RitelModern: { select: { namaPt: true, inisial: true } },
+                  UnitProduksi: { select: { siteArea: true, namaRegional: true } },
+                  // TAMBAHKAN INI UNTUK JS AGGREGATION
+                  Items: {
+                    select: { pcs: true, pcsKirim: true, nominal: true, rpTagih: true, discount: true, Product: { select: { name: true, satuanKg: true } } }
+                  }
                 },
                 orderBy,
               } as any)
@@ -1202,33 +1176,17 @@ export async function GET(request: Request) {
                 id: true,
                 noPo: true,
                 createdAt: true,
-                updatedAt: true,
                 tglPo: true,
                 expiredTgl: true,
                 noInvoice: true,
                 tujuanDetail: true,
                 regional: true,
-                unitProduksiId: true,
-                statusKirim: true,
-                statusSdif: true,
-                statusPo: true,
-                statusFp: true,
-                statusKwi: true,
-                statusInv: true,
-                statusTagih: true,
-                statusBayar: true,
-                tglkirim: true,
-                buktiTagih: true,
-                buktiBayar: true,
-                namaSupir: true,
-                platNomor: true,
-                RitelModern: {
-                  select: { namaPt: true, inisial: true, tujuan: true },
-                },
-                UnitProduksi: {
-                  select: { siteArea: true, namaRegional: true },
-                },
-                // [PERF] Removed Items relation fetch in summary mode to save memory as totals are aggregated via SQL
+                RitelModern: { select: { namaPt: true, inisial: true } },
+                UnitProduksi: { select: { siteArea: true, namaRegional: true } },
+                // TAMBAHKAN INI UNTUK JS AGGREGATION
+                Items: {
+                  select: { pcs: true, pcsKirim: true, nominal: true, rpTagih: true, discount: true, Product: { select: { name: true, satuanKg: true } } }
+                }
               },
               orderBy,
               take,
