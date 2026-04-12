@@ -1026,47 +1026,62 @@ export async function GET(request: Request) {
                 ? ({ tglPo: "asc" } as const)
                 : ({ createdAt: "desc" } as const);
 
-    const attachSummary = (rows: any[]) => {
-      return rows.map((po) => {
-        const items = Array.isArray(po.Items) ? po.Items : [];
-        let totalNominal = 0;
-        let totalTagihan = 0;
-        let pcsTotal = 0;
-        let pcsKirimTotal = 0;
-        let totalDiscount = 0;
-        let totalKg = 0;
-        let totalKgKirim = 0;
-        let firstProductName = null;
+    const attachSummary = async (rows: any[]) => {
+      const ids = rows.map((r) => r.id).filter(Boolean);
+      if (ids.length === 0) return rows;
 
-        for (let i = 0; i < items.length; i++) {
-          const it = items[i];
-          if (i === 0 && it.Product?.name) firstProductName = it.Product.name;
-          totalNominal += Number(it.nominal) || 0;
-          totalTagihan += Number(it.rpTagih) || 0;
-          pcsTotal += Number(it.pcs) || 0;
-          pcsKirimTotal += Number(it.pcsKirim) || 0;
-          totalDiscount += Number(it.discount) || 0;
-          
-          const satuan = Number(it.Product?.satuanKg) || 1;
-          totalKg += (Number(it.pcs) || 0) * satuan;
-          totalKgKirim += (Number(it.pcsKirim) || 0) * satuan;
-        }
+      // [OPTIMIZATION 1] Gunakan findMany murni. Prisma sangat cepat menghandle klausa 'IN' 
+      // secara internal tanpa membuat Node.js nge-freeze.
+      const allItems = await prisma.purchaseOrderItem.findMany({
+        where: { purchaseOrderId: { in: ids } },
+        select: {
+          purchaseOrderId: true,
+          pcs: true,
+          pcsKirim: true,
+          nominal: true,
+          rpTagih: true,
+          discount: true,
+          createdAt: true,
+          Product: { select: { name: true, satuanKg: true } }
+        },
+        orderBy: { createdAt: 'asc' }
+      });
 
-        // Hapus array 'Items' dari payload agar JSON yang dikirim ke browser tetap kecil!
-        const { Items, ...purePo } = po; 
+      // [OPTIMIZATION 2] Lakukan Kalkulasi di RAM Node.js (Waktu eksekusi cuma 2-3 milidetik)
+      const agg = new Map<string, any>();
+      for (let i = 0; i < allItems.length; i++) {
+        const it = allItems[i];
+        const poId = String(it.purchaseOrderId);
         
-        return {
-          ...purePo,
-          itemsCount: items.length,
-          totalNominal,
-          totalTagihan,
-          pcsTotal,
-          pcsKirimTotal,
-          totalDiscount,
-          totalKg,
-          totalKgKirim,
-          firstProductName,
+        if (!agg.has(poId)) {
+          agg.set(poId, {
+            itemsCount: 0, totalNominal: 0, totalTagihan: 0,
+            pcsTotal: 0, pcsKirimTotal: 0, totalDiscount: 0,
+            totalKg: 0, totalKgKirim: 0, firstProductName: it.Product?.name || null
+          });
+        }
+        
+        const s = agg.get(poId);
+        s.itemsCount += 1;
+        s.totalNominal += Number(it.nominal) || 0;
+        s.totalTagihan += Number(it.rpTagih) || 0;
+        s.pcsTotal += Number(it.pcs) || 0;
+        s.pcsKirimTotal += Number(it.pcsKirim) || 0;
+        s.totalDiscount += Number(it.discount) || 0;
+
+        const satuan = Number(it.Product?.satuanKg) || 1;
+        s.totalKg += (Number(it.pcs) || 0) * satuan;
+        s.totalKgKirim += (Number(it.pcsKirim) || 0) * satuan;
+      }
+
+      // [OPTIMIZATION 3] Tempelkan hasil agregasi ke baris data
+      return rows.map((r) => {
+        const s = agg.get(String(r.id)) || {
+          itemsCount: 0, totalNominal: 0, totalTagihan: 0,
+          pcsTotal: 0, pcsKirimTotal: 0, totalDiscount: 0,
+          totalKg: 0, totalKgKirim: 0, firstProductName: null
         };
+        return { ...r, ...s };
       });
     };
 
@@ -1088,11 +1103,7 @@ export async function GET(request: Request) {
                   tujuanDetail: true,
                   regional: true,
                   RitelModern: { select: { namaPt: true, inisial: true } },
-                  UnitProduksi: { select: { siteArea: true, namaRegional: true } },
-                  // TAMBAHKAN INI UNTUK JS AGGREGATION
-                  Items: {
-                    select: { pcs: true, pcsKirim: true, nominal: true, rpTagih: true, discount: true, Product: { select: { name: true, satuanKg: true } } }
-                  }
+                  UnitProduksi: { select: { siteArea: true, namaRegional: true } }
                 },
                 orderBy,
               } as any)
@@ -1182,11 +1193,7 @@ export async function GET(request: Request) {
                 tujuanDetail: true,
                 regional: true,
                 RitelModern: { select: { namaPt: true, inisial: true } },
-                UnitProduksi: { select: { siteArea: true, namaRegional: true } },
-                // TAMBAHKAN INI UNTUK JS AGGREGATION
-                Items: {
-                  select: { pcs: true, pcsKirim: true, nominal: true, rpTagih: true, discount: true, Product: { select: { name: true, satuanKg: true } } }
-                }
+                UnitProduksi: { select: { siteArea: true, namaRegional: true } }
               },
               orderBy,
               take,

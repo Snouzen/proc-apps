@@ -48,6 +48,11 @@ export default function CompanyList({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+  // Kembalikan efek Debounce agar fitur pencarian kembali berfungsi dan tidak nge-lag saat mengetik
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -128,17 +133,10 @@ export default function CompanyList({
   }, []);
 
   useEffect(() => {
-    // Fetch hanya jalan 1x saat halaman dibuka
+    // HANYA JALAN 1X SAAT MOUNT. 
+    // TIDAK ADA LAGI EVENT LISTENER FOCUS YANG BIKIN INFINITE LOOP!
     fetchData().finally(() => setIsInitialLoad(false));
-
-    // Auto-refresh hanya jika user pindah tab browser lalu balik lagi
-    const onFocus = () => {
-      if (document.hasFocus()) fetchData();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
   }, [fetchData]);
-  // NOTE: Kita tidak lagi menaruh debouncedSearch dan currentPage di sini!
 
   const handlePOCreated = () => {
     fetchData();
