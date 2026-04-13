@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as XLSX from "xlsx";
+const getXLSX = () => import("xlsx");
 import Modal from "./modal";
 import { LoaderThree } from "@/components/ui/loader";
 import { FileSpreadsheet, Upload, X } from "lucide-react";
@@ -79,8 +79,9 @@ export default function ExcelBulkModal({
   const readExcel = async (f: File) => {
     const reader = new FileReader();
     return new Promise<any[]>((resolve, reject) => {
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
+          const XLSX = await getXLSX();
           const wb = XLSX.read(e.target?.result, {
             type: "array",
             cellDates: true,

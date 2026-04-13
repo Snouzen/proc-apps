@@ -1,6 +1,7 @@
 "use client";
 
-import * as XLSX from "xlsx";
+// XLSX lazy-loaded on export (~200KB saved from initial bundle)
+const getXLSX = () => import("xlsx");
 import { Download, Pencil, Search } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -184,7 +185,7 @@ export default function CompanyDetail() {
   const start = (page - 1) * itemsPerPage;
   const pageRows = filteredRows.slice(start, start + itemsPerPage);
 
-  const onExport = () => {
+  const onExport = async () => {
     const data = filteredRows.map((r) => ({
       "No PO": r.noPo,
       Company: r.company,
@@ -202,6 +203,7 @@ export default function CompanyDetail() {
       Nominal: r.nominal,
       "No Invoice": r.noInvoice || "",
     }));
+    const XLSX = await getXLSX();
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "PO");

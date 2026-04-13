@@ -1,6 +1,7 @@
 "use client";
 
-import * as XLSX from "xlsx";
+// XLSX lazy-loaded on export (~200KB saved from initial bundle)
+const getXLSX = () => import("xlsx");
 import {
   Download,
   Filter,
@@ -876,6 +877,7 @@ export default function ReportPage() {
         return row;
       });
 
+      const XLSX = await getXLSX();
       const ws = XLSX.utils.json_to_sheet(data);
 
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
