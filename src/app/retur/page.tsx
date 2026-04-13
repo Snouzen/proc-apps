@@ -159,12 +159,17 @@ export default function ReturPage() {
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   
   const [products, setProducts] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [searchToko, setSearchToko] = useState("");
   const [searchProduk, setSearchProduk] = useState("");
   const [isTokoOpen, setIsTokoOpen] = useState(false);
   const [isProdukOpen, setIsProdukOpen] = useState(false);
+  const [isLokasiOpen, setIsLokasiOpen] = useState(false);
+  const [searchLokasi, setSearchLokasi] = useState("");
+  const [isPembebananOpen, setIsPembebananOpen] = useState(false);
+  const [searchPembebanan, setSearchPembebanan] = useState("");
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const comboRef = useRef<HTMLTableCellElement>(null);
@@ -196,10 +201,12 @@ export default function ReturPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/ritel").then(res => res.json()),
-      fetch("/api/product").then(res => res.json())
-    ]).then(([ritelJson, productJson]) => {
+      fetch("/api/product").then(res => res.json()),
+      fetch("/api/unit-produksi").then(res => res.json()) // TAMBAH INI
+    ]).then(([ritelJson, productJson, unitJson]) => {
       setRetailers(Array.isArray(ritelJson) ? ritelJson : (ritelJson?.data || []));
       setProducts(Array.isArray(productJson) ? productJson : (productJson?.data || []));
+      setUnits(Array.isArray(unitJson) ? unitJson : (unitJson?.data || [])); // TAMBAH INI
     });
   }, []);
 
@@ -298,6 +305,8 @@ export default function ReturPage() {
     setEditForm({ ...item });
     setSearchToko(item.namaCompany || "");
     setSearchProduk(item.produk || "");
+    setSearchLokasi(item.LokasiBarang?.siteArea || ""); // TAMBAH INI
+    setSearchPembebanan(item.PembebananReturn?.siteArea || ""); // TAMBAH INI
   };
 
   const handleCancelEdit = () => {
@@ -305,8 +314,12 @@ export default function ReturPage() {
     setEditForm({});
     setSearchToko("");
     setSearchProduk("");
+    setSearchLokasi(""); // TAMBAH INI
+    setSearchPembebanan(""); // TAMBAH INI
     setIsTokoOpen(false);
     setIsProdukOpen(false);
+    setIsLokasiOpen(false); // TAMBAH INI
+    setIsPembebananOpen(false); // TAMBAH INI
   };
 
   const handleSaveInline = async (id: string) => {
@@ -535,6 +548,16 @@ export default function ReturPage() {
       return a.name.localeCompare(b.name);
     });
   }, [products, searchProduk, PRIORITY_PRODUCTS]);
+
+  const filteredLokasi = useMemo(() => {
+    if (!searchLokasi) return units;
+    return units.filter(u => String(u.siteArea).toLowerCase().includes(searchLokasi.toLowerCase()));
+  }, [units, searchLokasi]);
+
+  const filteredPembebanan = useMemo(() => {
+    if (!searchPembebanan) return units;
+    return units.filter(u => String(u.siteArea).toLowerCase().includes(searchPembebanan.toLowerCase()));
+  }, [units, searchPembebanan]);
 
   const clientRowsPerPage = 10;
   const clientTotalPages = Math.ceil(data.length / clientRowsPerPage) || 1;
@@ -938,23 +961,62 @@ export default function ReturPage() {
                         </td>
                         <td className="px-6 py-4">
                           {isEditing ? (
-                            <select
-                              value={editForm.lokasiBarangId || ""}
-                              onChange={e => setEditForm({...editForm, lokasiBarangId: e.target.value})}
-                              className="w-full min-w-[200px] px-3 py-1.5 text-[10px] font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.2em_1.2em] pr-8"
-                            >
-                              <option value="">-- Pilih Tujuan/DC --</option>
-                              {masterTujuanList.map((tj, i) => (
-                                <option key={i} value={tj.idRegional}>
-                                  {tj.namaRegional} - {tj.siteArea}
-                                </option>
-                              ))}
-                            </select>
+                            <Popover.Root open={isLokasiOpen} onOpenChange={setIsLokasiOpen}>
+                              <Popover.Trigger asChild>
+                                <div className="relative w-full min-w-[200px]">
+                                  <input 
+                                    type="text" value={searchLokasi}
+                                    onChange={(e) => { setSearchLokasi(e.target.value); setIsLokasiOpen(true); }}
+                                    placeholder="Cari Lokasi/DC..." className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
+                                  />
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"><Search size={14} /></div>
+                                </div>
+                              </Popover.Trigger>
+                              <Popover.Portal>
+                                <Popover.Content className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-64 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="start">
+                                  {filteredLokasi.length === 0 ? (<div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Tidak ada hasil</div>) : (
+                                    filteredLokasi.map(u => (
+                                      <button key={u.idRegional} onClick={() => { setEditForm({...editForm, lokasiBarangId: u.idRegional}); setSearchLokasi(u.siteArea); setIsLokasiOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors uppercase tracking-tight">
+                                        {highlightMatch(u.siteArea, searchLokasi)}
+                                        <div className="text-[9px] opacity-70 font-medium">{u.namaRegional}</div>
+                                      </button>
+                                    ))
+                                  )}
+                                </Popover.Content>
+                              </Popover.Portal>
+                            </Popover.Root>
                           ) : (
                             <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{item.LokasiBarang?.siteArea || "-"}</div>
                           )}
                         </td>
-                        <td className="px-6 py-4"><div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">{item.PembebananReturn?.siteArea || "-"}</div></td>
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <Popover.Root open={isPembebananOpen} onOpenChange={setIsPembebananOpen}>
+                              <Popover.Trigger asChild>
+                                <div className="relative w-full min-w-[200px]">
+                                  <input 
+                                    type="text" value={searchPembebanan}
+                                    onChange={(e) => { setSearchPembebanan(e.target.value); setIsPembebananOpen(true); }}
+                                    placeholder="Cari Pembebanan..." className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
+                                  />
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"><Search size={14} /></div>
+                                </div>
+                              </Popover.Trigger>
+                              <Popover.Portal>
+                                <Popover.Content className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-64 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="start">
+                                  {filteredPembebanan.length === 0 ? (<div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Tidak ada hasil</div>) : (
+                                    filteredPembebanan.map(u => (
+                                      <button key={u.idRegional} onClick={() => { setEditForm({...editForm, pembebananReturnId: u.idRegional}); setSearchPembebanan(u.siteArea); setIsPembebananOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors uppercase tracking-tight">
+                                        {highlightMatch(u.siteArea, searchPembebanan)}
+                                        <div className="text-[9px] opacity-70 font-medium">{u.namaRegional}</div>
+                                      </button>
+                                    ))
+                                  )}
+                                </Popover.Content>
+                              </Popover.Portal>
+                            </Popover.Root>
+                          ) : (<div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">{item.PembebananReturn?.siteArea || "-"}</div>)}
+                        </td>
                         <td className="px-6 py-4 text-center">
                           {isEditing ? (
                             <input 

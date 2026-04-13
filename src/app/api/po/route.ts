@@ -1102,6 +1102,11 @@ export async function GET(request: Request) {
                   noInvoice: true,
                   tujuanDetail: true,
                   regional: true,
+                  // [RESTORE FIELD JADWAL]
+                  tglkirim: true,
+                  namaSupir: true,
+                  platNomor: true,
+                  // ----------------------
                   RitelModern: { select: { namaPt: true, inisial: true } },
                   UnitProduksi: { select: { siteArea: true, namaRegional: true } }
                 },
@@ -1192,6 +1197,11 @@ export async function GET(request: Request) {
                 noInvoice: true,
                 tujuanDetail: true,
                 regional: true,
+                // [RESTORE FIELD JADWAL]
+                tglkirim: true,
+                namaSupir: true,
+                platNomor: true,
+                // ----------------------
                 RitelModern: { select: { namaPt: true, inisial: true } },
                 UnitProduksi: { select: { siteArea: true, namaRegional: true } }
               },

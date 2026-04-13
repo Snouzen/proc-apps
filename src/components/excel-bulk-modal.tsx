@@ -432,6 +432,11 @@ export default function ExcelBulkModal({
             link: String(row["LINK"] || "").trim() || null,
             statusBarang: String(row["STATUS BARANG"] || "").trim() || "Sudah Diambil",
             refKetStatus: String(row["REFERENSI/KET STATUS"] || "").trim() || null,
+            
+            // Tangkap dari Excel dan kirim mentah-mentah ke backend (biar backend yang translate ke ID)
+            lokasiBarang: row["LOKASI BARANG"] || row["Lokasi Barang"] || row["LOKASI"] || null,
+            pembebananReturn: row["PEMBEBANAN RETUR"] || row["Pembebanan Retur"] || row["PEMBEBANAN"] || null,
+            
             invoiceRekon: row["INVOICE REKON"] ? Boolean(row["INVOICE REKON"]) : false,
             referensiPembayaran: String(row["REFERENSI PEMBAYARAN"] || "").trim() || null,
             tanggalPembayaran: row["TANGGAL PEMBAYARAN"] ? new Date(row["TANGGAL PEMBAYARAN"]) : null,

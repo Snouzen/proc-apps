@@ -110,25 +110,54 @@ export default function SchedulePage() {
   }, [fetchData]);
 
   const handleUpdateSchedule = async () => {
-    if (!selectedPo || !selectedDate) return;
+    if (!selectedPo || !selectedDate) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Form Belum Lengkap',
+        text: 'Mohon isi tanggal pengiriman terlebih dahulu.',
+        confirmButtonColor: '#3085d6'
+      });
+      return;
+    }
+
     setUpdatingId(selectedPo.id);
+    
     try {
       const res = await fetch("/api/po/schedule", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedPo.id,
-          tglKirim: selectedDate,
-          namaSupir: namaSupir.trim(),
-          platNomor: platNomor.trim(),
+          // Gunakan format YYYY-MM-DD agar lolos validasi regex di backend
+          tglKirim: selectedDate ? format(new Date(selectedDate), 'yyyy-MM-dd') : null,
+          // [PENGAMAN] Gunakan ternary operator agar tidak crash saat data undefined
+          namaSupir: namaSupir ? String(namaSupir).trim() : null,
+          platNomor: platNomor ? String(platNomor).trim() : null,
         }),
       });
+
       if (res.ok) {
         setModalOpen(false);
+        await Swal.fire({
+          icon: 'success',
+          title: 'Berhasil!',
+          text: 'Jadwal pengiriman telah diperbarui.',
+          timer: 1500,
+          showConfirmButton: false
+        });
         fetchData();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || errData.message || 'Gagal menyimpan ke server');
       }
-    } catch (err) {
-      console.error("Update failed:", err);
+    } catch (err: any) {
+      console.error("Update Schedule Error:", err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Update',
+        text: err.message || 'Terjadi kesalahan sistem, silakan coba lagi.',
+        confirmButtonColor: '#d33'
+      });
     } finally {
       setUpdatingId(null);
     }

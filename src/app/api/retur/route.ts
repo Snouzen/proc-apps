@@ -87,6 +87,81 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
+    if (Array.isArray(body)) {
+      // BULK INSERT
+
+      // [OPTIMASI 1] Tarik kamus data Unit Produksi untuk menerjemahkan nama ke ID
+      const masterUnits = await prisma.unitProduksi.findMany({
+        select: { idRegional: true, siteArea: true }
+      });
+
+      // [OPTIMASI 2] Helper untuk mencocokkan string dari Excel ke idRegional
+      const findUnitId = (nameVal: any) => {
+        if (!nameVal) return null;
+        const searchStr = String(nameVal).trim().toLowerCase();
+        
+        // Cari berdasarkan kecocokan nama (Case Insensitive)
+        const match = masterUnits.find(u => String(u.siteArea).trim().toLowerCase() === searchStr);
+        
+        // Jika yang diinput user ternyata sudah berupa ID (mengandung dash), loloskan
+        if (!match && searchStr.length > 15 && searchStr.includes('-')) return String(nameVal);
+        
+        return match ? match.idRegional : null;
+      };
+
+      // [RADAR CERDAS] Mencari value di dalam object meskipun nama key-nya agak berbeda/typo
+      const getFuzzyValue = (obj: any, keywords: string[]) => {
+        const keys = Object.keys(obj);
+        for (const key of keys) {
+          const lowerKey = key.toLowerCase();
+          if (keywords.some(kw => lowerKey.includes(kw))) {
+            return obj[key];
+          }
+        }
+        return null;
+      };
+
+      const created = await prisma.$transaction(
+        body.map((item: any) => {
+          // Gunakan Radar Cerdas untuk mencari kolom yang mengandung kata kunci
+          const stringLokasi = item.lokasiBarangId || getFuzzyValue(item, ['lokasi', 'lokasi barang', 'dc']);
+          const stringPembebanan = item.pembebananReturnId || getFuzzyValue(item, ['pembebanan', 'beban', 'pembebanan retur']);
+
+          return prisma.dataRetur.create({
+            data: {
+              rtvCn: item.rtvCn ? Number(item.rtvCn) : null,
+              tanggalRtv: item.tanggalRtv ? new Date(item.tanggalRtv) : null,
+              maxPickup: item.maxPickup ? new Date(item.maxPickup) : null,
+              kodeToko: item.kodeToko ? Number(item.kodeToko) : null,
+              namaCompany: item.namaCompany || null,
+              ritelId: item.ritelId || null,
+              link: item.link || null,
+              produk: item.produk || null,
+              productId: item.productId || null,
+              qtyReturn: item.qtyReturn ? Number(item.qtyReturn) : null,
+              nominal: item.nominal ? new Prisma.Decimal(item.nominal) : null,
+              rpKg: item.rpKg ? new Prisma.Decimal(item.rpKg) : null,
+              statusBarang: item.statusBarang || null,
+              refKetStatus: item.refKetStatus || null,
+              
+              // [OPTIMASI 3] Gunakan fungsi Translator di sini!
+              lokasiBarangId: findUnitId(stringLokasi),
+              pembebananReturnId: findUnitId(stringPembebanan),
+              
+              invoiceRekon: item.invoiceRekon === true || item.invoiceRekon === "true",
+              referensiPembayaran: item.referensiPembayaran || null,
+              tanggalPembayaran: item.tanggalPembayaran ? new Date(item.tanggalPembayaran) : null,
+              remarks: item.remarks || null,
+              sdiReturn: item.sdiReturn || null,
+            },
+          });
+        })
+      );
+
+      return NextResponse.json({ success: true, count: created.length });
+    }
+
     // Validasi baru (lebih longgar, karena rtvCn dan namaCompany bisa null)
     if (!body.produk && (!body.qtyReturn && body.qtyReturn !== 0)) {
       return NextResponse.json({ error: "Data produk dan QTY tidak valid" }, { status: 400 });

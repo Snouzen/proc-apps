@@ -97,7 +97,7 @@ export default function Sidebar({
           baseMenu[1], // Schedule
           baseMenu[4], // Report (index 4)
           baseMenu[5], // Branch Plan (index 5)
-          baseMenu[6], // Data Retur (index 6)
+          // Data Retur (index 6) DIHAPUS UNTUK ROLE SITEAREA
         ]
       : baseMenu;
 
