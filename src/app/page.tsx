@@ -1,7 +1,12 @@
 "use client";
 
 import StatCard from "@/components/card";
-import { ChartAreaInteractive } from "@/components/chart-area-interactive";
+import dynamic from "next/dynamic";
+
+const ChartAreaInteractive = dynamic(
+  () => import("@/components/chart-area-interactive").then((m) => m.ChartAreaInteractive),
+  { ssr: false, loading: () => <div className="h-[300px] animate-pulse bg-slate-100 rounded-xl" /> },
+);
 
 import {
   Bell,
@@ -108,25 +113,6 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    const run = () => {
-      if (!mounted) return;
-      fetchMe();
-    };
-    if (typeof document !== "undefined" && !document.hasFocus()) {
-      window.addEventListener("focus", run, { once: true });
-      return () => {
-        mounted = false;
-        window.removeEventListener("focus", run);
-      };
-    }
-    run();
-    return () => {
-      mounted = false;
-    };
-  }, [fetchMe]);
-
   const fetchUnits = useCallback(async () => {
     try {
       const list = await getUnits();
@@ -136,24 +122,26 @@ export default function Home() {
     }
   }, []);
 
+  // Consolidated: single effect for initial data fetch + single focus listener
   useEffect(() => {
     let mounted = true;
-    const run = () => {
+    const runAll = () => {
       if (!mounted) return;
+      fetchMe();
       fetchUnits();
     };
     if (typeof document !== "undefined" && !document.hasFocus()) {
-      window.addEventListener("focus", run, { once: true });
+      window.addEventListener("focus", runAll, { once: true });
       return () => {
         mounted = false;
-        window.removeEventListener("focus", run);
+        window.removeEventListener("focus", runAll);
       };
     }
-    run();
+    runAll();
     return () => {
       mounted = false;
     };
-  }, [fetchUnits]);
+  }, [fetchMe, fetchUnits]);
 
   const statsParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -200,23 +188,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!roleReady) return;
-    let mounted = true;
     const controller = new AbortController();
-    const run = () => {
-      if (mounted) fetchStats(controller.signal);
-    };
-    if (typeof document !== "undefined" && !document.hasFocus()) {
-      window.addEventListener("focus", run, { once: true });
-      return () => {
-        mounted = false;
-        window.removeEventListener("focus", run);
-        controller.abort();
-      };
-    }
-    const timer = window.setTimeout(run, 100);
+    fetchStats(controller.signal);
     return () => {
-      mounted = false;
-      window.clearTimeout(timer);
       controller.abort();
     };
   }, [roleReady, fetchStats]);

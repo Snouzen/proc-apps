@@ -161,6 +161,7 @@ export default function Sidebar({
               <Link
                 key={item.name}
                 href={item.path}
+                prefetch={false}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group
                   ${
                     isActive
@@ -218,6 +219,7 @@ export default function Sidebar({
                         <Link
                           key={sub.name}
                           href={sub.path}
+                          prefetch={false}
                           className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
                         ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
                         >

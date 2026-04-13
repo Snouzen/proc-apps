@@ -21,7 +21,9 @@ import { getMe } from "@/lib/me";
 import { format } from "date-fns";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import PODetailModal from "@/components/po-detail-modal";
-import { generateInvoicePdf } from "@/lib/generateInvoice";
+// Lazy-loaded: jsPDF is ~100KB, only needed when user clicks download/preview
+const lazyGenerateInvoicePdf = (...args: Parameters<typeof import("@/lib/generateInvoice").generateInvoicePdf>) =>
+  import("@/lib/generateInvoice").then((m) => m.generateInvoicePdf(...args));
 import Swal from "sweetalert2";
 
 // ── Helper: strip junk site area text ──────────────────────────────────────
@@ -84,13 +86,13 @@ export default function SchedulePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // [FIX] Gunakan kriteria yang tepat agar pcsKirimTotal & pcsTotal terisi dari DB Aggregation
+      // Limit to 500 active POs to prevent loading thousands of records
       const res = await fetch(
-        "/api/po?group=active&summary=true&includeItems=false",
+        "/api/po?group=active&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
         { cache: "no-store" },
       );
       const data = await res.json();
-      // API no-limit path returns array directly; paged path returns { data, total }
+      // API paged path returns { data, total }; no-limit path returns array
       const list = Array.isArray(data)
         ? data
         : Array.isArray(data?.data)
@@ -277,14 +279,14 @@ export default function SchedulePage() {
             ? data[0]
             : null;
         if (fullPo) {
-          generateInvoicePdf(fullPo, "download");
+          await lazyGenerateInvoicePdf(fullPo, "download");
           return;
         }
       } catch (err) {
         console.error("Failed to fetch full PO for invoice:", err);
       }
     }
-    generateInvoicePdf(po, "download");
+    await lazyGenerateInvoicePdf(po, "download");
   };
 
   const handlePreviewPdf = async (po: any) => {
@@ -305,7 +307,7 @@ export default function SchedulePage() {
         console.error("Failed to fetch full PO for preview:", err);
       }
     }
-    const blobUrl = generateInvoicePdf(targetPo, "preview");
+    const blobUrl = await lazyGenerateInvoicePdf(targetPo, "preview");
     if (blobUrl) setPdfPreviewUrl(blobUrl as string);
   };
 

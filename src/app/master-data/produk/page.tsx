@@ -1,6 +1,6 @@
 "use client";
 
-import * as XLSX from "xlsx";
+const getXLSX = () => import("xlsx");
 import {
   Archive,
   Package,
@@ -190,6 +190,7 @@ export default function ProdukPage() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async (event) => {
+      const XLSX = await getXLSX();
       const workbook = XLSX.read(event.target?.result, { type: "binary" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];

@@ -9,7 +9,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { LoaderThree } from "@/components/ui/loader";
-import * as XLSX from "xlsx";
+// XLSX lazy-loaded (~200KB saved from initial bundle)
+const getXLSX = () => import("xlsx");
 import Modal from "./modal";
 import { useRouter } from "next/navigation";
 
@@ -206,8 +207,9 @@ export default function BulkUploadModal({ open, onClose, onSuccess }: Props) {
   > => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
+          const XLSX = await getXLSX();
           const data = e.target?.result;
           const workbook = XLSX.read(data, { type: "array", cellDates: false });
           const sheetName = workbook.SheetNames[0];
