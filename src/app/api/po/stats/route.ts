@@ -98,7 +98,6 @@ export async function GET(request: Request) {
 
   const safeSa = overrideSiteArea || searchParams.get("siteArea") || "";
   const hasSiteArea = safeSa.length > 0;
-  const saPattern = hasSiteArea ? `%${safeSa.trim()}%` : '%';
 
   const keyParams = new URLSearchParams();
   keyParams.set("includeUnknown", includeUnknown ? "true" : "false");
@@ -111,7 +110,6 @@ export async function GET(request: Request) {
   const cached = cacheGet<any>(cacheKey);
   try {
     const emptyInvoiceValues = ["", "-", "Unknown"];
-    const emptyRegionalValues = ["", "-", "Unknown", "UNKNOWN"];
     const now = new Date();
     const startOfToday = new Date(
       Date.UTC(
@@ -167,86 +165,122 @@ export async function GET(request: Request) {
       }
       return [String(regionalParam || "").trim()];
     })();
-    const regionalPatterns = syn.map((s) => `%${s}%`);
-    const hasRegional = regionalPatterns.length > 0;
-    const emptyText = ["", "-", "Unknown"];
+    const emptyText = ["", "-", "Unknown", "UNKNOWN"];
 
     const payload = await singleFlight(cacheKey, async () => {
-      const rows = await prisma.$queryRaw<
-        Array<{
-          cAll: number;
-          cActive: number;
-          cAssign: number;
-          cAlmost: number;
-          cExpired: number;
-          cCompleted: number;
-        }>
-      >`
-        SELECT
-          COUNT(*)::int AS "cAll",
-          COUNT(*) FILTER (
-            WHERE
-              (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
-              AND (po."expiredTgl" IS NULL OR po."expiredTgl" >= ${startOfToday})
-          )::int AS "cActive",
-          COUNT(*) FILTER (
-            WHERE
-              (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
-              AND (po."expiredTgl" IS NULL OR po."expiredTgl" >= ${startOfToday})
-              AND (
-                COALESCE(trim(COALESCE(po."regional", '')), '') = ANY(${emptyRegionalValues})
-                OR po."unitProduksiId" = 'UNKNOWN'
-              )
-          )::int AS "cAssign",
-          COUNT(*) FILTER (
-            WHERE
-              (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
-              AND po."expiredTgl" IS NOT NULL
-              AND po."expiredTgl" >= ${startOfToday}
-              AND po."expiredTgl" <= ${endOfSoon}
-          )::int AS "cAlmost",
-          COUNT(*) FILTER (
-            WHERE
-              (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
-              AND po."expiredTgl" IS NOT NULL
-              AND po."expiredTgl" < ${startOfToday}
-          )::int AS "cExpired",
-          COUNT(*) FILTER (
-            WHERE
-              NOT (COALESCE(trim(po."noInvoice"), '') = ANY(${emptyInvoiceValues}))
-          )::int AS "cCompleted"
-        FROM "PurchaseOrder" po
-        LEFT JOIN "UnitProduksi" up ON up."idRegional" = po."unitProduksiId"
-        WHERE
-          (${tglFrom}::timestamptz IS NULL OR po."tglPo" >= ${tglFrom}::timestamptz)
-          AND (${tglTo}::timestamptz IS NULL OR po."tglPo" <= ${tglTo}::timestamptz)
-          AND (
-            ${includeUnknown} = true OR NOT (
-              po."unitProduksiId" = 'UNKNOWN'
-              OR COALESCE(trim(po."tujuanDetail"), '') = ANY(${emptyText})
-              OR COALESCE(trim(COALESCE(po."regional", '')), '') = ANY(${emptyText})
-            )
-          )
-          AND (
-            ${hasRegional} = false OR (
-              COALESCE(po."regional", '') ILIKE ANY(${regionalPatterns})
-              OR COALESCE(up."namaRegional", '') ILIKE ANY(${regionalPatterns})
-            )
-          )
-          AND (
-            ${hasSiteArea} = false OR up."siteArea" ILIKE ${saPattern}
-          )
-      `;
-      return {
-        ...(rows[0] || {
-          cAll: 0,
-          cActive: 0,
-          cAssign: 0,
-          cAlmost: 0,
-          cExpired: 0,
-          cCompleted: 0,
+      // 1. Susun Base Where (Filter Global)
+      const baseWhere: any = {};
+      
+      if (tglFrom || tglTo) {
+        baseWhere.tglPo = {};
+        if (tglFrom) baseWhere.tglPo.gte = tglFrom;
+        if (tglTo) baseWhere.tglPo.lte = tglTo;
+      }
+
+      const andFilters: any[] = [];
+
+      // Filter Unknown
+      if (!includeUnknown) {
+        andFilters.push({
+          NOT: {
+            OR: [
+              { unitProduksiId: "UNKNOWN" },
+              { unitProduksiId: null },
+              { tujuanDetail: { in: emptyText } },
+              { tujuanDetail: null },
+              { regional: { in: emptyText } },
+              { regional: null }
+            ]
+          }
+        });
+      }
+
+      // Filter Regional (Fuzzy Search)
+      if (syn.length > 0) {
+        andFilters.push({
+          OR: syn.flatMap(s => [
+            { regional: { contains: s, mode: "insensitive" } },
+            { UnitProduksi: { namaRegional: { contains: s, mode: "insensitive" } } }
+          ])
+        });
+      }
+
+      // Filter Site Area
+      if (hasSiteArea) {
+        andFilters.push({
+          UnitProduksi: { siteArea: { contains: safeSa.trim(), mode: "insensitive" } }
+        });
+      }
+
+      if (andFilters.length > 0) {
+        baseWhere.AND = andFilters;
+      }
+
+      // 2. Kondisi-kondisi Spesifik
+      const noInvoiceCond = {
+        OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }]
+      };
+      
+      const hasInvoiceCond = {
+        NOT: { OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }] }
+      };
+
+      // 3. Eksekusi 6 Hitungan secara Paralel (Ngebut & Bersih!)
+      const [cAll, cActive, cAssign, cAlmost, cExpired, cCompleted] = await Promise.all([
+        // cAll
+        prisma.purchaseOrder.count({ where: baseWhere }),
+        
+        // cActive
+        prisma.purchaseOrder.count({
+          where: {
+            ...baseWhere,
+            ...noInvoiceCond,
+            OR: [{ expiredTgl: null }, { expiredTgl: { gte: startOfToday } }]
+          }
         }),
-        cProgress: 0,
+
+        // cAssign (Active + Regional Kosong/Unknown)
+        prisma.purchaseOrder.count({
+          where: {
+            ...baseWhere,
+            ...noInvoiceCond,
+            OR: [{ expiredTgl: null }, { expiredTgl: { gte: startOfToday } }],
+            AND: [
+              ...(baseWhere.AND || []),
+              { OR: [{ regional: null }, { regional: { in: emptyText } }, { unitProduksiId: "UNKNOWN" }] }
+            ]
+          }
+        }),
+
+        // cAlmost
+        prisma.purchaseOrder.count({
+          where: {
+            ...baseWhere,
+            ...noInvoiceCond,
+            expiredTgl: { not: null, gte: startOfToday, lte: endOfSoon }
+          }
+        }),
+
+        // cExpired
+        prisma.purchaseOrder.count({
+          where: {
+            ...baseWhere,
+            ...noInvoiceCond,
+            expiredTgl: { not: null, lt: startOfToday }
+          }
+        }),
+
+        // cCompleted
+        prisma.purchaseOrder.count({
+          where: {
+            ...baseWhere,
+            ...hasInvoiceCond
+          }
+        })
+      ]);
+
+      return {
+        cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, cProgress: 0
       };
     });
     cacheSet(cacheKey, payload, 30000);

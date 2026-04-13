@@ -1,6 +1,6 @@
 "use client";
 
-import * as XLSX from "xlsx";
+const getXLSX = () => import("xlsx");
 import {
   ChevronDown,
   ChevronRight,
@@ -184,6 +184,7 @@ export default function UnitProduksiPage() {
 
     const reader = new FileReader();
     reader.onload = async (event) => {
+      const XLSX = await getXLSX();
       const workbook = XLSX.read(event.target?.result, { type: "binary" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];

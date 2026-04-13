@@ -68,6 +68,11 @@ export const generateInvoicePdf = (
 
   doc.text(siteArea.toUpperCase(), 15, startYAddress);
 
+  // [FITUR BARU] Tambahan No PO persis di bawah siteArea
+  doc.setFont("helvetica", "bold");
+  doc.text(`No. PO : ${data?.noPo || "-"}`, 15, startYAddress + 5);
+  doc.setFont("helvetica", "normal");
+
   const startYInvoice = startYAddress + 15;
   doc.setFont("helvetica", "bold");
   doc.text("Alamat Invoice:", 15, startYInvoice);
@@ -95,7 +100,6 @@ export const generateInvoicePdf = (
   doc.text(invNumber, 105, startYTitle + 6, { align: "center" });
 
   // --- 5. TABEL ITEM UTAMA ---
-  // Jarak langsung dilompatin ke tabel (Grid Info dihapus permanen)
   const itemsStartY = startYTitle + 12;
   const tableBody =
     data?.Items?.length > 0
@@ -110,7 +114,7 @@ export const generateInvoicePdf = (
             kuantum,
             formatRp(item.hargaPcs),
             "PPN 12%\n(dibebaskan)",
-            formatRp(item.nominal), // 👈 "Jumlah" sekarang nembak ke item.nominal
+            formatRp(item.nominal),
           ];
         })
       : [["-", "-", "-", "-", "-", "-"]];
@@ -147,11 +151,11 @@ export const generateInvoicePdf = (
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.text("Jumlah Sebelum Pajak", 115, finalY + 5);
-  doc.text(formatRp(totalNominal), 195, finalY + 5, { align: "right" }); // 👈 Total Nominal
+  doc.text(formatRp(totalNominal), 195, finalY + 5, { align: "right" });
 
   doc.setFont("helvetica", "normal");
   doc.text("Discount", 115, finalY + 10);
-  doc.text(formatRp(totalDiscount), 195, finalY + 10, { align: "right" }); // 👈 Row Discount Baru
+  doc.text(formatRp(totalDiscount), 195, finalY + 10, { align: "right" });
 
   doc.text("Pajak", 115, finalY + 15);
   doc.text("Rp 0,00", 195, finalY + 15, { align: "right" });
@@ -160,10 +164,28 @@ export const generateInvoicePdf = (
 
   doc.setFont("helvetica", "bold");
   doc.text("Total", 115, finalY + 23);
-  doc.text(formatRp(totalTagihan), 195, finalY + 23, { align: "right" }); // 👈 Total Tagihan
+  doc.text(formatRp(totalTagihan), 195, finalY + 23, { align: "right" });
+
+  // --- [FITUR BARU] STEMPEL LOGO BULOG ---
+  try {
+    const logoUrl = "/logo-bulog.png";
+    // Posisi stempel di X=150 (pas di area kosong kanan bawah) dan Y=finalY+28
+    doc.addImage(
+      logoUrl,
+      "PNG",
+      150,
+      finalY + 28,
+      35,
+      12,
+      "logo-stamp",
+      "FAST",
+    );
+  } catch (e) {
+    console.error("Gagal memuat stempel di PDF:", e);
+  }
 
   // --- 7. FOOTER CETAKAN BAWAH (DINAMIS Y) ---
-  const footerY = finalY + 35; // Jarak agak digedein dikit dari Total
+  const footerY = finalY + 50; // Jarak diturunin dikit biar stempel muat dengan aman
   doc.setLineWidth(0.3);
   doc.line(15, footerY, 195, footerY);
   doc.setFontSize(8);
@@ -178,7 +200,6 @@ export const generateInvoicePdf = (
   if (action === "preview") {
     return doc.output("bloburl");
   } else {
-    // Nama file diganti dari Invoice_ jadi Faktur_Penjualan_
     doc.save(`Faktur_Penjualan_${invNumber.replace(/\//g, "-")}.pdf`);
   }
 };

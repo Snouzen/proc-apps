@@ -36,9 +36,9 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [poMenuOpen, setPoMenuOpen] = useState(false);
-  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | "spb_dki" | null>(
-    initialRole || null,
-  );
+  const [role, setRole] = useState<
+    "pusat" | "rm" | "sitearea" | "spb_dki" | null
+  >(initialRole || null);
   const [regional, setRegional] = useState<string | null>(
     initialRegional ?? null,
   );
@@ -60,9 +60,10 @@ export default function Sidebar({
       try {
         const data = await getMe();
         if (data?.authenticated) {
-          const r = (data.role === "rm" || data.role === "sitearea") 
-            ? data.role 
-            : "pusat";
+          const r =
+            data.role === "rm" || data.role === "sitearea"
+              ? data.role
+              : "pusat";
           setRole(r as any);
           setRegional(data?.regional || null);
         } else {
@@ -161,6 +162,7 @@ export default function Sidebar({
               <Link
                 key={item.name}
                 href={item.path}
+                prefetch={false}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group
                   ${
                     isActive
@@ -218,6 +220,7 @@ export default function Sidebar({
                         <Link
                           key={sub.name}
                           href={sub.path}
+                          prefetch={false}
                           className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
                         ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
                         >

@@ -1,6 +1,6 @@
 "use client";
 
-import * as XLSX from "xlsx";
+const getXLSX = () => import("xlsx");
 
 import {
   Building2,
@@ -34,7 +34,7 @@ const highlightText = (text: string, query: string) => {
           </mark>
         ) : (
           part
-        )
+        ),
       )}
     </span>
   );
@@ -277,7 +277,8 @@ export default function RitelModernPage() {
           );
           if (match?.id) {
             try {
-              await fetch(`/api/ritel?id=${encodeURIComponent(match.id)}`, { // REFACTOR: DELETE via query param
+              await fetch(`/api/ritel?id=${encodeURIComponent(match.id)}`, {
+                // REFACTOR: DELETE via query param
                 method: "DELETE",
               });
             } catch {}
@@ -361,9 +362,15 @@ export default function RitelModernPage() {
   const filteredData = groupedData.filter((item) => {
     const term = searchTerm.toLowerCase();
     const matchPt = item.namaPt.toLowerCase().includes(term);
-    const matchAlias = Object.keys(item.inisials).some((a) => a.toLowerCase().includes(term));
-    const matchStore = Object.values(item.inisials).some((stores: any) => 
-      stores.some((s: any) => String(s.tujuan || "").toLowerCase().includes(term))
+    const matchAlias = Object.keys(item.inisials).some((a) =>
+      a.toLowerCase().includes(term),
+    );
+    const matchStore = Object.values(item.inisials).some((stores: any) =>
+      stores.some((s: any) =>
+        String(s.tujuan || "")
+          .toLowerCase()
+          .includes(term),
+      ),
     );
     return matchPt || matchAlias || matchStore;
   });
@@ -397,6 +404,7 @@ export default function RitelModernPage() {
 
     const reader = new FileReader();
     reader.onload = async (event) => {
+      const XLSX = await getXLSX();
       const workbook = XLSX.read(event.target?.result, { type: "binary" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
@@ -802,9 +810,13 @@ export default function RitelModernPage() {
                 variant="submit"
                 onClick={async () => {
                   try {
-                    await fetch(`/api/ritel?id=${encodeURIComponent(deleteStore.id)}`, { // REFACTOR: DELETE via query param
-                      method: "DELETE",
-                    });
+                    await fetch(
+                      `/api/ritel?id=${encodeURIComponent(deleteStore.id)}`,
+                      {
+                        // REFACTOR: DELETE via query param
+                        method: "DELETE",
+                      },
+                    );
                     setDeleteStore(null);
                     setDataRitel((prev) =>
                       prev.filter((r) => r.id !== deleteStore.id),
@@ -1392,9 +1404,13 @@ export default function RitelModernPage() {
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch(`/api/ritel?namaPt=${encodeURIComponent(deleteCompany!)}`, { // REFACTOR: DELETE via query param
-                      method: "DELETE",
-                    });
+                    const res = await fetch(
+                      `/api/ritel?namaPt=${encodeURIComponent(deleteCompany!)}`,
+                      {
+                        // REFACTOR: DELETE via query param
+                        method: "DELETE",
+                      },
+                    );
                     if (!res.ok) {
                       const j = await res.json().catch(() => ({}));
                       alert(j?.error || "Gagal menghapus data");

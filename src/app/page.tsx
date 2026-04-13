@@ -227,8 +227,8 @@ export default function Home() {
     return isNaN(dt.getTime()) ? null : dt;
   };
   const isCompleted = (po: any) => {
-    const inv = po?.noInvoice;
-    return String(inv ?? "").trim().length > 0;
+    const inv = String(po?.noInvoice || "").trim();
+    return inv.length > 0 && inv !== "-" && inv.toLowerCase() !== "unknown";
   };
   const daysUntil = (d: Date | null) => {
     if (!d) return null;
@@ -502,8 +502,8 @@ function TableUnderChart({
     return isNaN(dt.getTime()) ? null : dt;
   };
   const isCompleted = (po: any) => {
-    const inv = po?.noInvoice;
-    return String(inv ?? "").trim().length > 0;
+    const inv = String(po?.noInvoice || "").trim();
+    return inv.length > 0 && inv !== "-" && inv.toLowerCase() !== "unknown";
   };
   const daysUntil = (d: Date | null) => {
     if (!d) return null;

@@ -73,8 +73,6 @@ export async function GET(request: Request) {
       }
       return [String(regionalParam || "").trim()];
     })();
-    const regionalPatterns = syn.map((s) => `%${s}%`);
-    const hasRegional = regionalPatterns.length > 0;
 
     const data = await singleFlight(cacheKey, async () => {
       const ids = Array.from({ length: days }, (_, idx) => {
@@ -83,62 +81,85 @@ export async function GET(request: Request) {
         return toYMDJakarta(utcStart);
       });
 
-      if (metric === "count") {
-        const rows = await prisma.$queryRaw<
-          Array<{ date: string; count: number }>
-        >`
-          SELECT
-            to_char((po."tglPo" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta')::date, 'YYYY-MM-DD') as "date",
-            COUNT(*)::int as "count"
-          FROM "PurchaseOrder" po
-          LEFT JOIN "UnitProduksi" up ON up."idRegional" = po."unitProduksiId"
-          LEFT JOIN "ritel_modern" rm ON rm."id" = po."ritelId"
-          WHERE po."tglPo" >= ${start} AND po."tglPo" <= ${end}
-            AND (${includeUnknown} = true OR NOT (
-              po."unitProduksiId" = 'UNKNOWN'
-              OR COALESCE(trim(po."tujuanDetail"), '') = ANY(${emptyText})
-              OR COALESCE(trim(rm."namaPt"), '') = ANY(${emptyText})
-            ))
-            AND (${hasRegional} = false OR (
-              COALESCE(po."regional", '') ILIKE ANY(${regionalPatterns})
-              OR COALESCE(up."namaRegional", '') ILIKE ANY(${regionalPatterns})
-            ))
-          GROUP BY 1
-          ORDER BY 1 ASC
-        `;
-        const by = new Map(rows.map((r) => [r.date, r.count]));
-        return ids.map((d) => ({ date: d, count: by.get(d) || 0, kg: 0 }));
+      // 1. Susun Base Where (Filter Global)
+      const baseWhere: any = {
+        tglPo: { gte: start, lte: end },
+      };
+
+      const andFilters: any[] = [];
+
+      // Filter Unknown
+      if (!includeUnknown) {
+        andFilters.push({
+          NOT: {
+            OR: [
+              { unitProduksiId: "UNKNOWN" },
+              { tujuanDetail: { in: emptyText } },
+              { tujuanDetail: null },
+              { RitelModern: { namaPt: { in: emptyText } } },
+            ],
+          },
+        });
       }
 
-      const rows = await prisma.$queryRaw<
-        Array<{ date: string; kg: number; count: number }>
-      >`
-        SELECT
-          to_char((po."tglPo" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Jakarta')::date, 'YYYY-MM-DD') as "date",
-          COALESCE(SUM(i."pcs" * p."satuanKg"), 0)::float8 as "kg",
-          COUNT(DISTINCT i."purchaseOrderId")::int as "count"
-        FROM "PurchaseOrderItem" i
-        JOIN "PurchaseOrder" po ON po."id" = i."purchaseOrderId"
-        JOIN "Product" p ON p."id" = i."productId"
-        LEFT JOIN "UnitProduksi" up ON up."idRegional" = po."unitProduksiId"
-        LEFT JOIN "ritel_modern" rm ON rm."id" = po."ritelId"
-        WHERE po."tglPo" >= ${start} AND po."tglPo" <= ${end}
-          AND (${includeUnknown} = true OR NOT (
-            po."unitProduksiId" = 'UNKNOWN'
-            OR COALESCE(trim(po."tujuanDetail"), '') = ANY(${emptyText})
-            OR COALESCE(trim(rm."namaPt"), '') = ANY(${emptyText})
-          ))
-          AND (${hasRegional} = false OR (
-            COALESCE(po."regional", '') ILIKE ANY(${regionalPatterns})
-            OR COALESCE(up."namaRegional", '') ILIKE ANY(${regionalPatterns})
-          ))
-        GROUP BY 1
-        ORDER BY 1 ASC
-      `;
-      const by = new Map(rows.map((r) => [r.date, r]));
+      // Filter Regional (Fuzzy Search)
+      if (syn.length > 0) {
+        andFilters.push({
+          OR: syn.flatMap((s) => [
+            { regional: { contains: s, mode: "insensitive" } },
+            { UnitProduksi: { namaRegional: { contains: s, mode: "insensitive" } } },
+          ]),
+        });
+      }
+
+      if (andFilters.length > 0) {
+        baseWhere.AND = andFilters;
+      }
+
+      if (metric === "count") {
+        // [PRISMA NATIVE] Ambil semua PO dalam range, lalu kelompokkan di RAM per tanggal Jakarta
+        const pos = await prisma.purchaseOrder.findMany({
+          where: baseWhere,
+          select: { tglPo: true },
+        });
+
+        const byDate = new Map<string, number>();
+        for (const po of pos) {
+          if (!po.tglPo) continue;
+          const dateKey = toYMDJakarta(new Date(po.tglPo));
+          byDate.set(dateKey, (byDate.get(dateKey) || 0) + 1);
+        }
+
+        return ids.map((d) => ({ date: d, count: byDate.get(d) || 0, kg: 0 }));
+      }
+
+      // metric === "kg"
+      // [PRISMA NATIVE] Ambil Items + Product.satuanKg + PO.tglPo, lalu hitung di RAM
+      const items = await prisma.purchaseOrderItem.findMany({
+        where: {
+          PurchaseOrder: baseWhere,
+        },
+        select: {
+          pcs: true,
+          Product: { select: { satuanKg: true } },
+          PurchaseOrder: { select: { id: true, tglPo: true } },
+        },
+      });
+
+      const byDate = new Map<string, { kg: number; poIds: Set<string> }>();
+      for (const item of items) {
+        const tglPo = item.PurchaseOrder?.tglPo;
+        if (!tglPo) continue;
+        const dateKey = toYMDJakarta(new Date(tglPo));
+        if (!byDate.has(dateKey)) byDate.set(dateKey, { kg: 0, poIds: new Set() });
+        const entry = byDate.get(dateKey)!;
+        entry.kg += (Number(item.pcs) || 0) * (Number(item.Product?.satuanKg) || 1);
+        entry.poIds.add(item.PurchaseOrder.id);
+      }
+
       return ids.map((d) => {
-        const r = by.get(d);
-        return { date: d, count: r?.count || 0, kg: r?.kg || 0 };
+        const r = byDate.get(d);
+        return { date: d, count: r?.poIds.size || 0, kg: r?.kg || 0 };
       });
     });
 

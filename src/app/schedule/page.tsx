@@ -21,7 +21,10 @@ import { getMe } from "@/lib/me";
 import { format } from "date-fns";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import PODetailModal from "@/components/po-detail-modal";
-import { generateInvoicePdf } from "@/lib/generateInvoice";
+// Lazy-loaded: jsPDF is ~100KB, only needed when user clicks download/preview
+const lazyGenerateInvoicePdf = (
+  ...args: Parameters<typeof import("@/lib/generateInvoice").generateInvoicePdf>
+) => import("@/lib/generateInvoice").then((m) => m.generateInvoicePdf(...args));
 import Swal from "sweetalert2";
 
 // ── Helper: strip junk site area text ──────────────────────────────────────
@@ -84,13 +87,13 @@ export default function SchedulePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // [FIX] Gunakan kriteria yang tepat agar pcsKirimTotal & pcsTotal terisi dari DB Aggregation
+      // Limit to 500 active POs to prevent loading thousands of records
       const res = await fetch(
-        "/api/po?group=active&summary=true&includeItems=false",
+        "/api/po?group=active&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
         { cache: "no-store" },
       );
       const data = await res.json();
-      // API no-limit path returns array directly; paged path returns { data, total }
+      // API paged path returns { data, total }; no-limit path returns array
       const list = Array.isArray(data)
         ? data
         : Array.isArray(data?.data)
@@ -112,16 +115,16 @@ export default function SchedulePage() {
   const handleUpdateSchedule = async () => {
     if (!selectedPo || !selectedDate) {
       Swal.fire({
-        icon: 'warning',
-        title: 'Form Belum Lengkap',
-        text: 'Mohon isi tanggal pengiriman terlebih dahulu.',
-        confirmButtonColor: '#3085d6'
+        icon: "warning",
+        title: "Form Belum Lengkap",
+        text: "Mohon isi tanggal pengiriman terlebih dahulu.",
+        confirmButtonColor: "#3085d6",
       });
       return;
     }
 
     setUpdatingId(selectedPo.id);
-    
+
     try {
       const res = await fetch("/api/po/schedule", {
         method: "PATCH",
@@ -129,7 +132,9 @@ export default function SchedulePage() {
         body: JSON.stringify({
           id: selectedPo.id,
           // Gunakan format YYYY-MM-DD agar lolos validasi regex di backend
-          tglKirim: selectedDate ? format(new Date(selectedDate), 'yyyy-MM-dd') : null,
+          tglKirim: selectedDate
+            ? format(new Date(selectedDate), "yyyy-MM-dd")
+            : null,
           // [PENGAMAN] Gunakan ternary operator agar tidak crash saat data undefined
           namaSupir: namaSupir ? String(namaSupir).trim() : null,
           platNomor: platNomor ? String(platNomor).trim() : null,
@@ -139,24 +144,26 @@ export default function SchedulePage() {
       if (res.ok) {
         setModalOpen(false);
         await Swal.fire({
-          icon: 'success',
-          title: 'Berhasil!',
-          text: 'Jadwal pengiriman telah diperbarui.',
+          icon: "success",
+          title: "Berhasil!",
+          text: "Jadwal pengiriman telah diperbarui.",
           timer: 1500,
-          showConfirmButton: false
+          showConfirmButton: false,
         });
         fetchData();
       } else {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || errData.message || 'Gagal menyimpan ke server');
+        throw new Error(
+          errData.error || errData.message || "Gagal menyimpan ke server",
+        );
       }
     } catch (err: any) {
       console.error("Update Schedule Error:", err);
       Swal.fire({
-        icon: 'error',
-        title: 'Gagal Update',
-        text: err.message || 'Terjadi kesalahan sistem, silakan coba lagi.',
-        confirmButtonColor: '#d33'
+        icon: "error",
+        title: "Gagal Update",
+        text: err.message || "Terjadi kesalahan sistem, silakan coba lagi.",
+        confirmButtonColor: "#d33",
       });
     } finally {
       setUpdatingId(null);
@@ -166,7 +173,7 @@ export default function SchedulePage() {
   const handleUpdatePcsKirim = async (id: string, value: string) => {
     const pcs = Number(value);
     if (isNaN(pcs) || pcs < 0) return;
-    
+
     setSavingPcsId(id);
     try {
       const res = await fetch("/api/po/pcs-kirim", {
@@ -174,7 +181,7 @@ export default function SchedulePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, pcsKirim: pcs }),
       });
-      
+
       if (res.ok) {
         // Refetch to sync aggregate totals (pcsKirimTotal)
         fetchData();
@@ -277,14 +284,14 @@ export default function SchedulePage() {
             ? data[0]
             : null;
         if (fullPo) {
-          generateInvoicePdf(fullPo, "download");
+          await lazyGenerateInvoicePdf(fullPo, "download");
           return;
         }
       } catch (err) {
         console.error("Failed to fetch full PO for invoice:", err);
       }
     }
-    generateInvoicePdf(po, "download");
+    await lazyGenerateInvoicePdf(po, "download");
   };
 
   const handlePreviewPdf = async (po: any) => {
@@ -305,7 +312,7 @@ export default function SchedulePage() {
         console.error("Failed to fetch full PO for preview:", err);
       }
     }
-    const blobUrl = generateInvoicePdf(targetPo, "preview");
+    const blobUrl = await lazyGenerateInvoicePdf(targetPo, "preview");
     if (blobUrl) setPdfPreviewUrl(blobUrl as string);
   };
 
@@ -609,7 +616,10 @@ export default function SchedulePage() {
                       </td>
 
                       {/* Kolom Pcs Kirim (Inline Editable) */}
-                      <td className="px-5 py-3.5 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
+                      <td
+                        className="px-5 py-3.5 whitespace-nowrap text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="relative inline-block group/input">
                           <input
                             type="number"
@@ -617,11 +627,18 @@ export default function SchedulePage() {
                             value={po.pcsKirimTotal ?? 0}
                             onChange={(e) => {
                               const val = e.target.value;
-                              setPoData(prev => prev.map(p => p.id === po.id ? { ...p, pcsKirimTotal: val } : p));
+                              setPoData((prev) =>
+                                prev.map((p) =>
+                                  p.id === po.id
+                                    ? { ...p, pcsKirimTotal: val }
+                                    : p,
+                                ),
+                              );
                             }}
                             onFocus={(e) => e.target.select()}
                             onBlur={(e) => {
-                              const val = parseInt(e.target.value.toString()) || 0;
+                              const val =
+                                parseInt(e.target.value.toString()) || 0;
                               handleUpdatePcsKirim(po.id, val.toString());
                             }}
                             onKeyDown={(e) => {
@@ -629,14 +646,18 @@ export default function SchedulePage() {
                             }}
                             disabled={savingPcsId === po.id}
                             className={`w-24 px-2 py-1.5 text-xs font-bold text-center bg-slate-50 border rounded-lg outline-none transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                               savingPcsId === po.id 
-                               ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse" 
-                               : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
+                              savingPcsId === po.id
+                                ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse"
+                                : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
                             }`}
                           />
-                          {savingPcsId !== po.id && Number(po.pcsKirimTotal) > 0 && (
-                             <div className="absolute -right-1 -top-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" title="Tersimpan" />
-                          )}
+                          {savingPcsId !== po.id &&
+                            Number(po.pcsKirimTotal) > 0 && (
+                              <div
+                                className="absolute -right-1 -top-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm"
+                                title="Tersimpan"
+                              />
+                            )}
                         </div>
                       </td>
 
@@ -780,7 +801,9 @@ export default function SchedulePage() {
               {/* Next Page */}
               <button
                 className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-600"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
                 title="Selanjutnya"
               >

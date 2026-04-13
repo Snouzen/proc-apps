@@ -1,6 +1,7 @@
 "use client";
 
-import * as XLSX from "xlsx";
+// XLSX lazy-loaded on export (~200KB saved from initial bundle)
+const getXLSX = () => import("xlsx");
 import {
   Download,
   Filter,
@@ -116,11 +117,11 @@ const formatDateExcel = (dateValue: any) => {
   if (!dateValue || dateValue === "-") return "-";
   const d = new Date(dateValue);
   if (isNaN(d.getTime())) return "-";
-  
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
+
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
   const year = d.getFullYear();
-  
+
   return `${day}/${month}/${year}`;
 };
 
@@ -342,15 +343,20 @@ export default function ReportPage() {
         if (me?.authenticated) {
           setRole(me.role as any);
           setUserRegional(me.regional || null);
-          
-          const rawEmailPrefix = me.email ? me.email.split('@')[0].toUpperCase() : "";
-          
+
+          const rawEmailPrefix = me.email
+            ? me.email.split("@")[0].toUpperCase()
+            : "";
+
           // Logika cerdas: sesuaikan format 'SPBDKI' menjadi 'SPB DKI' agar match dengan DB
           let formattedSiteArea = rawEmailPrefix;
           if (rawEmailPrefix.startsWith("SPB") && rawEmailPrefix.length > 3) {
-              formattedSiteArea = "SPB " + rawEmailPrefix.substring(3);
-          } else if (rawEmailPrefix.startsWith("SPP") && rawEmailPrefix.length > 3) {
-              formattedSiteArea = "SPP " + rawEmailPrefix.substring(3);
+            formattedSiteArea = "SPB " + rawEmailPrefix.substring(3);
+          } else if (
+            rawEmailPrefix.startsWith("SPP") &&
+            rawEmailPrefix.length > 3
+          ) {
+            formattedSiteArea = "SPP " + rawEmailPrefix.substring(3);
           }
 
           const finalSiteArea = me.siteArea || formattedSiteArea;
@@ -393,41 +399,251 @@ export default function ReportPage() {
 
   const columns: Column[] = useMemo(
     () => [
-      { id: "no", label: "No", kind: "number", defaultVisible: true, value: (r) => r.no },
-      { id: "noPo", label: "No PO", kind: "text", defaultVisible: true, value: (r) => r.noPo },
-      { id: "company", label: "Company", kind: "text", defaultVisible: true, value: (r) => r.company },
-      { id: "inisial", label: "Inisial", kind: "text", defaultVisible: true, value: (r) => r.inisial },
-      { id: "regional", label: "Regional", kind: "text", defaultVisible: true, value: (r) => r.regional },
-      { id: "siteArea", label: "Site Area", kind: "text", defaultVisible: true, value: (r) => r.siteArea },
-      { id: "tglPo", label: "Tgl PO", kind: "date", defaultVisible: true, value: (r) => r.tglPo },
-      { id: "tglkirim", label: "Tgl Kirim", kind: "date", defaultVisible: true, value: (r) => r.tglkirim },
-      { id: "expiredTgl", label: "Expired", kind: "date", defaultVisible: true, value: (r) => r.expiredTgl },
-      { id: "noInvoice", label: "No Invoice", kind: "text", defaultVisible: true, value: (r) => r.noInvoice },
-      { id: "buktiTagih", label: "Bukti Tagih", kind: "text", defaultVisible: true, value: (r) => r.buktiTagih },
-      { id: "buktiBayar", label: "Bukti Bayar", kind: "text", defaultVisible: true, value: (r) => r.buktiBayar },
-      { id: "linkPo", label: "Link PO", kind: "text", defaultVisible: true, value: (r) => r.linkPo },
-      { id: "namaSupir", label: "Nama Supir", kind: "text", defaultVisible: true, value: (r) => r.namaSupir },
-      { id: "platNomor", label: "Plat Nomor", kind: "text", defaultVisible: true, value: (r) => r.platNomor },
-      { id: "tujuanDetail", label: "Tujuan Detail", kind: "text", defaultVisible: true, value: (r) => r.tujuanDetail },
-      { id: "remarks", label: "Remarks", kind: "text", defaultVisible: true, value: (r) => r.remarks },
-      { id: "statusKirim", label: "Kirim", kind: "bool", defaultVisible: true, value: (r) => r.statusKirim },
-      { id: "statusPo", label: "PO", kind: "bool", defaultVisible: true, value: (r) => r.statusPo },
-      { id: "statusInv", label: "Inv", kind: "bool", defaultVisible: true, value: (r) => r.statusInv },
-      { id: "statusBayar", label: "Bayar", kind: "bool", defaultVisible: true, value: (r) => r.statusBayar },
-      { id: "statusSdif", label: "SDIF", kind: "bool", defaultVisible: true, value: (r) => r.statusSdif },
-      { id: "statusFp", label: "FP", kind: "bool", defaultVisible: true, value: (r) => r.statusFp },
-      { id: "statusKwi", label: "Kwi", kind: "bool", defaultVisible: true, value: (r) => r.statusKwi },
-      { id: "statusTagih", label: "Tagih", kind: "bool", defaultVisible: true, value: (r) => r.statusTagih },
-      { id: "namaProduk", label: "Produk", kind: "text", defaultVisible: true, value: (r) => r.namaProduk },
-      { id: "pcs", label: "PCS", kind: "number", defaultVisible: true, value: (r) => r.pcs },
-      { id: "pcsKirim", label: "PCS Kirim", kind: "number", defaultVisible: true, value: (r) => r.pcsKirim },
-      { id: "satuanKg", label: "Berat Satuan (Kg)", kind: "number", defaultVisible: true, value: (r) => r.satuanKg },
-      { id: "kg", label: "Total Kg", kind: "number", defaultVisible: true, value: (r) => r.kg },
-      { id: "hargaPcs", label: "Harga/Pcs", kind: "number", defaultVisible: true, value: (r) => r.hargaPcs },
-      { id: "hargaKg", label: "Harga/Kg", kind: "number", defaultVisible: true, value: (r) => r.hargaKg },
-      { id: "discount", label: "Diskon", kind: "number", defaultVisible: true, value: (r) => r.discount },
-      { id: "nominal", label: "Nominal", kind: "number", defaultVisible: true, value: (r) => r.nominal },
-      { id: "rpTagih", label: "Rp Tagih", kind: "number", defaultVisible: true, value: (r) => r.rpTagih },
+      {
+        id: "no",
+        label: "No",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.no,
+      },
+      {
+        id: "noPo",
+        label: "No PO",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.noPo,
+      },
+      {
+        id: "company",
+        label: "Company",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.company,
+      },
+      {
+        id: "inisial",
+        label: "Inisial",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.inisial,
+      },
+      {
+        id: "regional",
+        label: "Regional",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.regional,
+      },
+      {
+        id: "siteArea",
+        label: "Site Area",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.siteArea,
+      },
+      {
+        id: "tglPo",
+        label: "Tgl PO",
+        kind: "date",
+        defaultVisible: true,
+        value: (r) => r.tglPo,
+      },
+      {
+        id: "tglkirim",
+        label: "Tgl Kirim",
+        kind: "date",
+        defaultVisible: true,
+        value: (r) => r.tglkirim,
+      },
+      {
+        id: "expiredTgl",
+        label: "Expired",
+        kind: "date",
+        defaultVisible: true,
+        value: (r) => r.expiredTgl,
+      },
+      {
+        id: "noInvoice",
+        label: "No Invoice",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.noInvoice,
+      },
+      {
+        id: "buktiTagih",
+        label: "Bukti Tagih",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.buktiTagih,
+      },
+      {
+        id: "buktiBayar",
+        label: "Bukti Bayar",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.buktiBayar,
+      },
+      {
+        id: "linkPo",
+        label: "Link PO",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.linkPo,
+      },
+      {
+        id: "namaSupir",
+        label: "Nama Supir",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.namaSupir,
+      },
+      {
+        id: "platNomor",
+        label: "Plat Nomor",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.platNomor,
+      },
+      {
+        id: "tujuanDetail",
+        label: "Tujuan Detail",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.tujuanDetail,
+      },
+      {
+        id: "remarks",
+        label: "Remarks",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.remarks,
+      },
+      {
+        id: "statusKirim",
+        label: "Kirim",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusKirim,
+      },
+      {
+        id: "statusPo",
+        label: "PO",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusPo,
+      },
+      {
+        id: "statusInv",
+        label: "Inv",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusInv,
+      },
+      {
+        id: "statusBayar",
+        label: "Bayar",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusBayar,
+      },
+      {
+        id: "statusSdif",
+        label: "SDIF",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusSdif,
+      },
+      {
+        id: "statusFp",
+        label: "FP",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusFp,
+      },
+      {
+        id: "statusKwi",
+        label: "Kwi",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusKwi,
+      },
+      {
+        id: "statusTagih",
+        label: "Tagih",
+        kind: "bool",
+        defaultVisible: true,
+        value: (r) => r.statusTagih,
+      },
+      {
+        id: "namaProduk",
+        label: "Produk",
+        kind: "text",
+        defaultVisible: true,
+        value: (r) => r.namaProduk,
+      },
+      {
+        id: "pcs",
+        label: "PCS",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.pcs,
+      },
+      {
+        id: "pcsKirim",
+        label: "PCS Kirim",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.pcsKirim,
+      },
+      {
+        id: "satuanKg",
+        label: "Berat Satuan (Kg)",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.satuanKg,
+      },
+      {
+        id: "kg",
+        label: "Total Kg",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.kg,
+      },
+      {
+        id: "hargaPcs",
+        label: "Harga/Pcs",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.hargaPcs,
+      },
+      {
+        id: "hargaKg",
+        label: "Harga/Kg",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.hargaKg,
+      },
+      {
+        id: "discount",
+        label: "Diskon",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.discount,
+      },
+      {
+        id: "nominal",
+        label: "Nominal",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.nominal,
+      },
+      {
+        id: "rpTagih",
+        label: "Rp Tagih",
+        kind: "number",
+        defaultVisible: true,
+        value: (r) => r.rpTagih,
+      },
     ],
     [],
   );
@@ -557,18 +773,28 @@ export default function ReportPage() {
   const rows: Row[] = useMemo(() => {
     const arr = Array.isArray(raw) ? raw : [];
     return arr.flatMap((po: any, poIndex: number) => {
-      const items = Array.isArray(po?.Items) && po.Items.length > 0 ? po.Items : [null];
-      
+      const items =
+        Array.isArray(po?.Items) && po.Items.length > 0 ? po.Items : [null];
+
       return items.map((it: any, itemIndex: number) => {
         return {
           no: (page - 1) * rowsPerPage + poIndex + 1,
-          id: String(po?.id || po?.noPo || crypto.randomUUID()) + `-${itemIndex}`,
-          
+          id:
+            String(po?.id || po?.noPo || crypto.randomUUID()) + `-${itemIndex}`,
+
           noPo: upperClean(po?.noPo || "-"),
           company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
           inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || "-"),
-          regional: (po?.regional || po?.UnitProduksi?.namaRegional || "-").trim().toUpperCase().replace(/\s+/g, " "),
-          siteArea: upperClean(po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea.toUpperCase() !== "UNKNOWN" ? po.UnitProduksi.siteArea : "-"),
+          regional: (po?.regional || po?.UnitProduksi?.namaRegional || "-")
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, " "),
+          siteArea: upperClean(
+            po?.UnitProduksi?.siteArea &&
+              po.UnitProduksi.siteArea.toUpperCase() !== "UNKNOWN"
+              ? po.UnitProduksi.siteArea
+              : "-",
+          ),
 
           tglPo: toYMD(po?.tglPo),
           tglkirim: toYMD(po?.tglkirim),
@@ -600,7 +826,9 @@ export default function ReportPage() {
           kg: (Number(it?.pcs) || 0) * (Number(it?.Product?.satuanKg) || 0),
           hargaPcs: Number(it?.hargaPcs) || 0,
           hargaKg: Number(it?.hargaKg) || 0,
-          nominal: Number(it?.nominal) || ((Number(it?.pcs) || 0) * (Number(it?.hargaPcs) || 0)),
+          nominal:
+            Number(it?.nominal) ||
+            (Number(it?.pcs) || 0) * (Number(it?.hargaPcs) || 0),
           discount: Number(it?.discount) || 0,
           rpTagih: Number(it?.rpTagih) || 0,
 
@@ -807,19 +1035,33 @@ export default function ReportPage() {
       let currentRowNo = 0;
       const mapped: Row[] = (Array.isArray(all) ? all : []).flatMap(
         (po: any) => {
-          const items = Array.isArray(po?.Items) && po.Items.length > 0 ? po.Items : [null];
-          
+          const items =
+            Array.isArray(po?.Items) && po.Items.length > 0 ? po.Items : [null];
+
           return items.map((it: any, itemIndex: number) => {
             currentRowNo += 1;
             return {
               no: currentRowNo,
-              id: String(po?.id || po?.noPo || crypto.randomUUID()) + `-${itemIndex}`,
-              
+              id:
+                String(po?.id || po?.noPo || crypto.randomUUID()) +
+                `-${itemIndex}`,
+
               noPo: upperClean(po?.noPo || "-"),
-              company: upperClean(po?.RitelModern?.namaPt || po?.company || "-"),
-              inisial: upperClean(po?.RitelModern?.inisial || po?.inisial || ""),
-              regional: upperClean(po?.regional || po?.UnitProduksi?.namaRegional || ""),
-              siteArea: upperClean(po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN" ? po.UnitProduksi.siteArea : ""),
+              company: upperClean(
+                po?.RitelModern?.namaPt || po?.company || "-",
+              ),
+              inisial: upperClean(
+                po?.RitelModern?.inisial || po?.inisial || "",
+              ),
+              regional: upperClean(
+                po?.regional || po?.UnitProduksi?.namaRegional || "",
+              ),
+              siteArea: upperClean(
+                po?.UnitProduksi?.siteArea &&
+                  po.UnitProduksi.siteArea !== "UNKNOWN"
+                  ? po.UnitProduksi.siteArea
+                  : "",
+              ),
 
               tglPo: toYMD(po?.tglPo),
               tglkirim: toYMD(po?.tglkirim),
@@ -851,7 +1093,9 @@ export default function ReportPage() {
               kg: (Number(it?.pcs) || 0) * (Number(it?.Product?.satuanKg) || 0),
               hargaPcs: Number(it?.hargaPcs) || 0,
               hargaKg: Number(it?.hargaKg) || 0,
-              nominal: Number(it?.nominal) || ((Number(it?.pcs) || 0) * (Number(it?.hargaPcs) || 0)),
+              nominal:
+                Number(it?.nominal) ||
+                (Number(it?.pcs) || 0) * (Number(it?.hargaPcs) || 0),
               discount: Number(it?.discount) || 0,
               rpTagih: Number(it?.rpTagih) || 0,
 
@@ -876,6 +1120,7 @@ export default function ReportPage() {
         return row;
       });
 
+      const XLSX = await getXLSX();
       const ws = XLSX.utils.json_to_sheet(data);
 
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
@@ -1048,9 +1293,10 @@ export default function ReportPage() {
 
               const isRegional = colId === "regional";
               const isSiteArea = colId === "siteArea";
-              
+
               let isLocked = false;
-              if (role === "sitearea" && (isRegional || isSiteArea)) isLocked = true;
+              if (role === "sitearea" && (isRegional || isSiteArea))
+                isLocked = true;
               if (role === "rm" && isRegional) isLocked = true;
 
               return (
@@ -1179,7 +1425,18 @@ export default function ReportPage() {
             <thead className="sticky top-0 z-20 bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-wider">
               <tr>
                 {visibleColumns.map((c) => {
-                  const isItemField = ['namaProduk', 'pcs', 'pcsKirim', 'satuanKg', 'kg', 'hargaPcs', 'hargaKg', 'discount', 'nominal', 'rpTagih'].includes(String(c.id));
+                  const isItemField = [
+                    "namaProduk",
+                    "pcs",
+                    "pcsKirim",
+                    "satuanKg",
+                    "kg",
+                    "hargaPcs",
+                    "hargaKg",
+                    "discount",
+                    "nominal",
+                    "rpTagih",
+                  ].includes(String(c.id));
                   return (
                     <th
                       key={String(c.id)}
@@ -1216,15 +1473,35 @@ export default function ReportPage() {
                 </tr>
               ) : (
                 pageRows.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/60 text-[12px] border-b border-slate-50">
+                  <tr
+                    key={r.id}
+                    className="hover:bg-slate-50/60 text-[12px] border-b border-slate-50"
+                  >
                     {visibleColumns.map((c) => {
                       const v = c.value(r);
-                      const isStatus = c.kind === "bool" || c.id.toString().startsWith("status");
-                      const isItemField = ['namaProduk', 'pcs', 'pcsKirim', 'satuanKg', 'kg', 'hargaPcs', 'hargaKg', 'discount', 'nominal', 'rpTagih'].includes(String(c.id));
-                      
+                      const isStatus =
+                        c.kind === "bool" ||
+                        c.id.toString().startsWith("status");
+                      const isItemField = [
+                        "namaProduk",
+                        "pcs",
+                        "pcsKirim",
+                        "satuanKg",
+                        "kg",
+                        "hargaPcs",
+                        "hargaKg",
+                        "discount",
+                        "nominal",
+                        "rpTagih",
+                      ].includes(String(c.id));
+
                       const text =
                         c.kind === "number"
-                          ? c.id === "nominal" || c.id === "rpTagih" || c.id === "hargaPcs" || c.id === "hargaKg" || c.id === "discount"
+                          ? c.id === "nominal" ||
+                            c.id === "rpTagih" ||
+                            c.id === "hargaPcs" ||
+                            c.id === "hargaKg" ||
+                            c.id === "discount"
                             ? formatCurrency(Number(v) || 0)
                             : formatNumber(Number(v) || 0)
                           : c.kind === "date"
@@ -1270,9 +1547,15 @@ export default function ReportPage() {
                               "-"
                             )
                           ) : isStatus ? (
-                            <StatusBadge label={c.label.toUpperCase()} checked={!!v} />
+                            <StatusBadge
+                              label={c.label.toUpperCase()}
+                              checked={!!v}
+                            />
                           ) : c.kind === "text" && highlightTerm ? (
-                            <HighlightText text={text} highlight={highlightTerm} />
+                            <HighlightText
+                              text={text}
+                              highlight={highlightTerm}
+                            />
                           ) : (
                             text
                           )}
@@ -1292,11 +1575,13 @@ export default function ReportPage() {
 
 function StatusBadge({ label, checked }: { label: string; checked: boolean }) {
   return (
-    <span className={`px-2 py-0.5 rounded-lg font-black text-[9px] border ${
-      checked 
-        ? "bg-emerald-50 text-emerald-600 border-emerald-200" 
-        : "bg-slate-50 text-slate-300 border-slate-100"
-    }`}>
+    <span
+      className={`px-2 py-0.5 rounded-lg font-black text-[9px] border ${
+        checked
+          ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+          : "bg-slate-50 text-slate-300 border-slate-100"
+      }`}
+    >
       {label}
     </span>
   );

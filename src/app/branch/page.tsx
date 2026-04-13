@@ -711,21 +711,7 @@ export default function BranchPage() {
                       ${isSelected ? "ring-2 ring-inset ring-indigo-500 z-10" : ""}
                     `}
                   >
-                    {/* 👇 SMART TOOLTIP CSS (MUNCUL SAAT HOVER CELL KOTAK TANGGAL) 👇 */}
-                    {hasPOs && (
-                      <div className="absolute z-50 invisible group-hover:visible opacity-0 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 mb-2 min-w-[140px] p-2.5 bg-slate-800 text-white text-xs rounded-xl shadow-xl pointer-events-none transition-all duration-200">
-                        <div className="font-bold text-amber-300 mb-1 text-[13px]">
-                          {totalKg.toLocaleString("id-ID")} Kg
-                        </div>
-                        <div className="text-slate-300 font-medium">
-                          Dari {pos.length} PO Terjadwal
-                        </div>
-                        {/* Segitiga panah bawah tooltip */}
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start relative z-10">
                       <span
                         className={`text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full
                         ${today ? "bg-indigo-600 text-white shadow-sm" : hasPOs ? "text-amber-900" : "text-slate-500"}
@@ -736,11 +722,23 @@ export default function BranchPage() {
 
                       {/* Tiny Badge Indicator if has POs */}
                       {hasPOs && (
-                        <span className="text-[9px] font-black text-amber-700 bg-amber-200/80 px-1.5 py-0.5 rounded-md leading-none">
+                        <span 
+                          className="text-[9px] font-black text-amber-700 bg-amber-200/80 px-1.5 py-0.5 rounded-md leading-none"
+                          title={`${pos.length} PO Terjadwal`}
+                        >
                           {pos.length}
                         </span>
                       )}
                     </div>
+                    
+                    {/* Embedded Total Kg Data */}
+                    {hasPOs && (
+                      <div className="mt-0.5 relative z-10">
+                        <span className="text-[10px] sm:text-[11px] font-black text-amber-800 tracking-tight leading-none block">
+                          {totalKg.toLocaleString("id-ID")} <span className="text-[8px] font-bold text-amber-700/70">KG</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

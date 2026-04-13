@@ -558,6 +558,8 @@ export async function GET(request: Request) {
     const status = searchParams.get("status") || undefined;
     const monthParam = searchParams.get("month");
     const yearParam = searchParams.get("year");
+    const retailerId = searchParams.get("retailerId") || undefined;
+    const inisial = searchParams.get("inisial") || undefined;
 
     let colFilters: Record<string, string> = {};
     const colFiltersRaw = searchParams.get("colFilters");
@@ -631,6 +633,12 @@ export async function GET(request: Request) {
     const sort = (searchParams.get("sort") || "createdAt_desc").trim();
 
     const where: any = {};
+    if (retailerId) where.ritelId = retailerId;
+    if (inisial) {
+      where.RitelModern = {
+        is: { inisial: { equals: inisial, mode: "insensitive" } },
+      };
+    }
     if (noPo) where.noPo = noPo;
     if (noPoList && noPoList.length > 0) where.noPo = { in: noPoList };
     if (tglFrom || tglTo) {
@@ -1092,7 +1100,6 @@ export async function GET(request: Request) {
           summary
             ? ({
                 where,
-                take: 2000,
                 select: {
                   id: true,
                   noPo: true,
@@ -1114,7 +1121,6 @@ export async function GET(request: Request) {
               } as any)
             : ({
                 where,
-                take: 2000,
                 select: {
                   id: true,
                   noPo: true,

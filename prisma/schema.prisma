@@ -53,6 +53,17 @@ model PurchaseOrder {
   RitelModern    RitelModern         @relation(fields: [ritelId], references: [id])
   UnitProduksi   UnitProduksi        @relation(fields: [unitProduksiId], references: [idRegional])
   Items          PurchaseOrderItem[]
+
+  // Performance indexes for dashboard/schedule/company queries
+  @@index([noInvoice])              // status filters (active/completed/expired)
+  @@index([expiredTgl])             // expired/almost_expired filters
+  @@index([tglPo])                  // date range + sorting
+  @@index([createdAt])              // sorting by newest
+  @@index([regional])               // regional filter
+  @@index([ritelId])                // company joins
+  @@index([unitProduksiId])         // unit produksi joins
+  @@index([tglkirim])               // schedule page filter
+  @@index([noInvoice, expiredTgl])  // compound: active PO queries
 }
 
 model PurchaseOrderItem {
@@ -70,6 +81,9 @@ model PurchaseOrderItem {
   discount        Float         @default(0)
   Product         Product       @relation(fields: [productId], references: [id])
   PurchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseOrderId])  // aggregation joins (attachSummary)
+  @@index([productId])        // product joins
 }
 
 model RitelModern {
@@ -82,6 +96,7 @@ model RitelModern {
   PurchaseOrder PurchaseOrder[]
   DataRetur     DataRetur[]
 
+  @@index([namaPt])  // company grouping/filtering
   @@map("ritel_modern")
 }
 

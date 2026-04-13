@@ -1,6 +1,6 @@
 "use client";
 
-import * as XLSX from "xlsx";
+const getXLSX = () => import("xlsx");
 import {
   Archive,
   Package,
@@ -154,7 +154,8 @@ export default function ProdukPage() {
     if (!confirm("Yakin hapus produk ini?")) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/product?id=${encodeURIComponent(id)}`, { // REFACTOR: DELETE via query param
+      const res = await fetch(`/api/product?id=${encodeURIComponent(id)}`, {
+        // REFACTOR: DELETE via query param
         method: "DELETE",
       });
       if (!res.ok) {
@@ -190,6 +191,7 @@ export default function ProdukPage() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async (event) => {
+      const XLSX = await getXLSX();
       const workbook = XLSX.read(event.target?.result, { type: "binary" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
@@ -602,8 +604,8 @@ export default function ProdukPage() {
         {filtered.length > itemsPerPage && (
           <div className="flex items-center justify-between px-2 py-4">
             <p className="text-sm text-slate-500">
-              Showing {showingFrom} to {showingTo} of {filtered.length} entries •
-              Total products: {products.length}
+              Showing {showingFrom} to {showingTo} of {filtered.length} entries
+              • Total products: {products.length}
             </p>
             <div className="flex gap-2">
               <button
