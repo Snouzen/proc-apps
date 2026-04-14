@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       const limit =
         limitRaw == null
           ? null
-          : Math.max(1, Math.min(500, Number(limitRaw) || 0));
+          : Math.max(1, Math.min(5000, Number(limitRaw) || 0));
       const offset =
         offsetRaw == null ? null : Math.max(0, Number(offsetRaw) || 0);
       const paged = limit != null || offset != null;

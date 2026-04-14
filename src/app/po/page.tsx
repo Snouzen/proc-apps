@@ -113,6 +113,7 @@ function InputPODetailPageInner() {
   const [formData, setFormData] = useState({
     ...INITIAL_FORM,
   });
+  const [me, setMe] = useState<any>(null);
 
   // State for Items
   const [items, setItems] = useState<ItemPO[]>([]);
@@ -306,7 +307,7 @@ function InputPODetailPageInner() {
       try {
         const [ritelRes, unitRes, prodRes] = await Promise.all([
           // FEATURE: Role-based Form Logic - Fetch All Master Data (Not transaction history)
-          fetch("/api/ritel?limit=1000", {
+          fetch("/api/ritel", {
             cache: "no-store",
             signal: controller.signal,
           }),
@@ -333,10 +334,12 @@ function InputPODetailPageInner() {
         setProductData(prods);
 
         // FEATURE: Role-based Form Logic - Set Default Regional from Session
-        const session = await getMe();
-        if (session && session.role === "rm" && session.regional) {
-          setFormData((prev) => ({ ...prev, regional: session.regional! }));
-        }
+        getMe().then((usr) => {
+          setMe(usr);
+          if (usr.role === "rm" && usr.regional) {
+            setFormData((prev) => ({ ...prev, regional: usr.regional as string }));
+          }
+        });
       } catch {
         setRitelData([]);
         setUnitData([]);
@@ -860,7 +863,7 @@ function InputPODetailPageInner() {
   >({});
 
   return (
-    <div className="w-full pb-20 animate-in fade-in duration-500">
+    <div className="w-full pb-20 animate-in fade-in duration-500" suppressHydrationWarning>
       {toast && (
         <div
           className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-xl shadow-lg text-sm font-bold ${
@@ -1043,7 +1046,7 @@ function InputPODetailPageInner() {
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                     {PO_FORM_LABELS.regional}
                   </label>
-                  {getMeSync()?.role === "rm" ? (
+                  {me?.role === "rm" ? (
                     <div className="relative">
                       <MapPin
                         className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1544,7 +1547,7 @@ function InputPODetailPageInner() {
                                     >
                                       <Pencil size={16} />
                                     </button>
-                                    {getMeSync()?.role === "pusat" && (
+                                    {me?.role === "pusat" && (
                                       <button
                                         type="button"
                                         onClick={() =>
@@ -1910,7 +1913,7 @@ function InputPODetailPageInner() {
                 >
                   <Pencil size={16} />
                 </button>
-                {getMeSync()?.role === "pusat" && (
+                {me?.role === "pusat" && (
                   <button
                     type="button"
                     title="Hapus draft"
