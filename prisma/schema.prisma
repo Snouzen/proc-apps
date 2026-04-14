@@ -48,6 +48,8 @@ model PurchaseOrder {
   tglkirim       DateTime?
   buktiBayar     String?
   buktiTagih     String?
+  buktiKirim     String?
+  buktiFp        String?
   namaSupir      String?
   platNomor      String?
   RitelModern    RitelModern         @relation(fields: [ritelId], references: [id])

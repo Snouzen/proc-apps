@@ -73,6 +73,8 @@ const INITIAL_FORM: {
   remarks: string;
   buktiTagih: string;
   buktiBayar: string;
+  buktiKirim: string;
+  buktiFp: string;
 } = {
   company: "",
   inisial: "",
@@ -89,6 +91,8 @@ const INITIAL_FORM: {
   remarks: "",
   buktiTagih: "",
   buktiBayar: "",
+  buktiKirim: "",
+  buktiFp: "",
 };
 
 function InputPODetailPageInner() {
@@ -136,6 +140,12 @@ function InputPODetailPageInner() {
     type: "success" | "error" | "info";
     message: string;
   } | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   const showToast = (type: "success" | "error" | "info", message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3200);
@@ -419,6 +429,8 @@ function InputPODetailPageInner() {
           remarks: po.remarks || "",
           buktiTagih: po.buktiTagih || "",
           buktiBayar: po.buktiBayar || "",
+          buktiKirim: po.buktiKirim || "",
+          buktiFp: po.buktiFp || "",
           tglKirim: toYMD(po.tglkirim || null),
         });
         const mappedItems: ItemPO[] = (po.Items || []).map((it: any) => {
@@ -885,19 +897,27 @@ function InputPODetailPageInner() {
           Administrasi PO, Monitoring PO & Verifikasi Dokumen
         </p>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 space-y-6">
-            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-5">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
-                  1
+      {!hasMounted ? (
+        <div className="py-20 flex flex-col items-center justify-center bg-white rounded-[32px] border border-slate-100 italic text-slate-400">
+          Initializing form...
+        </div>
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6"
+          suppressHydrationWarning
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8 space-y-6">
+              <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
+                    1
+                  </div>
+                  <h2 className="font-bold text-slate-800 text-lg">
+                    Data Referensi PO
+                  </h2>
                 </div>
-                <h2 className="font-bold text-slate-800 text-lg">
-                  Data Referensi PO
-                </h2>
-              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
@@ -1349,8 +1369,8 @@ function InputPODetailPageInner() {
               </div>
 
               {items.length > 0 ? (
-                <div className="border border-slate-100 rounded-2xl overflow-hidden">
-                  <table className="w-full text-sm text-left">
+                <div className="border border-slate-100 rounded-2xl overflow-x-auto">
+                  <table className="w-full text-sm text-left min-w-[900px]">
                     <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                       <tr>
                         <th className="px-4 py-3">Produk</th>
@@ -1700,7 +1720,80 @@ function InputPODetailPageInner() {
                     formData.status[key as keyof typeof formData.status];
                   const label = key === "sdif" ? "SDI/F" : key.toUpperCase();
 
-                  // Khusus untuk TAGIH dan BAYAR, render secara inline dengan input teks
+                  // Khusus untuk KIRIM, FP, TAGIH dan BAYAR, render secara inline dengan input teks
+                  if (key === "kirim") {
+                    return (
+                      <div
+                        key={key}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors"
+                      >
+                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleChecklist(key)}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-bold text-slate-700">
+                            {label}
+                          </span>
+                        </label>
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Masukkan Ref Kirim (opsional)..."
+                            value={formData.buktiKirim}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setFormData((prev) => ({
+                                ...prev,
+                                buktiKirim: v,
+                              }));
+                            }}
+                            className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (key === "fp") {
+                    return (
+                      <div
+                        key={key}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors"
+                      >
+                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleChecklist(key)}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-bold text-slate-700">
+                            {label}
+                          </span>
+                        </label>
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Masukkan Ref FP..."
+                            value={formData.buktiFp}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setFormData((prev) => ({
+                                ...prev,
+                                buktiFp: v,
+                                status: { ...prev.status, fp: !!v.trim() },
+                              }));
+                            }}
+                            className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
                   if (key === "tagih") {
                     return (
                       <div
@@ -2588,7 +2681,8 @@ function InputPODetailPageInner() {
           </div>
         )}
       </form>
-    </div>
+    )}
+  </div>
   );
 }
 

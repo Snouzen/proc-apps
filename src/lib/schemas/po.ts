@@ -93,6 +93,16 @@ export const POBodySchema = z
         v == null || String(v).trim() === "" ? undefined : String(v).trim(),
       z.string().optional().nullable(),
     ),
+    buktiKirim: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    buktiFp: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
     namaSupir: z.preprocess(
       (v) =>
         v == null || String(v).trim() === "" ? undefined : String(v).trim(),

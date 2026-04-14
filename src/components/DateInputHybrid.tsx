@@ -36,8 +36,15 @@ export default function DateInputHybrid({
 }: DateInputHybridProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date(2025, 0, 1)); // Default stable date for SSR
   const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    // Set to current date only on client to avoid hydration mismatch
+    if (!value) {
+      setCurrentMonth(new Date());
+    }
+  }, []);
 
   const parsedMinDate = minDate ? startOfDay(parse(minDate, "yyyy-MM-dd", new Date())) : null;
   const parsedMaxDate = maxDate ? startOfDay(parse(maxDate, "yyyy-MM-dd", new Date())) : null;

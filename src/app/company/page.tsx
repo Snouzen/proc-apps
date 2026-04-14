@@ -16,6 +16,7 @@ import {
   Calendar,
   PlusCircle,
   Upload,
+  X,
 } from "lucide-react";
 import PODetailModal from "@/components/po-detail-modal";
 import POEditModal from "@/components/po-edit-modal";
@@ -121,6 +122,58 @@ export default function CompanyPage() {
   const [deleting, setDeleting] = useState(false);
 
   const lastCtrlRef = useRef<AbortController | null>(null);
+
+  // ── Global Search (No PO / No Invoice) ──
+  const [globalQuery, setGlobalQuery] = useState("");
+  const [globalResults, setGlobalResults] = useState<any[] | null>(null);
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const globalCtrlRef = useRef<AbortController | null>(null);
+  const globalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const globalSearchRef = useRef<HTMLDivElement | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (globalSearchRef.current && !globalSearchRef.current.contains(e.target as Node)) {
+        setGlobalResults(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const handleGlobalSearch = useCallback((value: string) => {
+    setGlobalQuery(value);
+    if (globalTimerRef.current) clearTimeout(globalTimerRef.current);
+    if (globalCtrlRef.current) globalCtrlRef.current.abort();
+
+    const q = value.trim();
+    if (q.length < 2) {
+      setGlobalResults(null);
+      setGlobalLoading(false);
+      return;
+    }
+
+    setGlobalLoading(true);
+    globalTimerRef.current = setTimeout(async () => {
+      const ctrl = new AbortController();
+      globalCtrlRef.current = ctrl;
+      try {
+        const url = `/api/po?q=${encodeURIComponent(q)}&summary=true&limit=15`;
+        const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : json?.data || [];
+        setGlobalResults(list);
+      } catch (e: any) {
+        if (e.name !== "AbortError") {
+          console.error(e);
+          setGlobalResults([]);
+        }
+      } finally {
+        setGlobalLoading(false);
+      }
+    }, 400);
+  }, []);
 
   const handleDelete = async (noPo: string) => {
     setDeleting(true);
@@ -304,11 +357,11 @@ export default function CompanyPage() {
   return (
     <div className="w-full space-y-8 p-4 md:p-8 animate-in fade-in duration-700">
       {/* Header Dashboard */}
-      <Card className="border border-slate-100 shadow-xl bg-white overflow-hidden relative rounded-3xl">
+      <Card className="border border-slate-100 shadow-xl bg-white relative rounded-3xl">
         <div className="absolute top-0 right-0 p-8 opacity-[0.03] text-blue-900 pointer-events-none">
           <Building size={140} />
         </div>
-        <CardHeader className="relative z-10 pb-4">
+        <CardHeader className="relative z-50 pb-4">
           <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
               <CardTitle className="text-3xl font-black text-slate-800">
@@ -318,7 +371,106 @@ export default function CompanyPage() {
                 Sistem filter presisi untuk memantau performa per inisial peritel.
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Global Search Bar */}
+              <div ref={globalSearchRef} className="relative w-full md:w-72">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
+                <input
+                  value={globalQuery}
+                  onChange={(e) => handleGlobalSearch(e.target.value)}
+                  placeholder="Cari No PO / Invoice..."
+                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none transition-all placeholder:text-slate-400 h-11"
+                />
+                {globalQuery && (
+                  <button
+                    type="button"
+                    onClick={() => { setGlobalQuery(""); setGlobalResults(null); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+
+                {/* Floating Results Dropdown */}
+                {(globalResults !== null || globalLoading) && globalQuery.trim().length >= 2 && (
+                  <div className="absolute left-0 top-full mt-2 w-[380px] bg-white border border-slate-200 rounded-2xl shadow-2xl z-[9999] max-h-[420px] overflow-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                    {globalLoading ? (
+                      <div className="flex items-center justify-center gap-2 py-8 text-slate-500">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="text-sm font-medium">Mencari...</span>
+                      </div>
+                    ) : globalResults && globalResults.length > 0 ? (
+                      <div className="divide-y divide-slate-100">
+                        <div className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 rounded-t-2xl sticky top-0 border-b border-slate-100">
+                          {globalResults.length} hasil ditemukan
+                        </div>
+                        {globalResults.map((po: any) => (
+                          <button
+                            key={po.id}
+                            type="button"
+                            onClick={async () => {
+                              // Load full PO into the main table
+                              setGlobalResults(null);
+                              setGlobalQuery("");
+                              setLoadingData(true);
+                              try {
+                                const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true`, { cache: "no-store" });
+                                const json = await res.json();
+                                const list = Array.isArray(json) ? json : json?.data || [];
+                                // Also fetch summary version for the table display
+                                const summaryRes = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&summary=true`, { cache: "no-store" });
+                                const summaryJson = await summaryRes.json();
+                                const summaryList = Array.isArray(summaryJson) ? summaryJson : summaryJson?.data || [];
+                                setPoData(summaryList.length > 0 ? summaryList : list);
+                                setActiveNamaPt(po.RitelModern?.namaPt || "Pencarian");
+                                setActiveInisial(po.RitelModern?.inisial || "");
+                                // Also set the full PO for possible manual click detail later
+                                if (list.length > 0) {
+                                  setSelectedPO(list[0]);
+                                }
+                              } catch (e) {
+                                console.error(e);
+                              } finally {
+                                setLoadingData(false);
+                              }
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-center gap-3 group"
+                          >
+                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
+                              <FileText size={14} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-slate-800 text-sm truncate">{po.noPo}</div>
+                              <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                                {po.RitelModern?.namaPt || "-"}
+                                {po.RitelModern?.inisial ? ` · ${po.RitelModern.inisial}` : ""}
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 space-y-1">
+                              {po.noInvoice && (
+                                <div className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block">
+                                  INV: {po.noInvoice}
+                                </div>
+                              )}
+                              <div className="text-[10px] text-slate-400">
+                                {po.tglPo ? new Date(po.tglPo).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-"}
+                              </div>
+                            </div>
+                            <ArrowUpRight size={14} className="text-slate-300 group-hover:text-blue-500 transition-colors shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <Search size={36} className="text-slate-200 mb-3" />
+                        <p className="text-sm font-semibold text-slate-500">Tidak ada hasil untuk &ldquo;{globalQuery}&rdquo;</p>
+                        <p className="text-xs text-slate-400 mt-1">Coba kata kunci lain</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <Link href="/po?tab=upload">
                 <Button variant="outline" className="border-slate-200 text-slate-700 bg-white h-11 rounded-xl font-bold">
                   <Upload className="w-4 h-4 mr-2 text-blue-600" />

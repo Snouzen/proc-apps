@@ -110,6 +110,8 @@ export async function POST(request: Request) {
       tglKirim,
       buktiTagih,
       buktiBayar,
+      buktiKirim,
+      buktiFp,
       namaSupir,
       platNomor,
     } = body ?? {};
@@ -363,6 +365,8 @@ export async function POST(request: Request) {
                 remarks: poRemarks,
                 buktiTagih,
                 buktiBayar,
+                buktiKirim,
+                buktiFp,
                 ...(poTglKirim !== undefined ? { tglkirim: poTglKirim } : {}),
                 updatedAt: poUpdatedAt,
                 createdAt: new Date(),
@@ -387,6 +391,8 @@ export async function POST(request: Request) {
                 remarks: poRemarks,
                 buktiTagih,
                 buktiBayar,
+                buktiKirim,
+                buktiFp,
                 ...(poTglKirim !== undefined ? { tglkirim: poTglKirim } : {}),
                 updatedAt: poUpdatedAt,
               },
@@ -1207,6 +1213,8 @@ export async function GET(request: Request) {
                 tglkirim: true,
                 namaSupir: true,
                 platNomor: true,
+                buktiKirim: true,
+                buktiFp: true,
                 // ----------------------
                 RitelModern: { select: { namaPt: true, inisial: true } },
                 UnitProduksi: { select: { siteArea: true, namaRegional: true } }
@@ -1238,8 +1246,10 @@ export async function GET(request: Request) {
                 statusBayar: true,
                 tglkirim: true,
                 remarks: true,
-                buktiTagih: true,
+                 buktiTagih: true,
                 buktiBayar: true,
+                buktiKirim: true,
+                buktiFp: true,
                 namaSupir: true,
                 platNomor: true,
                 ...(includeItems
