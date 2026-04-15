@@ -139,7 +139,7 @@ export default function ReturPage() {
   const [rowsPerPage] = useState(15);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | null>(null);
   
   const [retailers, setRetailers] = useState<any[]>([]);
   const [selectedRetailerId, setSelectedRetailerId] = useState<string | null>(null);
@@ -210,7 +210,7 @@ export default function ReturPage() {
       setProducts(Array.isArray(productJson) ? productJson : (productJson?.data || []));
       setUnits(Array.isArray(unitJson) ? unitJson : (unitJson?.data || []));
       if (me?.authenticated) {
-        setRole(me.role);
+        setRole(me.role || null);
       }
     });
   }, []);
