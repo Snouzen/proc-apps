@@ -1049,11 +1049,13 @@ export async function GET(request: Request) {
       const allItems = await prisma.purchaseOrderItem.findMany({
         where: { purchaseOrderId: { in: ids } },
         select: {
+          id: true, // Needed for specific updates
           purchaseOrderId: true,
           pcs: true,
           pcsKirim: true,
           nominal: true,
           rpTagih: true,
+          hargaPcs: true,
           discount: true,
           createdAt: true,
           Product: { select: { name: true, satuanKg: true } }
@@ -1071,7 +1073,9 @@ export async function GET(request: Request) {
           agg.set(poId, {
             itemsCount: 0, totalNominal: 0, totalTagihan: 0,
             pcsTotal: 0, pcsKirimTotal: 0, totalDiscount: 0,
-            totalKg: 0, totalKgKirim: 0, firstProductName: it.Product?.name || null
+            totalKg: 0, totalKgKirim: 0, 
+            firstProductName: it.Product?.name || null,
+            Items: [] // Add items array for transparency
           });
         }
         
@@ -1086,6 +1090,19 @@ export async function GET(request: Request) {
         const satuan = Number(it.Product?.satuanKg) || 1;
         s.totalKg += (Number(it.pcs) || 0) * satuan;
         s.totalKgKirim += (Number(it.pcsKirim) || 0) * satuan;
+        
+        // Push simplified item data
+        s.Items.push({
+          id: it.id,
+          pcs: it.pcs,
+          pcsKirim: it.pcsKirim,
+          namaProduk: it.Product?.name,
+          nominal: it.nominal,
+          hargaPcs: it.hargaPcs,
+          rpTagih: it.rpTagih,
+          discount: it.discount,
+          Product: it.Product
+        });
       }
 
       // [OPTIMIZATION 3] Tempelkan hasil agregasi ke baris data
@@ -1093,7 +1110,8 @@ export async function GET(request: Request) {
         const s = agg.get(String(r.id)) || {
           itemsCount: 0, totalNominal: 0, totalTagihan: 0,
           pcsTotal: 0, pcsKirimTotal: 0, totalDiscount: 0,
-          totalKg: 0, totalKgKirim: 0, firstProductName: null
+          totalKg: 0, totalKgKirim: 0, firstProductName: null,
+          Items: []
         };
         return { ...r, ...s };
       });
@@ -1115,6 +1133,7 @@ export async function GET(request: Request) {
                   noInvoice: true,
                   tujuanDetail: true,
                   regional: true,
+                  remarks: true,
                   // [RESTORE FIELD JADWAL]
                   tglkirim: true,
                   namaSupir: true,
@@ -1209,6 +1228,7 @@ export async function GET(request: Request) {
                 noInvoice: true,
                 tujuanDetail: true,
                 regional: true,
+                remarks: true,
                 // [RESTORE FIELD JADWAL]
                 tglkirim: true,
                 namaSupir: true,

@@ -186,11 +186,12 @@ export default function ExcelBulkModal({
         "keterangan status",
         "remark status",
       ]);
-      result.lokasiBarang = findKey(first, ["lokasi barang", "lokasi", "site"]);
+      result.lokasiBarang = findKey(first, ["lokasi barang", "lokasi", "site", "site area"]);
       result.pembebananReturn = findKey(first, [
         "pembebanan retur",
         "beban",
         "pembebanan",
+        "pembebanan return",
       ]);
       result.invoiceRekon = findKey(first, [
         "invoice rekon",
@@ -480,101 +481,63 @@ export default function ExcelBulkModal({
           throw new Error("Upload dibatalkan");
         }
       } else if (variant === "retur") {
-        const toProcess = rows;
         let done = 0;
         setProgressOpen(true);
         setProgressMeta({
           batchIndex: 1,
           batchTotal: 1,
           done: 0,
-          total: toProcess.length,
+          total: rows.length,
         });
 
-        for (const rawRow of toProcess) {
-          if (cancelRef.current) break;
+        // Map rows to the payload structure the backend expects for bulk
+        const records = rows.map((rawRow) => ({
+          ritelId: retailerId || null,
+          namaCompany:
+            getCell(rawRow, keys.namaCompany) ||
+            getCell(rawRow, findKey(rawRow, ["TOKO", "NAMA PERUSAHAAN"])),
 
-          // 1. Normalisasi Keys (Hapus spasi, Uppercase) guna akurasi mapping
-          const row: any = {};
-          Object.keys(rawRow).forEach((key) => {
-            row[key.trim().toUpperCase()] = rawRow[key];
-          });
+          produk: getCell(rawRow, keys.a),
+          qtyReturn: Number(getCell(rawRow, keys.b)) || 0,
+          nominal: Number(getCell(rawRow, keys.c)) || 0,
+          rpKg: Number(getCell(rawRow, keys.rpKg)) || 0,
 
-          // 2. Validasi Wajib (Minimal Produk dan Qty)
-          if (!row["PRODUK"] || (!row["QTY RETUR"] && !row["QTY"])) {
-            done++;
-            continue; // Skip baris rusak tapi jangan error satu file
-          }
+          rtvCn: getCell(rawRow, keys.rtvCn) || null,
+          tanggalRtv: getCell(rawRow, keys.tanggalRtv) || null,
+          maxPickup: getCell(rawRow, keys.maxPickup) || null,
+          kodeToko: getCell(rawRow, keys.kodeToko) || null,
 
-          // 3. Mapping Data dengan Safe Fallback & Injection
-          const payload = {
-            ritelId: retailerId || null,
-            namaCompany:
-              String(row["TOKO"] || row["NAMA PERUSAHAAN"] || "").trim() ||
-              null,
+          link: getCell(rawRow, keys.link) || null,
+          statusBarang: getCell(rawRow, keys.statusBarang) || "Sudah Diambil",
+          refKetStatus: getCell(rawRow, keys.refKetStatus) || null,
 
-            produk: String(row["PRODUK"] || "").trim() || null,
-            qtyReturn:
-              row["QTY RETUR"] || row["QTY"]
-                ? Number(row["QTY RETUR"] || row["QTY"])
-                : 0,
-            nominal: row["NOMINAL"] ? Number(row["NOMINAL"]) : 0,
-            rpKg: row["RP/KG"] ? Number(row["RP/KG"]) : 0,
+          lokasiBarang: getCell(rawRow, keys.lokasiBarang) || null,
+          pembebananReturn: getCell(rawRow, keys.pembebananReturn) || null,
 
-            rtvCn: row["RTV/CN"] ? String(row["RTV/CN"]) : null,
-            tanggalRtv: row["TANGGAL RTV"]
-              ? new Date(row["TANGGAL RTV"])
-              : null,
-            maxPickup: row["MAX PICKUP"] ? new Date(row["MAX PICKUP"]) : null,
-            kodeToko: row["KODE TOKO"] ? String(row["KODE TOKO"]) : null,
+          invoiceRekon:
+            normalize(getCell(rawRow, keys.invoiceRekon)) === "true" ||
+            !!getCell(rawRow, keys.invoiceRekon),
+          referensiPembayaran: getCell(rawRow, keys.referensiPembayaran) || null,
+          tanggalPembayaran: getCell(rawRow, keys.tanggalPembayaran) || null,
+          remarks: getCell(rawRow, keys.remarks) || null,
+          sdiReturn: getCell(rawRow, keys.sdiReturn) || null,
+        }));
 
-            link: String(row["LINK"] || "").trim() || null,
-            statusBarang:
-              String(row["STATUS BARANG"] || "").trim() || "Sudah Diambil",
-            refKetStatus:
-              String(row["REFERENSI/KET STATUS"] || "").trim() || null,
+        // Send as a single bulk request to leverage the backend's translator logic
+        const res = await fetch("/api/retur", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(records),
+        });
 
-            // Tangkap dari Excel dan kirim mentah-mentah ke backend (biar backend yang translate ke ID)
-            lokasiBarang:
-              row["LOKASI BARANG"] ||
-              row["Lokasi Barang"] ||
-              row["LOKASI"] ||
-              null,
-            pembebananReturn:
-              row["PEMBEBANAN RETUR"] ||
-              row["Pembebanan Retur"] ||
-              row["PEMBEBANAN"] ||
-              null,
-
-            invoiceRekon: row["INVOICE REKON"]
-              ? Boolean(row["INVOICE REKON"])
-              : false,
-            referensiPembayaran:
-              String(row["REFERENSI PEMBAYARAN"] || "").trim() || null,
-            tanggalPembayaran: row["TANGGAL PEMBAYARAN"]
-              ? new Date(row["TANGGAL PEMBAYARAN"])
-              : null,
-            remarks: String(row["REMARKS"] || "").trim() || null,
-            sdiReturn: String(row["SDI RETUR"] || "").trim() || null,
-          };
-
-          try {
-            const res = await fetch("/api/retur", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            if (!res.ok) {
-              const errData = await res.json().catch(() => ({}));
-              throw new Error(errData.error || `HTTP Error ${res.status}`);
-            }
-          } catch (e: any) {
-            console.error(`Row Upload Fail pada baris ke-${done + 2}:`, e);
-          }
-
-          done++;
-          setProgressMeta((prev) => (prev ? { ...prev, done } : null));
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP Error ${res.status}`);
         }
+
+        const resData = await res.json();
+        done = resData.count || records.length;
+        setProgressMeta((prev) => (prev ? { ...prev, done } : null));
       } else {
         const res = await fetch("/api/product");
         const list = await res.json();

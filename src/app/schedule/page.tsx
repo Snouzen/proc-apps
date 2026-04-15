@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -16,6 +16,8 @@ import {
   FileDown,
   Eye,
   RotateCcw,
+  ChevronDown,
+  PencilLine,
 } from "lucide-react";
 import { getMe } from "@/lib/me";
 import { format } from "date-fns";
@@ -68,6 +70,7 @@ export default function SchedulePage() {
   const [namaSupir, setNamaSupir] = useState("");
   const [platNomor, setPlatNomor] = useState("");
   const [savingPcsId, setSavingPcsId] = useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // -- Action State --
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -170,8 +173,91 @@ export default function SchedulePage() {
     }
   };
 
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleUpdateItemPcsKirim = async (poId: string, itemId: string, value: string) => {
+    const pcs = Number(value);
+    const targetPo = poData.find((p) => p.id === poId);
+    if (!targetPo) return;
+
+    const targetItem = targetPo.Items?.find((it: any) => it.id === itemId);
+    if (!targetItem) return;
+
+    const maxPcs = Number(targetItem.pcs || 0);
+
+    if (pcs > maxPcs) {
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "error",
+        title: "Pcs Kirim melebihi Pcs PO!",
+        text: `Item ${targetItem.namaProduk} maks: ${maxPcs}`,
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        background: "#fff1f2", // rose-50
+      });
+      fetchData();
+      return;
+    }
+
+    if (isNaN(pcs) || pcs < 0) return;
+
+    setSavingPcsId(itemId);
+    try {
+      const res = await fetch("/api/po/pcs-kirim", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: poId, itemId, pcsKirim: pcs }),
+      });
+
+      if (res.ok) {
+        // Refetch to sync aggregate totals (pcsKirimTotal)
+        fetchData();
+        router.refresh();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Gagal update Pcs Kirim Item");
+      }
+    } catch (err) {
+      console.error("Update Item Pcs Kirim failed:", err);
+    } finally {
+      setSavingPcsId(null);
+    }
+  };
+
   const handleUpdatePcsKirim = async (id: string, value: string) => {
     const pcs = Number(value);
+    const targetPo = poData.find((p) => p.id === id);
+    if (!targetPo) return;
+
+    const maxPcs = Number(targetPo.pcsTotal || 0);
+
+    // Strict Rule: PCS Kirim cannot exceed PCS Total
+    if (pcs > maxPcs) {
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "error",
+        title: "Pcs Kirim melebihi Pcs PO!",
+        text: `Maksimum yang diizinkan: ${maxPcs}`,
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        background: "#fff1f2", // rose-50
+      });
+      // Rollback UI state to previous value or max value
+      fetchData(); 
+      return;
+    }
+
     if (isNaN(pcs) || pcs < 0) return;
 
     setSavingPcsId(id);
@@ -199,8 +285,16 @@ export default function SchedulePage() {
 
   const handleRejectPo = async (po: any) => {
     const result = await Swal.fire({
-      title: "Yakin ingin Reject?",
-      text: `PO #${po.noPo} akan dikembalikan ke antrean pusat dan data Site Area akan dikosongkan.`,
+      title: "Reject PO?",
+      html: `
+        <div class="text-left space-y-3">
+          <p class="text-sm text-slate-500 italic">PO #${po.noPo} akan dikembalikan ke antrean pusat.</p>
+          <div class="space-y-1">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alasan Reject (Remarks)</label>
+            <textarea id="reject-remarks" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-all resize-none h-24" placeholder="Contoh: Salah input unit, revisi qty, dll..."></textarea>
+          </div>
+        </div>
+      `,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#e11d48", // rose-600
@@ -210,15 +304,23 @@ export default function SchedulePage() {
       reverseButtons: true,
       background: "#ffffff",
       customClass: {
-        popup: "rounded-[24px] border border-slate-100 shadow-2xl",
-        title: "text-slate-900 font-bold",
-        htmlContainer: "text-slate-500 text-sm",
-        confirmButton: "rounded-xl font-bold px-6 py-2.5",
-        cancelButton: "rounded-xl font-semibold px-6 py-2.5",
+        popup: "rounded-[32px] border border-slate-100 shadow-2xl p-8",
+        title: "text-slate-900 font-black uppercase tracking-tight text-xl mb-4",
+        confirmButton: "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4 shadow-lg shadow-rose-200 transition-all active:scale-95",
+        cancelButton: "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4 transition-all active:scale-95",
       },
+      preConfirm: () => {
+        const remarks = (document.getElementById("reject-remarks") as HTMLTextAreaElement).value;
+        if (!remarks.trim()) {
+          Swal.showValidationMessage("Mohon isi alasan reject");
+          return false;
+        }
+        return remarks;
+      }
     });
 
     if (!result.isConfirmed) return;
+    const rejectRemarks = result.value;
 
     const Toast = Swal.mixin({
       toast: true,
@@ -233,7 +335,7 @@ export default function SchedulePage() {
       const res = await fetch("/api/po/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: po.id }),
+        body: JSON.stringify({ id: po.id, remarks: rejectRemarks }),
       });
 
       const data = await res.json();
@@ -496,6 +598,9 @@ export default function SchedulePage() {
                 <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[160px]">
                   Site Area
                 </th>
+                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[200px]">
+                  Tujuan
+                </th>
                 <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[120px]">
                   Tgl PO
                 </th>
@@ -521,16 +626,20 @@ export default function SchedulePage() {
                 Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
               ) : paginatedPOs.length > 0 ? (
                 paginatedPOs.map((po, index) => {
+                  const itemsCount = Number(po.itemsCount || 0);
+                  const isMulti = itemsCount > 1;
+                  const isExpanded = expandedRows.has(po.id);
+                  
                   const site = cleanSiteArea(
                     po.UnitProduksi?.siteArea || po.siteArea,
                   );
                   const isScheduled = !!po.tglkirim;
 
                   return (
+                    <Fragment key={po.id}>
                     <tr
-                      key={po.id}
                       onClick={() => handleViewRow(po)}
-                      className="border-b border-slate-50 hover:bg-indigo-50/50 cursor-pointer transition-all duration-150 group align-top"
+                      className={`border-b border-slate-50 hover:bg-indigo-50/50 cursor-pointer transition-all duration-150 group align-top ${isExpanded ? "bg-indigo-50/30" : ""}`}
                     >
                       {/* No */}
                       <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-400 font-medium">
@@ -569,6 +678,13 @@ export default function SchedulePage() {
                             {site}
                           </span>
                         </div>
+                      </td>
+
+                      {/* Tujuan */}
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <p className="text-xs text-slate-600 font-medium truncate max-w-[200px]" title={po.tujuanDetail || "-"}>
+                          {po.tujuanDetail || "-"}
+                        </p>
                       </td>
 
                       {/* Tgl PO */}
@@ -615,50 +731,67 @@ export default function SchedulePage() {
                         {Number(po.pcsTotal || 0).toLocaleString("id-ID")}
                       </td>
 
-                      {/* Kolom Pcs Kirim (Inline Editable) */}
                       <td
                         className="px-5 py-3.5 whitespace-nowrap text-center"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="relative inline-block group/input">
-                          <input
-                            type="number"
-                            min="0"
-                            value={po.pcsKirimTotal ?? 0}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPoData((prev) =>
-                                prev.map((p) =>
-                                  p.id === po.id
-                                    ? { ...p, pcsKirimTotal: val }
-                                    : p,
-                                ),
-                              );
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            onBlur={(e) => {
-                              const val =
-                                parseInt(e.target.value.toString()) || 0;
-                              handleUpdatePcsKirim(po.id, val.toString());
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") e.currentTarget.blur();
-                            }}
-                            disabled={savingPcsId === po.id}
-                            className={`w-24 px-2 py-1.5 text-xs font-bold text-center bg-slate-50 border rounded-lg outline-none transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                              savingPcsId === po.id
-                                ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse"
-                                : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
-                            }`}
-                          />
-                          {savingPcsId !== po.id &&
-                            Number(po.pcsKirimTotal) > 0 && (
+                        {isMulti ? (
+                          <div className="flex items-center gap-1.5 justify-center">
+                            <span className="inline-flex items-center justify-center w-24 px-2 py-1.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold tabular-nums">
+                              {Number(po.pcsKirimTotal || 0).toLocaleString("id-ID")}
+                            </span>
+                            <button 
+                              onClick={() => toggleRow(po.id)}
+                              className={`p-1.5 rounded-lg transition-all active:scale-95 shadow-sm border ${
+                                isExpanded 
+                                ? "bg-rose-500 text-white border-rose-600 shadow-rose-100" 
+                                : "bg-white text-indigo-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-600 shadow-slate-100"
+                              }`}
+                              title={isExpanded ? "Tutup" : "Breakdown PO"}
+                            >
+                              {isExpanded ? <X size={10} strokeWidth={4} /> : <PencilLine size={10} strokeWidth={3} />}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="relative inline-block group/input">
+                            <input
+                              type="number"
+                              min="0"
+                              max={po.pcsTotal || 0}
+                              value={po.pcsKirimTotal ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onBlur={(e) => {
+                                const val = parseInt(e.target.value.toString()) || 0;
+                                handleUpdatePcsKirim(po.id, val.toString());
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.currentTarget.blur();
+                              }}
+                              disabled={savingPcsId === po.id}
+                              className={`w-24 px-2 py-1.5 text-xs font-bold text-center bg-slate-50 border rounded-lg outline-none transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                Number(po.pcsKirimTotal) > Number(po.pcsTotal)
+                                  ? "border-rose-500 text-rose-600 bg-rose-50 shadow-[0_0_8px_rgba(225,29,72,0.2)]"
+                                  : savingPcsId === po.id
+                                  ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse"
+                                  : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
+                              }`}
+                              onChange={(e) => {
+                                let val = e.target.value;
+                                const numVal = Number(val);
+                                const max = Number(po.pcsTotal || 0);
+                                let finalVal = numVal > max ? max.toString() : val;
+
+                                setPoData((prev) => prev.map((p) => p.id === po.id ? { ...p, pcsKirimTotal: finalVal } : p));
+                              }}
+                            />
+                            {savingPcsId !== po.id && Number(po.pcsKirimTotal) > 0 && (
                               <div
                                 className="absolute -right-1 -top-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm"
                                 title="Tersimpan"
                               />
                             )}
-                        </div>
+                          </div>
+                        )}
                       </td>
 
                       {/* Action Button */}
@@ -734,6 +867,64 @@ export default function SchedulePage() {
                         </div>
                       </td>
                     </tr>
+                    {isExpanded && po.Items && (
+                      <tr className="bg-slate-50/10" onClick={(e) => e.stopPropagation()}>
+                        <td colSpan={14} className="px-5 py-6">
+                          <div className="bg-white border-2 border-indigo-100 rounded-[32px] overflow-hidden shadow-2xl shadow-indigo-200/10 mx-4">
+                            <table className="w-full text-left">
+                              <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                  <th className="px-8 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-12">Product Breakdown</th>
+                                  <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Order</th>
+                                  <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Kirim</th>
+                                  <th className="px-12 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {po.Items.map((item: any, idx: number) => (
+                                  <tr key={item.id} className={idx !== po.Items.length - 1 ? "border-b border-slate-50" : ""}>
+                                    <td className="px-8 py-4 text-xs font-bold text-slate-700 pl-12">
+                                      {item.namaProduk}
+                                    </td>
+                                    <td className="px-6 py-4 text-center text-xs font-black text-slate-300">
+                                      {item.pcs}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                      <div className="relative inline-block">
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          max={item.pcs}
+                                          value={item.pcsKirim}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            const numVal = Number(val);
+                                            const finalVal = numVal > item.pcs ? item.pcs : numVal;
+                                            setPoData(prev => prev.map(p => 
+                                              p.id === po.id 
+                                              ? { ...p, Items: p.Items.map((it: any) => it.id === item.id ? { ...it, pcsKirim: finalVal } : it) } 
+                                              : p
+                                            ));
+                                          }}
+                                          onBlur={(e) => handleUpdateItemPcsKirim(po.id, item.id, e.target.value)}
+                                          className="w-24 px-3 py-1.5 text-center text-xs font-black bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-400 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                      </div>
+                                    </td>
+                                    <td className="px-12 py-4 text-right">
+                                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${item.pcsKirim >= item.pcs ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                                        {item.pcsKirim >= item.pcs ? "Full" : "Partial"}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })
               ) : (

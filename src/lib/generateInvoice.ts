@@ -104,7 +104,7 @@ export const generateInvoicePdf = (
   const tableBody =
     data?.Items?.length > 0
       ? data.Items.map((item: any) => {
-          const namaProduk = item?.Product?.name || "Produk";
+          const namaProduk = item?.namaProduk || item?.Product?.name || "Produk";
           const satuanKg = item?.Product?.satuanKg || 1;
           const kuantitas = `${item.pcs?.toLocaleString("id-ID")} \nPack ${satuanKg} KG`;
           const kuantum = `${(item.pcs * satuanKg).toLocaleString("id-ID")} \nKg`;

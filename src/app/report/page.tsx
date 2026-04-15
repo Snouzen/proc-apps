@@ -1114,16 +1114,25 @@ export default function ReportPage() {
           if (c.kind === "number") row[c.label] = Number(v) || 0;
           else if (c.kind === "bool") row[c.label] = !!v;
           else if (c.kind === "date") {
-            row[c.label] = formatDateExcel(v);
+            const dt = toDate(v);
+            row[c.label] = dt ? dt : "-";
           } else row[c.label] = String(v ?? "");
         });
         return row;
       });
-
       const XLSX = await getXLSX();
-      const ws = XLSX.utils.json_to_sheet(data);
+      const ws = XLSX.utils.json_to_sheet(data, { cellDates: true });
 
+      // Apply dd/mm/yyyy format to date cells
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
+      for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+          if (!cell || cell.t !== 'd') continue;
+          cell.z = 'dd/mm/yyyy';
+        }
+      }
+
       ws["!autofilter"] = {
         ref: XLSX.utils.encode_range({
           s: { r: 0, c: 0 },

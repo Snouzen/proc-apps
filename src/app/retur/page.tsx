@@ -139,6 +139,7 @@ export default function ReturPage() {
   const [rowsPerPage] = useState(15);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [role, setRole] = useState<string | null>(null);
   
   const [retailers, setRetailers] = useState<any[]>([]);
   const [selectedRetailerId, setSelectedRetailerId] = useState<string | null>(null);
@@ -202,11 +203,15 @@ export default function ReturPage() {
     Promise.all([
       fetch("/api/ritel").then(res => res.json()),
       fetch("/api/product").then(res => res.json()),
-      fetch("/api/unit-produksi").then(res => res.json()) // TAMBAH INI
-    ]).then(([ritelJson, productJson, unitJson]) => {
+      fetch("/api/unit-produksi").then(res => res.json()),
+      import("@/lib/me").then(({ getMe }) => getMe())
+    ]).then(([ritelJson, productJson, unitJson, me]) => {
       setRetailers(Array.isArray(ritelJson) ? ritelJson : (ritelJson?.data || []));
       setProducts(Array.isArray(productJson) ? productJson : (productJson?.data || []));
-      setUnits(Array.isArray(unitJson) ? unitJson : (unitJson?.data || [])); // TAMBAH INI
+      setUnits(Array.isArray(unitJson) ? unitJson : (unitJson?.data || []));
+      if (me?.authenticated) {
+        setRole(me.role);
+      }
     });
   }, []);
 
@@ -343,7 +348,7 @@ export default function ReturPage() {
       const cleanedPayload = {
         ...pureData,
         id, // Persistence
-        rtvCn: pureData.rtvCn ? Number(pureData.rtvCn.toString().replace(/[^0-9]/g, '')) : null,
+        rtvCn: pureData.rtvCn ? String(pureData.rtvCn).trim() : null,
         kodeToko: pureData.kodeToko ? Number(pureData.kodeToko.toString().replace(/[^0-9]/g, '')) : null,
         qtyReturn: Number(pureData.qtyReturn) || 0,
         nominal: Number(pureData.nominal) || 0,
@@ -460,6 +465,58 @@ export default function ReturPage() {
           text: error.message || 'Gagal menghapus data',
           confirmButtonColor: '#ef4444'
         });
+      } finally {
+        setIsFetchingPage(false);
+      }
+    }
+  };
+
+  const handleDeleteGroup = async (ritelId: string, ritelName: string) => {
+    const result = await Swal.fire({
+      title: 'Hapus Seluruh Data?',
+      html: `Semua data retur untuk <b>${ritelName}</b> akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Hapus Semua!',
+      cancelButtonText: 'Batal',
+      background: '#fff',
+      customClass: {
+        popup: 'rounded-[32px]',
+        confirmButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest cursor-pointer',
+        cancelButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest cursor-pointer'
+      }
+    });
+
+    if (result.isConfirmed) {
+      try {
+        setIsFetchingPage(true);
+        const res = await fetch(`/api/retur?ritelId=${ritelId}`, { 
+          method: 'DELETE' 
+        });
+        
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Gagal menghapus data grup");
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Grup Dihapus!',
+          text: `Seluruh data ${ritelName} telah dibersihkan.`,
+          toast: true,
+          position: 'top-end',
+          timer: 2000,
+          showConfirmButton: false
+        });
+
+        // Instant removal of the card
+        setData(prev => prev.filter(r => r.id !== ritelId));
+        fetchRetur();
+      } catch (error: any) {
+        console.error(error);
+        Swal.fire({ icon: 'error', title: 'Gagal', text: error.message });
       } finally {
         setIsFetchingPage(false);
       }
@@ -696,8 +753,22 @@ export default function ReturPage() {
                        </span>
                     </div>
                   </div>
-                  <div className="text-slate-300 group-hover:translate-x-1 group-hover:text-indigo-400 transition-all">
-                    <ChevronRight size={20} />
+                  <div className="flex items-center gap-2">
+                    {role === "pusat" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteGroup(ritel.id, ritel.namaPt);
+                        }}
+                        className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all active:scale-90"
+                        title="Hapus Seluruh Data Peritel"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                    <div className="text-slate-300 group-hover:translate-x-1 group-hover:text-indigo-400 transition-all">
+                      <ChevronRight size={20} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -745,12 +816,10 @@ export default function ReturPage() {
                           {isEditing ? (
                             <input 
                               type="text"
-                              inputMode="numeric"
                               className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
                               value={editForm.rtvCn || ""}
                               onChange={e => {
-                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                setEditForm({...editForm, rtvCn: val});
+                                setEditForm({...editForm, rtvCn: e.target.value});
                               }}
                             />
                           ) : (

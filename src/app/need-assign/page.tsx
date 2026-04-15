@@ -10,6 +10,7 @@ import {
   useReactTable,
   flexRender,
 } from "@tanstack/react-table";
+import * as Popover from "@radix-ui/react-popover";
 
 type Row = {
   id: string;
@@ -22,6 +23,7 @@ type Row = {
   noInvoice: string | null;
   tujuanDetail: string | null;
   linkPo: string | null;
+  remarks: string | null;
   Items: any[];
   UnitProduksi?: any;
   RitelModern?: any;
@@ -158,6 +160,7 @@ export default function NeedAssignPage() {
   const lastCtrlRef = useRef<AbortController | null>(null);
 
   const [openDetail, setOpenDetail] = useState(false);
+  const [hoveredPoId, setHoveredPoId] = useState<string | null>(null);
   const [detailData, setDetailData] = useState<any | null>(null);
   const [units, setUnits] = useState<
     { idRegional: string; namaRegional: string; siteArea: string }[]
@@ -613,6 +616,45 @@ export default function NeedAssignPage() {
           {row.original.noInvoice || "-"}
         </span>
       ),
+    },
+    {
+      header: "Remarks",
+      accessorKey: "remarks",
+      cell: ({ row }) => {
+        const remarks = row.original.remarks;
+        if (!remarks) return <span className="text-slate-300 text-[12px]">-</span>;
+        return (
+          <div className="flex justify-center py-2">
+            <Popover.Root 
+              open={hoveredPoId === row.original.id} 
+              onOpenChange={(open) => !open && setHoveredPoId(null)}
+            >
+              <Popover.Trigger asChild>
+                <div 
+                  className="max-w-[120px] cursor-help outline-none"
+                  onMouseEnter={() => setHoveredPoId(row.original.id)}
+                  onMouseLeave={() => setHoveredPoId(null)}
+                >
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg text-[10px] font-bold transition-all duration-300 hover:bg-rose-100/80 truncate w-full shadow-sm">
+                    {remarks}
+                  </span>
+                </div>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content 
+                  side="top" 
+                  sideOffset={10}
+                  collisionPadding={20}
+                  className="z-[9999] w-max max-w-[340px] bg-slate-900/95 backdrop-blur-md text-white/95 text-[11px] font-medium px-6 py-4 rounded-[24px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4),0_0_25px_rgba(225,29,72,0.2)] border border-white/10 animate-in fade-in zoom-in-95 duration-200 outline-none leading-relaxed whitespace-normal break-words"
+                >
+                  {remarks}
+                  <Popover.Arrow className="fill-slate-900/95" width={18} height={9} />
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+          </div>
+        );
+      },
     },
     {
       header: "Actions",

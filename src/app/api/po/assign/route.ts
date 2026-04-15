@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       data: {
         unitProduksiId: unitProduksiId || undefined,
         regional: finalRegional || undefined,
+        remarks: null, // Clear reject remarks when re-assigned
         updatedAt: new Date(),
       },
       select: { id: true, noPo: true, unitProduksiId: true, regional: true },

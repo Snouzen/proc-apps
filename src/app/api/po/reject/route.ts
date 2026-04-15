@@ -6,26 +6,18 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
     const id: string | undefined = body?.id;
+    const remarks: string | undefined = body?.remarks;
 
     if (!id) {
       return NextResponse.json({ error: "id PO wajib diisi" }, { status: 400 });
     }
-
-    // [DEBUG] Berdasarkan schema.prisma:
-    // 1. Tidak ada kolom fisik 'siteArea' di PurchaseOrder (siteArea ditarik lewat relasi UnitProduksi).
-    // 2. unitProduksiId di PurchaseOrder bersifat Mandatory (String, bukan String?).
-    // 3. regional di PurchaseOrder bersifat Optional (String?).
-    
-    // [FIX] Agar statusPo balik ke 'Need to Assign' Dashboard:
-    // - statusPo: false
-    // - unitProduksiId: "UNKNOWN" (Reset ke dummy unit agar relasi tetap valid tapi data 'hilang' dari site area)
-    // - regional: Tetap dipertahankan (seperti instruksi user)
 
     const po = await prisma.purchaseOrder.update({
       where: { id },
       data: {
         statusPo: false,        // Balik ke antrean kebutuhan penetapan unit
         unitProduksiId: "UNKNOWN", // Reset ke unit dummy agar tidak terdeteksi milik site area manapun
+        remarks: remarks || null, // Simpan alasan reject
         updatedAt: new Date(),
       },
       select: { id: true, noPo: true, regional: true },

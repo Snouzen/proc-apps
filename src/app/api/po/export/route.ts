@@ -434,8 +434,8 @@ export async function GET(request: Request) {
         company: upperClean(po.RitelModern?.namaPt || "-"),
         inisial: upperClean(po.RitelModern?.inisial || ""),
         tujuan: upperClean(po.tujuanDetail || ""),
-        tglPo: po.tglPo ? formatDateId(po.tglPo) : "-",
-        expiredTgl: po.expiredTgl ? formatDateId(po.expiredTgl) : "-",
+        tglPo: po.tglPo ? new Date(po.tglPo) : null,
+        expiredTgl: po.expiredTgl ? new Date(po.expiredTgl) : null,
         siteArea: upperClean(
           po.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
             ? po.UnitProduksi.siteArea
@@ -456,12 +456,20 @@ export async function GET(request: Request) {
         statusInv: !!po.statusInv ? "Ya" : "Tidak",
         statusTagih: !!po.statusTagih ? "Ya" : "Tidak",
         statusBayar: !!po.statusBayar ? "Ya" : "Tidak",
-        updatedAt: po.updatedAt ? formatDateId(po.updatedAt) : "-",
-        createdAt: po.createdAt ? formatDateId(po.createdAt) : "-",
-        submitDate: po.createdAt ? formatDateId(po.createdAt) : "-",
+        updatedAt: po.updatedAt ? new Date(po.updatedAt) : null,
+        createdAt: po.createdAt ? new Date(po.createdAt) : null,
+        submitDate: po.createdAt ? new Date(po.createdAt) : null,
       };
 
       const products = productList.length > 0 ? productList : [""];
+
+      // Find indices of date columns
+      const dateColIndices: number[] = [];
+      columnsConfig.forEach((c, i) => {
+        if (["tglPo", "expiredTgl", "updatedAt", "createdAt", "submitDate"].includes(c.id)) {
+          dateColIndices.push(i + 1);
+        }
+      });
 
       for (const p of products) {
         const rowData = columnsConfig.map((c) => {
@@ -469,7 +477,16 @@ export async function GET(request: Request) {
           if (c.id === "products") return p;
           return (rowBase as any)[c.id] ?? "";
         });
-        worksheet.addRow(rowData);
+        const addedRow = worksheet.addRow(rowData);
+        
+        // Apply date format to relevant cells in this row
+        dateColIndices.forEach((idx) => {
+          const cell = addedRow.getCell(idx);
+          if (cell.value instanceof Date) {
+            cell.numFmt = "dd/mm/yyyy";
+          }
+        });
+        
         rowIndex++;
       }
     }

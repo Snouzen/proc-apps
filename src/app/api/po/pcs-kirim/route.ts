@@ -4,10 +4,10 @@ import { cacheClearPrefix } from "@/lib/ttl-cache";
 
 export async function PATCH(request: Request) {
   try {
-    const { id, pcsKirim } = await request.json();
+    const { id, itemId, pcsKirim } = await request.json();
 
-    if (!id) {
-      return NextResponse.json({ error: "ID PO wajib diisi" }, { status: 400 });
+    if (!id && !itemId) {
+      return NextResponse.json({ error: "id PO atau itemId wajib diisi" }, { status: 400 });
     }
 
     const value = Number(pcsKirim);
@@ -15,27 +15,47 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Jumlah Pcs Kirim tidak valid" }, { status: 400 });
     }
 
-    // [ACTION] Update pcsKirim pada tabel PurchaseOrder (sebagai denormalisasi summary)
-    // dan update semua item terkait (opsional, tergantung kebutuhan bisnis apakah per-item atau total)
-    // Berdasarkan request User, kita fokus update pcsKirim di PurchaseOrder utama.
-    
-    // Namun, di schema.prisma pcsKirim ada di PurchaseOrderItem.
-    // Jika ada field pcsKirim di PurchaseOrder, kita update. Jika tidak, kita update semua items-nya.
-    
-    // Mari kita cek schema.prisma lagi: 
-    // PurchaseOrderItem memiliki pcsKirim. PurchaseOrder TIDAK memiliki pcsKirim fisik.
-    // Maka kita harus mengupdate semua item milik PO tersebut jika ingin 'inline update global'
-    // ATAU user ingin update per item (namun UI yang diminta adalah 1 baris per PO).
-    
-    // Keputusan: Mengupdate semua PurchaseOrderItem milik PurchaseOrder tersebut.
-    
-    await prisma.purchaseOrderItem.updateMany({
-      where: { purchaseOrderId: id },
-      data: {
-        pcsKirim: value,
-        updatedAt: new Date()
-      }
-    });
+    // [ACTION] Update Granular (Per Item) atau Global (Per PO)
+    if (itemId) {
+      // Update specific item
+      const item = await prisma.purchaseOrderItem.findUnique({
+        where: { id: itemId },
+        select: { hargaPcs: true, discount: true }
+      });
+      
+      if (!item) return NextResponse.json({ error: "Item tidak ditemukan" }, { status: 404 });
+      
+      // Hitung ulang Rp Tagih (Pcs Kirim * Harga Pcs - Discount)
+      const rpTagih = Math.max(0, (value * item.hargaPcs) - (item.discount || 0));
+
+      await prisma.purchaseOrderItem.update({
+        where: { id: itemId },
+        data: { 
+          pcsKirim: value,
+          rpTagih: rpTagih,
+          updatedAt: new Date()
+        }
+      });
+    } else {
+      // Update ALL items in PO (Legacy/Global method)
+      const items = await prisma.purchaseOrderItem.findMany({
+        where: { purchaseOrderId: id },
+        select: { id: true, hargaPcs: true, discount: true }
+      });
+
+      // Update one by one to ensure Rp Tagih recalculated per item price
+      await Promise.all(items.map(it => {
+        const rpTagih = Math.max(0, (value * it.hargaPcs) - (it.discount || 0));
+        return prisma.purchaseOrderItem.update({
+          where: { id: it.id },
+          data: { 
+            pcsKirim: value, 
+            rpTagih: rpTagih,
+            updatedAt: new Date() 
+          }
+        });
+      }));
+    }
 
     cacheClearPrefix("po:");
     cacheClearPrefix("po_total:");

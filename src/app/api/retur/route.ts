@@ -18,10 +18,10 @@ export async function GET(request: Request) {
           DataRetur: {
             some: q ? {
               OR: [
-                { rtvCn: isNaN(Number(q)) ? undefined : Number(q) },
+                { rtvCn: { contains: q, mode: "insensitive" } },
                 { namaCompany: { contains: q, mode: "insensitive" } },
                 { produk: { contains: q, mode: "insensitive" } },
-              ].filter(Boolean) as Prisma.DataReturWhereInput[]
+              ]
             } : {}
           }
         },
@@ -46,12 +46,12 @@ export async function GET(request: Request) {
 
     if (q) {
       where.OR = [
-        { rtvCn: isNaN(Number(q)) ? undefined : Number(q) },
+        { rtvCn: { contains: q, mode: "insensitive" } },
         { namaCompany: { contains: q, mode: "insensitive" } },
         { produk: { contains: q, mode: "insensitive" } },
         { LokasiBarang: { siteArea: { contains: q, mode: "insensitive" } } },
         { LokasiBarang: { namaRegional: { contains: q, mode: "insensitive" } } },
-      ].filter(Boolean) as Prisma.DataReturWhereInput[];
+      ];
     }
 
     const [data, total] = await Promise.all([
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
 
           return prisma.dataRetur.create({
             data: {
-              rtvCn: item.rtvCn ? Number(item.rtvCn) : null,
+              rtvCn: item.rtvCn ? String(item.rtvCn).trim() : null,
               tanggalRtv: item.tanggalRtv ? new Date(item.tanggalRtv) : null,
               maxPickup: item.maxPickup ? new Date(item.maxPickup) : null,
               kodeToko: item.kodeToko ? Number(item.kodeToko) : null,
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
 
     const newData = await prisma.dataRetur.create({
       data: {
-        rtvCn: body.rtvCn ? Number(body.rtvCn) : undefined,
+        rtvCn: body.rtvCn ? String(body.rtvCn).trim() : undefined,
         tanggalRtv: body.tanggalRtv ? new Date(body.tanggalRtv) : null,
         maxPickup: body.maxPickup ? new Date(body.maxPickup) : null,
         namaCompany: body.namaCompany || null,
@@ -212,7 +212,7 @@ export async function PUT(request: Request) {
     // Strict casting to Nullable Integers for Prisma compliance
     const sanitizedData = {
       ...updateData,
-      rtvCn: updateData.rtvCn !== undefined ? (updateData.rtvCn ? Number(updateData.rtvCn) : null) : undefined,
+      rtvCn: updateData.rtvCn !== undefined ? (updateData.rtvCn ? String(updateData.rtvCn).trim() : null) : undefined,
       kodeToko: updateData.kodeToko !== undefined ? (updateData.kodeToko ? Number(updateData.kodeToko) : null) : undefined,
       qtyReturn: updateData.qtyReturn !== undefined ? (Number(updateData.qtyReturn) || 0) : undefined,
       nominal: updateData.nominal !== undefined ? new Prisma.Decimal(updateData.nominal) : undefined,
@@ -240,15 +240,26 @@ export async function DELETE(request: Request) {
     // 1. Tangkap ID dari URL searchParams (Next.js App Router Standard)
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const ritelId = searchParams.get("ritelId");
 
     // 2. Validasi Keberadaan ID
-    if (!id) {
-      return NextResponse.json({ error: "ID Data Retur wajib disertakan!" }, { status: 400 });
+    if (!id && !ritelId) {
+      return NextResponse.json({ error: "ID Data Retur atau Ritel ID wajib disertakan!" }, { status: 400 });
+    }
+
+    if (ritelId) {
+      const deleted = await prisma.dataRetur.deleteMany({
+        where: { ritelId: ritelId }
+      });
+      return NextResponse.json({ 
+        success: true, 
+        message: `${deleted.count} data retur ritel berhasil dihapus` 
+      });
     }
 
     // 3. Eksekusi Hapus di Database
     await prisma.dataRetur.delete({
-      where: { id: id },
+      where: { id: id as string },
     });
 
     // 4. Return sukses dengan JSON yang valid

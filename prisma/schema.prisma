@@ -126,7 +126,7 @@ model User {
 }
 model DataRetur {
   id                  String        @id @default(cuid())
-  rtvCn               Int?
+  rtvCn               String?
   tanggalRtv          DateTime?
   maxPickup           DateTime?
   kodeToko            Int?
