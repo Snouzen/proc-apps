@@ -481,63 +481,69 @@ export default function ExcelBulkModal({
           throw new Error("Upload dibatalkan");
         }
       } else if (variant === "retur") {
+        const BATCH_SIZE = 50;
+        const batches = Array.from(
+          { length: Math.ceil(rows.length / BATCH_SIZE) },
+          (_, i) => rows.slice(i * BATCH_SIZE, i * BATCH_SIZE + BATCH_SIZE)
+        );
+
         let done = 0;
         setProgressOpen(true);
         setProgressMeta({
-          batchIndex: 1,
-          batchTotal: 1,
+          batchIndex: 0,
+          batchTotal: batches.length,
           done: 0,
           total: rows.length,
         });
 
-        // Map rows to the payload structure the backend expects for bulk
-        const records = rows.map((rawRow) => ({
-          ritelId: retailerId || null,
-          namaCompany:
-            getCell(rawRow, keys.namaCompany) ||
-            getCell(rawRow, findKey(rawRow, ["TOKO", "NAMA PERUSAHAAN"])),
+        for (let b = 0; b < batches.length; b++) {
+          if (cancelRef.current) break;
+          
+          const batch = batches[b];
+          const records = batch.map((rawRow) => ({
+            ritelId: retailerId || null,
+            namaCompany: getCell(rawRow, keys.namaCompany) || null,
+            produk: getCell(rawRow, keys.a),
+            qtyReturn: Number(getCell(rawRow, keys.b)) || 0,
+            nominal: Number(getCell(rawRow, keys.c)) || 0,
+            rpKg: Number(getCell(rawRow, keys.rpKg)) || 0,
+            rtvCn: getCell(rawRow, keys.rtvCn) || null,
+            tanggalRtv: getCell(rawRow, keys.tanggalRtv) || null,
+            maxPickup: getCell(rawRow, keys.maxPickup) || null,
+            kodeToko: getCell(rawRow, keys.kodeToko) || null,
+            link: getCell(rawRow, keys.link) || null,
+            statusBarang: getCell(rawRow, keys.statusBarang) || "Sudah Diambil",
+            refKetStatus: getCell(rawRow, keys.refKetStatus) || null,
+            lokasiBarang: getCell(rawRow, keys.lokasiBarang) || null,
+            pembebananReturn: getCell(rawRow, keys.pembebananReturn) || null,
+            invoiceRekon: normalize(getCell(rawRow, keys.invoiceRekon)) === "true" || !!getCell(rawRow, keys.invoiceRekon),
+            referensiPembayaran: getCell(rawRow, keys.referensiPembayaran) || null,
+            tanggalPembayaran: getCell(rawRow, keys.tanggalPembayaran) || null,
+            remarks: getCell(rawRow, keys.remarks) || null,
+            sdiReturn: getCell(rawRow, keys.sdiReturn) || null,
+          }));
 
-          produk: getCell(rawRow, keys.a),
-          qtyReturn: Number(getCell(rawRow, keys.b)) || 0,
-          nominal: Number(getCell(rawRow, keys.c)) || 0,
-          rpKg: Number(getCell(rawRow, keys.rpKg)) || 0,
+          const res = await fetch("/api/retur", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(records),
+          });
 
-          rtvCn: getCell(rawRow, keys.rtvCn) || null,
-          tanggalRtv: getCell(rawRow, keys.tanggalRtv) || null,
-          maxPickup: getCell(rawRow, keys.maxPickup) || null,
-          kodeToko: getCell(rawRow, keys.kodeToko) || null,
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Batch ${b + 1} Failed: ${res.status}`);
+          }
 
-          link: getCell(rawRow, keys.link) || null,
-          statusBarang: getCell(rawRow, keys.statusBarang) || "Sudah Diambil",
-          refKetStatus: getCell(rawRow, keys.refKetStatus) || null,
-
-          lokasiBarang: getCell(rawRow, keys.lokasiBarang) || null,
-          pembebananReturn: getCell(rawRow, keys.pembebananReturn) || null,
-
-          invoiceRekon:
-            normalize(getCell(rawRow, keys.invoiceRekon)) === "true" ||
-            !!getCell(rawRow, keys.invoiceRekon),
-          referensiPembayaran: getCell(rawRow, keys.referensiPembayaran) || null,
-          tanggalPembayaran: getCell(rawRow, keys.tanggalPembayaran) || null,
-          remarks: getCell(rawRow, keys.remarks) || null,
-          sdiReturn: getCell(rawRow, keys.sdiReturn) || null,
-        }));
-
-        // Send as a single bulk request to leverage the backend's translator logic
-        const res = await fetch("/api/retur", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(records),
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP Error ${res.status}`);
+          const resData = await res.json();
+          done += resData.count || records.length;
+          setProgressMeta({
+            batchIndex: b + 1,
+            batchTotal: batches.length,
+            done,
+            total: rows.length,
+          });
+          setProgressText(`${done}/${rows.length} uploaded...`);
         }
-
-        const resData = await res.json();
-        done = resData.count || records.length;
-        setProgressMeta((prev) => (prev ? { ...prev, done } : null));
       } else {
         const res = await fetch("/api/product");
         const list = await res.json();

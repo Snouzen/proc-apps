@@ -24,22 +24,24 @@ export const generateInvoicePdf = (
   const yyyy = today.getFullYear();
   const printTime = `${String(today.getDate()).padStart(2, "0")}-${mm}-${yyyy} | ${String(today.getHours()).padStart(2, "0")}:${String(today.getMinutes()).padStart(2, "0")}`;
 
-  // Perhitungan Nominal, Discount, dan Total Tagihan
+  // Perhitungan Nominal, Discount, dan Total Tagihan Berdasarkan PCS KIRIM (Actual Shipment)
   const totalNominal =
-    data?.Items?.reduce(
-      (sum: number, item: any) => sum + (item.nominal || 0),
-      0,
-    ) || 0;
+    data?.Items?.reduce((sum: number, item: any) => {
+      const pcs = Number(item.pcs) || 1;
+      const shipped = Number(item.pcsKirim) || 0;
+      const nominal = Number(item.nominal) || 0;
+      return sum + (nominal / pcs) * shipped;
+    }, 0) || 0;
+
   const totalDiscount =
-    data?.Items?.reduce(
-      (sum: number, item: any) => sum + (item.discount || 0),
-      0,
-    ) || 0;
-  const totalTagihan =
-    data?.Items?.reduce(
-      (sum: number, item: any) => sum + (item.rpTagih || 0),
-      0,
-    ) || 0;
+    data?.Items?.reduce((sum: number, item: any) => {
+      const pcs = Number(item.pcs) || 1;
+      const shipped = Number(item.pcsKirim) || 0;
+      const discount = Number(item.discount) || 0;
+      return sum + (discount / pcs) * shipped;
+    }, 0) || 0;
+
+  const totalTagihan = totalNominal - totalDiscount;
 
   const rawRegional =
     data?.UnitProduksi?.namaRegional || "KANTOR WILAYAH BULOG";
@@ -106,15 +108,19 @@ export const generateInvoicePdf = (
       ? data.Items.map((item: any) => {
           const namaProduk = item?.namaProduk || item?.Product?.name || "Produk";
           const satuanKg = item?.Product?.satuanKg || 1;
-          const kuantitas = `${item.pcs?.toLocaleString("id-ID")} \nPack ${satuanKg} KG`;
-          const kuantum = `${(item.pcs * satuanKg).toLocaleString("id-ID")} \nKg`;
+          const shipped = Number(item.pcsKirim) || 0;
+          const orderPcs = Number(item.pcs) || 1;
+          const actualNominal = (Number(item.nominal) || 0) / orderPcs * shipped;
+
+          const kuantitas = `${shipped.toLocaleString("id-ID")} \nPack ${satuanKg} KG`;
+          const kuantum = `${(shipped * satuanKg).toLocaleString("id-ID")} \nKg`;
           return [
             namaProduk,
             kuantitas,
             kuantum,
             formatRp(item.hargaPcs),
             "PPN 12%\n(dibebaskan)",
-            formatRp(item.nominal),
+            formatRp(actualNominal),
           ];
         })
       : [["-", "-", "-", "-", "-", "-"]];

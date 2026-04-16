@@ -524,6 +524,7 @@ export default function ReturPage() {
   };
 
   useEffect(() => {
+    setData([]); // Bersihkan data agar tidak render crash (missing _count) saat ganti mode
     setPage(1);
     setClientPage(1);
   }, [selectedRetailerId]);
@@ -654,7 +655,10 @@ export default function ReturPage() {
         <div className="flex items-center gap-4">
           {selectedRetailerId && (
             <button 
-              onClick={() => setSelectedRetailerId(null)}
+              onClick={() => {
+                setSelectedRetailerId(null);
+                setIsGroupedMode(true); // Switch instant
+              }}
               className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
               title="Back to List"
             >
@@ -736,7 +740,10 @@ export default function ReturPage() {
             data.map((ritel) => (
               <div 
                 key={ritel.id}
-                onClick={() => setSelectedRetailerId(ritel.id)}
+                onClick={() => {
+                  setSelectedRetailerId(ritel.id);
+                  setIsGroupedMode(false); // Switch instant
+                }}
                 className="group relative bg-white border border-slate-100 p-6 rounded-[32px] shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all cursor-pointer active:scale-[0.98]"
               >
                 <div className="flex items-center gap-4">
@@ -748,9 +755,9 @@ export default function ReturPage() {
                       {ritel.namaPt}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
-                       <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-widest">
-                         {ritel._count.DataRetur} Records
-                       </span>
+                        <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-widest">
+                          {ritel?._count?.DataRetur || 0} Records
+                        </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

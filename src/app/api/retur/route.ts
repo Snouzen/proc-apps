@@ -122,44 +122,42 @@ export async function POST(request: Request) {
         return null;
       };
 
-      const created = await prisma.$transaction(
-        body.map((item: any) => {
-          // Gunakan Radar Cerdas untuk mencari kolom yang mengandung kata kunci
-          const stringLokasi = item.lokasiBarangId || getFuzzyValue(item, ['lokasi', 'lokasi barang', 'dc']);
-          const stringPembebanan = item.pembebananReturnId || getFuzzyValue(item, ['pembebanan', 'beban', 'pembebanan retur']);
+      // [OPTIMASI 4] Gunakan createMany untuk kecepatan maksimal (anti-timeout)
+      const dataToCreate = body.map((item: any) => {
+        const stringLokasi = item.lokasiBarangId || getFuzzyValue(item, ['lokasi', 'lokasi barang', 'dc']);
+        const stringPembebanan = item.pembebananReturnId || getFuzzyValue(item, ['pembebanan', 'beban', 'pembebanan retur']);
 
-          return prisma.dataRetur.create({
-            data: {
-              rtvCn: item.rtvCn ? String(item.rtvCn).trim() : null,
-              tanggalRtv: item.tanggalRtv ? new Date(item.tanggalRtv) : null,
-              maxPickup: item.maxPickup ? new Date(item.maxPickup) : null,
-              kodeToko: item.kodeToko ? Number(item.kodeToko) : null,
-              namaCompany: item.namaCompany || null,
-              ritelId: item.ritelId || null,
-              link: item.link || null,
-              produk: item.produk || null,
-              productId: item.productId || null,
-              qtyReturn: item.qtyReturn ? Number(item.qtyReturn) : null,
-              nominal: item.nominal ? new Prisma.Decimal(item.nominal) : null,
-              rpKg: item.rpKg ? new Prisma.Decimal(item.rpKg) : null,
-              statusBarang: item.statusBarang || null,
-              refKetStatus: item.refKetStatus || null,
-              
-              // [OPTIMASI 3] Gunakan fungsi Translator di sini!
-              lokasiBarangId: findUnitId(stringLokasi),
-              pembebananReturnId: findUnitId(stringPembebanan),
-              
-              invoiceRekon: item.invoiceRekon === true || item.invoiceRekon === "true",
-              referensiPembayaran: item.referensiPembayaran || null,
-              tanggalPembayaran: item.tanggalPembayaran ? new Date(item.tanggalPembayaran) : null,
-              remarks: item.remarks || null,
-              sdiReturn: item.sdiReturn || null,
-            },
-          });
-        })
-      );
+        return {
+          rtvCn: (item.rtvCn !== null && item.rtvCn !== undefined) ? String(item.rtvCn).trim() : null,
+          tanggalRtv: item.tanggalRtv ? new Date(item.tanggalRtv) : null,
+          maxPickup: item.maxPickup ? new Date(item.maxPickup) : null,
+          kodeToko: item.kodeToko ? Number(item.kodeToko) : null,
+          namaCompany: item.namaCompany || null,
+          ritelId: item.ritelId || null,
+          link: item.link || null,
+          produk: item.produk || null,
+          productId: item.productId || null,
+          qtyReturn: item.qtyReturn ? Number(item.qtyReturn) : null,
+          nominal: item.nominal ? new Prisma.Decimal(item.nominal) : null,
+          rpKg: item.rpKg ? new Prisma.Decimal(item.rpKg) : null,
+          statusBarang: item.statusBarang || null,
+          refKetStatus: item.refKetStatus || null,
+          lokasiBarangId: findUnitId(stringLokasi),
+          pembebananReturnId: findUnitId(stringPembebanan),
+          invoiceRekon: item.invoiceRekon === true || item.invoiceRekon === "true",
+          referensiPembayaran: item.referensiPembayaran || null,
+          tanggalPembayaran: item.tanggalPembayaran ? new Date(item.tanggalPembayaran) : null,
+          remarks: item.remarks || null,
+          sdiReturn: item.sdiReturn || null,
+        };
+      });
 
-      return NextResponse.json({ success: true, count: created.length });
+      const result = await prisma.dataRetur.createMany({
+        data: dataToCreate,
+        skipDuplicates: false,
+      });
+
+      return NextResponse.json({ success: true, count: result.count });
     }
 
     // Validasi baru (lebih longgar, karena rtvCn dan namaCompany bisa null)
