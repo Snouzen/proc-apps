@@ -3,6 +3,7 @@
 import {
   BarChart3,
   BookOpen,
+  Calculator,
   CalendarDays,
   ChevronDown,
   ChevronRight,
@@ -14,6 +15,7 @@ import {
   LayoutDashboard,
   RotateCcw,
   X,
+  TrendingDown,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -89,6 +91,7 @@ export default function Sidebar({
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
     { name: "Branch Plan", icon: <CalendarDays size={20} />, path: "/branch" },
     { name: "Data Retur", icon: <RotateCcw size={20} />, path: "/retur" },
+    { name: "Rekonsiliasi", icon: <Calculator size={20} />, path: "/rekon" },
   ];
 
   const menuItems =
@@ -120,6 +123,11 @@ export default function Sidebar({
             name: `Ritel Modern`,
             icon: <ClipboardList size={16} />,
             path: "/master-data/ritel-modern",
+          },
+          {
+            name: `Promo`,
+            icon: <TrendingDown size={16} />,
+            path: "/master-data/promo",
           },
         ];
 

@@ -156,3 +156,13 @@ model DataRetur {
 
   @@map("data_retur")
 }
+
+model Promo {
+  id        String   @id @default(cuid())
+  namaPromo String
+  nominal   Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("promos")
+}

@@ -28,6 +28,7 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, en
 import { id } from "date-fns/locale";
 import * as Popover from "@radix-ui/react-popover";
 import ExcelBulkModal from "@/components/excel-bulk-modal";
+import ReturDetailModal from "@/components/retur-detail-modal";
 
 // --- Custom Component: Smooth Date Picker ---
 function CustomInlineDatePicker({ value, onChange, placeholder = "Pilih Tanggal", colorScheme = "indigo" }: { value: any, onChange: (date: string) => void, placeholder?: string, colorScheme?: "indigo" | "rose" | "slate" }) {
@@ -171,6 +172,8 @@ export default function ReturPage() {
   const [searchLokasi, setSearchLokasi] = useState("");
   const [isPembebananOpen, setIsPembebananOpen] = useState(false);
   const [searchPembebanan, setSearchPembebanan] = useState("");
+  const [viewDetailId, setViewDetailId] = useState<string | null>(null);
+  const selectedDetail = useMemo(() => data.find(d => d.id === viewDetailId), [data, viewDetailId]);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const comboRef = useRef<HTMLTableCellElement>(null);
@@ -761,7 +764,6 @@ export default function ReturPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {role === "pusat" && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -772,7 +774,6 @@ export default function ReturPage() {
                       >
                         <Trash2 size={18} />
                       </button>
-                    )}
                     <div className="text-slate-300 group-hover:translate-x-1 group-hover:text-indigo-400 transition-all">
                       <ChevronRight size={20} />
                     </div>
@@ -815,7 +816,11 @@ export default function ReturPage() {
                   {paginatedData.map((item, idx) => {
                     const isEditing = editingId === item.id;
                     return (
-                      <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors group ${isEditing ? 'bg-indigo-50/30' : ''}`}>
+                      <tr 
+                        key={item.id} 
+                        onClick={() => !isEditing && setViewDetailId(item.id)}
+                        className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${isEditing ? 'bg-indigo-50/30' : ''}`}
+                      >
                         <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 text-xs font-black text-slate-400 text-center tabular-nums border-r border-slate-100 transition-colors">
                           {isGroupedMode ? (page - 1) * rowsPerPage + idx + 1 : (page - 1) * clientRowsPerPage + idx + 1}
                         </td>
@@ -1023,7 +1028,9 @@ export default function ReturPage() {
                               <option value="Belum Diambil">BELUM DIAMBIL</option>
                             </select>
                           ) : (
-                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${item.statusBarang?.toLowerCase() === "sudah diambil" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"}`}>{item.statusBarang || "PENDING"}</div>
+                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${item.statusBarang?.toLowerCase() === "sudah diambil" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"}`}>
+                              {item.statusBarang || "Belum Diambil"}
+                            </div>
                           )}
                         </td>
                         <td className="px-6 py-4 text-[10px] font-medium text-slate-400 whitespace-nowrap">
@@ -1142,7 +1149,7 @@ export default function ReturPage() {
                           ) : (item.sdiReturn || "-")}
                         </td>
                         <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 border-l border-slate-100 transition-colors">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
                             {isEditing ? (
                               <>
                                 <button 
@@ -1175,8 +1182,14 @@ export default function ReturPage() {
                     );
                   })}
                 </tbody>
-             </table>
-          </div>
+              </table>
+            </div>
+
+            <ReturDetailModal 
+              isOpen={!!viewDetailId} 
+              onClose={() => setViewDetailId(null)} 
+              data={selectedDetail}
+            />
 
           {!isGroupedMode && (
              <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">

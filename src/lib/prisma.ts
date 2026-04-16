@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../../server/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg"; // Pastikan package 'pg' terinstal
 import dns from "node:dns";

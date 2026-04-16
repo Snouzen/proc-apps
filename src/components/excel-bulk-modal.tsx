@@ -512,7 +512,7 @@ export default function ExcelBulkModal({
             maxPickup: getCell(rawRow, keys.maxPickup) || null,
             kodeToko: getCell(rawRow, keys.kodeToko) || null,
             link: getCell(rawRow, keys.link) || null,
-            statusBarang: getCell(rawRow, keys.statusBarang) || "Sudah Diambil",
+            statusBarang: getCell(rawRow, keys.statusBarang) || "Belum Diambil",
             refKetStatus: getCell(rawRow, keys.refKetStatus) || null,
             lokasiBarang: getCell(rawRow, keys.lokasiBarang) || null,
             pembebananReturn: getCell(rawRow, keys.pembebananReturn) || null,
