@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 import { 
   Plus, 
@@ -31,8 +31,21 @@ import ExcelBulkModal from "@/components/excel-bulk-modal";
 import ReturDetailModal from "@/components/retur-detail-modal";
 
 // --- Custom Component: Smooth Date Picker ---
-function CustomInlineDatePicker({ value, onChange, placeholder = "Pilih Tanggal", colorScheme = "indigo" }: { value: any, onChange: (date: string) => void, placeholder?: string, colorScheme?: "indigo" | "rose" | "slate" }) {
-  const [currentMonth, setCurrentMonth] = useState(value ? new Date(value) : new Date());
+function CustomInlineDatePicker({
+  value,
+  onChange,
+  placeholder = "Pilih Tanggal",
+  colorScheme = "indigo",
+}: {
+  value: any;
+  onChange: (date: string) => void;
+  placeholder?: string;
+  colorScheme?: "indigo" | "rose" | "slate";
+}) {
+  const [open, setOpen] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(
+    value ? new Date(value) : new Date(),
+  );
   
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth));
@@ -50,7 +63,7 @@ function CustomInlineDatePicker({ value, onChange, placeholder = "Pilih Tanggal"
   const iconColor = colorScheme === 'rose' ? 'text-rose-400' : 'text-indigo-400';
 
   return (
-    <Popover.Root>
+    <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
         <button className={`flex items-center justify-between w-full min-w-[150px] px-3 py-2.5 text-xs font-bold rounded-xl border-2 focus:outline-none focus:ring-4 transition-all shadow-sm bg-white ${activeColor}`}>
           <span className={value ? "text-slate-700" : "text-slate-300 font-medium"}>
@@ -106,7 +119,7 @@ function CustomInlineDatePicker({ value, onChange, placeholder = "Pilih Tanggal"
                   key={i}
                   onClick={() => {
                     onChange(day.toISOString());
-                    // Popover otomatis tertutup jika Trigger-nya dikontrol, tp radix default close on interaksi luar
+                    setOpen(false);
                   }}
                   className={`
                     h-8 w-8 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all
@@ -128,9 +141,267 @@ function CustomInlineDatePicker({ value, onChange, placeholder = "Pilih Tanggal"
   );
 }
 
+// --- NEW COMPONENT: Table Searchable Input ---
+// Resolves the "one character focus loss" bug by using local stable state
+function TableSearchableInput({
+  value,
+  onCommit,
+  items,
+  placeholder,
+  icon: Icon = Search,
+}: {
+  value: string;
+  onCommit: (val: string) => void;
+  items: string[];
+  placeholder?: string;
+  icon?: any;
+}) {
+  const [internalVal, setInternalVal] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
-export default function ReturPage() {
+  useEffect(() => {
+    setInternalVal(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) {
+      setActiveIndex(-1);
+    } else if (items.length > 0) {
+      setActiveIndex(0); // Auto-highlight first result
+    }
+  }, [open, items.length]);
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <div className="relative w-full min-w-[200px]">
+          <input
+            type="text"
+            value={internalVal}
+            onChange={(e) => {
+              setInternalVal(e.target.value);
+              onCommit(e.target.value);
+              setOpen(true);
+            }}
+            placeholder={placeholder}
+            onKeyDown={(e) => {
+              if (!open) {
+                if (e.key === "ArrowDown") setOpen(true);
+                return;
+              }
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActiveIndex((p) => (p < items.length - 1 ? p + 1 : p));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveIndex((p) => (p > 0 ? p - 1 : p));
+              } else if (e.key === "Enter") {
+                if (activeIndex >= 0 && items[activeIndex]) {
+                  e.preventDefault();
+                  onCommit(items[activeIndex]);
+                  setInternalVal(items[activeIndex]);
+                  setOpen(false);
+                }
+              }
+            }}
+            className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+            <Icon size={14} />
+          </div>
+        </div>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-64 p-1 animate-in fade-in zoom-in-95 duration-200"
+          sideOffset={5}
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          {items.length === 0 ? (
+            <div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">
+              Tidak ada hasil
+            </div>
+          ) : (
+            items.map((t, idx) => (
+              <button
+                key={t + idx}
+                onClick={() => {
+                  onCommit(t);
+                  setInternalVal(t);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-xs font-black uppercase tracking-tight rounded-xl transition-colors ${activeIndex === idx ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-indigo-50"}`}
+              >
+                {t}
+              </button>
+            ))
+          )}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+function TableProductInput({
+  value,
+  onCommit,
+  items,
+  placeholder,
+}: {
+  value: string;
+  onCommit: (val: string) => void;
+  items: any[];
+  placeholder?: string;
+}) {
+  const [internalVal, setInternalVal] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  useEffect(() => {
+    setInternalVal(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) {
+      setActiveIndex(-1);
+    } else if (items.length > 0) {
+      setActiveIndex(0);
+    }
+  }, [open, items.length]);
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <div className="relative w-full min-w-[200px]">
+          <input
+            type="text"
+            value={internalVal}
+            onChange={(e) => {
+              setInternalVal(e.target.value);
+              onCommit(e.target.value);
+              setOpen(true);
+            }}
+            placeholder={placeholder}
+            onKeyDown={(e) => {
+              if (!open) {
+                if (e.key === "ArrowDown") setOpen(true);
+                return;
+              }
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActiveIndex((p) => (p < items.length - 1 ? p + 1 : p));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveIndex((p) => (p > 0 ? p - 1 : p));
+              } else if (e.key === "Enter") {
+                if (activeIndex >= 0 && items[activeIndex]) {
+                  e.preventDefault();
+                  onCommit(items[activeIndex].name);
+                  setInternalVal(items[activeIndex].name);
+                  setOpen(false);
+                }
+              }
+            }}
+            className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+            <Package size={14} />
+          </div>
+        </div>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-72 p-1 animate-in fade-in zoom-in-95 duration-200"
+          sideOffset={5}
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          {items.length === 0 ? (
+            <div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">
+              Tidak ada produk
+            </div>
+          ) : (
+            items.map((p, idx) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  onCommit(p.name);
+                  setInternalVal(p.name);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-xs font-black uppercase tracking-tight rounded-xl transition-colors flex items-center justify-between group ${activeIndex === idx ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-emerald-50"}`}
+              >
+                <span>{p.name}</span>
+              </button>
+            ))
+          )}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+function SmoothStatusSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = ["BELUM DIAMBIL", "SUDAH DIAMBIL", "DIMUSNAHKAN"];
+
+  const getColor = (v: string) => {
+    if (v === "SUDAH DIAMBIL")
+      return "bg-emerald-50 text-emerald-600 border-emerald-100";
+    if (v === "DIMUSNAHKAN") return "bg-amber-50 text-amber-600 border-amber-100";
+    return "bg-rose-50 text-rose-600 border-rose-100";
+  };
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          className={`flex items-center justify-between w-full min-w-[150px] px-3 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl border-2 transition-all shadow-sm ${getColor(value.toUpperCase())} border-transparent hover:border-indigo-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/10`}
+        >
+          <span>{value || "BELUM DIAMBIL"}</span>
+          <ChevronDown
+            size={14}
+            className={`opacity-50 transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl w-48 p-1 animate-in fade-in zoom-in-95 duration-200"
+          sideOffset={5}
+          align="start"
+        >
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => {
+                onChange(opt);
+                setOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors ${value.toUpperCase() === opt ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+            >
+              {opt}
+            </button>
+          ))}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+
+function ReturContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialRitelId = searchParams.get("ritelId");
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -141,6 +412,7 @@ export default function ReturPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | null>(null);
+  const [userArea, setUserArea] = useState<string | null>(null);
   
   const [retailers, setRetailers] = useState<any[]>([]);
   const [selectedRetailerId, setSelectedRetailerId] = useState<string | null>(null);
@@ -203,6 +475,13 @@ export default function ReturPage() {
   }, [search]);
 
   useEffect(() => {
+    if (initialRitelId) {
+      setSelectedRetailerId(initialRitelId);
+      setIsGroupedMode(false);
+    }
+  }, [initialRitelId]);
+
+  useEffect(() => {
     Promise.all([
       fetch("/api/ritel").then(res => res.json()),
       fetch("/api/product").then(res => res.json()),
@@ -214,6 +493,7 @@ export default function ReturPage() {
       setUnits(Array.isArray(unitJson) ? unitJson : (unitJson?.data || []));
       if (me?.authenticated) {
         setRole(me.role || null);
+        setUserArea(me.siteArea || me.regional || null);
       }
     });
   }, []);
@@ -264,6 +544,18 @@ export default function ReturPage() {
   useEffect(() => {
     fetchRetur();
   }, [fetchRetur]);
+
+  // --- AUTO CALCULATE RP/KG FOR INLINE EDIT ---
+  useEffect(() => {
+    if (editingId) {
+      const nominal = Number(editForm.nominal) || 0;
+      const qty = Number(editForm.qtyReturn) || 0;
+      const result = qty > 0 ? Math.round(nominal / qty) : 0;
+      if (editForm.rpKg !== result) {
+        setEditForm((p: any) => ({ ...p, rpKg: result }));
+      }
+    }
+  }, [editForm.nominal, editForm.qtyReturn, editingId]);
 
   const totalPages = Math.ceil(total / rowsPerPage);
 
@@ -673,34 +965,46 @@ export default function ReturPage() {
               <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
                  <LayoutList className="text-white" size={24} />
               </div>
-              {selectedRetailerId ? `Retur: ${retailers.find(r => r.id === selectedRetailerId)?.namaPt || 'Detail'}` : 'Data Retur Barang'}
+              {selectedRetailerId 
+                ? `Retur: ${retailers.find(r => r.id === selectedRetailerId)?.namaPt || 'Detail'}` 
+                : role === "sitearea" 
+                  ? `Retur Area: ${userArea}`
+                  : 'Data Retur Barang'
+              }
             </h1>
             <p className="text-slate-500 text-sm mt-1.5 font-medium">
-              Manajemen master data pengembalian barang cabang & toko.
+              {role === "sitearea" 
+                ? `Memantau pengembalian barang khusus di lokasi ${userArea}.` 
+                : 'Manajemen master data pengembalian barang cabang & toko.'
+              }
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => {
-              setBulkStep(1);
-              setBulkRetailerId("");
-              setSearchRetailerText("");
-              setShowBulkModal(true);
-            }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-md active:scale-95 group"
-          >
-            <Upload size={18} className="group-hover:-translate-y-0.5 transition-transform" />
-            Bulk Upload
-          </button>
-          <button 
-            onClick={handleAddReturn}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-all shadow-md active:scale-95"
-          >
-            <Plus size={18} />
-            Add Return
-          </button>
+          {role === "pusat" && (
+            <>
+              <button 
+                onClick={() => {
+                  setBulkStep(1);
+                  setBulkRetailerId("");
+                  setSearchRetailerText("");
+                  setShowBulkModal(true);
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-md active:scale-95 group"
+              >
+                <Upload size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+                Bulk Upload
+              </button>
+              <button 
+                onClick={handleAddReturn}
+                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-all shadow-md active:scale-95"
+              >
+                <Plus size={18} />
+                Add Return
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -764,6 +1068,7 @@ export default function ReturPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {role === "pusat" && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -774,6 +1079,7 @@ export default function ReturPage() {
                       >
                         <Trash2 size={18} />
                       </button>
+                    )}
                     <div className="text-slate-300 group-hover:translate-x-1 group-hover:text-indigo-400 transition-all">
                       <ChevronRight size={20} />
                     </div>
@@ -825,7 +1131,7 @@ export default function ReturPage() {
                           {isGroupedMode ? (page - 1) * rowsPerPage + idx + 1 : (page - 1) * clientRowsPerPage + idx + 1}
                         </td>
                         <td className="px-6 py-4">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               type="text"
                               className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
@@ -839,7 +1145,7 @@ export default function ReturPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap uppercase tracking-tighter tabular-nums">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <CustomInlineDatePicker 
                               value={editForm.tanggalRtv}
                               onChange={(date) => setEditForm({...editForm, tanggalRtv: date})}
@@ -848,7 +1154,7 @@ export default function ReturPage() {
                           ) : formatDate(item.tanggalRtv)}
                         </td>
                         <td className="px-6 py-4 text-xs font-bold text-rose-600 whitespace-nowrap uppercase tracking-tighter tabular-nums">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <CustomInlineDatePicker 
                               value={editForm.maxPickup}
                               onChange={(date) => setEditForm({...editForm, maxPickup: date})}
@@ -857,7 +1163,7 @@ export default function ReturPage() {
                           ) : formatDate(item.maxPickup)}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               type="text"
                               inputMode="numeric"
@@ -873,54 +1179,22 @@ export default function ReturPage() {
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          {isEditing ? (
-                            <Popover.Root open={isTokoOpen} onOpenChange={setIsTokoOpen}>
-                              <Popover.Trigger asChild>
-                                <div className="relative w-full min-w-[200px]">
-                                  <input 
-                                    type="text"
-                                    value={searchToko}
-                                    onChange={(e) => {
-                                      setSearchToko(e.target.value);
-                                      setEditForm({...editForm, namaCompany: e.target.value});
-                                      setIsTokoOpen(true);
-                                    }}
-                                    placeholder="Cari Toko..."
-                                    className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
-                                  />
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
-                                    <Search size={14} />
-                                  </div>
-                                </div>
-                              </Popover.Trigger>
-                              <Popover.Portal>
-                                <Popover.Content className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-64 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="start">
-                                  {filteredToko.length === 0 ? (
-                                    <div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Tidak ada hasil</div>
-                                  ) : (
-                                    filteredToko.map(t => (
-                                      <button 
-                                        key={t} 
-                                        onClick={() => {
-                                          setEditForm({...editForm, namaCompany: t});
-                                          setSearchToko(t);
-                                          setIsTokoOpen(false);
-                                        }}
-                                        className="w-full text-left px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors uppercase tracking-tight"
-                                      >
-                                        {highlightMatch(t, searchToko)}
-                                      </button>
-                                    ))
-                                  )}
-                                </Popover.Content>
-                              </Popover.Portal>
-                            </Popover.Root>
+                          {isEditing && role === "pusat" ? (
+                            <TableSearchableInput
+                              value={editForm.namaCompany || ""}
+                              onCommit={(val) => {
+                                setEditForm({ ...editForm, namaCompany: val });
+                                setSearchToko(val);
+                              }}
+                              items={filteredToko}
+                              placeholder="Cari Toko..."
+                            />
                           ) : (
-                            <div className="text-xs font-black text-slate-800 whitespace-nowrap truncate max-w-[200px]" title={item.namaCompany}>{item.namaCompany || "-"}</div>
+                            <div className="text-xs font-black text-slate-800 whitespace-nowrap truncate max-w-[150px]" title={item.namaCompany}>{item.namaCompany || "-"}</div>
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
                               value={editForm.link || ""}
@@ -931,110 +1205,77 @@ export default function ReturPage() {
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          {isEditing ? (
-                            <Popover.Root open={isProdukOpen} onOpenChange={setIsProdukOpen}>
-                              <Popover.Trigger asChild>
-                                <div className="relative w-full min-w-[200px]">
-                                  <input 
-                                    type="text"
-                                    value={searchProduk}
-                                    onChange={(e) => {
-                                      setSearchProduk(e.target.value);
-                                      setEditForm({...editForm, produk: e.target.value});
-                                      setIsProdukOpen(true);
-                                    }}
-                                    placeholder="Cari Produk..."
-                                    className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
-                                  />
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
-                                    <Package size={14} />
-                                  </div>
-                                </div>
-                              </Popover.Trigger>
-                              <Popover.Portal>
-                                <Popover.Content className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-72 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="start">
-                                  {filteredProductsInline.length === 0 ? (
-                                    <div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Tidak ada produk</div>
-                                  ) : (
-                                    filteredProductsInline.map(p => (
-                                      <button 
-                                        key={p.id} 
-                                        onClick={() => {
-                                          setEditForm({...editForm, produk: p.name});
-                                          setSearchProduk(p.name);
-                                          setIsProdukOpen(false);
-                                        }}
-                                        className="w-full text-left px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-emerald-600 hover:text-white rounded-xl transition-colors uppercase tracking-tight flex items-center justify-between group"
-                                      >
-                                        <span>{highlightMatch(p.name, searchProduk)}</span>
-                                        {PRIORITY_PRODUCTS.includes(p.name.toUpperCase()) && <Check size={12} className="text-emerald-400 group-hover:text-white" />}
-                                      </button>
-                                    ))
-                                  )}
-                                </Popover.Content>
-                              </Popover.Portal>
-                            </Popover.Root>
+                          {isEditing && role === "pusat" ? (
+                            <TableProductInput
+                              value={editForm.produk || ""}
+                              onCommit={(val) => {
+                                setEditForm({ ...editForm, produk: val });
+                                setSearchProduk(val);
+                                const p = products.find((x) => x.name === val);
+                                if (p) setEditForm((prev: any) => ({ ...prev, productId: p.id }));
+                              }}
+                              items={filteredProductsInline}
+                              placeholder="Cari Produk..."
+                            />
                           ) : (
                             <div className="text-xs font-bold text-slate-600 whitespace-nowrap max-w-[150px] truncate" title={item.produk}>{item.produk || "-"}</div>
                           )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-slate-800 tabular-nums text-xs">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               type="number"
                               className="w-full min-w-[100px] px-3 py-2 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer"
-                              value={editForm.qtyReturn || 0}
+                              value={editForm.qtyReturn === 0 ? "" : editForm.qtyReturn}
                               onChange={e => {
-                                const v = e.target.value.replace(/^0+/, '');
+                                const v = e.target.value;
                                 setEditForm({...editForm, qtyReturn: v === '' ? 0 : Number(v)});
                               }}
                             />
                           ) : formatNumber(item.qtyReturn)}
                         </td>
                         <td className="px-6 py-4 text-right font-black text-slate-900 tabular-nums text-xs">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               type="number"
                               className="w-full min-w-[120px] px-3 py-2 text-xs font-bold text-right text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer"
-                              value={editForm.nominal || 0}
+                              value={editForm.nominal === 0 ? "" : editForm.nominal}
                               onChange={e => {
-                                const v = e.target.value.replace(/^0+/, '');
+                                const v = e.target.value;
                                 setEditForm({...editForm, nominal: v === '' ? 0 : Number(v)});
                               }}
                             />
                           ) : formatIDR(item.nominal)}
                         </td>
-                        <td className="px-6 py-4 text-right font-bold text-slate-500 tabular-nums text-xs italic">
+                        <td className="px-6 py-4 text-right font-black text-slate-500 tabular-nums text-xs italic">
                           {isEditing ? (
-                            <input 
-                              type="number"
-                              className="w-full min-w-[120px] px-3 py-2 text-xs font-bold text-right text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer"
-                              value={editForm.rpKg || 0}
-                              onChange={e => {
-                                const v = e.target.value.replace(/^0+/, '');
-                                setEditForm({...editForm, rpKg: v === '' ? 0 : Number(v)});
-                              }}
-                            />
-                          ) : formatIDR(item.rpKg)}
+                            <div className="w-full min-w-[120px] px-3 py-2 text-xs font-black text-right text-indigo-700 bg-indigo-50/30 rounded-lg border-2 border-transparent tabular-nums">
+                              {formatIDR(editForm.rpKg || 0)}
+                            </div>
+                          ) : (
+                            formatIDR(item.rpKg)
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {isEditing ? (
-                            <select 
-                              className="w-full min-w-[120px] px-3 py-1.5 text-[10px] font-bold text-slate-700 uppercase bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.2em_1.2em] pr-8"
-                              value={editForm.statusBarang || ""}
-                              onChange={e => setEditForm({...editForm, statusBarang: e.target.value})}
-                            >
-                              <option value="Sudah Diambil">SUDAH DIAMBIL</option>
-                              <option value="Belum Diambil">BELUM DIAMBIL</option>
-                            </select>
+                            <SmoothStatusSelect 
+                              value={editForm.statusBarang || "BELUM DIAMBIL"}
+                              onChange={v => setEditForm({...editForm, statusBarang: v})}
+                            />
                           ) : (
-                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${item.statusBarang?.toLowerCase() === "sudah diambil" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"}`}>
+                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                              item.statusBarang?.toUpperCase() === "SUDAH DIAMBIL" 
+                              ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                              : item.statusBarang?.toUpperCase() === "DIMUSNAHKAN"
+                              ? "bg-amber-50 text-amber-600 border-amber-100"
+                              : "bg-rose-50 text-rose-600 border-rose-100"
+                            }`}>
                               {item.statusBarang || "Belum Diambil"}
                             </div>
                           )}
                         </td>
                         <td className="px-6 py-4 text-[10px] font-medium text-slate-400 whitespace-nowrap">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
                               value={editForm.refKetStatus || ""}
@@ -1043,65 +1284,45 @@ export default function ReturPage() {
                           ) : (item.refKetStatus || "-")}
                         </td>
                         <td className="px-6 py-4">
+                          {/* Lokasi Barang Tetap Bisa di Edit oleh Site Area */}
                           {isEditing ? (
-                            <Popover.Root open={isLokasiOpen} onOpenChange={setIsLokasiOpen}>
-                              <Popover.Trigger asChild>
-                                <div className="relative w-full min-w-[200px]">
-                                  <input 
-                                    type="text" value={searchLokasi}
-                                    onChange={(e) => { setSearchLokasi(e.target.value); setIsLokasiOpen(true); }}
-                                    placeholder="Cari Lokasi/DC..." className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
-                                  />
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"><Search size={14} /></div>
-                                </div>
-                              </Popover.Trigger>
-                              <Popover.Portal>
-                                <Popover.Content className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-64 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="start">
-                                  {filteredLokasi.length === 0 ? (<div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Tidak ada hasil</div>) : (
-                                    filteredLokasi.map(u => (
-                                      <button key={u.idRegional} onClick={() => { setEditForm({...editForm, lokasiBarangId: u.idRegional}); setSearchLokasi(u.siteArea); setIsLokasiOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors uppercase tracking-tight">
-                                        {highlightMatch(u.siteArea, searchLokasi)}
-                                        <div className="text-[9px] opacity-70 font-medium">{u.namaRegional}</div>
-                                      </button>
-                                    ))
-                                  )}
-                                </Popover.Content>
-                              </Popover.Portal>
-                            </Popover.Root>
+                            <TableSearchableInput
+                              value={units.find((u) => u.idRegional === editForm.lokasiBarangId)?.siteArea || ""}
+                              onCommit={(val) => {
+                                const u = units.find((x) => x.siteArea === val);
+                                setEditForm({ ...editForm, lokasiBarangId: u?.idRegional || "" });
+                                setSearchLokasi(val);
+                              }}
+                              items={filteredLokasi.map((u) => u.siteArea)}
+                              placeholder="Cari Lokasi/DC..."
+                            />
                           ) : (
-                            <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{item.LokasiBarang?.siteArea || "-"}</div>
+                            <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
+                              {item.LokasiBarang?.siteArea || "-"}
+                            </div>
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          {isEditing ? (
-                            <Popover.Root open={isPembebananOpen} onOpenChange={setIsPembebananOpen}>
-                              <Popover.Trigger asChild>
-                                <div className="relative w-full min-w-[200px]">
-                                  <input 
-                                    type="text" value={searchPembebanan}
-                                    onChange={(e) => { setSearchPembebanan(e.target.value); setIsPembebananOpen(true); }}
-                                    placeholder="Cari Pembebanan..." className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm cursor-pointer"
-                                  />
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"><Search size={14} /></div>
-                                </div>
-                              </Popover.Trigger>
-                              <Popover.Portal>
-                                <Popover.Content className="z-[9999] bg-white border border-slate-100 shadow-2xl rounded-2xl max-h-48 overflow-y-auto w-64 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="start">
-                                  {filteredPembebanan.length === 0 ? (<div className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Tidak ada hasil</div>) : (
-                                    filteredPembebanan.map(u => (
-                                      <button key={u.idRegional} onClick={() => { setEditForm({...editForm, pembebananReturnId: u.idRegional}); setSearchPembebanan(u.siteArea); setIsPembebananOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors uppercase tracking-tight">
-                                        {highlightMatch(u.siteArea, searchPembebanan)}
-                                        <div className="text-[9px] opacity-70 font-medium">{u.namaRegional}</div>
-                                      </button>
-                                    ))
-                                  )}
-                                </Popover.Content>
-                              </Popover.Portal>
-                            </Popover.Root>
-                          ) : (<div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">{item.PembebananReturn?.siteArea || "-"}</div>)}
+                          {/* Pembebanan Hanya Bisa di Edit oleh Pusat */}
+                          {isEditing && role === "pusat" ? (
+                            <TableSearchableInput
+                              value={units.find((u) => u.idRegional === editForm.pembebananReturnId)?.siteArea || ""}
+                              onCommit={(val) => {
+                                const u = units.find((x) => x.siteArea === val);
+                                setEditForm({ ...editForm, pembebananReturnId: u?.idRegional || "" });
+                                setSearchPembebanan(val);
+                              }}
+                              items={filteredPembebanan.map((u) => u.siteArea)}
+                              placeholder="Cari Pembebanan..."
+                            />
+                          ) : (
+                            <div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">
+                              {item.PembebananReturn?.siteArea || "-"}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               type="checkbox"
                               className="w-4 h-4 rounded border-indigo-200 text-indigo-600 focus:ring-indigo-500"
@@ -1113,7 +1334,7 @@ export default function ReturPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-[11px] font-bold text-slate-700 whitespace-nowrap italic">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
                               value={editForm.referensiPembayaran || ""}
@@ -1122,7 +1343,7 @@ export default function ReturPage() {
                           ) : (item.referensiPembayaran || "-")}
                         </td>
                         <td className="px-6 py-4 text-xs font-bold text-slate-500 whitespace-nowrap">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <CustomInlineDatePicker 
                               value={editForm.tanggalPembayaran}
                               onChange={(date) => setEditForm({...editForm, tanggalPembayaran: date})}
@@ -1131,7 +1352,7 @@ export default function ReturPage() {
                           ) : formatDate(item.tanggalPembayaran)}
                         </td>
                         <td className="px-6 py-4 text-[10px] font-medium text-slate-400 max-w-[150px] truncate" title={item.remarks}>
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
                               value={editForm.remarks || ""}
@@ -1140,7 +1361,7 @@ export default function ReturPage() {
                           ) : (item.remarks || "-")}
                         </td>
                         <td className="px-6 py-4 text-[11px] font-bold text-amber-600 whitespace-nowrap">
-                          {isEditing ? (
+                          {isEditing && role === "pusat" ? (
                             <input 
                               className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
                               value={editForm.sdiReturn || ""}
@@ -1168,12 +1389,14 @@ export default function ReturPage() {
                                 <button onClick={() => handleStartEdit(item)} className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all shadow-sm active:scale-90">
                                   <Pencil size={15} />
                                 </button>
-                                <button 
-                                  onClick={() => handleDelete(item.id)}
-                                  className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-90 cursor-pointer"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
+                                {role === "pusat" && (
+                                  <button 
+                                    onClick={() => handleDelete(item.id)}
+                                    className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-90 cursor-pointer"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
                               </>
                             )}
                           </div>
@@ -1518,5 +1741,30 @@ export default function ReturPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ReturPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 text-center">
+           <div className="bg-white p-12 rounded-[40px] shadow-2xl shadow-indigo-100 flex flex-col items-center gap-6 border border-slate-50 animate-in zoom-in-95 duration-700">
+              <div className="relative">
+                <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <LayoutList className="text-indigo-600" size={24} />
+                </div>
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-800 tracking-tight">Menyiapkan Dashboard...</h2>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-2">Loading System Module</p>
+              </div>
+           </div>
+        </div>
+      }
+    >
+      <ReturContent />
+    </Suspense>
   );
 }

@@ -85,13 +85,12 @@ const EliteSearchableInput = memo(
     onOpenChange,
   }: any) => {
     const [internalVal, setInternalVal] = useState(value || "");
+    const [activeIndex, setActiveIndex] = useState(-1);
 
-    // Sync if externally changed (e.g., reset)
     useEffect(() => {
       setInternalVal(value || "");
     }, [value]);
 
-    // Debounce onSearch logic
     useEffect(() => {
       const timer = setTimeout(() => {
         onSearch(internalVal);
@@ -99,12 +98,37 @@ const EliteSearchableInput = memo(
       return () => clearTimeout(timer);
     }, [internalVal, onSearch]);
 
+    useEffect(() => {
+      if (!open) {
+        setActiveIndex(-1);
+      } else if (items.length > 0) {
+        setActiveIndex(0);
+      } else {
+        setActiveIndex(-1);
+      }
+    }, [open, items.length]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setInternalVal(e.target.value);
     };
 
-    const handleBlur = () => {
-      onCommit(internalVal);
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (!open) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((p) => (p < items.length - 1 ? p + 1 : p));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((p) => (p > 0 ? p - 1 : p));
+      } else if (e.key === "Enter") {
+        if (activeIndex !== -1 && items[activeIndex]) {
+          e.preventDefault();
+          const selected = items[activeIndex];
+          setInternalVal(selected);
+          onCommit(selected);
+          onOpenChange(false);
+        }
+      }
     };
 
     return (
@@ -119,9 +143,9 @@ const EliteSearchableInput = memo(
                 type="text"
                 value={internalVal}
                 placeholder={placeholder}
+                onKeyDown={handleKeyDown}
                 className="w-full px-5 py-4 text-xs font-bold text-slate-700 bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl transition-all outline-none pr-12 cursor-pointer"
                 onChange={handleChange}
-                onBlur={handleBlur}
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 {internalVal && (
@@ -151,7 +175,7 @@ const EliteSearchableInput = memo(
               sticky="always"
               onOpenAutoFocus={(e) => e.preventDefault()}
             >
-              {items.map((tj: string) => (
+              {items.map((tj: string, idx: number) => (
                 <button
                   key={tj}
                   type="button"
@@ -160,7 +184,7 @@ const EliteSearchableInput = memo(
                     onCommit(tj);
                     onOpenChange(false);
                   }}
-                  className="w-full px-6 py-3 text-left text-xs font-bold text-slate-600 hover:bg-indigo-600 hover:text-white transition-colors border-b border-slate-50 last:border-0 cursor-pointer"
+                  className={`w-full px-6 py-3 text-left text-xs font-bold transition-colors border-b border-slate-50 last:border-0 cursor-pointer ${idx === activeIndex ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}
                 >
                   {highlightMatch(tj, internalVal)}
                 </button>
@@ -187,6 +211,7 @@ const EliteProductInput = memo(
     onOpenChange,
   }: any) => {
     const [internalVal, setInternalVal] = useState(value || "");
+    const [activeIndex, setActiveIndex] = useState(-1);
 
     useEffect(() => {
       setInternalVal(value || "");
@@ -199,12 +224,37 @@ const EliteProductInput = memo(
       return () => clearTimeout(timer);
     }, [internalVal, onSearch]);
 
+    useEffect(() => {
+      if (!open) {
+        setActiveIndex(-1);
+      } else if (items.length > 0) {
+        setActiveIndex(0);
+      } else {
+        setActiveIndex(-1);
+      }
+    }, [open, items.length]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setInternalVal(e.target.value);
     };
 
-    const handleBlur = () => {
-      onCommit(internalVal);
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (!open) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((p) => (p < items.length - 1 ? p + 1 : p));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((p) => (p > 0 ? p - 1 : p));
+      } else if (e.key === "Enter") {
+        if (activeIndex !== -1 && items[activeIndex]) {
+          e.preventDefault();
+          const selected = items[activeIndex].name;
+          setInternalVal(selected);
+          onCommit(selected);
+          onOpenChange(false);
+        }
+      }
     };
 
     return (
@@ -219,9 +269,9 @@ const EliteProductInput = memo(
                 type="text"
                 value={internalVal}
                 placeholder={placeholder}
+                onKeyDown={handleKeyDown}
                 className="w-full px-5 py-4 text-xs font-bold text-slate-700 bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl transition-all outline-none pr-12 cursor-pointer"
                 onChange={handleChange}
-                onBlur={handleBlur}
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 {internalVal && (
@@ -251,7 +301,7 @@ const EliteProductInput = memo(
               sticky="always"
               onOpenAutoFocus={(e) => e.preventDefault()}
             >
-              {items.map((p: any) => (
+              {items.map((p: any, idx: number) => (
                 <button
                   key={p.id}
                   type="button"
@@ -260,10 +310,11 @@ const EliteProductInput = memo(
                     onCommit(p.name);
                     onOpenChange(false);
                   }}
-                  className="w-full px-6 py-4 text-left border-b border-slate-50 last:border-0 hover:bg-indigo-600 group transition-all cursor-pointer"
+                  className={`w-full px-6 py-4 text-left border-b border-slate-50 last:border-0 transition-all cursor-pointer group ${idx === activeIndex ? "bg-indigo-600" : "hover:bg-indigo-600"}`}
                 >
-                  {/* CLEAN UI: Nama produk saja */}
-                  <span className="text-xs font-bold text-slate-700 group-hover:text-white block">
+                  <span
+                    className={`text-xs font-bold block transition-all ${idx === activeIndex ? "text-white" : "text-slate-700 group-hover:text-white"}`}
+                  >
                     {highlightMatch(p.name, internalVal)}
                   </span>
                 </button>
@@ -289,6 +340,7 @@ function CustomInlineDatePicker({
   placeholder?: string;
   colorScheme?: "indigo" | "rose" | "slate";
 }) {
+  const [open, setOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(
     value ? new Date(value) : new Date(),
   );
@@ -304,7 +356,7 @@ function CustomInlineDatePicker({
   };
 
   return (
-    <Popover.Root>
+    <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
         <button
           type="button"
@@ -372,7 +424,10 @@ function CustomInlineDatePicker({
                 <button
                   key={day.toISOString()}
                   type="button"
-                  onClick={() => onChange(day.toISOString())}
+                  onClick={() => {
+                    onChange(day.toISOString());
+                    setOpen(false);
+                  }}
                   className={`h-8 w-8 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all cursor-pointer ${!isCurrentMonth ? "text-slate-200 pointer-events-none" : isSelected ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "text-slate-600 hover:bg-slate-50"}`}
                 >
                   {format(day, "d")}
@@ -410,13 +465,10 @@ function NewReturPageContent() {
     kodeToko: "",
     namaCompany: "",
     link: "",
-    produk: "",
-    qtyReturn: 0,
-    nominal: 0,
-    rpKg: 0,
     statusBarang: "Belum Diambil",
     refKetStatus: "",
     lokasiBarangId: "",
+    pembebananReturnId: "",
     invoiceRekon: false,
     referensiPembayaran: "",
     tanggalPembayaran: null,
@@ -424,11 +476,26 @@ function NewReturPageContent() {
     sdiReturn: "",
   });
 
+  const [items, setItems] = useState<any[]>([]);
+  const [currentItem, setCurrentItem] = useState({
+    produk: "",
+    qtyReturn: 0,
+    nominal: 0,
+    rpKg: 0,
+  });
+
   const [tujuanFilter, setTujuanFilter] = useState("");
   const [produkFilter, setProdukFilter] = useState("");
+  const [lokasiFilter, setLokasiFilter] = useState("");
+  const [pembebananFilter, setPembebananFilter] = useState("");
+  const [units, setUnits] = useState<any[]>([]);
   const [isTujuanOpen, setIsTujuanOpen] = useState(false);
   const [isProdukOpen, setIsProdukOpen] = useState(false);
+  const [isLokasiOpen, setIsLokasiOpen] = useState(false);
+  const [isPembebananOpen, setIsPembebananOpen] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [activeStatusIndex, setActiveStatusIndex] = useState(-1);
+  const STATUS_OPTIONS = ["Belum Diambil", "Sudah Diambil", "Dimusnahkan"];
 
   const PRIORITY_PRODUCTS = useMemo(
     () => ["PUNOKAWAN 5 KG", "BEFOOD SETRA RAMOS 5 KG"],
@@ -443,15 +510,18 @@ function NewReturPageContent() {
     Promise.all([
       fetch("/api/ritel").then((res) => res.json()),
       fetch("/api/product").then((res) => res.json()),
-    ]).then(([ritelJson, productJson]) => {
+      fetch("/api/unit-produksi").then((res) => res.json()),
+    ]).then(([ritelJson, productJson, unitJson]) => {
       const rList = Array.isArray(ritelJson)
         ? ritelJson
         : ritelJson?.data || [];
       const pList = Array.isArray(productJson)
         ? productJson
         : productJson?.data || [];
+      const uList = Array.isArray(unitJson) ? unitJson : unitJson?.data || [];
       setRetailers(rList);
       setProducts(pList);
+      setUnits(uList);
       const rCurrent = rList.find((r: any) => r.id === ritelId);
       if (rCurrent) setRetailerName(rCurrent.namaPt);
       else setRetailerName("Ritel Tidak Terdeteksi");
@@ -479,6 +549,22 @@ function NewReturPageContent() {
     [masterTujuanList, tujuanFilter],
   );
 
+  const filteredLokasi = useMemo(
+    () =>
+      units.filter((u) =>
+        u.siteArea.toLowerCase().includes(lokasiFilter.toLowerCase()),
+      ),
+    [units, lokasiFilter],
+  );
+
+  const filteredPembebanan = useMemo(
+    () =>
+      units.filter((u) =>
+        u.siteArea.toLowerCase().includes(pembebananFilter.toLowerCase()),
+      ),
+    [units, pembebananFilter],
+  );
+
   const filteredProducts = useMemo(() => {
     const rawFiltered = products.filter((p) =>
       p.name.toLowerCase().includes(produkFilter.toLowerCase()),
@@ -495,35 +581,94 @@ function NewReturPageContent() {
     });
   }, [products, produkFilter, PRIORITY_PRODUCTS]);
 
-  const handleNumberChange = (field: string, value: string) => {
+  const handleNumberChangeCurrent = (field: string, value: string) => {
     const raw = value.replace(/[^0-9]/g, "");
     const clean = raw.replace(/^0+/, "");
-    setFormData((prev: any) => ({
+    setCurrentItem((prev: any) => ({
       ...prev,
       [field]: clean === "" ? 0 : Number(clean),
     }));
   };
 
   useEffect(() => {
-    const nominal = formData.nominal || 0;
-    const qty = formData.qtyReturn || 0;
+    const nominal = currentItem.nominal || 0;
+    const qty = currentItem.qtyReturn || 0;
     const result = qty > 0 ? Math.round(nominal / qty) : 0;
-    setFormData((prev: any) => ({ ...prev, rpKg: result }));
-  }, [formData.nominal, formData.qtyReturn]);
+    setCurrentItem((prev: any) => ({ ...prev, rpKg: result }));
+  }, [currentItem.nominal, currentItem.qtyReturn]);
+
+  const addItem = () => {
+    if (!currentItem.produk) {
+      Swal.fire({
+        icon: "warning",
+        title: "Produk Kosong",
+        text: "Silakan pilih produk terlebih dahulu",
+        background: "#fff",
+        confirmButtonColor: "#4f46e5",
+      });
+      return;
+    }
+    setItems([...items, { ...currentItem }]);
+    setCurrentItem({
+      produk: "",
+      qtyReturn: 0,
+      nominal: 0,
+      rpKg: 0,
+    });
+    setProdukFilter("");
+  };
+
+  const removeItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (items.length === 0) {
+      Swal.fire({
+        icon: "error",
+        title: "Daftar Kosong",
+        text: "Minimal tambahkan satu barang ke daftar",
+        background: "#fff",
+        confirmButtonColor: "#4f46e5",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+      // Map all items with the header data
+      const records = items.map((item) => ({
+        ...formData,
+        ...item,
+        ritelId,
+      }));
+
       const res = await fetch("/api/retur", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, ritelId }),
+        body: JSON.stringify(records),
       });
-      if (res.ok) router.back();
-      else alert("Gagal menyimpan data");
-    } catch {
-      alert("Terjadi kesalahan sistem!");
+
+      if (res.ok) {
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil!",
+          text: `${items.length} Data retur berhasil disimpan`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setTimeout(() => router.push(`/retur?ritelId=${ritelId}`), 2000);
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || "Gagal menyimpan data");
+      }
+    } catch (error: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Gagal Simpan",
+        text: error.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -540,7 +685,7 @@ function NewReturPageContent() {
     <div className="min-h-screen bg-[#f8fafc] overflow-x-hidden">
       {/* --- ELITE STICKY HEADER --- */}
       <div className="sticky top-0 z-[50] bg-white/80 backdrop-blur-3xl border-b border-slate-100 shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-6">
+        <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-5">
               <button
@@ -577,7 +722,7 @@ function NewReturPageContent() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 md:px-10 py-10 pb-32">
+      <div className="max-w-7xl mx-auto px-6 md:px-10 py-10 pb-32">
         <form onSubmit={handleSubmit} className="space-y-10 overflow-visible">
           <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-visible">
             <div className="px-10 py-8 border-b border-slate-50 bg-slate-50/30 flex items-center gap-4 rounded-t-[40px]">
@@ -594,6 +739,40 @@ function NewReturPageContent() {
               </div>
             </div>
             <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 overflow-visible">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
+                  RTV / CN Number
+                </label>
+                <input
+                  type="text"
+                  value={formData.rtvCn || ""}
+                  onChange={(e) => {
+                    setFormData({ ...formData, rtvCn: e.target.value });
+                  }}
+                  placeholder="Masukkan nomor RTV/CN"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
+                  Kode Toko
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={
+                    formData.kodeToko === 0 || formData.kodeToko === null
+                      ? ""
+                      : formData.kodeToko
+                  }
+                  onChange={(e) => {
+                    const cleanVal = e.target.value.replace(/[^0-9]/g, "");
+                    setFormData({ ...formData, kodeToko: cleanVal });
+                  }}
+                  placeholder="Masukkan kode toko"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer"
+                />
+              </div>
               <EliteSearchableInput
                 label="Tujuan (Toko/DC)"
                 placeholder="Cari atau Ketik Tujuan..."
@@ -607,81 +786,185 @@ function NewReturPageContent() {
                 open={isTujuanOpen}
                 onOpenChange={setIsTujuanOpen}
               />
-              <EliteProductInput
-                label="Nama Produk / Barang"
-                placeholder="Cari Nama Produk..."
-                value={formData.produk}
-                onSearch={setProdukFilter}
-                onCommit={(val: string) =>
-                  setFormData((p: any) => ({ ...p, produk: val }))
-                }
-                items={filteredProducts}
-                open={isProdukOpen}
-                onOpenChange={setIsProdukOpen}
-              />
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Nominal Retur (IDR)
-                </label>
-                <div className="relative group">
-                  <div className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-400 font-black text-xs pointer-events-none">
-                    Rp
-                  </div>
-                  <input
-                    type="text"
-                    value={
-                      formData.nominal === 0
-                        ? ""
-                        : formatRupiahDisplay(formData.nominal)
-                    }
-                    onChange={(e) =>
-                      handleNumberChange("nominal", e.target.value)
-                    }
-                    placeholder="0"
-                    className="w-full pl-12 pr-5 py-4 text-sm font-black text-indigo-700 bg-indigo-50/50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl transition-all outline-none cursor-pointer"
-                  />
-                </div>
-              </div>
+              <div className="md:col-span-1" />
 
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                    Qty Retur
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.qtyReturn === 0 ? "" : formData.qtyReturn}
-                    onChange={(e) =>
-                      handleNumberChange("qtyReturn", e.target.value)
-                    }
-                    placeholder="0"
-                    className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                    RP / KG (Otomatis)
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs pointer-events-none">
-                      Rp
-                    </div>
-                    <input
-                      type="text"
-                      readOnly
-                      value={
-                        formData.rpKg === 0
-                          ? ""
-                          : formatRupiahDisplay(formData.rpKg)
+              {/* ITEM INPUT BUFFER */}
+              <div className="md:col-span-2 pt-6 border-t border-slate-50">
+                <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <Package size={14} /> Input Barang Retur
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="md:col-span-1">
+                    <EliteProductInput
+                      label="Nama Produk / Barang"
+                      placeholder="Cari Nama Produk..."
+                      value={currentItem.produk}
+                      onSearch={setProdukFilter}
+                      onCommit={(val: string) =>
+                        setCurrentItem((p: any) => ({ ...p, produk: val }))
                       }
-                      placeholder="0"
-                      className="w-full pl-12 pr-5 py-4 text-xs font-black text-slate-500 bg-slate-100/50 border-2 border-slate-100 rounded-2xl outline-none cursor-default"
+                      items={filteredProducts}
+                      open={isProdukOpen}
+                      onOpenChange={setIsProdukOpen}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
+                      Qty
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-300 transition-all text-sm font-black text-slate-700 placeholder:text-slate-300 pr-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      value={currentItem.qtyReturn === 0 ? "" : currentItem.qtyReturn}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCurrentItem({
+                          ...currentItem,
+                          qtyReturn: v === "" ? 0 : Number(v),
+                        });
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
+                      Nominal Retur (IDR)
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-400 font-black text-xs pointer-events-none">
+                        Rp
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-300 transition-all text-sm font-black text-slate-700 placeholder:text-slate-300 pr-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-right"
+                        value={currentItem.nominal === 0 ? "" : currentItem.nominal}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setCurrentItem({
+                            ...currentItem,
+                            nominal: v === "" ? 0 : Number(v),
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-indigo-200 uppercase tracking-widest ml-1">
+                      RP / KG
+                    </label>
+                    <div className="px-5 py-4 text-[10px] font-black text-indigo-400 bg-indigo-50/30 rounded-2xl border-2 border-transparent h-[52px] flex items-center">
+                      {currentItem.rpKg > 0
+                        ? `Rp ${formatRupiahDisplay(currentItem.rpKg)}`
+                        : "—"}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="flex items-center gap-2 px-8 py-3 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95 shadow-sm shadow-indigo-100/50 border border-indigo-100"
+                  >
+                    Tambah ke Daftar
+                    <ChevronRight size={14} />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* PREVIEW TABLE */}
+          {items.length > 0 && (
+            <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-500">
+              <div className="px-10 py-6 border-b border-slate-50 bg-slate-50/20 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-2 h-8 bg-indigo-500 rounded-full" />
+                  <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">
+                    Daftar Barang ({items.length})
+                  </h2>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">
+                        No
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Nama Produk
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+                        Qty
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+                        Nominal (IDR)
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+                        RP/KG
+                      </th>
+                      <th className="px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-24">
+                        Aksi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {items.map((item, idx) => (
+                      <tr
+                        key={idx}
+                        className="hover:bg-slate-50/40 transition-colors group"
+                      >
+                        <td className="px-10 py-5 text-xs font-black text-slate-300">
+                          {String(idx + 1).padStart(2, "0")}
+                        </td>
+                        <td className="px-6 py-5">
+                          <p className="text-xs font-bold text-slate-700 uppercase">
+                            {item.produk}
+                          </p>
+                        </td>
+                        <td className="px-6 py-5 text-right text-xs font-black text-slate-900">
+                          {item.qtyReturn}
+                        </td>
+                        <td className="px-6 py-5 text-right text-xs font-black text-indigo-600">
+                          Rp {formatRupiahDisplay(item.nominal)}
+                        </td>
+                        <td className="px-6 py-5 text-right text-xs font-bold text-slate-400">
+                          Rp {formatRupiahDisplay(item.rpKg)}
+                        </td>
+                        <td className="px-10 py-5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeItem(idx)}
+                            className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all active:scale-90"
+                          >
+                            <X size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-indigo-50/30">
+                      <td
+                        colSpan={3}
+                        className="px-10 py-5 text-[10px] font-black text-indigo-700 uppercase tracking-widest text-right"
+                      >
+                        Total Nominal
+                      </td>
+                      <td className="px-6 py-5 text-right text-sm font-black text-indigo-700">
+                        Rp{" "}
+                        {formatRupiahDisplay(
+                          items.reduce((sum, it) => sum + (it.nominal || 0), 0),
+                        )}
+                      </td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-visible">
             <div className="px-10 py-8 border-b border-slate-50 bg-slate-50/30 flex items-center gap-4 rounded-t-[40px]">
@@ -698,89 +981,46 @@ function NewReturPageContent() {
               </div>
             </div>
             <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 overflow-visible">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                    RTV / CN Number
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.rtvCn || ""}
-                    onChange={(e) => {
-                      setFormData({ ...formData, rtvCn: e.target.value });
-                    }}
-                    placeholder="Masukkan nomor RTV/CN"
-                    className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-emerald-400 rounded-2xl outline-none cursor-pointer"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                    Kode Toko
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={
-                      formData.kodeToko === 0 || formData.kodeToko === null
-                        ? ""
-                        : formData.kodeToko
-                    }
-                    onChange={(e) => {
-                      const cleanVal = e.target.value.replace(/[^0-9]/g, "");
-                      setFormData({ ...formData, kodeToko: cleanVal });
-                    }}
-                    placeholder="Masukkan kode toko"
-                    className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-emerald-400 rounded-2xl outline-none cursor-pointer"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Status Barang
-                </label>
-                <Popover.Root
-                  open={isStatusOpen}
-                  onOpenChange={setIsStatusOpen}
-                >
-                  <Popover.Trigger asChild>
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent hover:border-emerald-200 rounded-2xl outline-none cursor-pointer"
-                    >
-                      <span className="uppercase tracking-widest">
-                        {formData.statusBarang}
-                      </span>
-                      <ChevronDown size={18} className="text-slate-300" />
-                    </button>
-                  </Popover.Trigger>
-                  <Popover.Portal>
-                    <Popover.Content
-                      className="z-[9999] bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden w-[var(--radix-popover-trigger-width)]"
-                      sideOffset={5}
-                      sticky="always"
-                    >
-                      <div className="p-1">
-                        {["Belum Diambil", "Sudah Diambil"].map((st) => (
-                          <button
-                            key={st}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, statusBarang: st });
-                              setIsStatusOpen(false);
-                            }}
-                            className={`w-full px-6 py-4 text-left text-xs font-black uppercase tracking-widest flex items-center justify-between rounded-xl transition-all cursor-pointer ${formData.statusBarang === st ? "bg-emerald-600 text-white shadow-lg shadow-emerald-100" : "text-slate-600 hover:bg-slate-50"}`}
-                          >
-                            {st}
-                            {formData.statusBarang === st && (
-                              <Check size={16} />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </Popover.Content>
-                  </Popover.Portal>
-                </Popover.Root>
-              </div>
+              <EliteSearchableInput
+                label="Lokasi Barang"
+                placeholder="Pilih Lokasi..."
+                icon={Search}
+                value={
+                  units.find((u) => u.idRegional === formData.lokasiBarangId)
+                    ?.siteArea || ""
+                }
+                onSearch={setLokasiFilter}
+                onCommit={(val: string) => {
+                  const u = units.find((x) => x.siteArea === val);
+                  setFormData((p: any) => ({
+                    ...p,
+                    lokasiBarangId: u?.idRegional || "",
+                  }));
+                }}
+                items={filteredLokasi.map((u) => u.siteArea)}
+                open={isLokasiOpen}
+                onOpenChange={setIsLokasiOpen}
+              />
+              <EliteSearchableInput
+                label="Pembebanan Retur"
+                placeholder="Pilih Pembebanan..."
+                icon={Search}
+                value={
+                  units.find((u) => u.idRegional === formData.pembebananReturnId)
+                    ?.siteArea || ""
+                }
+                onSearch={setPembebananFilter}
+                onCommit={(val: string) => {
+                  const u = units.find((x) => x.siteArea === val);
+                  setFormData((p: any) => ({
+                    ...p,
+                    pembebananReturnId: u?.idRegional || "",
+                  }));
+                }}
+                items={filteredPembebanan.map((u) => u.siteArea)}
+                open={isPembebananOpen}
+                onOpenChange={setIsPembebananOpen}
+              />
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
                   Tanggal RTV
@@ -804,6 +1044,82 @@ function NewReturPageContent() {
                   colorScheme="rose"
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
+                  Status Barang
+                </label>
+                <Popover.Root
+                  open={isStatusOpen}
+                  onOpenChange={(open) => {
+                    setIsStatusOpen(open);
+                    if (!open) setActiveStatusIndex(-1);
+                  }}
+                >
+                  <Popover.Trigger asChild>
+                    <button
+                      type="button"
+                      onKeyDown={(e) => {
+                        if (!isStatusOpen) return;
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setActiveStatusIndex((p) =>
+                            p < STATUS_OPTIONS.length - 1 ? p + 1 : p,
+                          );
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setActiveStatusIndex((p) => (p > 0 ? p - 1 : p));
+                        } else if (e.key === "Enter") {
+                          if (
+                            activeStatusIndex !== -1 &&
+                            STATUS_OPTIONS[activeStatusIndex]
+                          ) {
+                            e.preventDefault();
+                            setFormData({
+                              ...formData,
+                              statusBarang: STATUS_OPTIONS[activeStatusIndex],
+                            });
+                            setIsStatusOpen(false);
+                          }
+                        }
+                      }}
+                      className="w-full flex items-center justify-between px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent hover:border-emerald-200 rounded-2xl outline-none cursor-pointer"
+                    >
+                      <span className="uppercase tracking-widest">
+                        {formData.statusBarang}
+                      </span>
+                      <ChevronDown size={18} className="text-slate-300" />
+                    </button>
+                  </Popover.Trigger>
+                  <Popover.Portal>
+                    <Popover.Content
+                      className="z-[9999] bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden w-[var(--radix-popover-trigger-width)]"
+                      sideOffset={5}
+                      sticky="always"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <div className="p-1">
+                        {STATUS_OPTIONS.map((st, idx) => (
+                          <button
+                            key={st}
+                            type="button"
+                            onClick={() => {
+                              setFormData({ ...formData, statusBarang: st });
+                              setIsStatusOpen(false);
+                            }}
+                            className={`w-full px-6 py-4 text-left text-xs font-black uppercase tracking-widest flex items-center justify-between rounded-xl transition-all cursor-pointer ${formData.statusBarang === st || idx === activeStatusIndex ? "bg-emerald-600 text-white shadow-lg shadow-emerald-100" : "text-slate-600 hover:bg-slate-50"}`}
+                          >
+                            {st}
+                            {(formData.statusBarang === st ||
+                              idx === activeStatusIndex) && <Check size={16} />}
+                          </button>
+                        ))}
+                      </div>
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
+              </div>
+              <div className="md:col-span-1 space-y-2 invisible" />
+
               <div className="md:col-span-2 space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
                   Link RTV

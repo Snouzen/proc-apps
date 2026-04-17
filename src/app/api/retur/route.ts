@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { cookies } from "next/headers";
+import { verifySession } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
@@ -11,23 +13,49 @@ export async function GET(request: Request) {
     const offset = (page - 1) * limit;
     const q = searchParams.get("q") || "";
 
+    // [RBAC] Ambil Session & Role
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get("session")?.value;
+    const user = verifySession(sessionToken);
+
+    let siteScopeId: string | null = null;
+
+    // Jika Role adalah SiteArea, batasi hanya untuk region mereka
+    if (user?.role === "sitearea" && user.siteArea) {
+      const unit = await prisma.unitProduksi.findFirst({
+        where: { siteArea: { contains: user.siteArea, mode: "insensitive" } },
+      });
+      if (unit) siteScopeId = unit.idRegional;
+    }
+
+    // Construct dynamic where filter
+    const drFilter: Prisma.DataReturWhereInput[] = [];
+    if (siteScopeId) drFilter.push({ lokasiBarangId: siteScopeId });
+    if (q) {
+      drFilter.push({
+        OR: [
+          { rtvCn: { contains: q, mode: "insensitive" } },
+          { namaCompany: { contains: q, mode: "insensitive" } },
+          { produk: { contains: q, mode: "insensitive" } },
+        ]
+      });
+    }
+
     // SCENARIO A: Grouped Mode (Accordion) - Berikan daftar peritel yang punya retur
     if (!retailerId) {
       const groupedData = await prisma.ritelModern.findMany({
         where: {
           DataRetur: {
-            some: q ? {
-              OR: [
-                { rtvCn: { contains: q, mode: "insensitive" } },
-                { namaCompany: { contains: q, mode: "insensitive" } },
-                { produk: { contains: q, mode: "insensitive" } },
-              ]
-            } : {}
+            some: drFilter.length > 0 ? { AND: drFilter } : {}
           }
         },
         include: {
           _count: {
-            select: { DataRetur: true }
+            select: {
+              DataRetur: {
+                where: siteScopeId ? { lokasiBarangId: siteScopeId } : {}
+              }
+            }
           }
         },
         orderBy: { namaPt: "asc" }
@@ -40,19 +68,27 @@ export async function GET(request: Request) {
     }
 
     // SCENARIO B: Detail Mode - Kembalikan data retur spesifik untuk ritel tsb
-    const where: Prisma.DataReturWhereInput = {
-      ritelId: retailerId
-    };
-
+    const filtersB: Prisma.DataReturWhereInput[] = [
+      { ritelId: retailerId }
+    ];
+    
+    if (siteScopeId) filtersB.push({ lokasiBarangId: siteScopeId });
+    
     if (q) {
-      where.OR = [
-        { rtvCn: { contains: q, mode: "insensitive" } },
-        { namaCompany: { contains: q, mode: "insensitive" } },
-        { produk: { contains: q, mode: "insensitive" } },
-        { LokasiBarang: { siteArea: { contains: q, mode: "insensitive" } } },
-        { LokasiBarang: { namaRegional: { contains: q, mode: "insensitive" } } },
-      ];
+      filtersB.push({
+        OR: [
+          { rtvCn: { contains: q, mode: "insensitive" } },
+          { namaCompany: { contains: q, mode: "insensitive" } },
+          { produk: { contains: q, mode: "insensitive" } },
+          { LokasiBarang: { siteArea: { contains: q, mode: "insensitive" } } },
+          { LokasiBarang: { namaRegional: { contains: q, mode: "insensitive" } } },
+        ]
+      });
     }
+
+    const where: Prisma.DataReturWhereInput = {
+      AND: filtersB
+    };
 
     const [data, total] = await Promise.all([
       prisma.dataRetur.findMany({
@@ -99,15 +135,23 @@ export async function POST(request: Request) {
       // [OPTIMASI 2] Helper untuk mencocokkan string dari Excel ke idRegional
       const findUnitId = (nameVal: any) => {
         if (!nameVal) return null;
-        const searchStr = String(nameVal).trim().toLowerCase();
-        
-        // Cari berdasarkan kecocokan nama (Case Insensitive)
-        const match = masterUnits.find(u => String(u.siteArea).trim().toLowerCase() === searchStr);
-        
-        // Jika yang diinput user ternyata sudah berupa ID (mengandung dash), loloskan
-        if (!match && searchStr.length > 15 && searchStr.includes('-')) return String(nameVal);
-        
-        return match ? match.idRegional : null;
+        const searchStr = String(nameVal).trim();
+        const lowerSearch = searchStr.toLowerCase();
+
+        // 1. Cek dulu apakah ini SUDAH berupa ID yang valid (idRegional)
+        const isAlreadyId = masterUnits.some((u) => u.idRegional === searchStr);
+        if (isAlreadyId) return searchStr;
+
+        // 2. Cari berdasarkan kecocokan nama (siteArea)
+        const match = masterUnits.find(
+          (u) => u.siteArea.trim().toLowerCase() === lowerSearch,
+        );
+        if (match) return match.idRegional;
+
+        // 3. Fallback: Jika ID mengandung dash (legacy UUID style) tapi tdk ada di master
+        if (searchStr.length > 15 && searchStr.includes("-")) return searchStr;
+
+        return null;
       };
 
       // [RADAR CERDAS] Mencari value di dalam object meskipun nama key-nya agak berbeda/typo
