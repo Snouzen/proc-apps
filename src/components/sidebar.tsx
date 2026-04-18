@@ -4,18 +4,19 @@ import {
   BarChart3,
   BookOpen,
   Calculator,
-  CalendarDays,
+  LayoutDashboard,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   FileCheck,
   FileLock,
   FileText,
-  Home,
-  LayoutDashboard,
   RotateCcw,
   X,
   TrendingDown,
+  CalendarDays,
+  CalendarClock,
+  PackageSearch
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -38,6 +39,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [poMenuOpen, setPoMenuOpen] = useState(false);
+  const [branchMenuOpen, setBranchMenuOpen] = useState(false);
   const [role, setRole] = useState<
     "pusat" | "rm" | "sitearea" | "spb_dki" | null
   >(initialRole || null);
@@ -45,10 +47,13 @@ export default function Sidebar({
     initialRegional ?? null,
   );
 
-  // Otomatis buka sub-menu kalau kita lagi di halaman PO
+  // Otomatis buka sub-menu kalau kita lagi di halaman terkait
   useEffect(() => {
-    if (pathname.includes("/po-details")) {
+    if (pathname.includes("/po-details") || pathname.includes("/master-data")) {
       setPoMenuOpen(true);
+    }
+    if (pathname.includes("/branch")) {
+      setBranchMenuOpen(true);
     }
   }, [pathname]);
 
@@ -89,9 +94,13 @@ export default function Sidebar({
       path: "/need-assign",
     },
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
-    { name: "Branch Plan", icon: <CalendarDays size={20} />, path: "/branch" },
     { name: "Data Retur", icon: <RotateCcw size={20} />, path: "/retur" },
     { name: "Rekonsiliasi", icon: <Calculator size={20} />, path: "/rekon" },
+  ];
+
+  const branchSubItems = [
+    { name: "Delivery Calendar", icon: <CalendarDays size={16} />, path: "/branch" },
+    { name: "Expired Calendar", icon: <CalendarClock size={16} />, path: "/branch/expired" },
   ];
 
   const menuItems =
@@ -100,8 +109,7 @@ export default function Sidebar({
           baseMenu[0], // Dashboard
           baseMenu[1], // Schedule
           baseMenu[4], // Report
-          baseMenu[5], // Branch Plan
-          baseMenu[6], // Data Retur
+          baseMenu[5], // Data Retur
         ]
       : baseMenu;
 
@@ -191,6 +199,55 @@ export default function Sidebar({
               </Link>
             );
           })}
+
+          {/* Collapsible Branch Plan */}
+          <div className="space-y-1">
+            <div
+              onClick={() =>
+                isOpen ? setBranchMenuOpen(!branchMenuOpen) : setIsOpen(true)
+              }
+              className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+            ${pathname.includes("/branch") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+            >
+              <div className="flex items-center gap-3">
+                <CalendarDays size={20} className="shrink-0" />
+                {isOpen && (
+                  <span className="text-sm whitespace-nowrap animate-in slide-in-from-left-2">
+                    Branch Plan
+                  </span>
+                )}
+              </div>
+              {isOpen && (
+                <span
+                  className={`transition-transform duration-200 ${branchMenuOpen ? "rotate-90" : ""}`}
+                >
+                  <ChevronRight size={16} />
+                </span>
+              )}
+            </div>
+
+            {isOpen && branchMenuOpen && (
+              <div className="mt-1 space-y-1 ml-4 border-l-2 border-slate-50 animate-in fade-in slide-in-from-top-2 duration-300">
+                {branchSubItems.map((sub) => {
+                  const subActive = pathname === sub.path;
+                  return (
+                    <Link
+                      key={sub.name}
+                      href={sub.path}
+                      prefetch={false}
+                      className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
+                    ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >
+                      <span className="shrink-0">{sub.icon}</span>
+                      <span className="text-xs whitespace-nowrap">
+                        {sub.name}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Collapsible Master Data (hide for RM) */}
           <div className="space-y-1">

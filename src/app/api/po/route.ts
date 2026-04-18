@@ -660,6 +660,7 @@ export async function GET(request: Request) {
       };
     }
 
+    const filterBy = (searchParams.get("filterBy") || "tglkirim").trim();
     if (monthParam && yearParam) {
       const y = parseInt(yearParam);
       const m = parseInt(monthParam); // 1 - 12
@@ -667,10 +668,12 @@ export async function GET(request: Request) {
         const startDate = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
         const endDate = new Date(Date.UTC(y, m, 1, 0, 0, 0));
 
+        const dateField = filterBy === "expired" ? "expiredTgl" : "tglkirim";
+
         where.AND = [
           ...(where.AND || []),
           {
-            tglkirim: {
+            [dateField]: {
               gte: startDate,
               lt: endDate,
             },

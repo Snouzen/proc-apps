@@ -22,6 +22,7 @@ import {
 import { getMe } from "@/lib/me";
 import SmoothSelect from "@/components/ui/smooth-select";
 import PODetailModal from "@/components/po-detail-modal";
+import DateInputHybrid from "@/components/DateInputHybrid";
 
 /* ──────────────────────────────────────────────
    Constants
@@ -794,20 +795,18 @@ export default function BranchPage() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
+                <DateInputHybrid
                   value={inlineDateFrom}
-                  onChange={(e) => setInlineDateFrom(e.target.value)}
-                  className="px-3 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500"
-                  title="Dari Tgl PO"
+                  onChange={setInlineDateFrom}
+                  placeholder="Date From"
+                  className="w-36"
                 />
-                <span className="text-slate-400 text-sm">-</span>
-                <input
-                  type="date"
+                <span className="text-slate-300 font-bold">to</span>
+                <DateInputHybrid
                   value={inlineDateTo}
-                  onChange={(e) => setInlineDateTo(e.target.value)}
-                  className="px-3 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500"
-                  title="Sampai Tgl PO"
+                  onChange={setInlineDateTo}
+                  placeholder="Date To"
+                  className="w-36"
                 />
               </div>
             </div>

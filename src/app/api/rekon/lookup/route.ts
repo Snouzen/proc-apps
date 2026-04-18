@@ -8,15 +8,42 @@ export async function GET(request: Request) {
     const rtvNo = searchParams.get("rtvNo");
     const companyName = searchParams.get("companyName");
 
-    // 1. Jika cari Invoice (Hanya by No Invoice)
+    // --- CASE A: Suggestion Mode (Hanya Company Name disediakan) ---
+    // Dipakai untuk dropdown autocomplete di frontend
+    if (companyName && !invoiceNo && !rtvNo) {
+      const [availableInvoices, availableRtvs] = await Promise.all([
+        prisma.purchaseOrder.findMany({
+          where: { 
+             RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } },
+             noInvoice: { not: null } 
+          },
+          select: { noInvoice: true },
+          distinct: ['noInvoice'],
+        }),
+        prisma.dataRetur.findMany({
+          where: { 
+             RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } } 
+          },
+          select: { rtvCn: true },
+          distinct: ['rtvCn'],
+        })
+      ]);
+
+      return NextResponse.json({ 
+        invoices: availableInvoices.map(i => i.noInvoice),
+        rtvs: availableRtvs.map(r => r.rtvCn)
+      });
+    }
+
+    // --- CASE B: Lookup Invoice Terpilih ---
     if (invoiceNo) {
       const where: any = {
-        noInvoice: { contains: invoiceNo, mode: "insensitive" }
+        noInvoice: { equals: invoiceNo, mode: "insensitive" }
       };
 
       if (companyName) {
         where.RitelModern = {
-          namaPt: { equals: companyName }
+          namaPt: { equals: companyName, mode: "insensitive" }
         };
       }
 
@@ -24,22 +51,26 @@ export async function GET(request: Request) {
         where,
         include: {
           RitelModern: true,
-          Items: {
-            include: {
-              Product: true
-            }
-          }
+          Items: { include: { Product: true } }
         }
       });
       return NextResponse.json({ data: pos });
     }
 
-    // 2. Jika cari RTV
+    // --- CASE C: Lookup RTV Terpilih ---
     if (rtvNo) {
+      const where: any = {
+        rtvCn: { equals: rtvNo, mode: "insensitive" }
+      };
+
+      if (companyName) {
+        where.RitelModern = {
+          namaPt: { equals: companyName, mode: "insensitive" }
+        };
+      }
+
       const returs = await prisma.dataRetur.findMany({
-        where: {
-          rtvCn: { contains: rtvNo, mode: "insensitive" }
-        },
+        where,
         include: {
           RitelModern: true,
           Product: true
@@ -48,7 +79,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: returs });
     }
 
-    return NextResponse.json({ error: "No parameter provided" }, { status: 400 });
+    return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
