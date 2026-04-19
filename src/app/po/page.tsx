@@ -801,6 +801,8 @@ function InputPODetailPageInner() {
           remarks: formData.remarks,
           buktiTagih: formData.buktiTagih || null,
           buktiBayar: formData.buktiBayar || null,
+          buktiKirim: formData.buktiKirim || null,
+          buktiFp: formData.buktiFp || null,
           status: formData.status,
           tglKirim: formData.tglKirim || undefined,
         };
@@ -1216,6 +1218,7 @@ function InputPODetailPageInner() {
                   </label>
                   <input
                     type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     value={currentItem.pcs}
                     placeholder="Input Pcs"
                     className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
@@ -1234,6 +1237,7 @@ function InputPODetailPageInner() {
                   </label>
                   <input
                     type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     value={currentItem.hargaPcs}
                     placeholder="Input Harga"
                     className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
@@ -1251,6 +1255,7 @@ function InputPODetailPageInner() {
                   </label>
                   <input
                     type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     value={currentItem.pcsKirim}
                     placeholder="Input Pcs Kirim"
                     className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
@@ -1445,6 +1450,7 @@ function InputPODetailPageInner() {
                                 {isEditing ? (
                                   <input
                                     type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                     value={editItem.pcs}
                                     onChange={(e) =>
                                       setEditItem((p) => ({
@@ -1462,6 +1468,7 @@ function InputPODetailPageInner() {
                                 {isEditing ? (
                                   <input
                                     type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                     value={editItem.pcsKirim}
                                     onChange={(e) =>
                                       setEditItem((p) => ({
@@ -1482,6 +1489,7 @@ function InputPODetailPageInner() {
                                 {isEditing ? (
                                   <input
                                     type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                     value={editItem.hargaPcs}
                                     onChange={(e) =>
                                       setEditItem((p) => ({
@@ -1594,6 +1602,7 @@ function InputPODetailPageInner() {
                                       {isEditing ? (
                                         <input
                                           type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                           value={editItem.pcsKirim}
                                           onChange={(e) => {
                                             const val = e.target.value;
@@ -2516,6 +2525,7 @@ function InputPODetailPageInner() {
                                     <td className="px-4 py-2 text-right">
                                       <input
                                         type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                         value={pcs}
                                         onChange={(e) => {
                                           const v = Number(e.target.value) || 0;
@@ -2543,6 +2553,7 @@ function InputPODetailPageInner() {
                                     <td className="px-4 py-2 text-right">
                                       <input
                                         type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                         value={pcsKirim}
                                         onChange={(e) => {
                                           const v = Number(e.target.value) || 0;
@@ -2570,6 +2581,7 @@ function InputPODetailPageInner() {
                                     <td className="px-4 py-2 text-right">
                                       <input
                                         type="number"
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                         value={hargaPcs}
                                         onChange={(e) => {
                                           const v = Number(e.target.value) || 0;

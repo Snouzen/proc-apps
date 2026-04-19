@@ -23,9 +23,13 @@ import {
   LayoutGrid,
   ChevronRight,
   CreditCard,
+  Save,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
+import Swal from "sweetalert2";
 
 interface Company {
   id: string;
@@ -99,8 +103,10 @@ export default function RekonPage() {
   }, []);
 
   const [isDataLoading, setIsDataLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
-  const fetchCompanyData = async (companyName: string) => {
+  const fetchCompanyData = async (companyName: string, ritelId?: string) => {
     try {
       setIsDataLoading(true);
       setMasterInvoicesList([]);
@@ -112,8 +118,9 @@ export default function RekonPage() {
       setMasterInvoicesList(json.invoices || []);
       setMasterRtvsList(json.rtvs || []);
 
-      // Still fetch promos globally
-      const promoRes = await fetch("/api/promo");
+      // Fetch promos specifically for this retailer
+      const promoUrl = ritelId ? `/api/promo?ritelId=${ritelId}&mode=list` : "/api/promo?mode=list";
+      const promoRes = await fetch(promoUrl);
       const promoJson = await promoRes.json();
       setMasterPromos(Array.isArray(promoJson) ? promoJson : (promoJson.data || []));
     } catch (err) {
@@ -206,11 +213,73 @@ export default function RekonPage() {
     return selectedPromo ? Number(selectedPromo.total || 0) : 0;
   }, [selectedPromo]);
 
-  // FINAL CALCULATION: Rekening Koran - Invoices - RTV - Promo - Admin Fee
-  const balanceNetDue = Number(bankStatement || 0) - totalInvoices - totalRtv - totalPromo - Number(adminFee || 0);
+  // FINAL CALCULATION: Rekening Koran - Total Invoice + Total RTV + Tagihan Promo + Biaya Admin
+  const balanceNetDue = Number(bankStatement || 0) - totalInvoices + totalRtv + totalPromo + Number(adminFee || 0);
 
   const formatRp = (val: number) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(val);
+  };
+
+  const handleSaveRekon = async () => {
+    if (!selectedCompany) {
+      Swal.fire({ icon: "warning", title: "Oops!", text: "Pilih company terlebih dahulu!", customClass: { popup: "rounded-[32px] font-sans" } });
+      return;
+    }
+
+    const { isConfirmed } = await Swal.fire({
+      title: "Simpan Rekonsiliasi?",
+      text: "Data ini akan disimpan ke dalam arsip rekonsiliasi.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Ya, Simpan!",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#5c56f6",
+      customClass: { popup: "rounded-[32px] font-sans", confirmButton: "rounded-xl px-6 py-3", cancelButton: "rounded-xl px-6 py-3" }
+    });
+
+    if (!isConfirmed) return;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ritelId: selectedCompany.id,
+        bankStatement: bankStatement,
+        biayaAdmin: adminFee,
+        totalInvoices: totalInvoices,
+        totalRtvs: totalRtv,
+        totalPromo: totalPromo,
+        nominal: balanceNetDue,
+        invoices: selectedInvoices.map(inv => inv.noInvoice),
+        rtvs: selectedRtvs.map(rtv => ({ 
+          noRtv: rtv.noRtv, 
+          refInvoice: rtv.refInvoice || "" 
+        })),
+        noPromo: selectedPromo?.nomor || null
+      };
+
+      const res = await fetch("/api/rekon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error("Gagal menyimpan data");
+
+      await Swal.fire({
+        icon: "success",
+        title: "Berhasil!",
+        text: "Data rekonsiliasi telah disimpan ke arsip.",
+        timer: 2000,
+        showConfirmButton: false,
+        customClass: { popup: "rounded-[32px] font-sans" }
+      });
+
+      router.push("/rekon/data");
+    } catch (error: any) {
+      Swal.fire({ icon: "error", title: "Error", text: error.message, customClass: { popup: "rounded-[32px] font-sans" } });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) return <div className="p-24 text-center font-black text-slate-200 uppercase tracking-widest italic animate-pulse">Synchronizing Data...</div>;
@@ -224,8 +293,8 @@ export default function RekonPage() {
               <LayoutGrid size={32} strokeWidth={2.5} />
            </div>
            <div>
-              <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase leading-none">Rekonsiliasi</h1>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Interactive Audit Tool</p>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase leading-none">Kalkulator Rekon</h1>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Rekonsiliasi &gt; Kalkulasi</p>
            </div>
         </div>
         <div className="flex gap-4">
@@ -266,7 +335,7 @@ export default function RekonPage() {
            <div className="bg-white rounded-[48px] p-10 border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] space-y-10 relative">
               <div className="flex items-center gap-4 mb-2">
                  <div className="w-8 h-8 rounded-full bg-[#5c56f6] text-white flex items-center justify-center font-black text-xs shadow-lg">2</div>
-                 <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Lookup Invoice & Retur (Multi-Matching)</h3>
+                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Lookup Invoice, Retur & Promo</h3>
               </div>
 
               {/* Company Selection Dropdown - Premium */}
@@ -285,7 +354,7 @@ export default function RekonPage() {
                        <Popover.Content className="z-[110] w-[var(--radix-popover-trigger-width)] bg-white rounded-[40px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.18)] border border-slate-50 p-6 animate-in fade-in zoom-in-95" align="start">
                           <div className="max-h-[350px] overflow-y-auto no-scrollbar space-y-1">
                              {Array.from(new Map(masterCompanies.map(item => [item.namaPt, item])).values()).map(c => (
-                                <button key={c.id} onClick={() => { setSelectedCompany(c); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); fetchCompanyData(c.namaPt); }} className={`w-full text-left p-5 rounded-[22px] transition-all font-black text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'}`}>
+                                <button key={c.id} onClick={() => { setSelectedCompany(c); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromo(null); fetchCompanyData(c.namaPt, c.id); }} className={`w-full text-left p-5 rounded-[22px] transition-all font-black text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'}`}>
                                    {c.namaPt}
                                    <ChevronRight size={14} className={selectedCompany?.id === c.id ? 'opacity-100' : 'opacity-0'} />
                                 </button>
@@ -296,8 +365,9 @@ export default function RekonPage() {
                  </Popover.Root>
               </div>
 
-              {selectedCompany ? (
-                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] gap-x-12 animate-in fade-in duration-500 pt-4">
+               {selectedCompany ? (
+                  <div className="space-y-8 animate-in fade-in duration-500 pt-4">
+                     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] gap-x-12">
                     
                     {/* LEFT COLUMN: LOOKUP INVOICE */}
                     <div className="space-y-8">
@@ -524,9 +594,116 @@ export default function RekonPage() {
                                 </tbody>
                              </table>
                           </div>
-                       </div>
-                    </div>
-                 </div>
+                        </div>
+                     </div>
+                     </div>
+
+                  {/* HORIZONTAL SEPARATOR */}
+                  <div className="py-2">
+                     <div className="h-[1px] bg-slate-100 w-full"></div>
+                  </div>
+
+                  {/* BOTTOM ROW: LOOKUP PROMO (FULL WIDTH) */}
+                  <div className="space-y-6">
+                     <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-2 uppercase">Lookup Promo</h4>
+                        <div className="px-4 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[8px] font-black uppercase tracking-widest">Retailer-Linked Promo</div>
+                     </div>
+                     <div className="relative group" onClick={() => setIsPromoOpen(true)}>
+                        <Percent className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors pointer-events-none" size={20} />
+                        <Popover.Root open={isPromoOpen} onOpenChange={setIsPromoOpen} modal={false}>
+                           <Popover.Anchor asChild>
+                              <input 
+                                 type="text" 
+                                 placeholder="Input Nomor Promo..." 
+                                 className="w-full h-16 pl-16 pr-8 bg-[#f8fafc] rounded-[28px] border-none outline-none font-bold text-xs text-slate-600 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-emerald-50/50 transition-all uppercase cursor-pointer" 
+                                 value={promoSearch} 
+                                 onChange={e => { setPromoSearch(e.target.value); setIsPromoOpen(true); }}
+                                 onFocus={() => setIsPromoOpen(true)}
+                                 onBlur={() => setTimeout(() => setIsPromoOpen(false), 300)}
+                              />
+                           </Popover.Anchor>
+                           <Popover.Portal>
+                              <Popover.Content 
+                                 className="z-[110] w-[var(--radix-popover-trigger-width)] bg-white rounded-[32px] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.15)] border border-slate-50 p-4 animate-in fade-in zoom-in-95 duration-200" 
+                                 align="start" 
+                                 sideOffset={10}
+                                 onOpenAutoFocus={(e) => e.preventDefault()}
+                              >
+                                 <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
+                                    {isDataLoading ? (
+                                       <div className="p-8 text-center text-[10px] font-black text-emerald-400 uppercase italic tracking-widest animate-pulse">
+                                          Sedang menarik data...
+                                       </div>
+                                    ) : (masterPromos || []).filter(p => ((p.nomor || "") + (p.kegiatan || "")).toLowerCase().includes(promoSearch.toLowerCase())).length === 0 ? (
+                                       <div className="p-8 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">
+                                          Tidak ada Promo tersedia untuk retailer ini
+                                       </div>
+                                    ) : (
+                                       masterPromos.filter(p => ((p.nomor || "") + (p.kegiatan || "")).toLowerCase().includes(promoSearch.toLowerCase())).map(promo => (
+                                          <button 
+                                             key={promo.id} 
+                                             onClick={() => { setSelectedPromo(promo); setIsPromoOpen(false); setPromoSearch(""); }} 
+                                             className="w-full p-5 hover:bg-emerald-50 rounded-2xl transition-all flex justify-between items-center group text-left border border-transparent hover:border-emerald-100"
+                                          >
+                                             <div className="flex items-center gap-5">
+                                                <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                                                   <Percent size={18} />
+                                                </div>
+                                                <div>
+                                                   <p className="font-black text-[12px] text-slate-800 uppercase tracking-tight">{promo.nomor}</p>
+                                                   <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">{promo.kegiatan} • {promo.periode}</p>
+                                                </div>
+                                             </div>
+                                             <div className="text-right">
+                                                <div className="text-[12px] font-black text-emerald-600 uppercase">
+                                                   {formatRp(promo.total)}
+                                                </div>
+                                             </div>
+                                          </button>
+                                       ))
+                                    )}
+                                 </div>
+                              </Popover.Content>
+                           </Popover.Portal>
+                        </Popover.Root>
+                     </div>
+
+                     {/* Selected Promo Summary Card (Sleek & Compact) */}
+                     {selectedPromo && (
+                        <div className="bg-white rounded-[32px] p-6 border border-emerald-100 shadow-[0_20px_40px_-15px_rgba(16,185,129,0.1)] animate-in slide-in-from-top-4 flex items-center justify-between group relative overflow-hidden">
+                           <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
+                           <div className="flex items-center gap-6">
+                              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
+                                 <Percent size={24} />
+                              </div>
+                              <div className="space-y-1">
+                                 <h5 className="font-black text-sm text-slate-800 uppercase tracking-tight leading-none">{selectedPromo.nomor}</h5>
+                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">{selectedPromo.kegiatan} • {selectedPromo.periode}</p>
+                                 <div className="flex items-center gap-3 mt-1">
+                                    <span className="px-2 py-0.5 bg-slate-50 text-[8px] font-black text-slate-400 rounded-md border border-slate-100 uppercase italic">
+                                       {selectedPromo.tanggal ? new Date(selectedPromo.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "-"}
+                                    </span>
+                                 </div>
+                              </div>
+                           </div>
+                           <div className="flex items-center gap-8">
+                              <div className="text-right">
+                                 <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1">Total Promo</p>
+                                 <p className="text-2xl font-black tabular-nums text-emerald-600 tracking-tighter leading-none">{formatRp(selectedPromo.total)}</p>
+                              </div>
+                              <button 
+                                 onClick={() => setSelectedPromo(null)} 
+                                 className="w-10 h-10 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                 title="Hapus Promo"
+                              >
+                                 <X size={18} />
+                              </button>
+                           </div>
+                        </div>
+                     )}
+                  </div>
+               </div>
               ) : (
                  <div className="h-64 flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-slate-50 rounded-[40px] bg-slate-50/20">
                     <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-slate-200 shadow-sm">
@@ -537,77 +714,10 @@ export default function RekonPage() {
               )}
            </div>
 
-           {/* STEP 3: Tagihan Promo (EMERALD GREEN THEME) */}
-           <div className="bg-white rounded-[48px] p-12 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.04)] border border-white space-y-10 relative">
-              <div className="flex items-center gap-4">
-                 <div className="w-8 h-8 rounded-full bg-[#10b981] text-white flex items-center justify-center font-black text-xs shadow-lg">3</div>
-                 <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Tagihan Promo</h3>
-              </div>
-              <div className="flex gap-4">
-                 <Popover.Root open={isPromoOpen} onOpenChange={setIsPromoOpen}>
-                    <Popover.Trigger asChild>
-                       <button className="flex-1 h-16 px-10 bg-emerald-50/50 hover:bg-emerald-50 rounded-[32px] border border-emerald-100 transition-all flex items-center justify-between group outline-none">
-                          <div className="flex items-center gap-4 text-emerald-600">
-                             <Percent size={20} />
-                             <span className="font-black uppercase tracking-widest text-[10px] italic">{selectedPromo ? `${selectedPromo.kegiatan} (${selectedPromo.nomor})` : "Input Nomor Promo/Pilih..."}</span>
-                          </div>
-                          <ChevronDown size={18} className="text-emerald-300" />
-                       </button>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                       <Popover.Content className="z-[100] w-[500px] bg-white rounded-[32px] shadow-2xl border border-slate-100 p-6 animate-in fade-in zoom-in-95" align="start">
-                          <input autoFocus type="text" placeholder="Cari Promo..." className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-sm mb-4" value={promoSearch} onChange={e => setPromoSearch(e.target.value)} />
-                          <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
-                             {masterPromos.filter(p => (p.nomor + p.kegiatan).toLowerCase().includes(promoSearch.toLowerCase())).map(promo => (
-                                <button key={promo.id} onClick={() => { setSelectedPromo(promo); setIsPromoOpen(false); setPromoSearch(""); }} className="w-full text-left p-4 hover:bg-emerald-50 rounded-2xl transition-all group flex justify-between items-center uppercase text-slate-900 font-bold">
-                                   <div>
-                                      <p className="font-black text-sm">{promo.nomor}</p>
-                                      <p className="text-[9px] text-slate-400 font-black tracking-tight">{promo.kegiatan} • {promo.periode}</p>
-                                   </div>
-                                   <span className="text-emerald-600 font-black text-sm">{formatRp(promo.total)}</span>
-                                </button>
-                             ))}
-                          </div>
-                       </Popover.Content>
-                    </Popover.Portal>
-                 </Popover.Root>
-                 {selectedPromo && <button onClick={() => setSelectedPromo(null)} className="px-10 h-16 bg-rose-600 text-white rounded-[32px] text-[10px] font-black uppercase tracking-widest shadow-xl shadow-rose-100">Clear</button>}
-              </div>
-
-              {selectedPromo && (
-                <div className="bg-emerald-50/30 rounded-[32px] p-8 border border-emerald-100 animate-in slide-in-from-top-4 overflow-x-auto no-scrollbar">
-                   <table className="w-full text-left min-w-[700px]">
-                      <thead>
-                         <tr className="text-[9px] font-black text-emerald-400 uppercase tracking-widest border-b border-emerald-100/50">
-                            <th className="pb-4 pr-6">Nomor</th>
-                            <th className="pb-4 pr-6">Kegiatan</th>
-                            <th className="pb-4 pr-6">Periode</th>
-                            <th className="pb-4 pr-6 text-center">Tanggal</th>
-                            <th className="pb-4 text-right">Total Tagihan</th>
-                         </tr>
-                      </thead>
-                      <tbody className="text-[11px] font-black text-slate-700">
-                         <tr>
-                            <td className="py-6 pr-6 uppercase">{selectedPromo.nomor}</td>
-                            <td className="py-6 pr-6 italic text-emerald-600 font-black uppercase">{selectedPromo.kegiatan}</td>
-                            <td className="py-6 pr-6 uppercase">{selectedPromo.periode}</td>
-                            <td className="py-6 pr-6 text-center text-slate-400 font-bold">
-                               {new Date(selectedPromo.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                            </td>
-                            <td className="py-6 text-right tabular-nums text-emerald-700 font-black text-xl">
-                               {formatRp(selectedPromo.total)}
-                            </td>
-                         </tr>
-                      </tbody>
-                   </table>
-                </div>
-              )}
-           </div>
-
-           {/* STEP 4: Biaya Admin (INDIGO THEME) */}
+           {/* STEP 3: Biaya Admin (INDIGO THEME) */}
            <div className="bg-white rounded-[40px] p-10 border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] space-y-8 relative">
               <div className="flex items-center gap-4">
-                 <div className="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-black text-xs shadow-lg">4</div>
+                 <div className="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-black text-xs shadow-lg">3</div>
                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Biaya Admin (Bank Charges)</h3>
               </div>
               <div className="relative group">
@@ -702,6 +812,31 @@ export default function RekonPage() {
                            Reconciliation Matched
                         </div>
                      )}
+                 </div>
+
+                 {/* SUBMIT BUTTON AREA */}
+                 <div className="pt-10">
+                    <button 
+                       onClick={handleSaveRekon}
+                       disabled={isSubmitting}
+                       className="w-full h-20 bg-[#5c56f6] hover:bg-indigo-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-[30px] flex items-center justify-center gap-4 transition-all shadow-[0_20px_40px_-10px_rgba(92,86,246,0.3)] group active:scale-95 text-white"
+                    >
+                       {isSubmitting ? (
+                          <Loader2 size={24} className="animate-spin text-indigo-200" />
+                       ) : (
+                          <>
+                             <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center group-hover:bg-white/20 transition-all">
+                                <Save size={18} />
+                             </div>
+                             <span className="text-[11px] font-black uppercase tracking-[0.25em]">Submit Rekonsiliasi</span>
+                          </>
+                       )}
+                    </button>
+                    <div className="flex items-center justify-center gap-2 mt-8 opacity-40">
+                       <div className="w-1 h-1 rounded-full bg-slate-500"></div>
+                       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest italic text-center">Auto-Arsip ke Database Rekon</p>
+                       <div className="w-1 h-1 rounded-full bg-slate-500"></div>
+                    </div>
                  </div>
               </div>
            </div>

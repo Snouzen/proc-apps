@@ -337,6 +337,8 @@ export async function POST(request: Request) {
                 remarks: poRemarks,
                 buktiTagih,
                 buktiBayar,
+                buktiKirim,
+                buktiFp,
                 ...(poTglKirim !== undefined ? { tglkirim: poTglKirim } : {}),
                 updatedAt: poUpdatedAt,
               },
@@ -1137,6 +1139,10 @@ export async function GET(request: Request) {
                   tujuanDetail: true,
                   regional: true,
                   remarks: true,
+                  buktiTagih: true,
+                  buktiBayar: true,
+                  buktiKirim: true,
+                  buktiFp: true,
                   // [RESTORE FIELD JADWAL]
                   tglkirim: true,
                   namaSupir: true,
@@ -1172,6 +1178,8 @@ export async function GET(request: Request) {
                   remarks: true,
                   buktiTagih: true,
                   buktiBayar: true,
+                  buktiKirim: true,
+                  buktiFp: true,
                   namaSupir: true,
                   platNomor: true,
                   // Prevent over-fetching by using specific selects instead of raw includes
@@ -1232,12 +1240,14 @@ export async function GET(request: Request) {
                 tujuanDetail: true,
                 regional: true,
                 remarks: true,
+                buktiTagih: true,
+                buktiBayar: true,
+                buktiKirim: true,
+                buktiFp: true,
                 // [RESTORE FIELD JADWAL]
                 tglkirim: true,
                 namaSupir: true,
                 platNomor: true,
-                buktiKirim: true,
-                buktiFp: true,
                 // ----------------------
                 RitelModern: { select: { namaPt: true, inisial: true } },
                 UnitProduksi: { select: { siteArea: true, namaRegional: true } }

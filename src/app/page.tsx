@@ -868,8 +868,11 @@ function TableUnderChart({
       regional: fullPo?.regional || fullPo?.UnitProduksi?.namaRegional || null,
       Items: mappedItems,
 
+      tglKirim: fullPo?.tglkirim || fullPo?.tglKirim || null,
       buktiTagih: fullPo?.buktiTagih || null,
       buktiBayar: fullPo?.buktiBayar || null,
+      buktiKirim: fullPo?.buktiKirim || null,
+      buktiFp: fullPo?.buktiFp || null,
       namaSupir: fullPo?.namaSupir || null,
       platNomor: fullPo?.platNomor || null,
 

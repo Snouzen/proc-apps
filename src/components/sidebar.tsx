@@ -40,6 +40,7 @@ export default function Sidebar({
   const pathname = usePathname();
   const [poMenuOpen, setPoMenuOpen] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [rekonMenuOpen, setRekonMenuOpen] = useState(false);
   const [role, setRole] = useState<
     "pusat" | "rm" | "sitearea" | "spb_dki" | null
   >(initialRole || null);
@@ -54,6 +55,9 @@ export default function Sidebar({
     }
     if (pathname.includes("/branch")) {
       setBranchMenuOpen(true);
+    }
+    if (pathname.includes("/rekon")) {
+      setRekonMenuOpen(true);
     }
   }, [pathname]);
 
@@ -95,7 +99,11 @@ export default function Sidebar({
     },
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
     { name: "Data Retur", icon: <RotateCcw size={20} />, path: "/retur" },
-    { name: "Rekonsiliasi", icon: <Calculator size={20} />, path: "/rekon" },
+  ];
+
+  const rekonSubItems = [
+    { name: "Kalkulasi", icon: <Calculator size={16} />, path: "/rekon/calc" },
+    { name: "Data Rekonsiliasi", icon: <FileText size={16} />, path: "/rekon/data" },
   ];
 
   const branchSubItems = [
@@ -229,6 +237,55 @@ export default function Sidebar({
             {isOpen && branchMenuOpen && (
               <div className="mt-1 space-y-1 ml-4 border-l-2 border-slate-50 animate-in fade-in slide-in-from-top-2 duration-300">
                 {branchSubItems.map((sub) => {
+                  const subActive = pathname === sub.path;
+                  return (
+                    <Link
+                      key={sub.name}
+                      href={sub.path}
+                      prefetch={false}
+                      className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
+                    ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >
+                      <span className="shrink-0">{sub.icon}</span>
+                      <span className="text-xs whitespace-nowrap">
+                        {sub.name}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Collapsible Rekonsiliasi */}
+          <div className="space-y-1">
+            <div
+              onClick={() =>
+                isOpen ? setRekonMenuOpen(!rekonMenuOpen) : setIsOpen(true)
+              }
+              className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+            ${pathname.includes("/rekon") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+            >
+              <div className="flex items-center gap-3">
+                <Calculator size={20} className="shrink-0" />
+                {isOpen && (
+                  <span className="text-sm whitespace-nowrap animate-in slide-in-from-left-2">
+                    Rekonsiliasi
+                  </span>
+                )}
+              </div>
+              {isOpen && (
+                <span
+                  className={`transition-transform duration-200 ${rekonMenuOpen ? "rotate-90" : ""}`}
+                >
+                  <ChevronRight size={16} />
+                </span>
+              )}
+            </div>
+
+            {isOpen && rekonMenuOpen && (
+              <div className="mt-1 space-y-1 ml-4 border-l-2 border-slate-50 animate-in fade-in slide-in-from-top-2 duration-300">
+                {rekonSubItems.map((sub) => {
                   const subActive = pathname === sub.path;
                   return (
                     <Link

@@ -167,6 +167,7 @@ export default function DateInputHybrid({
             onChange={handleInputChange}
             onBlur={handleBlur}
             placeholder={placeholder}
+            suppressHydrationWarning
             className={`w-full pl-3 pr-10 py-2 border rounded-lg text-sm outline-none transition-all bg-white text-slate-700 placeholder-slate-400
               ${isError 
                 ? "border-rose-500 focus:ring-2 focus:ring-rose-500/20" 
@@ -186,6 +187,7 @@ export default function DateInputHybrid({
             <Popover.Trigger asChild>
               <button
                 type="button"
+                suppressHydrationWarning
                 className="p-1 text-slate-400 hover:text-blue-600 rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
               >
                 <Calendar size={16} />

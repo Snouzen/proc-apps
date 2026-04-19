@@ -72,6 +72,8 @@ export default function POEditModal({
   const [buktiBayar, setBuktiBayar] = useState("");
   const [namaSupir, setNamaSupir] = useState("");
   const [platNomor, setPlatNomor] = useState("");
+  const [buktiKirim, setBuktiKirim] = useState("");
+  const [buktiFp, setBuktiFp] = useState("");
   const [status, setStatus] = useState({
     kirim: false,
     sdif: false,
@@ -389,6 +391,8 @@ export default function POEditModal({
         setRemarks(String(poRow?.remarks || ""));
         setBuktiTagih(String(poRow?.buktiTagih || ""));
         setBuktiBayar(String(poRow?.buktiBayar || ""));
+        setBuktiKirim(String(poRow?.buktiKirim || ""));
+        setBuktiFp(String(poRow?.buktiFp || ""));
         setNamaSupir(String(poRow?.namaSupir || ""));
         setPlatNomor(String(poRow?.platNomor || ""));
         setStatus({
@@ -550,6 +554,8 @@ export default function POEditModal({
         remarks: remarks || null,
         buktiTagih: buktiTagih || null,
         buktiBayar: buktiBayar || null,
+        buktiKirim: buktiKirim || null,
+        buktiFp: buktiFp || null,
         namaSupir: namaSupir || null,
         platNomor: platNomor || null,
         tglKirim: tglKirim || undefined,
@@ -861,6 +867,7 @@ export default function POEditModal({
                 </label>
                 <input
                   type="number"
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
                   value={currentItem.pcs}
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, pcs: e.target.value }))
@@ -874,6 +881,7 @@ export default function POEditModal({
                 </label>
                 <input
                   type="number"
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
                   value={currentItem.hargaPcs}
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, hargaPcs: e.target.value }))
@@ -887,6 +895,7 @@ export default function POEditModal({
                 </label>
                 <input
                   type="number"
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
                   value={currentItem.pcsKirim}
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, pcsKirim: e.target.value }))
@@ -975,6 +984,7 @@ export default function POEditModal({
                         <td className="px-4 py-3 text-right">
                           <input
                             type="number"
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
                             value={it.pcs}
                             onChange={(e) =>
                               setItems((prev) =>
@@ -991,6 +1001,7 @@ export default function POEditModal({
                         <td className="px-4 py-3 text-right">
                           <input
                             type="number"
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
                             value={it.hargaPcs}
                             onChange={(e) =>
                               setItems((prev) =>
@@ -1008,6 +1019,7 @@ export default function POEditModal({
                           <div className="flex items-center justify-end gap-1 group/pckirim">
                             <input
                               type="number"
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
                               value={it.pcsKirim}
                               onChange={(e) =>
                                 setItems((prev) =>
@@ -1129,6 +1141,64 @@ export default function POEditModal({
                 {Object.keys(status).map((key) => {
                   const checked = status[key as keyof typeof status];
                   const label = key === "sdif" ? "SDI/F" : key.toUpperCase();
+                  
+                  if (key === 'kirim') {
+                    return (
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white">
+                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                          <input 
+                            type="checkbox" 
+                            checked={checked} 
+                            onChange={() => handleChecklist(key)}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-bold text-slate-700">KIRIM</span>
+                        </label>
+                        <div className="flex-1">
+                          <input 
+                            type="text"
+                            placeholder="Masukkan Ref Kirim..."
+                            value={buktiKirim || ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setBuktiKirim(v);
+                              if (v.trim() && !checked) setStatus(prev => ({ ...prev, kirim: true }));
+                            }}
+                            className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (key === 'fp') {
+                    return (
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white">
+                        <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
+                          <input 
+                            type="checkbox" 
+                            checked={checked} 
+                            onChange={() => handleChecklist(key)}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-bold text-slate-700">FP</span>
+                        </label>
+                        <div className="flex-1">
+                          <input 
+                            type="text"
+                            placeholder="Masukkan Ref FP..."
+                            value={buktiFp || ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setBuktiFp(v);
+                              if (v.trim() && !checked) setStatus(prev => ({ ...prev, fp: true }));
+                            }}
+                            className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
                   
                   if (key === 'tagih') {
                     return (

@@ -952,6 +952,8 @@ export default function CompanyPage() {
           }}
           data={{
             ...selectedPO,
+            buktiKirim: selectedPO.buktiKirim,
+            buktiFp: selectedPO.buktiFp,
             company:
               selectedPO?.RitelModern?.namaPt ||
               selectedPO?.company ||

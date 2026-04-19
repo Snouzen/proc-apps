@@ -376,6 +376,8 @@ export default function NeedAssignPage() {
         bayar: !!fullPo?.statusBayar,
       },
       remarks: fullPo?.remarks || null,
+      buktiKirim: fullPo?.buktiKirim || null,
+      buktiFp: fullPo?.buktiFp || null,
     });
     setOpenDetail(true);
   };

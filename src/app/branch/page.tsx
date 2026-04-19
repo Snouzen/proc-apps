@@ -986,6 +986,8 @@ export default function BranchPage() {
                             );
                             setSelectedDetailPO({
                               ...po,
+                              buktiKirim: po.buktiKirim,
+                              buktiFp: po.buktiFp,
                               company:
                                 po.RitelModern?.namaPt ||
                                 po.company ||

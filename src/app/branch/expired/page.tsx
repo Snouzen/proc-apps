@@ -116,6 +116,7 @@ export default function ExpiredCalendarPage() {
         filterBy: "expired", // 👈 Point API to filter by expired date
         month: selectedMonth,
         year: selectedYear,
+        includeItems: "true", // 👈 Agar bisa hitung total Kg
       });
       if (selectedRegional && selectedRegional !== "ALL") params.set("regional", selectedRegional);
       if (selectedSiteArea && selectedSiteArea !== "ALL") params.set("siteArea", selectedSiteArea);
@@ -350,6 +351,20 @@ export default function ExpiredCalendarPage() {
                         <span className="text-[9px] font-black text-rose-700 bg-rose-200/80 px-1.5 py-0.5 rounded-md leading-none">{pos.length}</span>
                       )}
                     </div>
+
+                    {/* KG Info (Sesuai Delivery Calendar) */}
+                    {hasPOs && (
+                      <div className="mt-1 relative z-10">
+                        <span className="text-[10px] sm:text-[11px] font-black text-rose-800 tracking-tight leading-none block">
+                          {pos.reduce((acc, po) => {
+                            const items = Array.isArray(po.Items) ? po.Items : [];
+                            return acc + items.reduce((s: number, it: any) => 
+                              s + (Number(it.pcs) || 0) * (Number(it.Product?.satuanKg) || 1), 0
+                            );
+                          }, 0).toLocaleString("id-ID")} <span className="text-[8px] font-bold text-rose-700/70 uppercase">Kg</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

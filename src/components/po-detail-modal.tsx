@@ -28,6 +28,8 @@ type POData = {
   platNomor?: string | null;
   buktiTagih?: string | null;
   buktiBayar?: string | null;
+  buktiKirim?: string | null;
+  buktiFp?: string | null;
   Items: {
     id: string;
     pcs: number;
@@ -256,6 +258,28 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   title={data.buktiBayar || ""}
                 >
                   {data.buktiBayar || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                  Bukti Kirim
+                </p>
+                <p
+                  className="font-semibold text-slate-800 text-xs truncate"
+                  title={data.buktiKirim || ""}
+                >
+                  {data.buktiKirim || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                  Bukti FP
+                </p>
+                <p
+                  className="font-semibold text-slate-800 text-xs truncate"
+                  title={data.buktiFp || ""}
+                >
+                  {data.buktiFp || "-"}
                 </p>
               </div>
             </div>

@@ -378,6 +378,7 @@ export default function SchedulePage() {
       try {
         const res = await fetch(
           `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
+          { cache: "no-store" },
         );
         const data = await res.json();
         const fullPo = Array.isArray(data?.data)
@@ -402,6 +403,7 @@ export default function SchedulePage() {
       try {
         const res = await fetch(
           `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
+          { cache: "no-store" },
         );
         const data = await res.json();
         const fullPo = Array.isArray(data?.data)
@@ -426,6 +428,7 @@ export default function SchedulePage() {
     try {
       const res = await fetch(
         `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
+        { cache: "no-store" },
       );
       const data = await res.json();
       const first = Array.isArray(data?.data)
@@ -756,6 +759,7 @@ export default function SchedulePage() {
                           <div className="relative inline-block group/input">
                             <input
                               type="number"
+                              onWheel={(e) => (e.target as HTMLInputElement).blur()}
                               min="0"
                               max={po.pcsTotal || 0}
                               value={po.pcsKirimTotal ?? 0}
@@ -893,6 +897,7 @@ export default function SchedulePage() {
                                       <div className="relative inline-block">
                                         <input
                                           type="number"
+                              onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                           min={0}
                                           max={item.pcs}
                                           value={item.pcsKirim}
@@ -1130,6 +1135,8 @@ export default function SchedulePage() {
           detailData
             ? {
                 ...detailData,
+                buktiKirim: detailData.buktiKirim,
+                buktiFp: detailData.buktiFp,
                 status: {
                   kirim: !!detailData.statusKirim,
                   sdif: !!detailData.statusSdif,

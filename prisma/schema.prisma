@@ -97,6 +97,8 @@ model RitelModern {
   updatedAt     DateTime
   PurchaseOrder PurchaseOrder[]
   DataRetur     DataRetur[]
+  Reconcile     Reconcile[]
+  Promos        Promo[]
 
   @@index([namaPt])  // company grouping/filtering
   @@map("ritel_modern")
@@ -167,8 +169,31 @@ model Promo {
   dpp       Float
   ppn       Float
   total     Float
+  ritelId   String?  // Made optional for backward compatibility
+  RitelModern RitelModern? @relation(fields: [ritelId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("promos")
+}
+model Reconcile {
+  id               String       @id
+  noRekonsiliasi   String       @unique // Format: R-001/MM/YYYY
+  ritelId          String
+  RitelModern      RitelModern  @relation(fields: [ritelId], references: [id])
+  bankStatement    Float        @default(0)
+  biayaAdmin       Float        @default(0)
+  totalInvoices    Float        @default(0)
+  totalRtvs        Float        @default(0)
+  totalPromo       Float        @default(0)
+  nominal          Float        // Hasil akhir kalkulasi
+  invoices         String[]     // List nomor invoice
+  rtvs             String[]     // List nomor rtv/cn
+  noPromo          String?      // Nomor promo (opsional)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@map("reconciliations")
+  @@index([ritelId])
+  @@index([noRekonsiliasi])
 }

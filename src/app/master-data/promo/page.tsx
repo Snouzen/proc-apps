@@ -20,10 +20,13 @@ import {
   ChevronsRight,
   Check,
   AlertCircle,
+  Building2,
+  ArrowLeft
 } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 import * as Popover from "@radix-ui/react-popover";
+import Swal from "sweetalert2";
 
 interface Promo {
   id: string;
@@ -35,6 +38,7 @@ interface Promo {
   dpp: number;
   ppn: number;
   total: number;
+  ritelId?: string;
 }
 
 export default function PromoPage() {
@@ -44,15 +48,27 @@ export default function PromoPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // Initial view: Card Grid of retailers.
+  // Detail view: List of promos for a specific retailer.
+  const [isGroupedMode, setIsGroupedMode] = useState(true);
+  const [selectedRetailerId, setSelectedRetailerId] = useState<string | null>(null);
+  const [retailers, setRetailers] = useState<any[]>([]);
+
+  // Add Promo flow: Select retailer first if in grouped mode.
+  const [showRitelSelector, setShowRitelSelector] = useState(false);
+  const [searchRitelText, setSearchRitelText] = useState("");
+  const [isRitelDropdownOpen, setIsRitelDropdownOpen] = useState(false);
+
   // State for Form
   const [formData, setFormData] = useState({
     nomor: "",
     linkDocs: "",
     kegiatan: "Dc Fee",
     periode: "Januari",
-    tanggal: "", // Set after mount
+    tanggal: "", 
     dpp: 0,
     ppn: 0,
+    ritelId: "",
   });
 
   // Search/Suggest States
@@ -68,17 +84,24 @@ export default function PromoPage() {
   const [isRowsOpen, setIsRowsOpen] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [promos, setPromos] = useState<Promo[]>([]);
+  const [promos, setPromos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const [toast, setToast] = useState<{
-    type: "success" | "error" | "info";
-    message: string;
-  } | null>(null);
-
   const [saving, setSaving] = useState(false);
+
+  const formatRp = (val: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(val);
+  };
+
+  const formatNumber = (val: number) => {
+    return new Intl.NumberFormat("id-ID").format(val);
+  };
 
   const kegiatanOptions = [
     "Dc Fee",
@@ -123,36 +146,61 @@ export default function PromoPage() {
       ...prev,
       tanggal: new Date().toISOString().split("T")[0],
     }));
-    loadData();
+    
+    // Fetch retailers for Dropdown Select
+    fetch("/api/ritel").then(res => res.json()).then(res => {
+      const data = Array.isArray(res) ? res : (res?.data || []);
+      
+      // Deduplicate by name to prevent confusing UI in the selector
+      const unique = [];
+      const seen = new Set();
+      for (const r of data) {
+        if (!seen.has(r.namaPt.trim().toUpperCase())) {
+          seen.add(r.namaPt.trim().toUpperCase());
+          unique.push(r);
+        }
+      }
+      setRetailers(unique);
+    });
   }, []);
 
-  const showToast = (type: "success" | "error" | "info", message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3500);
-  };
-
-  const formatRp = (val: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
-
-  const formatNumber = (val: number) => {
-    return new Intl.NumberFormat("id-ID").format(val);
-  };
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch("/api/promo");
+      const url = new URL("/api/promo", window.location.origin);
+      if (selectedRetailerId) {
+        url.searchParams.set("ritelId", selectedRetailerId);
+      }
+      const res = await fetch(url.toString());
       const json = await res.json();
+      setIsGroupedMode(json.isGrouped);
       setPromos(json.data || []);
+      setCurrentPage(1);
     } catch {
       setPromos([]);
     } finally {
       setIsLoading(false);
     }
+  }, [selectedRetailerId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData, refreshTick]);
+
+  const showToast = (type: "success" | "error" | "info", message: string) => {
+    Swal.fire({
+      icon: type,
+      title: message,
+      toast: true,
+      position: 'top-end',
+      timer: 2500,
+      showConfirmButton: false,
+      background: '#fff',
+      color: '#0f172a',
+      customClass: {
+        popup: 'rounded-2xl border border-slate-100 shadow-xl'
+      }
+    });
   };
 
   const calculatedTotal = useMemo(() => {
@@ -215,6 +263,7 @@ export default function PromoPage() {
       tanggal: new Date(promo.tanggal).toISOString().split("T")[0],
       dpp: promo.dpp,
       ppn: promo.ppn,
+      ritelId: selectedRetailerId || "",
     });
     setIsModalOpen(true);
   };
@@ -247,6 +296,7 @@ export default function PromoPage() {
         tanggal: new Date().toISOString().split("T")[0],
         dpp: 0,
         ppn: 0,
+        ritelId: selectedRetailerId || "",
       });
     } catch (err) {
       showToast("error", err instanceof Error ? err.message : "Error");
@@ -277,26 +327,36 @@ export default function PromoPage() {
     }
   };
 
-  const filtered = promos.filter((p) =>
-    (p.nomor + p.kegiatan + p.id)
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase()),
-  );
+  const handleDeleteGroup = async (ritelId: string, ritelName: string) => {
+    const result = await Swal.fire({
+      title: 'Hapus Seluruh Data Promo?',
+      html: `Semua data promo untuk <b class="font-bold">${ritelName}</b> akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Hapus Semua!',
+      cancelButtonText: 'Batal',
+      customClass: {
+        popup: 'rounded-[32px] font-sans',
+        confirmButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest',
+        cancelButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest'
+      }
+    });
 
-  // Pagination Logic
-  const totalItems = filtered.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-  const safePage = Math.min(currentPage, totalPages);
-  const indexOfLastItem = safePage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
-
-  if (!isMounted)
-    return (
-      <div className="p-8 text-slate-400 font-bold uppercase tracking-widest text-[10px]">
-        Initializing Manifest...
-      </div>
-    );
+    if (result.isConfirmed) {
+      try {
+        setIsLoading(true);
+        const res = await fetch(`/api/promo?ritelId=${ritelId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error("Gagal menghapus data grup");
+        showToast("success", "Seluruh data promo peritel berhasil dihapus");
+        loadData();
+      } catch (err) {
+        showToast("error", err instanceof Error ? err.message : "Error");
+        setIsLoading(false);
+      }
+    }
+  };
 
   const DatePickerContent = () => {
     const [viewDate, setViewDate] = useState(
@@ -382,228 +442,426 @@ export default function PromoPage() {
     );
   };
 
-  return (
-    <div className="space-y-6 pb-20 max-w-[1600px] mx-auto px-4 lg:px-8">
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-xl shadow-lg text-sm font-bold animate-in fade-in slide-in-from-top-2 ${toast.type === "success" ? "bg-emerald-600 text-white" : toast.type === "error" ? "bg-rose-600 text-white" : "bg-blue-600 text-white"}`}
-        >
-          {toast.message}
-        </div>
-      )}
+  const filtered = promos.filter((p: any) => {
+    if (isGroupedMode && !selectedRetailerId) {
+      return p.namaPt?.toLowerCase().includes(searchTerm.toLowerCase());
+    }
+    return (p.nomor + p.kegiatan + p.id)
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+  });
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-            Master Promo
-          </h1>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-            Daftar List Promo
-          </p>
+  // Pagination Logic
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const safePage = Math.min(currentPage, totalPages);
+  const indexOfLastItem = safePage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+
+  if (!isMounted)
+    return (
+      <div className="p-8 text-slate-400 font-bold uppercase tracking-widest text-[10px]">
+        Initializing Manifest...
+      </div>
+    );
+
+  return (
+    <main className="p-8 pb-32 max-w-[1600px] mx-auto min-h-screen bg-[#fcfdfe] animate-in fade-in duration-700">
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <div className="flex items-center gap-5">
+          {selectedRetailerId && (
+            <button
+              onClick={() => setSelectedRetailerId(null)}
+              className="p-4 bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 rounded-[24px] shadow-sm hover:shadow-indigo-500/10 transition-all active:scale-95 group"
+            >
+              <ArrowLeft size={22} className="group-hover:-translate-x-1 transition-transform" />
+            </button>
+          )}
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase flex items-center gap-3">
+              {selectedRetailerId 
+                ? `PROMO: ${retailers.find(r => r.id === selectedRetailerId)?.namaPt || 'Detail'}` 
+                : "Master Promo"
+              }
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                  Daftar Spesifikasi Data Promo
+                </p>
+            </div>
+          </div>
         </div>
 
         <button
           onClick={() => {
-            setEditId(null);
-            setIsModalOpen(true);
+            if (!selectedRetailerId && isGroupedMode) {
+              setSearchRitelText("");
+              setShowRitelSelector(true);
+            } else {
+              setEditId(null);
+              setFormData({
+                ...formData,
+                nomor: "",
+                linkDocs: "",
+                kegiatan: "Dc Fee",
+                periode: "Januari",
+                tanggal: new Date().toISOString().split("T")[0],
+                dpp: 0,
+                ppn: 0,
+                ritelId: selectedRetailerId || "",
+              });
+              setIsModalOpen(true);
+            }
           }}
-          className="flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-[32px] font-black hover:bg-slate-800 transition-all shadow-xl active:scale-95 text-xs uppercase"
+          className="flex items-center justify-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-[40px] font-black hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 text-xs uppercase tracking-widest border-4 border-white/10"
         >
-          <Plus size={18} />
+          <div className="p-1 bg-white/20 rounded-full">
+            <Plus size={16} strokeWidth={3} />
+          </div>
           Add Promo
         </button>
       </div>
 
-      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+      <div className="bg-white p-6 rounded-[40px] border border-slate-100 shadow-sm mb-8">
         <div className="relative max-w-md group">
           <Search
-            className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors"
+            className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors"
             size={20}
           />
           <input
             type="text"
-            placeholder="Search ID, Nomor, or Kegiatan..."
+            placeholder={isGroupedMode && !selectedRetailerId ? "Cari Ritel Modern..." : "Search ID, Nomor, or Kegiatan..."}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-14 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all text-sm font-black text-slate-700 outline-none"
+            className="w-full pl-14 pr-6 py-4 bg-slate-50 border-none rounded-3xl focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all text-sm font-black text-slate-700 outline-none"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden">
-        <div className="overflow-x-auto no-scrollbar custom-scrollbar transform-gpu">
-          <table className="w-full text-left min-w-[1200px]">
-            <thead>
-              <tr className="bg-slate-50/50 text-[10px] text-slate-400 uppercase tracking-[0.2em] font-black border-b border-slate-50">
-                <th className="px-8 py-6">ID Promo</th>
-                <th className="px-8 py-6">Nomor</th>
-                <th className="px-8 py-6">Kegiatan</th>
-                <th className="px-8 py-6">Periode</th>
-                <th className="px-8 py-6">Tanggal</th>
-                <th className="px-8 py-6 text-right">DPP</th>
-                <th className="px-8 py-6 text-right">PPN</th>
-                <th className="px-8 py-6 text-right">Total</th>
-                <th className="px-8 py-6 text-center text-slate-300">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 font-bold text-[13px] text-slate-700">
-              {isLoading ? (
-                <tr>
-                  <td className="px-8 py-10" colSpan={9}>
-                    Memuat Master Data...
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td className="px-8 py-10 text-slate-300 italic" colSpan={9}>
-                    Data promo tidak ditemukan.
-                  </td>
-                </tr>
-              ) : (
-                currentItems.map((promo) => (
-                  <tr
-                    key={promo.id}
-                    className="hover:bg-slate-50/50 transition-colors group"
-                  >
-                    <td className="px-8 py-6 font-mono text-[10px] text-slate-400">
-                      {promo.id}
-                    </td>
-                    <td className="px-8 py-6 text-slate-900 uppercase">
-                      {promo.nomor}
-                    </td>
-                    <td className="px-8 py-6 uppercase font-black text-slate-600 text-[11px]">
-                      {promo.kegiatan}
-                    </td>
-                    <td className="px-8 py-6">{promo.periode}</td>
-                    <td className="px-8 py-6 text-slate-400">
-                      {new Date(promo.tanggal).toLocaleDateString("id-ID", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="px-8 py-6 text-right tabular-nums">
-                      {formatRp(promo.dpp)}
-                    </td>
-                    <td className="px-8 py-6 text-right tabular-nums">
-                      {formatRp(promo.ppn)}
-                    </td>
-                    <td className="px-8 py-6 text-right text-indigo-600 font-black tabular-nums scale-[1.05] origin-right">
-                      {formatRp(promo.total)}
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <div className="inline-flex gap-2">
+      {isGroupedMode && !selectedRetailerId ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-8 duration-1000">
+          {isLoading ? (
+            Array.from({ length: 9 }).map((_, i) => (
+              <div key={i} className="bg-white border border-slate-100 rounded-[40px] p-8 animate-pulse h-40 shadow-sm" />
+            ))
+          ) : filtered.length === 0 ? (
+            <div className="col-span-full py-32 text-center">
+              <div className="w-24 h-24 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-6 text-slate-200">
+                <Layers size={40} />
+              </div>
+              <p className="text-[11px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                Belum ada data promo yang terasosiasi dengan peritel.
+              </p>
+            </div>
+          ) : (
+            filtered.map((ritel: any) => (
+              <div 
+                key={ritel.id}
+                onClick={() => {
+                  setSelectedRetailerId(ritel.id);
+                  setSearchTerm("");
+                }}
+                className="group relative bg-white border border-slate-100 p-8 rounded-[40px] shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-100 transition-all duration-500 cursor-pointer active:scale-[0.98] overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 p-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                    <ChevronRight size={20} />
+                   </div>
+                </div>
+
+                <div className="flex flex-col gap-6 relative z-10">
+                  <div className="p-5 bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white rounded-[32px] transition-all duration-700 w-fit shadow-inner">
+                    <Building2 size={28} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 uppercase leading-tight group-hover:text-indigo-700 transition-colors mb-2">
+                      {ritel.namaPt}
+                    </h3>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full uppercase tracking-widest border border-indigo-100">
+                          {ritel?._count?.Promos || 0} PROMOS
+                        </span>
                         <button
-                          onClick={() => handleEdit(promo)}
-                          className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteGroup(ritel.id, ritel.namaPt);
+                          }}
+                          className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all active:scale-90"
+                          title="Hapus Seluruh Data Promo Peritel"
                         >
-                          <Pencil size={16} />
+                          <Trash2 size={18} />
                         </button>
-                        <button
-                          onClick={() => setDeleteConfirmId(promo.id)}
-                          className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-50/50 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors" />
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
+          <div className="overflow-x-auto no-scrollbar custom-scrollbar transform-gpu">
+            <table className="w-full text-left min-w-[1200px]">
+              <thead>
+                <tr className="bg-slate-50/50 text-[10px] text-slate-400 uppercase tracking-[0.2em] font-black border-b border-slate-50">
+                  <th className="px-8 py-6">ID Promo</th>
+                  <th className="px-8 py-6">Nomor</th>
+                  <th className="px-8 py-6">Kegiatan</th>
+                  <th className="px-8 py-6">Periode</th>
+                  <th className="px-8 py-6">Tanggal</th>
+                  <th className="px-8 py-6 text-right">DPP</th>
+                  <th className="px-8 py-6 text-right">PPN</th>
+                  <th className="px-8 py-6 text-right">Total</th>
+                  <th className="px-8 py-6 text-center text-slate-300">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 font-bold text-[13px] text-slate-700">
+                {isLoading ? (
+                  <tr>
+                    <td className="px-8 py-10" colSpan={9}>
+                      Memuat Master Data...
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td className="px-8 py-10 text-slate-300 italic" colSpan={9}>
+                      Data promo tidak ditemukan.
+                    </td>
+                  </tr>
+                ) : (
+                  currentItems.map((promo: any) => (
+                    <tr
+                      key={promo.id}
+                      className="hover:bg-slate-50/50 transition-colors group"
+                    >
+                      <td className="px-8 py-6 font-mono text-[10px] text-slate-400">
+                        {promo.id}
+                      </td>
+                      <td className="px-8 py-6 text-slate-900 uppercase">
+                        {promo.nomor}
+                      </td>
+                      <td className="px-8 py-6 uppercase font-black text-slate-600 text-[11px]">
+                        {promo.kegiatan}
+                      </td>
+                      <td className="px-8 py-6">{promo.periode}</td>
+                      <td className="px-8 py-6 text-slate-400">
+                        {new Date(promo.tanggal).toLocaleDateString("id-ID", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="px-8 py-6 text-right tabular-nums">
+                        {formatRp(promo.dpp)}
+                      </td>
+                      <td className="px-8 py-6 text-right tabular-nums">
+                        {formatRp(promo.ppn)}
+                      </td>
+                      <td className="px-8 py-6 text-right text-indigo-600 font-black tabular-nums scale-[1.05] origin-right">
+                        {formatRp(promo.total)}
+                      </td>
+                      <td className="px-8 py-6 text-center">
+                        <div className="inline-flex gap-2">
+                          <button
+                            onClick={() => handleEdit(promo)}
+                            className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(promo.id)}
+                            className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Improved Pagination Footer */}
-        <div className="p-8 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6 bg-slate-50/20 text-slate-900">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                Rows per page
-              </label>
-              <Popover.Root open={isRowsOpen} onOpenChange={setIsRowsOpen}>
+          {/* Improved Pagination Footer */}
+          <div className="p-8 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6 bg-slate-50/20 text-slate-900">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Rows per page
+                </label>
+                <Popover.Root open={isRowsOpen} onOpenChange={setIsRowsOpen}>
+                  <Popover.Trigger asChild>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-100 rounded-xl text-xs font-black text-slate-900 hover:bg-slate-50 transition-all shadow-sm outline-none">
+                      {itemsPerPage}
+                      <ChevronDown size={14} className="text-slate-300" />
+                    </button>
+                  </Popover.Trigger>
+                  <Popover.Portal>
+                    <Popover.Content
+                      className="z-[110] bg-white rounded-2xl border shadow-2xl p-2 animate-in fade-in zoom-in-95 duration-200"
+                      align="start"
+                    >
+                      {[10, 25, 50].map((val) => (
+                        <button
+                          key={val}
+                          onClick={() => {
+                            setItemsPerPage(val);
+                            setCurrentPage(1);
+                            setIsRowsOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2 rounded-lg text-xs font-black transition-colors ${itemsPerPage === val ? "bg-slate-900 text-white" : "hover:bg-slate-50 text-slate-500"}`}
+                        >
+                          {val}
+                        </button>
+                      ))}
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold">
+                Showing {indexOfFirstItem + 1} to{" "}
+                {Math.min(indexOfLastItem, totalItems)} of {totalItems} items
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={safePage === 1}
+                className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
+              >
+                <ChevronsLeft size={16} />
+              </button>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={safePage === 1}
+                className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <div className="flex items-center px-6 py-3 bg-white border border-slate-100 rounded-[20px] shadow-inner">
+                <span className="text-xs font-black text-slate-900">
+                  {safePage}
+                </span>
+                <span className="mx-2 text-slate-200 font-bold">/</span>
+                <span className="text-xs font-bold text-slate-400">
+                  {totalPages}
+                </span>
+              </div>
+
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={safePage === totalPages}
+                className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={safePage === totalPages}
+                className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
+              >
+                <ChevronsRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pilih Ritel Modern */}
+      {showRitelSelector && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setShowRitelSelector(false)}
+          ></div>
+          <div className="relative bg-white w-full max-w-md rounded-[48px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="px-10 pt-10 pb-6 text-center">
+              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[32px] flex items-center justify-center mx-auto mb-6 transform -rotate-6">
+                <Building2 size={36} className="transform rotate-6" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-800 tracking-tight">Pilih Peritel</h3>
+              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2 px-4 leading-relaxed">
+                Tentukan ritel modern tujuan
+              </p>
+            </div>
+
+            <div className="px-10 pb-10">
+              <Popover.Root open={isRitelDropdownOpen} onOpenChange={setIsRitelDropdownOpen}>
                 <Popover.Trigger asChild>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-100 rounded-xl text-xs font-black text-slate-900 hover:bg-slate-50 transition-all shadow-sm outline-none">
-                    {itemsPerPage}
-                    <ChevronDown size={14} className="text-slate-300" />
-                  </button>
+                  <div className="relative mt-2">
+                    <input 
+                      type="text"
+                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none text-center cursor-pointer hover:bg-slate-100 transition-colors"
+                      placeholder="Cari Ritel Modern..."
+                      value={searchRitelText}
+                      onChange={(e) => {
+                        setSearchRitelText(e.target.value);
+                        if (!isRitelDropdownOpen) setIsRitelDropdownOpen(true);
+                      }}
+                    />
+                    <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
                 </Popover.Trigger>
                 <Popover.Portal>
                   <Popover.Content
-                    className="z-[110] bg-white rounded-2xl border shadow-2xl p-2 animate-in fade-in zoom-in-95 duration-200"
-                    align="start"
+                    className="z-[110] w-[350px] bg-white rounded-3xl border shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
+                    align="center"
+                    sideOffset={8}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
                   >
-                    {[10, 25, 50].map((val) => (
-                      <button
-                        key={val}
-                        onClick={() => {
-                          setItemsPerPage(val);
-                          setCurrentPage(1);
-                          setIsRowsOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2 rounded-lg text-xs font-black transition-colors ${itemsPerPage === val ? "bg-slate-900 text-white" : "hover:bg-slate-50 text-slate-500"}`}
-                      >
-                        {val}
-                      </button>
-                    ))}
+                    <div className="space-y-1 max-h-60 overflow-y-auto custom-scrollbar text-slate-700 font-bold uppercase">
+                      {retailers.filter(r => r.namaPt.toLowerCase().includes(searchRitelText.toLowerCase())).length === 0 ? (
+                        <div className="p-4 text-center text-[10px] font-bold text-slate-300">TIDAK ADA HASIL</div>
+                      ) : (
+                        retailers
+                          .filter(r => r.namaPt.toLowerCase().includes(searchRitelText.toLowerCase()))
+                          .map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, ritelId: opt.id });
+                                setSelectedRetailerId(opt.id);
+                                setSearchRitelText("");
+                                setIsRitelDropdownOpen(false);
+                                setShowRitelSelector(false);
+                                setEditId(null);
+                                setIsModalOpen(true);
+                              }}
+                              className="w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all hover:bg-slate-50 text-slate-500"
+                            >
+                              {opt.namaPt}
+                            </button>
+                          ))
+                      )}
+                    </div>
                   </Popover.Content>
                 </Popover.Portal>
               </Popover.Root>
+
+              <button
+                onClick={() => setShowRitelSelector(false)}
+                className="w-full mt-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
+              >
+                Batal
+              </button>
             </div>
-            <p className="text-[10px] text-slate-400 font-bold">
-              Showing {indexOfFirstItem + 1} to{" "}
-              {Math.min(indexOfLastItem, totalItems)} of {totalItems} items
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={safePage === 1}
-              className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
-            >
-              <ChevronsLeft size={16} />
-            </button>
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={safePage === 1}
-              className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <div className="flex items-center px-6 py-3 bg-white border border-slate-100 rounded-[20px] shadow-inner">
-              <span className="text-xs font-black text-slate-900">
-                {safePage}
-              </span>
-              <span className="mx-2 text-slate-200 font-bold">/</span>
-              <span className="text-xs font-bold text-slate-400">
-                {totalPages}
-              </span>
-            </div>
-
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={safePage === totalPages}
-              className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
-            >
-              <ChevronRight size={16} />
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={safePage === totalPages}
-              className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
-            >
-              <ChevronsRight size={16} />
-            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Modal Form */}
       {isModalOpen && (
@@ -948,6 +1206,6 @@ export default function PromoPage() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
