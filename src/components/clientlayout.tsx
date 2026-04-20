@@ -1,12 +1,15 @@
 "use client";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import Sidebar from "@/components/sidebar";
 import { Menu, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import Modal from "@/components/modal";
 import { getMe, getMeSync, clearMeCache } from "@/lib/me";
-import Breadcrumbs from "@/components/breadcrumbs";
 import { AutoRefreshProvider } from "@/components/auto-refresh";
+
+// Dynamic imports to reduce initial bundle size & main-thread work
+const Sidebar = dynamic(() => import("@/components/sidebar"), { ssr: false });
+const Modal = dynamic(() => import("@/components/modal"), { ssr: false });
+const Breadcrumbs = dynamic(() => import("@/components/breadcrumbs"), { ssr: false });
 
 export default function ClientLayout({
   children,

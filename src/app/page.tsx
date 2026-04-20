@@ -1,7 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import StatCard from "@/components/card";
-import { ChartAreaInteractive } from "@/components/chart-area-interactive";
+
+// Dynamic imports for complex components
+const ChartAreaInteractive = dynamic(() => import("@/components/chart-area-interactive").then(mod => mod.ChartAreaInteractive), { ssr: false });
+const PODetailModal = dynamic(() => import("@/components/po-detail-modal"), { ssr: false });
+const POEditModal = dynamic(() => import("@/components/po-edit-modal"), { ssr: false });
+const POFilters = dynamic(() => import("@/components/po-filters"), { ssr: false });
 
 import {
   Bell,
@@ -30,12 +36,9 @@ import {
 } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import SmoothSelect from "@/components/ui/smooth-select";
-import PODetailModal from "@/components/po-detail-modal";
-import POEditModal from "@/components/po-edit-modal";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 import { getMe } from "@/lib/me";
 import { getUnits } from "@/lib/units";
-import POFilters from "@/components/po-filters";
 
 function StatCardSkeleton() {
   return (

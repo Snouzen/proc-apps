@@ -163,12 +163,12 @@ export default function ReturDetailModal({ isOpen, onClose, data }: ReturDetailM
                     <p className="text-xs font-bold text-slate-600 whitespace-pre-wrap">{data.remarks || "-"}</p>
                  </div>
                  <div className="flex flex-col gap-2 p-5 bg-white rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group">
-                    <div className={`absolute top-0 right-0 p-4 ${data.invoiceRekon ? "text-emerald-500" : "text-slate-200"}`}>
+                     <div className={`absolute top-0 right-0 p-4 ${data.invoiceRekon ? "text-emerald-500" : "text-slate-200"}`}>
                        <BadgeCheck size={32} strokeWidth={1} />
                     </div>
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Invoice Rekon</span>
                     <p className={`text-sm font-black ${data.invoiceRekon ? "text-emerald-600" : "text-slate-400"}`}>
-                       {data.invoiceRekon ? "TERSEDIA" : "TIDAK TERSEDIA"}
+                       {data.invoiceRekon || "TIDAK TERSEDIA"}
                     </p>
                  </div>
                  <div className="flex flex-col gap-2 p-5 bg-white rounded-3xl border border-slate-100 shadow-sm">

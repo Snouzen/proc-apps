@@ -164,7 +164,9 @@ export async function POST(request: Request) {
         if (typeof r === 'object' && r.noRtv && r.refInvoice) {
           await prisma.dataRetur.updateMany({
             where: { rtvCn: r.noRtv },
-            data: { referensiPembayaran: r.refInvoice }
+            data: { 
+              invoiceRekon: r.refInvoice // Nomor invoice dipindah ke sini
+            }
           });
         }
       }

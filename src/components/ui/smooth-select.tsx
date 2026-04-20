@@ -51,6 +51,7 @@ export default function SmoothSelect({
       style={{ width }}
     >
       <button
+        suppressHydrationWarning
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}

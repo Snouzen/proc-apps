@@ -135,6 +135,7 @@ export default function POFilters({
           className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
         />
         <input
+          suppressHydrationWarning
           value={draftSearch}
           onChange={(e) => setDraftSearch(e.target.value)}
           placeholder="Search No PO / No Invoice / Company / Tujuan..."

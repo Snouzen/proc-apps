@@ -24,7 +24,9 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useAutoRefreshTick } from "@/components/auto-refresh";
+import * as XLSX from "xlsx";
+import dynamic from "next/dynamic";
+const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
 import * as Popover from "@radix-ui/react-popover";
 import Swal from "sweetalert2";
 
@@ -37,12 +39,13 @@ interface Promo {
   tanggal: string;
   dpp: number;
   ppn: number;
+  pph: number;
   total: number;
+  linkFP?: string;
   ritelId?: string;
 }
 
 export default function PromoPage() {
-  const refreshTick = useAutoRefreshTick();
   const [isMounted, setIsMounted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -68,6 +71,8 @@ export default function PromoPage() {
     tanggal: "", 
     dpp: 0,
     ppn: 0,
+    pph: 0,
+    linkFP: "",
     ritelId: "",
   });
 
@@ -90,6 +95,7 @@ export default function PromoPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [saving, setSaving] = useState(false);
+  const [openExcelBulk, setOpenExcelBulk] = useState(false);
 
   const formatRp = (val: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -185,7 +191,7 @@ export default function PromoPage() {
 
   useEffect(() => {
     loadData();
-  }, [loadData, refreshTick]);
+  }, [loadData]);
 
   const showToast = (type: "success" | "error" | "info", message: string) => {
     Swal.fire({
@@ -204,7 +210,9 @@ export default function PromoPage() {
   };
 
   const calculatedTotal = useMemo(() => {
-    return Number(formData.dpp) + Number(formData.ppn);
+    const dpp = Number(formData.dpp) || 0;
+    const ppn = Number(formData.ppn) || 0;
+    return dpp + ppn;
   }, [formData.dpp, formData.ppn]);
 
   const handleKegiatanKeyDown = (e: React.KeyboardEvent) => {
@@ -263,6 +271,9 @@ export default function PromoPage() {
       tanggal: new Date(promo.tanggal).toISOString().split("T")[0],
       dpp: promo.dpp,
       ppn: promo.ppn,
+      pph: promo.pph || 0,
+      linkFP: promo.linkFP || "",
+      remarks: promo.remarks || "",
       ritelId: selectedRetailerId || "",
     });
     setIsModalOpen(true);
@@ -296,6 +307,8 @@ export default function PromoPage() {
         tanggal: new Date().toISOString().split("T")[0],
         dpp: 0,
         ppn: 0,
+        pph: 0,
+        linkFP: "",
         ritelId: selectedRetailerId || "",
       });
     } catch (err) {
@@ -495,34 +508,45 @@ export default function PromoPage() {
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            if (!selectedRetailerId && isGroupedMode) {
-              setSearchRitelText("");
-              setShowRitelSelector(true);
-            } else {
-              setEditId(null);
-              setFormData({
-                ...formData,
-                nomor: "",
-                linkDocs: "",
-                kegiatan: "Dc Fee",
-                periode: "Januari",
-                tanggal: new Date().toISOString().split("T")[0],
-                dpp: 0,
-                ppn: 0,
-                ritelId: selectedRetailerId || "",
-              });
-              setIsModalOpen(true);
-            }
-          }}
-          className="flex items-center justify-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-[40px] font-black hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 text-xs uppercase tracking-widest border-4 border-white/10"
-        >
-          <div className="p-1 bg-white/20 rounded-full">
-            <Plus size={16} strokeWidth={3} />
-          </div>
-          Add Promo
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setOpenExcelBulk(true)}
+            className="flex items-center justify-center gap-3 bg-white border border-slate-100 text-slate-400 px-8 py-5 rounded-[40px] font-black hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm active:scale-95 text-xs uppercase tracking-widest"
+          >
+            <Layers size={16} />
+            Bulk Upload
+          </button>
+          <button
+            onClick={() => {
+              if (!selectedRetailerId && isGroupedMode) {
+                setSearchRitelText("");
+                setShowRitelSelector(true);
+              } else {
+                setEditId(null);
+                setFormData({
+                  ...formData,
+                  nomor: "",
+                  linkDocs: "",
+                  kegiatan: "Dc Fee",
+                  periode: "Januari",
+                  tanggal: new Date().toISOString().split("T")[0],
+                  dpp: 0,
+                  ppn: 0,
+                  pph: 0,
+                  linkFP: "",
+                  ritelId: selectedRetailerId || "",
+                });
+                setIsModalOpen(true);
+              }
+            }}
+            className="flex items-center justify-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-[40px] font-black hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 text-xs uppercase tracking-widest border-4 border-white/10"
+          >
+            <div className="p-1 bg-white/20 rounded-full">
+              <Plus size={16} strokeWidth={3} />
+            </div>
+            Add Promo
+          </button>
+        </div>
       </div>
 
       <div className="bg-white p-6 rounded-[40px] border border-slate-100 shadow-sm mb-8">
@@ -569,8 +593,8 @@ export default function PromoPage() {
                 }}
                 className="group relative bg-white border border-slate-100 p-8 rounded-[40px] shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-100 transition-all duration-500 cursor-pointer active:scale-[0.98] overflow-hidden"
               >
-                <div className="absolute top-0 right-0 p-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                <div className="absolute top-6 right-6 flex items-center gap-2">
+                   <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity">
                     <ChevronRight size={20} />
                    </div>
                 </div>
@@ -587,18 +611,21 @@ export default function PromoPage() {
                         <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full uppercase tracking-widest border border-indigo-100">
                           {ritel?._count?.Promos || 0} PROMOS
                         </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteGroup(ritel.id, ritel.namaPt);
-                          }}
-                          className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all active:scale-90"
-                          title="Hapus Seluruh Data Promo Peritel"
-                        >
-                          <Trash2 size={18} />
-                        </button>
                     </div>
                   </div>
+                </div>
+
+                <div className="absolute bottom-8 right-8 z-20">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteGroup(ritel.id, ritel.namaPt);
+                    }}
+                    className="p-4 bg-white text-rose-400 hover:bg-rose-600 hover:text-white rounded-[24px] shadow-sm hover:shadow-rose-500/20 transition-all active:scale-90 border border-slate-50 hover:border-rose-600"
+                    title="Hapus Seluruh Data Promo Peritel"
+                  >
+                    <Trash2 size={20} />
+                  </button>
                 </div>
                 
                 <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-50/50 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors" />
@@ -619,20 +646,24 @@ export default function PromoPage() {
                   <th className="px-8 py-6">Tanggal</th>
                   <th className="px-8 py-6 text-right">DPP</th>
                   <th className="px-8 py-6 text-right">PPN</th>
+                  <th className="px-8 py-6 text-right text-rose-400">PPH</th>
                   <th className="px-8 py-6 text-right">Total</th>
+                  <th className="px-8 py-6 text-center">Link Docs</th>
+                  <th className="px-8 py-6 text-center">Faktur Pajak</th>
+                  <th className="px-8 py-6">Remarks</th>
                   <th className="px-8 py-6 text-center text-slate-300">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 font-bold text-[13px] text-slate-700">
                 {isLoading ? (
                   <tr>
-                    <td className="px-8 py-10" colSpan={9}>
+                    <td className="px-8 py-10" colSpan={12}>
                       Memuat Master Data...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td className="px-8 py-10 text-slate-300 italic" colSpan={9}>
+                    <td className="px-8 py-10 text-slate-300 italic" colSpan={12}>
                       Data promo tidak ditemukan.
                     </td>
                   </tr>
@@ -665,9 +696,48 @@ export default function PromoPage() {
                       <td className="px-8 py-6 text-right tabular-nums">
                         {formatRp(promo.ppn)}
                       </td>
+                      <td className="px-8 py-6 text-right tabular-nums text-rose-500 italic">
+                        {promo.pph ? `-${formatNumber(promo.pph)}` : "-"}
+                      </td>
                       <td className="px-8 py-6 text-right text-indigo-600 font-black tabular-nums scale-[1.05] origin-right">
                         {formatRp(promo.total)}
                       </td>
+                      <td className="px-8 py-6 text-center">
+                        {promo.linkDocs ? (
+                          <a 
+                            href={promo.linkDocs} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="inline-flex p-2.5 bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all shadow-sm group/btn" 
+                            title="Buka Dokumentasi"
+                          >
+                            <Link2 size={16} />
+                          </a>
+                        ) : (
+                          <span className="text-[10px] font-black text-slate-200 uppercase tracking-tighter italic">No Docs</span>
+                        )}
+                      </td>
+
+                      <td className="px-8 py-6 text-center">
+                        {promo.linkFP ? (
+                          <a 
+                            href={promo.linkFP} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="inline-flex p-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm group/btn" 
+                            title="Buka Faktur Pajak"
+                          >
+                            <Layers size={16} />
+                          </a>
+                        ) : (
+                          <span className="text-[10px] font-black text-slate-200 uppercase tracking-tighter italic">No FP</span>
+                        )}
+                      </td>
+
+                      <td className="px-8 py-6 text-slate-400 italic font-medium text-[11px] max-w-[200px] truncate">
+                        {promo.remarks || "-"}
+                      </td>
+
                       <td className="px-8 py-6 text-center">
                         <div className="inline-flex gap-2">
                           <button
@@ -1084,9 +1154,9 @@ export default function PromoPage() {
                   </Popover.Root>
                 </div>
 
-                <div className="md:col-span-2 space-y-2">
+                <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Dokumentasi Link (Cloud)
+                    Link Docs (Cloud)
                   </label>
                   <input
                     type="text"
@@ -1095,6 +1165,35 @@ export default function PromoPage() {
                     value={formData.linkDocs}
                     onChange={(e) =>
                       setFormData({ ...formData, linkDocs: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    Link Faktur Pajak (Cloud)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://drive.google.com/..."
+                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                    value={formData.linkFP || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, linkFP: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    Remarks / Catatan
+                  </label>
+                  <textarea
+                    placeholder="Contoh: Potongan tagihan bulan April..."
+                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none resize-none h-24"
+                    value={formData.remarks || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, remarks: e.target.value })
                     }
                   />
                 </div>
@@ -1119,18 +1218,35 @@ export default function PromoPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    PPN (IDR)
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                    <span>PPN (IDR)</span>
+                    <span className="text-[9px] text-slate-300 normal-case font-bold italic">(Optional)</span>
                   </label>
                   <input
                     type="text"
-                    required
                     className="w-full px-4 py-3 bg-white rounded-xl border-none font-black text-lg text-slate-400 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
                     placeholder="0"
                     value={formData.ppn ? formatNumber(formData.ppn) : ""}
                     onChange={(e) => {
                       const raw = e.target.value.replace(/[^0-9]/g, "");
-                      setFormData({ ...formData, ppn: Number(raw) });
+                      setFormData({ ...formData, ppn: raw === "" ? 0 : Number(raw) });
+                    }}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                    <span>PPH (IDR)</span>
+                    <span className="text-[9px] text-slate-300 normal-case font-bold italic">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-3 bg-white rounded-xl border-none font-black text-lg text-rose-400 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
+                    placeholder="0"
+                    value={formData.pph ? formatNumber(formData.pph) : ""}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      setFormData({ ...formData, pph: raw === "" ? 0 : Number(raw) });
                     }}
                   />
                 </div>
@@ -1206,6 +1322,17 @@ export default function PromoPage() {
           </div>
         </div>
       )}
+      <ExcelBulkModal
+        open={openExcelBulk}
+        onClose={() => setOpenExcelBulk(false)}
+        onSuccess={() => {
+          setOpenExcelBulk(false);
+          loadData();
+          showToast("success", "Bulk Upload Berhasil!");
+        }}
+        title="Bulk Upload Promo"
+        variant="promo"
+      />
     </main>
   );
 }

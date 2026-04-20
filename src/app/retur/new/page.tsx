@@ -464,12 +464,13 @@ function NewReturPageContent() {
     maxPickup: new Date().toISOString(),
     kodeToko: "",
     namaCompany: "",
+    inisial: "",
     link: "",
     statusBarang: "Belum Diambil",
     refKetStatus: "",
     lokasiBarangId: "",
     pembebananReturnId: "",
-    invoiceRekon: false,
+    invoiceRekon: "",
     referensiPembayaran: "",
     tanggalPembayaran: null,
     remarks: "",
@@ -485,11 +486,13 @@ function NewReturPageContent() {
   });
 
   const [tujuanFilter, setTujuanFilter] = useState("");
+  const [inisialFilter, setInisialFilter] = useState("");
   const [produkFilter, setProdukFilter] = useState("");
   const [lokasiFilter, setLokasiFilter] = useState("");
   const [pembebananFilter, setPembebananFilter] = useState("");
   const [units, setUnits] = useState<any[]>([]);
   const [isTujuanOpen, setIsTujuanOpen] = useState(false);
+  const [isInisialOpen, setIsInisialOpen] = useState(false);
   const [isProdukOpen, setIsProdukOpen] = useState(false);
   const [isLokasiOpen, setIsLokasiOpen] = useState(false);
   const [isPembebananOpen, setIsPembebananOpen] = useState(false);
@@ -528,18 +531,51 @@ function NewReturPageContent() {
     });
   }, [ritelId, router]);
 
+  const masterInisialList = useMemo(() => {
+    if (!ritelId || retailers.length === 0) return [];
+    const r = retailers.find((x) => x.id === ritelId);
+    if (!r) return [];
+    
+    const targetPt = r.namaPt.trim().toLowerCase();
+
+    return Array.from(
+      new Set(
+        retailers
+          .filter((x) => x.namaPt.trim().toLowerCase() === targetPt && x.inisial)
+          .map((x) => x.inisial?.trim())
+      )
+    ).filter(Boolean) as string[];
+  }, [ritelId, retailers]);
+
   const masterTujuanList = useMemo(() => {
     if (!ritelId || retailers.length === 0) return [];
     const r = retailers.find((x) => x.id === ritelId);
     if (!r) return [];
+
+    const targetPt = r.namaPt.trim().toLowerCase();
+
     return Array.from(
       new Set(
         retailers
-          .filter((x) => x.namaPt === r.namaPt && x.tujuan)
+          .filter((x) => {
+             const matchPt = x.namaPt.trim().toLowerCase() === targetPt;
+             const matchInisial = formData.inisial 
+               ? x.inisial?.trim().toLowerCase() === formData.inisial.trim().toLowerCase() 
+               : true;
+             return matchPt && matchInisial && x.tujuan;
+          })
           .map((x) => x.tujuan),
       ),
     );
-  }, [ritelId, retailers]);
+  }, [ritelId, retailers, formData.inisial]);
+
+  const filteredInisial = useMemo(
+    () =>
+      masterInisialList.filter((ini) =>
+        ini.toLowerCase().includes(inisialFilter.toLowerCase()),
+      ),
+    [masterInisialList, inisialFilter],
+  );
 
   const filteredTujuan = useMemo(
     () =>
@@ -773,6 +809,19 @@ function NewReturPageContent() {
                   className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer"
                 />
               </div>
+              <EliteSearchableInput
+                label="Inisial Ritel"
+                placeholder="Pilih Inisial..."
+                icon={Search}
+                value={formData.inisial}
+                onSearch={setInisialFilter}
+                onCommit={(val: string) =>
+                  setFormData((p: any) => ({ ...p, inisial: val, namaCompany: "" }))
+                }
+                items={filteredInisial}
+                open={isInisialOpen}
+                onOpenChange={setIsInisialOpen}
+              />
               <EliteSearchableInput
                 label="Tujuan (Toko/DC)"
                 placeholder="Cari atau Ketik Tujuan..."
@@ -1192,30 +1241,19 @@ function NewReturPageContent() {
                   className="w-full px-5 py-4 text-xs font-black text-amber-600 bg-amber-50/30 border-2 border-transparent rounded-2xl outline-none cursor-pointer"
                 />
               </div>
-              <div
-                className="flex items-center justify-between p-5 bg-slate-50 rounded-[24px] cursor-pointer"
-                onClick={() =>
-                  setFormData({
-                    ...formData,
-                    invoiceRekon: !formData.invoiceRekon,
-                  })
-                }
-              >
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">
-                    Invoice Rekon
-                  </p>
-                  <p className="text-[9px] font-bold text-slate-400">
-                    Sudah dilakukan rekon.
-                  </p>
-                </div>
-                <div
-                  className={`w-12 h-6 rounded-full relative transition-all ${formData.invoiceRekon ? "bg-indigo-600" : "bg-slate-200"}`}
-                >
-                  <div
-                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.invoiceRekon ? "left-7" : "left-1"}`}
-                  />
-                </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
+                  Invoice Rekon (No. Invoice)
+                </label>
+                <input
+                  type="text"
+                  value={formData.invoiceRekon || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, invoiceRekon: e.target.value })
+                  }
+                  placeholder="Isi jika sudah direkon"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer"
+                />
               </div>
               <div className="md:col-span-2 space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">

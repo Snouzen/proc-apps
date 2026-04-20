@@ -16,7 +16,9 @@ export async function GET(request: Request) {
     const ritel = ritelId ? await prisma.ritelModern.findUnique({ where: { id: ritelId } }) : null;
     let whereCondition: any = {};
     if (ritelId) {
-      if (ritel) {
+      if (ritelId === "uncategorized") {
+        whereCondition = { ritelId: null };
+      } else if (ritel) {
         whereCondition = { RitelModern: { namaPt: { equals: ritel.namaPt, mode: 'insensitive' as any } } };
       } else {
         whereCondition = { ritelId };
@@ -35,34 +37,42 @@ export async function GET(request: Request) {
     
     // Grouped Mode: Return retailers that have promos, deduplicated by name
     if (!ritelId) {
-      const rawGrouped = await prisma.ritelModern.findMany({
-        where: {
-          Promos: { some: {} }
-        },
-        include: {
-          _count: {
-            select: { Promos: true }
-          }
-        },
-        orderBy: { namaPt: "asc" }
+      const allPromos = await prisma.promo.findMany({
+        include: { RitelModern: true }
       });
 
-      // Aggregating by namaPt to avoid duplicates in the UI cards
-      const aggregated: any[] = [];
-      const seenNames = new Map();
+      const aggregatedMap = new Map<string, any>();
+      let uncategorizedCount = 0;
 
-      for (const item of rawGrouped) {
-        const name = item.namaPt.trim().toUpperCase();
-        if (seenNames.has(name)) {
-          const existing = seenNames.get(name);
-          existing._count.Promos += item._count.Promos;
+      for (const p of allPromos) {
+        if (!p.ritelId) {
+          uncategorizedCount++;
+          continue;
+        }
+
+        const name = p.RitelModern?.namaPt.trim().toUpperCase() || "UNKNOWN";
+        if (aggregatedMap.has(name)) {
+          aggregatedMap.get(name)._count.Promos++;
         } else {
-          seenNames.set(name, item);
-          aggregated.push(item);
+          aggregatedMap.set(name, {
+            ...p.RitelModern,
+            _count: { Promos: 1 }
+          });
         }
       }
 
-      return NextResponse.json({ isGrouped: true, data: aggregated });
+      const result = Array.from(aggregatedMap.values());
+      if (uncategorizedCount > 0) {
+        result.push({
+          id: "uncategorized",
+          namaPt: "Tidak Terkategori",
+          inisial: "???",
+          tujuan: "Multiple",
+          _count: { Promos: uncategorizedCount }
+        });
+      }
+
+      return NextResponse.json({ isGrouped: true, data: result });
     }
 
     // Detail Mode: Fetch promos using the pre-built whereCondition
@@ -82,15 +92,48 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { nomor, linkDocs, kegiatan, periode, tanggal, dpp, ppn } = body;
+
+    // Support Batch Upload
+    if (Array.isArray(body)) {
+      const records = body.map((item: any) => {
+        const dpp = Number(item.dpp || 0);
+        const ppn = Number(item.ppn || 0);
+        const pph = Number(item.pph || 0);
+        const total = dpp + ppn;
+
+        return {
+          id: generateShortId(),
+          nomor: String(item.nomor || ""),
+          linkDocs: item.linkDocs || null,
+          kegiatan: item.kegiatan || "Lain-Lain",
+          periode: item.periode || "Januari",
+          tanggal: item.tanggal ? new Date(item.tanggal) : new Date(),
+          dpp,
+          ppn,
+          pph,
+          total,
+          linkFP: item.linkFP || null,
+          remarks: item.remarks || null,
+          ritelId: item.ritelId || null,
+        };
+      });
+
+      const count = await prisma.promo.createMany({
+        data: records,
+        skipDuplicates: true,
+      });
+
+      return NextResponse.json({ success: true, count: count.count });
+    }
+
+    const { nomor, linkDocs, kegiatan, periode, tanggal, dpp, ppn, pph, linkFP, remarks } = body;
 
     if (!nomor || !kegiatan || !periode || !tanggal || dpp === undefined || ppn === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const calculatedTotal = Number(dpp) + Number(ppn);
+    const calculatedTotal = Number(dpp) + Number(ppn || 0);
 
-    // Use our custom short ID
     const promo = await prisma.promo.create({
       data: {
         id: generateShortId(), 
@@ -101,7 +144,10 @@ export async function POST(request: Request) {
         tanggal: new Date(tanggal),
         dpp: Number(dpp),
         ppn: Number(ppn),
+        pph: Number(pph || 0),
         total: calculatedTotal,
+        linkFP: linkFP || null,
+        remarks: remarks || null,
         ritelId: body.ritelId || null,
       },
     });
@@ -115,13 +161,13 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, nomor, linkDocs, kegiatan, periode, tanggal, dpp, ppn } = body;
+    const { id, nomor, linkDocs, kegiatan, periode, tanggal, dpp, ppn, pph, linkFP, remarks } = body;
 
     if (!id || !nomor || !kegiatan || !periode || !tanggal || dpp === undefined || ppn === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const calculatedTotal = Number(dpp) + Number(ppn);
+    const calculatedTotal = Number(dpp) + Number(ppn || 0);
 
     const promo = await prisma.promo.update({
       where: { id },
@@ -133,7 +179,9 @@ export async function PUT(request: Request) {
         tanggal: new Date(tanggal),
         dpp: Number(dpp),
         ppn: Number(ppn),
+        pph: Number(pph || 0),
         total: calculatedTotal,
+        linkFP: linkFP || null,
         ritelId: body.ritelId || null,
       },
     });
@@ -155,10 +203,15 @@ export async function DELETE(request: Request) {
     }
 
     if (ritelId) {
+      if (ritelId === "uncategorized") {
+        await prisma.promo.deleteMany({
+          where: { ritelId: null }
+        });
+        return NextResponse.json({ success: true, message: "Uncategorized promos deleted" });
+      }
+
       const ritel = await prisma.ritelModern.findUnique({ where: { id: ritelId } });
       
-      // Prisma deleteMany does NOT support nested relation filters. 
-      // We must fetch the IDs of all retailers with the same name first.
       const ritelsWithSameName = await prisma.ritelModern.findMany({
         where: { namaPt: { equals: ritel?.namaPt || "", mode: 'insensitive' as any } },
         select: { id: true }

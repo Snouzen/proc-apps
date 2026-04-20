@@ -133,6 +133,7 @@ model DataRetur {
   maxPickup           DateTime?
   kodeToko            Int?
   namaCompany         String?
+  inisial             String?
   ritelId             String?
   RitelModern         RitelModern?  @relation(fields: [ritelId], references: [id])
   link                String?
@@ -148,7 +149,7 @@ model DataRetur {
   LokasiBarang        UnitProduksi? @relation("LokasiRetur", fields: [lokasiBarangId], references: [idRegional])
   pembebananReturnId  String?
   PembebananReturn    UnitProduksi? @relation("PembebananRetur", fields: [pembebananReturnId], references: [idRegional])
-  invoiceRekon        Boolean?      @default(false)
+  invoiceRekon        String?
   referensiPembayaran String?
   tanggalPembayaran   DateTime?
   remarks             String?
@@ -168,9 +169,12 @@ model Promo {
   tanggal   DateTime
   dpp       Float
   ppn       Float
+  pph       Float?   @default(0)
   total     Float
+  linkFP    String?
   ritelId   String?  // Made optional for backward compatibility
   RitelModern RitelModern? @relation(fields: [ritelId], references: [id])
+  remarks   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

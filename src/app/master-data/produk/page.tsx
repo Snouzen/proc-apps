@@ -15,7 +15,8 @@ import {
 import { useEffect, useState } from "react";
 import { saveProduct } from "@/lib/api";
 import { StatefulButton } from "@/components/ui/stateful-button";
-import ExcelBulkModal from "@/components/excel-bulk-modal";
+import dynamic from "next/dynamic";
+const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 export default function ProdukPage() {
@@ -360,6 +361,7 @@ export default function ProdukPage() {
 
         <div className="flex gap-2">
           <button
+            suppressHydrationWarning
             onClick={() => setOpenExcelBulk(true)}
             className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-sm active:scale-95 text-sm"
           >
@@ -367,6 +369,7 @@ export default function ProdukPage() {
             Bulk Upload
           </button>
           <button
+            suppressHydrationWarning
             onClick={() => setIsModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-sm"
           >
@@ -401,6 +404,7 @@ export default function ProdukPage() {
             size={18}
           />
           <input
+            suppressHydrationWarning
             type="text"
             placeholder="Cari Nama Produk..."
             value={searchTerm}

@@ -19,7 +19,8 @@ import React, { useEffect, useState } from "react";
 import { saveRitel } from "@/lib/api";
 import { StatefulButton } from "@/components/ui/stateful-button";
 import Combobox from "@/components/combobox";
-import ExcelBulkModal from "@/components/excel-bulk-modal";
+import dynamic from "next/dynamic";
+const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 const highlightText = (text: string, query: string) => {
@@ -496,6 +497,7 @@ export default function RitelModernPage() {
 
         <div className="flex gap-2">
           <button
+            suppressHydrationWarning
             onClick={() => setOpenExcelBulk(true)}
             className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-sm active:scale-95 text-sm"
           >
@@ -503,6 +505,7 @@ export default function RitelModernPage() {
             Bulk Upload (Excel)
           </button>
           <button
+            suppressHydrationWarning
             onClick={() => setIsModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-sm"
           >
@@ -549,6 +552,7 @@ export default function RitelModernPage() {
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
         <div className="relative max-w-md">
           <input
+            suppressHydrationWarning
             type="text"
             placeholder="Cari Nama PT atau Inisial..."
             value={searchTerm}

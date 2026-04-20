@@ -327,6 +327,7 @@ export default function DataRekonPage() {
                            <div className="flex items-center justify-end gap-2">
                               <button 
                                  onClick={() => handleRowExport(item)}
+                                 suppressHydrationWarning
                                  className="w-8 h-8 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                                  title="Preview PDF"
                               >
@@ -334,6 +335,7 @@ export default function DataRekonPage() {
                               </button>
                               <button 
                                  onClick={() => handleDelete(item)}
+                                 suppressHydrationWarning
                                  className="w-8 h-8 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center hover:bg-rose-600 hover:text-white transition-all shadow-sm"
                                  title="Hapus Data"
                               >
@@ -486,7 +488,10 @@ export default function DataRekonPage() {
             <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Rows per page</span>
             <Popover.Root>
               <Popover.Trigger asChild>
-                <button className="h-8 px-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-[10px] font-black text-slate-600 flex items-center gap-2 transition-all outline-none border border-transparent focus:border-indigo-100">
+                <button 
+                  suppressHydrationWarning
+                  className="h-8 px-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-[10px] font-black text-slate-600 flex items-center gap-2 transition-all outline-none border border-transparent focus:border-indigo-100"
+                >
                   {limit}
                   <ChevronDown size={12} className="text-slate-300" />
                 </button>
@@ -512,6 +517,7 @@ export default function DataRekonPage() {
           <button 
             disabled={page === 1}
             onClick={() => setPage(1)}
+            suppressHydrationWarning
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-slate-50 transition-all"
           >
             <ChevronsLeft size={16} />
@@ -519,6 +525,7 @@ export default function DataRekonPage() {
           <button 
             disabled={page === 1}
             onClick={() => setPage(p => Math.max(1, p - 1))}
+            suppressHydrationWarning
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-slate-50 transition-all"
           >
             <ChevronLeft size={16} />
@@ -531,6 +538,7 @@ export default function DataRekonPage() {
           <button 
             disabled={page >= Math.ceil(total / limit)}
             onClick={() => setPage(p => p + 1)}
+            suppressHydrationWarning
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-slate-50 transition-all"
           >
             <ChevronRight size={16} />
@@ -538,6 +546,7 @@ export default function DataRekonPage() {
           <button 
             disabled={page >= Math.ceil(total / limit)}
             onClick={() => setPage(Math.ceil(total / limit))}
+            suppressHydrationWarning
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-slate-50 transition-all"
           >
             <ChevronsRight size={16} />
@@ -574,6 +583,7 @@ export default function DataRekonPage() {
               </a>
               <button
                 onClick={() => setPdfPreviewUrl(null)}
+                suppressHydrationWarning
                 className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
               >
                 <X size={20} />

@@ -18,7 +18,8 @@ import {
 import React, { useEffect, useState, useMemo } from "react";
 import { saveUnitProduksi } from "@/lib/api";
 import { StatefulButton } from "@/components/ui/stateful-button";
-import ExcelBulkModal from "@/components/excel-bulk-modal";
+import dynamic from "next/dynamic";
+const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 import SmoothSelect from "@/components/ui/smooth-select";
 
@@ -335,6 +336,7 @@ export default function UnitProduksiPage() {
           </button>
 
           <button
+            suppressHydrationWarning
             onClick={() => {
               setContextRegional(null);
               setSelectedRegional("");
@@ -375,14 +377,15 @@ export default function UnitProduksiPage() {
             size={18}
           />
           <input
+            suppressHydrationWarning
             type="text"
             placeholder="Cari Regional atau Site..."
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:outline-non focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:outline-non focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
           />
         </div>
       </div>

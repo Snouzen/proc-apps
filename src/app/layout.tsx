@@ -7,11 +7,13 @@ import ClientLayout from "@/components/clientlayout";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -27,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning>
-        <Script id="chunk-load-fallback" strategy="beforeInteractive">
+        <Script id="chunk-load-fallback" strategy="afterInteractive">
           {`
             (function() {
               function shouldReload(msg) {
@@ -54,7 +56,7 @@ export default function RootLayout({
             })();
           `}
         </Script>
-        <Script id="cz-hydration-fix" strategy="beforeInteractive">
+        <Script id="cz-hydration-fix" strategy="afterInteractive">
           {`
             (function() {
               function removeAttr() {

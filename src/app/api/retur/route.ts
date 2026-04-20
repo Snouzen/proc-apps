@@ -177,6 +177,7 @@ export async function POST(request: Request) {
           maxPickup: item.maxPickup ? new Date(item.maxPickup) : null,
           kodeToko: item.kodeToko ? Number(item.kodeToko) : null,
           namaCompany: item.namaCompany || null,
+          inisial: item.inisial || null,
           ritelId: item.ritelId || null,
           link: item.link || null,
           produk: item.produk || null,
@@ -188,7 +189,7 @@ export async function POST(request: Request) {
           refKetStatus: item.refKetStatus || null,
           lokasiBarangId: findUnitId(stringLokasi),
           pembebananReturnId: findUnitId(stringPembebanan),
-          invoiceRekon: item.invoiceRekon === true || item.invoiceRekon === "true",
+          invoiceRekon: item.invoiceRekon ? String(item.invoiceRekon) : null,
           referensiPembayaran: item.referensiPembayaran || null,
           tanggalPembayaran: item.tanggalPembayaran ? new Date(item.tanggalPembayaran) : null,
           remarks: item.remarks || null,
@@ -215,6 +216,7 @@ export async function POST(request: Request) {
         tanggalRtv: body.tanggalRtv ? new Date(body.tanggalRtv) : null,
         maxPickup: body.maxPickup ? new Date(body.maxPickup) : null,
         namaCompany: body.namaCompany || null,
+        inisial: body.inisial || null,
         ritelId: body.ritelId || null,
         kodeToko: body.kodeToko ? Number(body.kodeToko) : null,
         produk: body.produk || null,
@@ -228,7 +230,7 @@ export async function POST(request: Request) {
         remarks: body.remarks || null,
         link: body.link || null,
         refKetStatus: body.refKetStatus || null,
-        invoiceRekon: body.invoiceRekon || false,
+        invoiceRekon: body.invoiceRekon || null,
         referensiPembayaran: body.referensiPembayaran || null,
         tanggalPembayaran: body.tanggalPembayaran ? new Date(body.tanggalPembayaran) : null,
         sdiReturn: body.sdiReturn || null,
@@ -262,7 +264,7 @@ export async function PUT(request: Request) {
       tanggalRtv: updateData.tanggalRtv ? new Date(updateData.tanggalRtv) : null,
       maxPickup: updateData.maxPickup ? new Date(updateData.maxPickup) : null,
       tanggalPembayaran: updateData.tanggalPembayaran ? new Date(updateData.tanggalPembayaran) : null,
-      invoiceRekon: updateData.invoiceRekon === true,
+      invoiceRekon: updateData.invoiceRekon !== undefined ? updateData.invoiceRekon : undefined,
     };
 
     const updated = await prisma.dataRetur.update({

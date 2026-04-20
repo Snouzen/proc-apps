@@ -22,13 +22,18 @@ import {
   FileSpreadsheet,
   X,
   Check,
-  Calendar
+  Calendar,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday } from "date-fns";
 import { id } from "date-fns/locale";
 import * as Popover from "@radix-ui/react-popover";
-import ExcelBulkModal from "@/components/excel-bulk-modal";
-import ReturDetailModal from "@/components/retur-detail-modal";
+import dynamic from "next/dynamic";
+
+// Dynamic imports for heavy modals
+const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
+const ReturDetailModal = dynamic(() => import("@/components/retur-detail-modal"), { ssr: false });
 
 // --- Custom Component: Smooth Date Picker ---
 function CustomInlineDatePicker({
@@ -397,6 +402,89 @@ function SmoothStatusSelect({
   );
 }
 
+// --- NEW COMPONENT: Filter Select for Header Bar ---
+function FilterSelect({
+  label,
+  placeholder,
+  value,
+  onCommit,
+  items,
+  icon: Icon,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onCommit: (val: string) => void;
+  items: string[];
+  icon: any;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = items.filter(i => (i || "").toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="flex-1 min-w-[200px]">
+      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+        {label}
+      </label>
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger asChild>
+          <button className="flex items-center justify-between w-full px-4 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold text-slate-700 hover:border-indigo-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm">
+            <div className="flex items-center gap-2.5 truncate">
+              <div className={`p-1.5 rounded-lg ${value ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'}`}>
+                <Icon size={14} />
+              </div>
+              <span className={value ? "text-slate-800" : "text-slate-400 font-medium"}>
+                {value || placeholder}
+              </span>
+            </div>
+            <ChevronDown size={14} className={`text-slate-300 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content className="z-[160] w-[260px] bg-white rounded-3xl shadow-2xl border border-slate-50 p-3 animate-in fade-in zoom-in-95 duration-200" sideOffset={10} align="start">
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+              <input 
+                autoFocus
+                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border-none rounded-xl text-[11px] focus:ring-0 placeholder:text-slate-300 font-bold"
+                placeholder="Search..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="max-h-[280px] overflow-y-auto scrollbar-hide space-y-1 px-0.5">
+              <button 
+                onClick={() => { onCommit(""); setOpen(false); setSearch(""); }}
+                className="w-full text-left px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 rounded-xl transition-colors flex items-center justify-between group"
+              >
+                Clear Filter
+                <X size={14} className="group-hover:rotate-90 transition-transform" />
+              </button>
+              <div className="h-px bg-slate-50 my-1 mx-2" />
+              {filtered.length === 0 ? (
+                <div className="py-12 text-center">
+                  <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No Results</div>
+                </div>
+              ) : (
+                filtered.map((item, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => { onCommit(item); setOpen(false); setSearch(""); }}
+                    className={`w-full text-left px-4 py-3 text-[11px] font-bold rounded-xl transition-all ${value === item ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    {item}
+                  </button>
+                ))
+              )}
+            </div>
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
+  );
+}
+
 
 function ReturContent() {
   const router = useRouter();
@@ -417,6 +505,10 @@ function ReturContent() {
   const [retailers, setRetailers] = useState<any[]>([]);
   const [selectedRetailerId, setSelectedRetailerId] = useState<string | null>(null);
   const [isGroupedMode, setIsGroupedMode] = useState(true);
+  const [filterInisial, setFilterInisial] = useState("");
+  const [filterToko, setFilterToko] = useState("");
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
   
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkStep, setBulkStep] = useState(1); 
@@ -443,6 +535,8 @@ function ReturContent() {
   const [isLokasiOpen, setIsLokasiOpen] = useState(false);
   const [searchLokasi, setSearchLokasi] = useState("");
   const [isPembebananOpen, setIsPembebananOpen] = useState(false);
+  const [isInisialOpen, setIsInisialOpen] = useState(false);
+  const [searchInisial, setSearchInisial] = useState("");
   const [searchPembebanan, setSearchPembebanan] = useState("");
   const [viewDetailId, setViewDetailId] = useState<string | null>(null);
   const selectedDetail = useMemo(() => data.find(d => d.id === viewDetailId), [data, viewDetailId]);
@@ -541,6 +635,43 @@ function ReturContent() {
     }
   }, [page, debouncedSearch, rowsPerPage, selectedRetailerId]);
 
+  // --- CLIENT SIDE FILTERING FOR DETAIL MODE ---
+  const filteredData = useMemo(() => {
+    if (isGroupedMode) return data;
+    
+    return data.filter(item => {
+      const matchInisial = filterInisial ? item.inisial === filterInisial : true;
+      const matchToko = filterToko ? item.namaCompany === filterToko : true;
+      
+      let matchDate = true;
+      if (item.tanggalRtv) {
+        const itemDate = new Date(item.tanggalRtv);
+        if (dateFrom) {
+          const from = new Date(dateFrom);
+          from.setHours(0,0,0,0);
+          if (itemDate < from) matchDate = false;
+        }
+        if (dateTo) {
+          const to = new Date(dateTo);
+          to.setHours(23,59,59,999);
+          if (itemDate > to) matchDate = false;
+        }
+      } else if (dateFrom || dateTo) {
+        matchDate = false;
+      }
+
+      return matchInisial && matchToko && matchDate;
+    });
+  }, [data, isGroupedMode, filterInisial, filterToko, dateFrom, dateTo]);
+
+  const paginatedData = useMemo(() => {
+    if (isGroupedMode) return data;
+    const start = (clientPage - 1) * rowsPerPage;
+    return filteredData.slice(start, start + rowsPerPage);
+  }, [filteredData, clientPage, rowsPerPage, isGroupedMode, data]);
+
+  const clientTotalPages = Math.ceil(filteredData.length / rowsPerPage);
+
   useEffect(() => {
     fetchRetur();
   }, [fetchRetur]);
@@ -589,6 +720,20 @@ function ReturContent() {
     );
   }, [retailers, searchRetailerText]);
 
+  const filterOptions = useMemo(() => {
+    if (!selectedRetailerId || retailers.length === 0) return { inisials: [], tokos: [] };
+    const r = retailers.find(x => x.id === selectedRetailerId);
+    if (!r) return { inisials: [], tokos: [] };
+    
+    const pt = r.namaPt.trim().toLowerCase();
+    const related = retailers.filter(x => x.namaPt.trim().toLowerCase() === pt);
+    
+    return {
+      inisials: Array.from(new Set(related.map(x => x.inisial).filter(Boolean))) as string[],
+      tokos: Array.from(new Set(related.map(x => x.tujuan).filter(Boolean))) as string[],
+    };
+  }, [selectedRetailerId, retailers]);
+
   useEffect(() => {
     setActiveIndex(-1);
   }, [searchRetailerText]);
@@ -607,6 +752,8 @@ function ReturContent() {
     setSearchProduk(item.produk || "");
     setSearchLokasi(item.LokasiBarang?.siteArea || ""); // TAMBAH INI
     setSearchPembebanan(item.PembebananReturn?.siteArea || ""); // TAMBAH INI
+    setSearchInisial(item.inisial || "");
+    setIsInisialOpen(false);
   };
 
   const handleCancelEdit = () => {
@@ -620,6 +767,8 @@ function ReturContent() {
     setIsProdukOpen(false);
     setIsLokasiOpen(false); // TAMBAH INI
     setIsPembebananOpen(false); // TAMBAH INI
+    setIsInisialOpen(false);
+    setSearchInisial("");
   };
 
   const handleSaveInline = async (id: string) => {
@@ -651,7 +800,8 @@ function ReturContent() {
         tanggalRtv: pureData.tanggalRtv ? new Date(pureData.tanggalRtv).toISOString() : null,
         maxPickup: pureData.maxPickup ? new Date(pureData.maxPickup).toISOString() : null,
         tanggalPembayaran: pureData.tanggalPembayaran ? new Date(pureData.tanggalPembayaran).toISOString() : null,
-        invoiceRekon: !!pureData.invoiceRekon
+        invoiceRekon: pureData.invoiceRekon || "",
+        inisial: pureData.inisial || ""
       };
 
       const res = await fetch(`/api/retur`, {
@@ -824,6 +974,23 @@ function ReturContent() {
     setClientPage(1);
   }, [selectedRetailerId]);
 
+  const filteredInisial = useMemo(() => {
+    if (retailers.length === 0 || !editingId) return [];
+    const item = data.find(d => d.id === editingId);
+    // Jika tidak ada info PT di item, coba cari dari retailers berdasarkan ritelId
+    const ptName = item?.RitelModern?.namaPt || retailers.find(r => r.id === item?.ritelId)?.namaPt;
+    if (!ptName) return [];
+
+    const targetPt = ptName.trim().toLowerCase();
+    return Array.from(
+      new Set(
+        retailers
+          .filter(r => r.namaPt.trim().toLowerCase() === targetPt && r.inisial)
+          .map(r => r.inisial)
+      )
+    ).filter(i => i && i.toLowerCase().includes(searchInisial.toLowerCase())) as string[];
+  }, [retailers, searchInisial, editingId, data]);
+
   const masterTujuanList = useMemo(() => {
     if (!selectedRetailerId || retailers.length === 0) return [];
     const currentRetailer = retailers.find(r => r.id === selectedRetailerId);
@@ -912,10 +1079,6 @@ function ReturContent() {
     return units.filter(u => String(u.siteArea).toLowerCase().includes(searchPembebanan.toLowerCase()));
   }, [units, searchPembebanan]);
 
-  const clientRowsPerPage = 10;
-  const clientTotalPages = Math.ceil(data.length / clientRowsPerPage) || 1;
-  const paginatedData = isGroupedMode ? data : data.slice((clientPage - 1) * clientRowsPerPage, clientPage * clientRowsPerPage);
-
   const handleAddReturn = () => {
     if (!selectedRetailerId) {
       setShowAddModal(true);
@@ -950,6 +1113,7 @@ function ReturContent() {
         <div className="flex items-center gap-4">
           {selectedRetailerId && (
             <button 
+              suppressHydrationWarning
               onClick={() => {
                 setSelectedRetailerId(null);
                 setIsGroupedMode(true); // Switch instant
@@ -985,6 +1149,7 @@ function ReturContent() {
           {role === "pusat" && (
             <>
               <button 
+                suppressHydrationWarning
                 onClick={() => {
                   setBulkStep(1);
                   setBulkRetailerId("");
@@ -997,6 +1162,7 @@ function ReturContent() {
                 Bulk Upload
               </button>
               <button 
+                suppressHydrationWarning
                 onClick={handleAddReturn}
                 className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-all shadow-md active:scale-95"
               >
@@ -1009,25 +1175,81 @@ function ReturContent() {
       </div>
 
       {/* ── Filter & Search ─────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="relative group w-full md:w-[450px]">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Cari RTV/CN, Toko, atau Produk..."
-            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all text-sm shadow-sm font-medium"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative group w-full md:w-[450px]">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+              size={18}
+            />
+            <input
+              suppressHydrationWarning
+              type="text"
+              placeholder="Cari RTV/CN, Toko, atau Produk..."
+              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all text-sm shadow-sm font-medium"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          
+          {!isGroupedMode && (
+            <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
+               <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Record</span>
+               <span className="text-sm font-black text-indigo-700 tabular-nums">{filteredData.length}</span>
+            </div>
+          )}
         </div>
-        
-        {!isGroupedMode && (
-          <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
-             <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Record</span>
-             <span className="text-sm font-black text-indigo-700 tabular-nums">{total}</span>
+
+        {selectedRetailerId && (
+          <div className="p-5 lg:p-6 bg-slate-50/50 rounded-[32px] border border-slate-100/50 flex flex-wrap items-end gap-5 animate-in slide-in-from-top-4 duration-500">
+            <FilterSelect 
+              label="Inisial Ritel"
+              placeholder="Semua Inisial"
+              icon={LayoutList}
+              value={filterInisial}
+              onCommit={setFilterInisial}
+              items={filterOptions.inisials}
+            />
+            <FilterSelect 
+              label="Cabang / Toko"
+              placeholder="Semua Toko"
+              icon={Building2}
+              value={filterToko}
+              onCommit={setFilterToko}
+              items={filterOptions.tokos}
+            />
+            
+            <div className="flex-1 min-w-[180px]">
+               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 text-slate-400">Mulai Dari</label>
+               <CustomInlineDatePicker 
+                 value={dateFrom} 
+                 onChange={setDateFrom}
+                 placeholder="Pilih Tanggal"
+               />
+            </div>
+
+            <div className="flex-1 min-w-[180px]">
+               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 text-slate-400">Hingga Akhir</label>
+               <CustomInlineDatePicker 
+                 value={dateTo} 
+                 onChange={setDateTo}
+                 placeholder="Pilih Tanggal"
+               />
+            </div>
+
+            {(filterInisial || filterToko || dateFrom || dateTo) && (
+              <button 
+                onClick={() => {
+                  setFilterInisial("");
+                  setFilterToko("");
+                  setDateFrom(null);
+                  setDateTo(null);
+                }}
+                className="px-6 py-3 bg-white text-rose-500 border border-rose-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 shadow-sm"
+              >
+                Reset
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -1070,6 +1292,7 @@ function ReturContent() {
                   <div className="flex items-center gap-2">
                     {role === "pusat" && (
                       <button
+                        suppressHydrationWarning
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteGroup(ritel.id, ritel.namaPt);
@@ -1101,6 +1324,7 @@ function ReturContent() {
                    <th className="px-6 py-5 whitespace-nowrap">MAX PICKUP</th>
                    <th className="px-6 py-5 text-center">KODE TOKO</th>
                    <th className="px-6 py-5">TOKO</th>
+                   <th className="px-6 py-5">INISIAL</th>
                    <th className="px-6 py-5">LINK</th>
                    <th className="px-6 py-5">PRODUK</th>
                    <th className="px-6 py-5 text-center">QTY RETUR</th>
@@ -1128,11 +1352,12 @@ function ReturContent() {
                         className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${isEditing ? 'bg-indigo-50/30' : ''}`}
                       >
                         <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 text-xs font-black text-slate-400 text-center tabular-nums border-r border-slate-100 transition-colors">
-                          {isGroupedMode ? (page - 1) * rowsPerPage + idx + 1 : (page - 1) * clientRowsPerPage + idx + 1}
+                          {isGroupedMode ? (page - 1) * rowsPerPage + idx + 1 : (clientPage - 1) * rowsPerPage + idx + 1}
                         </td>
                         <td className="px-6 py-4">
                           {isEditing && role === "pusat" ? (
                             <input 
+                              suppressHydrationWarning
                               type="text"
                               className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
                               value={editForm.rtvCn || ""}
@@ -1165,6 +1390,7 @@ function ReturContent() {
                         <td className="px-6 py-4 text-center">
                           {isEditing && role === "pusat" ? (
                             <input 
+                              suppressHydrationWarning
                               type="text"
                               inputMode="numeric"
                               className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
@@ -1191,6 +1417,24 @@ function ReturContent() {
                             />
                           ) : (
                             <div className="text-xs font-black text-slate-800 whitespace-nowrap truncate max-w-[150px]" title={item.namaCompany}>{item.namaCompany || "-"}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isEditing && role === "pusat" ? (
+                            <TableSearchableInput
+                              value={editForm.inisial || ""}
+                              onCommit={(val) => {
+                                setEditForm({ ...editForm, inisial: val });
+                                setSearchInisial(val);
+                                setIsInisialOpen(false);
+                              }}
+                              items={filteredInisial}
+                              placeholder="Cari Inisial..."
+                            />
+                          ) : (
+                             <div className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-black border border-slate-200">
+                               {item.inisial || "-"}
+                             </div>
                           )}
                         </td>
                         <td className="px-6 py-4">
@@ -1324,13 +1568,19 @@ function ReturContent() {
                         <td className="px-6 py-4 text-center">
                           {isEditing && role === "pusat" ? (
                             <input 
-                              type="checkbox"
-                              className="w-4 h-4 rounded border-indigo-200 text-indigo-600 focus:ring-indigo-500"
-                              checked={!!editForm.invoiceRekon}
-                              onChange={e => setEditForm({...editForm, invoiceRekon: e.target.checked})}
+                              className="w-full min-w-[150px] px-3 py-1.5 text-[10px] font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                              value={editForm.invoiceRekon || ""}
+                              onChange={e => setEditForm({...editForm, invoiceRekon: e.target.value})}
+                              placeholder="No Invoice Rekon..."
                             />
                           ) : (
-                            <div className={`w-2 h-2 rounded-full mx-auto ${item.invoiceRekon ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-200"}`} />
+                            item.invoiceRekon ? (
+                              <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-black border border-emerald-100 shadow-sm whitespace-nowrap">
+                                {item.invoiceRekon}
+                              </div>
+                            ) : (
+                              <div className="w-2 h-2 rounded-full mx-auto bg-slate-200" />
+                            )
                           )}
                         </td>
                         <td className="px-6 py-4 text-[11px] font-bold text-slate-700 whitespace-nowrap italic">
@@ -1417,7 +1667,7 @@ function ReturContent() {
           {!isGroupedMode && (
              <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                  Menampilkan <span className="text-indigo-600">{(clientPage - 1) * clientRowsPerPage + 1}</span> - <span className="text-indigo-600">{Math.min(clientPage * clientRowsPerPage, data.length)}</span> dari <span className="text-slate-800 font-black">{data.length}</span> data
+                  Menampilkan <span className="text-indigo-600">{(clientPage - 1) * rowsPerPage + 1}</span> - <span className="text-indigo-600">{Math.min(clientPage * rowsPerPage, filteredData.length)}</span> dari <span className="text-slate-800 font-black">{filteredData.length}</span> data
                 </div>
                 
                 <div className="flex items-center gap-1.5">
@@ -1444,14 +1694,14 @@ function ReturContent() {
                   
                   <button 
                     onClick={() => setClientPage(p => Math.min(clientTotalPages, p + 1))} 
-                    disabled={clientPage === clientTotalPages}
+                    disabled={clientPage === clientTotalPages || clientTotalPages === 0}
                     className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
                   >
                     <ChevronRight size={16} />
                   </button>
                   <button 
                     onClick={() => setClientPage(clientTotalPages)} 
-                    disabled={clientPage === clientTotalPages}
+                    disabled={clientPage === clientTotalPages || clientTotalPages === 0}
                     className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
                   >
                     <ChevronsRight size={16} />
@@ -1744,23 +1994,13 @@ function ReturContent() {
   );
 }
 
-export default function ReturPage() {
+export default function Page() {
   return (
     <Suspense 
       fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 text-center">
-           <div className="bg-white p-12 rounded-[40px] shadow-2xl shadow-indigo-100 flex flex-col items-center gap-6 border border-slate-50 animate-in zoom-in-95 duration-700">
-              <div className="relative">
-                <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <LayoutList className="text-indigo-600" size={24} />
-                </div>
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-slate-800 tracking-tight">Menyiapkan Dashboard...</h2>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-2">Loading System Module</p>
-              </div>
-           </div>
+        <div className="p-10 flex flex-col items-center justify-center min-h-[400px] space-y-4">
+          <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+          <p className="text-slate-400 font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Menyiapkan Data Retur...</p>
         </div>
       }
     >

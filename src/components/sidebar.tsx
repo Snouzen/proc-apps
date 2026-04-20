@@ -21,8 +21,8 @@ import {
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getMe } from "@/lib/me";
-// Hindari Next/Image untuk logo agar tidak terjadi error validasi gambar saat dev
 
 interface SidebarProps {
   isOpen: boolean;
@@ -162,15 +162,15 @@ export default function Sidebar({
         ${isOpen ? "w-64 translate-x-0" : "w-20 -translate-x-full lg:translate-x-0"}`}
       >
         {/* Header Logo */}
-        <div className="h-20 flex items-center px-6 mb-4">
+        <div className="h-20 flex items-center px-6 mb-2">
           {isOpen ? (
-            <div className="relative w-full h-10 transition-all duration-300">
+            <Link href="/" className="block transition-opacity hover:opacity-80">
               <img
                 src="/logo-bulog.png"
                 alt="Bulog Logo"
-                className="w-full h-full object-contain object-left"
+                className="h-10 w-auto object-contain"
               />
-            </div>
+            </Link>
           ) : (
             <div className="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center overflow-hidden shrink-0 mx-auto transition-all duration-300">
               <span className="text-white font-black text-xl italic">B</span>

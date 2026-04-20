@@ -7,7 +7,7 @@ import { LoaderThree } from "@/components/ui/loader";
 import { FileSpreadsheet, Upload, X } from "lucide-react";
 import { saveRitel, saveUnitProduksi, saveProduct } from "@/lib/api";
 
-type Variant = "ritel" | "unit" | "produk" | "retur";
+type Variant = "ritel" | "unit" | "produk" | "retur" | "promo";
 
 type Props = {
   open: boolean;
@@ -74,6 +74,17 @@ export default function ExcelBulkModal({
     tanggalPembayaran: null,
     remarks: null,
     sdiReturn: null,
+    // Promo specific
+    nomor: null,
+    kegiatan: null,
+    periode: null,
+    tanggal: null,
+    dpp: null,
+    ppn: null,
+    pph: null,
+    linkFP: null,
+    linkDocs: null,
+    ritelModern: null,
   });
 
   const readExcel = async (f: File) => {
@@ -128,6 +139,16 @@ export default function ExcelBulkModal({
       tanggalPembayaran: null,
       remarks: null,
       sdiReturn: null,
+      nomor: null,
+      kegiatan: null,
+      periode: null,
+      tanggal: null,
+      dpp: null,
+      ppn: null,
+      pph: null,
+      linkFP: null,
+      linkDocs: null,
+      ritelModern: null,
     };
 
     if (variant === "ritel") {
@@ -166,6 +187,7 @@ export default function ExcelBulkModal({
         "nama company",
         "store name",
       ]);
+      result.inisial = findKey(first, ["inisial", "initial", "ind"]);
       result.link = findKey(first, ["link", "link result", "url"]);
       result.a = findKey(first, ["produk", "product", "item"]);
       result.b = findKey(first, [
@@ -210,6 +232,18 @@ export default function ExcelBulkModal({
       ]);
       result.remarks = findKey(first, ["remarks", "keterangan", "catatan"]);
       result.sdiReturn = findKey(first, ["sdi retur", "sdi"]);
+    } else if (variant === "promo") {
+      result.ritelModern = findKey(first, ["ritel modern", "ritel", "pt", "modern retailer"]);
+      result.nomor = findKey(first, ["nomor", "nomor promo", "no"]);
+      result.linkDocs = findKey(first, ["link dokumen", "link docs", "dokumen"]);
+      result.kegiatan = findKey(first, ["kegiatan", "activity"]);
+      result.periode = findKey(first, ["periode", "period", "bulan"]);
+      result.tanggal = findKey(first, ["tanggal", "date"]);
+      result.dpp = findKey(first, ["dpp", "dpp (idr)"]);
+      result.ppn = findKey(first, ["ppn", "ppn (idr)"]);
+      result.pph = findKey(first, ["pph", "pph (idr)"]);
+      result.linkFP = findKey(first, ["link faktur pajak", "link fp", "faktur pajak"]);
+      result.remarks = findKey(first, ["remarks", "keterangan"]);
     } else {
       result.a = findKey(first, [
         "produk",
@@ -319,6 +353,18 @@ export default function ExcelBulkModal({
       // Untuk retur kita skip dulu de-duplikasi di level ExcelModal
       // Kita biarkan API yang menangani atau user yang memfilter
       setDupeCount(0);
+      setDupeGroups([]);
+      return;
+    }
+    if (variant === "promo") {
+      const res = await fetch("/api/promo");
+      const list = await res.json();
+      const all = Array.isArray(list) ? list : list?.data || [];
+      const set = new Set(all.map((x: any) => normalize(String(x?.nomor || ""))));
+      const count = rows
+        .map((r) => normalize(getCell(r, keys.nomor)))
+        .filter((k) => set.has(k) && !!k).length;
+      setDupeCount(count);
       setDupeGroups([]);
       return;
     }
@@ -503,6 +549,7 @@ export default function ExcelBulkModal({
           const records = batch.map((rawRow) => ({
             ritelId: retailerId || null,
             namaCompany: getCell(rawRow, keys.namaCompany) || null,
+            inisial: getCell(rawRow, keys.inisial) || null,
             produk: getCell(rawRow, keys.a),
             qtyReturn: Number(getCell(rawRow, keys.b)) || 0,
             nominal: Number(getCell(rawRow, keys.c)) || 0,
@@ -516,7 +563,7 @@ export default function ExcelBulkModal({
             refKetStatus: getCell(rawRow, keys.refKetStatus) || null,
             lokasiBarang: getCell(rawRow, keys.lokasiBarang) || null,
             pembebananReturn: getCell(rawRow, keys.pembebananReturn) || null,
-            invoiceRekon: normalize(getCell(rawRow, keys.invoiceRekon)) === "true" || !!getCell(rawRow, keys.invoiceRekon),
+            invoiceRekon: getCell(rawRow, keys.invoiceRekon) || null,
             referensiPembayaran: getCell(rawRow, keys.referensiPembayaran) || null,
             tanggalPembayaran: getCell(rawRow, keys.tanggalPembayaran) || null,
             remarks: getCell(rawRow, keys.remarks) || null,
@@ -536,6 +583,88 @@ export default function ExcelBulkModal({
 
           const resData = await res.json();
           done += resData.count || records.length;
+          setProgressMeta({
+            batchIndex: b + 1,
+            batchTotal: batches.length,
+            done,
+            total: rows.length,
+          });
+          setProgressText(`${done}/${rows.length} uploaded...`);
+        }
+      } else if (variant === "promo") {
+        // Fetch retailers for name mapping
+        const ritelRes = await fetch("/api/ritel");
+        const ritelList = await ritelRes.json();
+        const allRitels = Array.isArray(ritelList) ? ritelList : ritelList?.data || [];
+
+        // Pre-validate all rows for retailer matching
+        const normName = (s: string) => (s ?? "")
+          .toLowerCase()
+          .replace(/\./g, "") 
+          .replace(/^(pt|cv|pd|ud|p.t|c.v)\s+/g, "")
+          .replace(/\s+(pt|cv|pd|ud|p.t|c.v)$/g, "")
+          .replace(/[^a-z0-9]/g, "") 
+          .trim();
+
+        const invalidRows: number[] = [];
+        const mappedRows = rows.map((rawRow, idx) => {
+          const ritelName = getCell(rawRow, keys.ritelModern);
+          const cleanedInput = normName(ritelName);
+          const ritel = allRitels.find((r: any) => normName(r.namaPt) === cleanedInput);
+          
+          if (!ritel) invalidRows.push(idx + 2); // Excel row number
+          
+          return {
+            ritelId: ritel?.id || null,
+            nomor: getCell(rawRow, keys.nomor),
+            linkDocs: getCell(rawRow, keys.linkDocs),
+            kegiatan: getCell(rawRow, keys.kegiatan) || "Lain-Lain",
+            periode: getCell(rawRow, keys.periode) || "Januari",
+            tanggal: getCell(rawRow, keys.tanggal),
+            dpp: Number(getCell(rawRow, keys.dpp)) || 0,
+            ppn: Number(getCell(rawRow, keys.ppn)) || 0,
+            pph: Number(getCell(rawRow, keys.pph)) || 0,
+            linkFP: getCell(rawRow, keys.linkFP),
+            remarks: getCell(rawRow, keys.remarks),
+          };
+        });
+
+        if (invalidRows.length > 0) {
+          throw new Error(`Nama PT tidak diketahui pada baris: ${invalidRows.slice(0, 5).join(", ")}${invalidRows.length > 5 ? "..." : ""}`);
+        }
+
+        const BATCH_SIZE = 50;
+        const batches = Array.from(
+          { length: Math.ceil(mappedRows.length / BATCH_SIZE) },
+          (_, i) => mappedRows.slice(i * BATCH_SIZE, i * BATCH_SIZE + BATCH_SIZE)
+        );
+
+        let done = 0;
+        setProgressOpen(true);
+        setProgressMeta({
+          batchIndex: 0,
+          batchTotal: batches.length,
+          done: 0,
+          total: rows.length,
+        });
+
+        for (let b = 0; b < batches.length; b++) {
+          if (cancelRef.current) break;
+          
+          const batch = batches[b];
+          const res = await fetch("/api/promo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(batch),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Batch ${b + 1} Failed`);
+          }
+
+          const resData = await res.json();
+          done += records.length;
           setProgressMeta({
             batchIndex: b + 1,
             batchTotal: batches.length,
@@ -587,6 +716,7 @@ export default function ExcelBulkModal({
     if (variant === "ritel") return ["Nama PT", "Inisial", "Tujuan"];
     if (variant === "unit") return ["Regional", "Site Area"];
     if (variant === "retur") return ["Produk", "Qty", "Nominal"];
+    if (variant === "promo") return ["Ritel", "Nomor", "DPP", "Total"];
     return ["Produk", "Satuan (Kg)"];
   };
 
@@ -607,6 +737,13 @@ export default function ExcelBulkModal({
       const qty = getCell(row, keys.b);
       const nominal = getCell(row, keys.c);
       return [produk, qty, nominal];
+    }
+    if (variant === "promo") {
+      const ritel = getCell(row, keys.ritelModern);
+      const nomor = getCell(row, keys.nomor);
+      const dppValue = Number(getCell(row, keys.dpp)) || 0;
+      const ppnValue = Number(getCell(row, keys.ppn)) || 0;
+      return [ritel, nomor, String(dppValue), String(dppValue + ppnValue)];
     }
     const name = getCell(row, keys.a);
     const satuanRaw = keys.b ? Number(row[keys.b]) : 1;
