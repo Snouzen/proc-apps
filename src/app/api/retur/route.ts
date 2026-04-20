@@ -43,34 +43,47 @@ export async function GET(request: Request) {
 
     // SCENARIO A: Grouped Mode (Accordion) - Berikan daftar peritel yang punya retur
     if (!retailerId) {
-      const groupedData = await prisma.ritelModern.findMany({
+      const allRitelsWithReturs = await prisma.ritelModern.findMany({
         where: {
-          DataRetur: {
-            some: drFilter.length > 0 ? { AND: drFilter } : {}
-          }
+          DataRetur: { some: drFilter.length > 0 ? { AND: drFilter } : {} }
         },
         include: {
           _count: {
             select: {
-              DataRetur: {
-                where: siteScopeId ? { lokasiBarangId: siteScopeId } : {}
-              }
+              DataRetur: { where: siteScopeId ? { lokasiBarangId: siteScopeId } : {} }
             }
           }
         },
         orderBy: { namaPt: "asc" }
       });
 
+      // Manual aggregation by name
+      const aggregatedMap = new Map<string, any>();
+      for (const ritel of allRitelsWithReturs) {
+        const name = ritel.namaPt.trim().toUpperCase();
+        if (aggregatedMap.has(name)) {
+          aggregatedMap.get(name)._count.DataRetur += ritel._count.DataRetur;
+        } else {
+          aggregatedMap.set(name, {
+            ...ritel,
+            _count: { DataRetur: ritel._count.DataRetur }
+          });
+        }
+      }
+
       return NextResponse.json({
         isGrouped: true,
-        data: groupedData
+        data: Array.from(aggregatedMap.values())
       });
     }
 
     // SCENARIO B: Detail Mode - Kembalikan data retur spesifik untuk ritel tsb
-    const filtersB: Prisma.DataReturWhereInput[] = [
-      { ritelId: retailerId }
-    ];
+    // Menggunakan Nama PT agar semua cabang/ID yang namanya sama ikut terbawa
+    const selectedRitel = await prisma.ritelModern.findUnique({ where: { id: retailerId } });
+    
+    const filtersB: Prisma.DataReturWhereInput[] = selectedRitel 
+      ? [{ RitelModern: { namaPt: { equals: selectedRitel.namaPt, mode: 'insensitive' } } }]
+      : [{ ritelId: retailerId }];
     
     if (siteScopeId) filtersB.push({ lokasiBarangId: siteScopeId });
     
