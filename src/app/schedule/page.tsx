@@ -780,10 +780,10 @@ export default function SchedulePage() {
                                   : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
                               }`}
                               onChange={(e) => {
-                                let val = e.target.value;
+                                const val = e.target.value;
                                 const numVal = Number(val);
                                 const max = Number(po.pcsTotal || 0);
-                                let finalVal = numVal > max ? max.toString() : val;
+                                const finalVal = numVal > max ? max.toString() : val;
 
                                 setPoData((prev) => prev.map((p) => p.id === po.id ? { ...p, pcsKirimTotal: finalVal } : p));
                               }}

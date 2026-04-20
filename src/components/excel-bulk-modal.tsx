@@ -119,7 +119,7 @@ export default function ExcelBulkModal({
 
   const detectKeys = (data: any[]) => {
     const first = data[0] || {};
-    let result: Record<string, string | null> = {
+    const result: Record<string, string | null> = {
       a: null,
       b: null,
       c: null,
@@ -664,7 +664,7 @@ export default function ExcelBulkModal({
           }
 
           const resData = await res.json();
-          done += records.length;
+          done += batch.length;
           setProgressMeta({
             batchIndex: b + 1,
             batchTotal: batches.length,

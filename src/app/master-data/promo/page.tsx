@@ -43,6 +43,7 @@ interface Promo {
   total: number;
   linkFP?: string;
   ritelId?: string;
+  remarks?: string;
 }
 
 export default function PromoPage() {
@@ -74,6 +75,7 @@ export default function PromoPage() {
     pph: 0,
     linkFP: "",
     ritelId: "",
+    remarks: "",
   });
 
   // Search/Suggest States
@@ -310,6 +312,7 @@ export default function PromoPage() {
         pph: 0,
         linkFP: "",
         ritelId: selectedRetailerId || "",
+        remarks: "",
       });
     } catch (err) {
       showToast("error", err instanceof Error ? err.message : "Error");
@@ -535,6 +538,7 @@ export default function PromoPage() {
                   pph: 0,
                   linkFP: "",
                   ritelId: selectedRetailerId || "",
+                  remarks: "",
                 });
                 setIsModalOpen(true);
               }

@@ -54,7 +54,7 @@ async function exportByRitel() {
       "Harga/Kg": item.rpKg || 0,
       "Status Barang": item.statusBarang || "-",
       "Ket Status": item.refKetStatus || "-",
-      "Lokasi": item.lokasiBarang || "-",
+      "Lokasi": item.lokasiBarangId || "-",
       "Invoice": item.invoiceRekon || "-",
       "Remarks": item.remarks || "-"
     });

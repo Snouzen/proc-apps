@@ -45,7 +45,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     // Destructuring sesuai apa yang dikirim frontend (page.tsx)
-    let { regional, siteArea, alamat } = body;
+    let { regional, siteArea } = body;
+    const { alamat } = body;
     if (!regional || siteArea === undefined || siteArea === null) {
       return NextResponse.json(
         { error: "regional wajib diisi. siteArea boleh kosong." },
