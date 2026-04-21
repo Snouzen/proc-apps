@@ -1794,6 +1794,7 @@ function ReturContent() {
           onClose={() => setOpenExcelModal(false)}
           variant="retur"
           retailerId={bulkRetailerId}
+          retailerInisial={retailers.find(r => r.id === bulkRetailerId)?.inisial || ""}
           onSuccess={() => {
              setOpenExcelModal(false);
              fetchRetur();

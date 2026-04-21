@@ -16,6 +16,7 @@ type Props = {
   title?: string; // Judul optional
   variant: Variant;
   retailerId?: string; // Khusus retur
+  retailerInisial?: string; // Auto-fill inisial dari retailer yang dipilih di Step 1
 };
 
 function normalize(s: string) {
@@ -29,6 +30,7 @@ export default function ExcelBulkModal({
   title,
   variant,
   retailerId,
+  retailerInisial,
 }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -549,7 +551,7 @@ export default function ExcelBulkModal({
           const records = batch.map((rawRow) => ({
             ritelId: retailerId || null,
             namaCompany: getCell(rawRow, keys.namaCompany) || null,
-            inisial: getCell(rawRow, keys.inisial) || null,
+            inisial: getCell(rawRow, keys.inisial) || retailerInisial || null,
             produk: getCell(rawRow, keys.a),
             qtyReturn: Number(getCell(rawRow, keys.b)) || 0,
             nominal: Number(getCell(rawRow, keys.c)) || 0,
