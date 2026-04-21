@@ -25,11 +25,15 @@ import {
   CreditCard,
   Save,
   Loader2,
+  Upload,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
 import Swal from "sweetalert2";
+import dynamic from "next/dynamic";
+
+const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
 
 interface Company {
   id: string;
@@ -86,6 +90,7 @@ export default function RekonPage() {
   const [isPromoOpen, setIsPromoOpen] = useState(false);
   const [isInvOpen, setIsInvOpen] = useState(false);
   const [isRtvOpen, setIsRtvOpen] = useState(false);
+  const [openExcelModal, setOpenExcelModal] = useState(false);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -298,10 +303,12 @@ export default function RekonPage() {
            </div>
         </div>
         <div className="flex gap-4">
-           <button onClick={() => window.location.reload()} className="px-8 py-3 bg-white border border-slate-100 rounded-2xl text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">Reset System</button>
-           <button className="px-10 py-3 bg-[#5c56f6] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-indigo-100 flex items-center gap-3 hover:bg-indigo-700 transition-all">
-              <Download size={14} strokeWidth={3} />
-              Export Report
+           <button 
+             onClick={() => setOpenExcelModal(true)}
+             className="px-10 py-3 bg-[#5c56f6] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-indigo-100 flex items-center gap-3 hover:bg-indigo-700 transition-all"
+           >
+              <Upload size={14} strokeWidth={3} />
+              Bulk Upload
            </button>
         </div>
       </div>
@@ -842,6 +849,20 @@ export default function RekonPage() {
            </div>
         </div>
       </div>
+
+      {/* MODAL BULK UPLOAD */}
+      {openExcelModal && (
+        <ExcelBulkModal 
+          open={openExcelModal}
+          onClose={() => setOpenExcelModal(false)}
+          variant="rekon"
+          title="Bulk Upload Rekon"
+          onSuccess={() => {
+            setOpenExcelModal(false);
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { LoaderThree } from "@/components/ui/loader";
 import { FileSpreadsheet, Upload, X } from "lucide-react";
 import { saveRitel, saveUnitProduksi, saveProduct } from "@/lib/api";
 
-type Variant = "ritel" | "unit" | "produk" | "retur" | "promo";
+type Variant = "ritel" | "unit" | "produk" | "retur" | "promo" | "rekon";
 
 type Props = {
   open: boolean;
@@ -91,6 +91,11 @@ export default function ExcelBulkModal({
     linkFP: null,
     linkDocs: null,
     ritelModern: null,
+    bankStatement: null,
+    biayaAdmin: null,
+    totalInvoices: null,
+    totalRtvs: null,
+    totalPromo: null,
   });
 
   const readExcel = async (f: File) => {
@@ -250,6 +255,13 @@ export default function ExcelBulkModal({
       result.pph = findKey(first, ["pph", "pph (idr)"]);
       result.linkFP = findKey(first, ["link faktur pajak", "link fp", "faktur pajak"]);
       result.remarks = findKey(first, ["remarks", "keterangan"]);
+    } else if (variant === "rekon") {
+      result.ritelModern = findKey(first, ["ritel", "modern ritel", "nama pt", "pt"]);
+      result.bankStatement = findKey(first, ["bank statement", "rekening koran", "bank", "nominal bank"]);
+      result.biayaAdmin = findKey(first, ["biaya admin", "admin fee", "admin"]);
+      result.totalInvoices = findKey(first, ["total invoices", "gross billing", "invoice"]);
+      result.totalRtvs = findKey(first, ["total rtvs", "rtv", "cn", "return"]);
+      result.totalPromo = findKey(first, ["total promo", "promo", "tagihan promo"]);
     } else {
       result.a = findKey(first, [
         "produk",
@@ -719,6 +731,70 @@ export default function ExcelBulkModal({
           });
           setProgressText(`${done}/${rows.length} uploaded...`);
         }
+      } else if (variant === "rekon") {
+        // Fetch retailers for name mapping
+        const ritelRes = await fetch("/api/ritel");
+        const ritelList = await ritelRes.json();
+        const allRitels = Array.isArray(ritelList) ? ritelList : ritelList?.data || [];
+        
+        const normName = (s: string) => (s ?? "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "") 
+          .trim();
+
+        const invalidRows: number[] = [];
+        const mappedRows = rows.map((rawRow, idx) => {
+          const ritelName = getCell(rawRow, keys.ritelModern);
+          const ritel = allRitels.find((r: any) => normName(r.namaPt) === normName(ritelName));
+          
+          if (!ritel) invalidRows.push(idx + 2);
+          
+          const bank = Number(getCell(rawRow, keys.bankStatement)) || 0;
+          const admin = Number(getCell(rawRow, keys.biayaAdmin)) || 0;
+          const inv = Number(getCell(rawRow, keys.totalInvoices)) || 0;
+          const rtv = Number(getCell(rawRow, keys.totalRtvs)) || 0;
+          const promo = Number(getCell(rawRow, keys.totalPromo)) || 0;
+          const balance = bank - inv + rtv + promo + admin;
+
+          return {
+            ritelId: ritel?.id || null,
+            bankStatement: bank,
+            biayaAdmin: admin,
+            totalInvoices: inv,
+            totalRtvs: rtv,
+            totalPromo: promo,
+            nominal: balance,
+            invoices: [],
+            rtvs: [],
+            noPromo: null
+          };
+        });
+
+        if (invalidRows.length > 0) {
+          throw new Error(`Ritel tidak diketahui pada baris: ${invalidRows.slice(0, 5).join(", ")}`);
+        }
+
+        const BATCH_SIZE = 20;
+        const batches = Array.from(
+          { length: Math.ceil(mappedRows.length / BATCH_SIZE) },
+          (_, i) => mappedRows.slice(i * BATCH_SIZE, i * BATCH_SIZE + BATCH_SIZE)
+        );
+
+        let done = 0;
+        setProgressOpen(true);
+        for (let b = 0; b < batches.length; b++) {
+          if (cancelRef.current) break;
+          const batch = batches[b];
+          await Promise.all(batch.map(async (item) => {
+            await fetch("/api/rekon", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(item),
+            });
+          }));
+          done += batch.length;
+          setProgressText(`${done}/${rows.length} uploaded...`);
+        }
       } else {
         const res = await fetch("/api/product");
         const list = await res.json();
@@ -763,6 +839,7 @@ export default function ExcelBulkModal({
     if (variant === "unit") return ["Regional", "Site Area"];
     if (variant === "retur") return ["Produk", "Qty", "Nominal"];
     if (variant === "promo") return ["Ritel", "Nomor", "DPP", "Total"];
+    if (variant === "rekon") return ["Ritel", "Bank", "Invoice", "Balance"];
     return ["Produk", "Satuan (Kg)"];
   };
 
@@ -790,6 +867,16 @@ export default function ExcelBulkModal({
       const dppValue = Number(getCell(row, keys.dpp)) || 0;
       const ppnValue = Number(getCell(row, keys.ppn)) || 0;
       return [ritel, nomor, String(dppValue), String(dppValue + ppnValue)];
+    }
+    if (variant === "rekon") {
+      const ritel = getCell(row, keys.ritelModern);
+      const bank = Number(getCell(row, keys.bankStatement)) || 0;
+      const inv = Number(getCell(row, keys.totalInvoices)) || 0;
+      const rtv = Number(getCell(row, keys.totalRtvs)) || 0;
+      const promo = Number(getCell(row, keys.totalPromo)) || 0;
+      const admin = Number(getCell(row, keys.biayaAdmin)) || 0;
+      const balance = bank - inv + rtv + promo + admin;
+      return [ritel, String(bank), String(inv), String(balance)];
     }
     const name = getCell(row, keys.a);
     const satuanRaw = keys.b ? Number(row[keys.b]) : 1;

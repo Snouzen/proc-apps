@@ -59,6 +59,66 @@ function SkeletonRow() {
   );
 }
 
+// ── Tooltip Component ────────────────────────────────────────────────────────
+function StandardTooltip({ 
+  children, 
+  content 
+}: { 
+  children: React.ReactNode, 
+  content: string 
+}) {
+  if (!content || content === "-") return <>{children}</>;
+  return (
+    <div className="group/tooltip relative inline-block">
+      {children}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[9px] font-black uppercase tracking-widest rounded-lg opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 whitespace-nowrap pointer-events-none shadow-xl border border-slate-700">
+        {content}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800" />
+      </div>
+    </div>
+  );
+}
+
+// ── Action Button with Tooltip ───────────────────────────────────────────────
+function ActionButton({ 
+  icon: Icon, 
+  onClick, 
+  tooltip, 
+  variant = "indigo",
+  disabled = false,
+  loading = false,
+}: { 
+  icon: any; 
+  onClick: (e: any) => void; 
+  tooltip: string;
+  variant?: "indigo" | "rose" | "slate" | "emerald";
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  const bgColors = {
+    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-600 hover:text-white",
+    rose: "bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-600 hover:text-white",
+    slate: "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-600 hover:text-white",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white",
+  };
+
+  return (
+    <StandardTooltip content={tooltip}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        className={`p-2.5 rounded-xl border transition-all duration-200 shadow-sm active:scale-90 flex items-center justify-center ${bgColors[variant]} disabled:opacity-50 disabled:cursor-not-allowed`}
+      >
+        {loading ? (
+          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <Icon size={16} strokeWidth={2.5} />
+        )}
+      </button>
+    </StandardTooltip>
+  );
+}
+
 export default function SchedulePage() {
   const router = useRouter();
   const [poData, setPoData] = useState<any[]>([]);
@@ -503,7 +563,7 @@ export default function SchedulePage() {
   const totalPages = Math.ceil(filteredPo.length / itemsPerPage);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-7">
+    <div className="p-6 max-w-[1600px] mx-auto space-y-7">
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -603,9 +663,13 @@ export default function SchedulePage() {
               label: "Inisial",
               width: "w-[90px]",
               render: (_v: any, po: any) => (
-                <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-md text-[10px] font-black uppercase tracking-widest">
-                  {po.RitelModern?.inisial || "-"}
-                </span>
+                <StandardTooltip content={po.RitelModern?.inisial || "-"}>
+                  <span 
+                    className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[80px] shadow-sm cursor-pointer"
+                  >
+                    {po.RitelModern?.inisial || "-"}
+                  </span>
+                </StandardTooltip>
               ),
             },
             {
@@ -641,7 +705,7 @@ export default function SchedulePage() {
             {
               key: "expiredTgl",
               label: "Due Date",
-              width: "w-[120px]",
+              width: "w-[110px]",
               render: (_v: any, po: any) => (
                 <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${
                   po.expiredTgl && new Date(po.expiredTgl).getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000
@@ -652,20 +716,21 @@ export default function SchedulePage() {
               ),
             },
             {
-              key: "status",
-              label: "Status",
-              width: "w-[160px]",
+              key: "tglkirim",
+              label: "Tgl Kirim",
+              width: "w-[130px]",
+              align: "center" as const,
               render: (_v: any, po: any) => {
                 const isScheduled = !!po.tglkirim;
                 return isScheduled ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[10px] font-bold">
-                    <AlertCircle size={11} />
-                    {format(new Date(po.tglkirim), "dd/MM/yy")}
+                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-md text-[10px] font-black uppercase tracking-tight">
+                    <CalendarDays size={11} className="shrink-0" />
+                    {format(new Date(po.tglkirim), "dd MMM yy")}
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-400 border border-slate-100 rounded-lg text-[10px] font-medium">
-                    <Clock size={11} />
-                    Belum Dijadwalkan
+                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-50 text-slate-400 border border-slate-100 rounded-md text-[10px] font-bold uppercase tracking-tight italic">
+                    <Clock size={11} className="shrink-0" />
+                    Belum Ada
                   </div>
                 );
               },
@@ -674,7 +739,7 @@ export default function SchedulePage() {
               key: "pcsTotal",
               label: "Pcs",
               align: "center" as const,
-              width: "w-[80px]",
+              width: "w-[60px]",
               render: (_v: any, po: any) => (
                 <span className="font-bold text-slate-600 text-xs">{Number(po.pcsTotal || 0).toLocaleString("id-ID")}</span>
               ),
@@ -683,7 +748,7 @@ export default function SchedulePage() {
               key: "pcsKirim",
               label: "Pcs Kirim",
               align: "center" as const,
-              width: "w-[110px]",
+              width: "w-[140px]",
               render: (_v: any, po: any) => {
                 const itemsCount = Number(po.itemsCount || 0);
                 const isMulti = itemsCount > 1;
@@ -691,8 +756,8 @@ export default function SchedulePage() {
                 return (
                   <div onClick={(e) => e.stopPropagation()}>
                     {isMulti ? (
-                      <div className="flex items-center gap-1.5 justify-center">
-                        <span className="inline-flex items-center justify-center w-24 px-2 py-1.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold tabular-nums">
+                      <div className="flex items-center gap-2 justify-center">
+                        <span className="flex items-center justify-center w-24 h-9 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-black tabular-nums shadow-sm">
                           {Number(po.pcsKirimTotal || 0).toLocaleString("id-ID")}
                         </span>
                         <button 
@@ -724,12 +789,12 @@ export default function SchedulePage() {
                             if (e.key === "Enter") e.currentTarget.blur();
                           }}
                           disabled={savingPcsId === po.id}
-                          className={`w-24 px-2 py-1.5 text-xs font-bold text-center bg-slate-50 border rounded-lg outline-none transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                          className={`w-24 h-9 px-2 text-xs font-black text-center bg-slate-50 border rounded-xl outline-none transition-all tabular-nums shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                             Number(po.pcsKirimTotal) > Number(po.pcsTotal)
                               ? "border-rose-500 text-rose-600 bg-rose-50 shadow-[0_0_8px_rgba(225,29,72,0.2)]"
                               : savingPcsId === po.id
                               ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse"
-                              : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
+                              : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700 font-black"
                           }`}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -751,13 +816,15 @@ export default function SchedulePage() {
             {
               key: "actions",
               label: "Action",
-              align: "right" as const,
-              width: "w-[120px]",
+              align: "center" as const,
+              width: "w-[130px]",
               render: (_v: any, po: any) => {
                 const isScheduled = !!po.tglkirim;
                 return (
-                  <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                    <button
+                  <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <ActionButton
+                      icon={Calendar}
+                      tooltip={isScheduled ? "Ubah Jadwal" : "Set Jadwal"}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedPo(po);
@@ -766,47 +833,25 @@ export default function SchedulePage() {
                         setPlatNomor(po.platNomor || "");
                         setModalOpen(true);
                       }}
-                      disabled={updatingId === po.id}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 shadow-sm active:scale-95 ${
-                        isScheduled
-                          ? "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-600 hover:text-white hover:border-slate-600"
-                          : "bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600"
-                      }`}
-                    >
-                      <Calendar size={12} />
-                      {isScheduled ? "Update" : "Set Schedule"}
-                    </button>
-                    <button
+                      variant={isScheduled ? "slate" : "indigo"}
+                      loading={updatingId === po.id}
+                    />
+                    
+                    <ActionButton
+                      icon={RotateCcw}
+                      tooltip="Reject / Unassign"
                       onClick={(e) => { e.stopPropagation(); handleRejectPo(po); }}
-                      disabled={updatingId === po.id}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-600 hover:text-white transition-all text-[11px] font-bold shadow-sm active:scale-95 whitespace-nowrap"
-                      title="Reject / Unassign PO"
-                    >
-                      {updatingId === po.id ? (
-                        <div className="w-3 h-3 border-2 border-rose-600/30 border-t-rose-600 rounded-full animate-spin" />
-                      ) : (
-                        <RotateCcw size={12} />
-                      )}
-                      Reject
-                    </button>
+                      variant="rose"
+                      loading={updatingId === po.id}
+                    />
+
                     {isScheduled && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handlePreviewPdf(po); }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-all text-[10px] border border-slate-200 shadow-sm active:scale-95 whitespace-nowrap"
-                          title="Preview Invoice"
-                        >
-                          <Eye size={12} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(po); }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 transition-all text-[10px] border border-indigo-200 shadow-sm active:scale-95 whitespace-nowrap"
-                          title="Download Invoice"
-                        >
-                          <FileDown size={12} />
-                          Faktur Penjualan
-                        </button>
-                      </div>
+                      <ActionButton
+                        icon={Eye}
+                        tooltip="Preview & Download"
+                        onClick={(e) => { e.stopPropagation(); handlePreviewPdf(po); }}
+                        variant="indigo"
+                      />
                     )}
                   </div>
                 );
