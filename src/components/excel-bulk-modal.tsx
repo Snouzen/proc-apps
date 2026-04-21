@@ -23,6 +23,10 @@ function normalize(s: string) {
   return (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function cleanString(s: string) {
+  return (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 export default function ExcelBulkModal({
   open,
   onClose,
@@ -529,6 +533,20 @@ export default function ExcelBulkModal({
           throw new Error("Upload dibatalkan");
         }
       } else if (variant === "retur") {
+        // Fetch retailers to map 'inisial' dynamically based on 'toko' / 'namaCompany' from Excel
+        const ritelRes = await fetch("/api/ritel");
+        const ritelList = await ritelRes.json();
+        const allRitels = Array.isArray(ritelList) ? ritelList : ritelList?.data || [];
+        
+        // Find the selected umbrella retailer name based on retailerId
+        const selectedRitel = allRitels.find((r: any) => String(r.id) === String(retailerId));
+        const selectedNamaPt = selectedRitel ? cleanString(selectedRitel.namaPt) : "";
+        
+        // Get all database branches under that same Company Name
+        const ritelBranches = selectedNamaPt 
+              ? allRitels.filter((r: any) => cleanString(r.namaPt) === selectedNamaPt)
+              : [];
+
         const BATCH_SIZE = 50;
         const batches = Array.from(
           { length: Math.ceil(rows.length / BATCH_SIZE) },
@@ -548,29 +566,55 @@ export default function ExcelBulkModal({
           if (cancelRef.current) break;
           
           const batch = batches[b];
-          const records = batch.map((rawRow) => ({
-            ritelId: retailerId || null,
-            namaCompany: getCell(rawRow, keys.namaCompany) || null,
-            inisial: getCell(rawRow, keys.inisial) || retailerInisial || null,
-            produk: getCell(rawRow, keys.a),
-            qtyReturn: Number(getCell(rawRow, keys.b)) || 0,
-            nominal: Number(getCell(rawRow, keys.c)) || 0,
-            rpKg: Number(getCell(rawRow, keys.rpKg)) || 0,
-            rtvCn: getCell(rawRow, keys.rtvCn) || null,
-            tanggalRtv: getCell(rawRow, keys.tanggalRtv) || null,
-            maxPickup: getCell(rawRow, keys.maxPickup) || null,
-            kodeToko: getCell(rawRow, keys.kodeToko) || null,
-            link: getCell(rawRow, keys.link) || null,
-            statusBarang: getCell(rawRow, keys.statusBarang) || "Belum Diambil",
-            refKetStatus: getCell(rawRow, keys.refKetStatus) || null,
-            lokasiBarang: getCell(rawRow, keys.lokasiBarang) || null,
-            pembebananReturn: getCell(rawRow, keys.pembebananReturn) || null,
-            invoiceRekon: getCell(rawRow, keys.invoiceRekon) || null,
-            referensiPembayaran: getCell(rawRow, keys.referensiPembayaran) || null,
-            tanggalPembayaran: getCell(rawRow, keys.tanggalPembayaran) || null,
-            remarks: getCell(rawRow, keys.remarks) || null,
-            sdiReturn: getCell(rawRow, keys.sdiReturn) || null,
-          }));
+          const records = batch.map((rawRow) => {
+            const excelToko = getCell(rawRow, keys.namaCompany);
+            let autoInisial = retailerInisial || null;
+            let autoRitelId = retailerId || null;
+            
+            if (excelToko && ritelBranches.length > 0) {
+              const cleanedToko = ` ${cleanString(excelToko)} `;
+              
+              // Sort branches by longest tujuan first to avoid partial overlap bugs (like 'ALFA' catching 'ALFAMART')
+              const sortedBranches = [...ritelBranches].sort((a, b) => (b.tujuan?.length || 0) - (a.tujuan?.length || 0));
+              
+              for (const branch of sortedBranches) {
+                 if (branch.inisial && cleanedToko.includes(` ${cleanString(branch.inisial)} `)) {
+                    autoInisial = branch.inisial;
+                    autoRitelId = branch.id;
+                    break;
+                 }
+                 if (branch.tujuan && cleanedToko.includes(` ${cleanString(branch.tujuan)} `)) {
+                    autoInisial = branch.inisial || autoInisial;
+                    autoRitelId = branch.id;
+                    break;
+                 }
+              }
+            }
+
+            return {
+              ritelId: autoRitelId,
+              namaCompany: excelToko || null,
+              inisial: getCell(rawRow, keys.inisial) || autoInisial,
+              produk: getCell(rawRow, keys.a),
+              qtyReturn: Number(getCell(rawRow, keys.b)) || 0,
+              nominal: Number(getCell(rawRow, keys.c)) || 0,
+              rpKg: Number(getCell(rawRow, keys.rpKg)) || 0,
+              rtvCn: getCell(rawRow, keys.rtvCn) || null,
+              tanggalRtv: getCell(rawRow, keys.tanggalRtv) || null,
+              maxPickup: getCell(rawRow, keys.maxPickup) || null,
+              kodeToko: getCell(rawRow, keys.kodeToko) || null,
+              link: getCell(rawRow, keys.link) || null,
+              statusBarang: getCell(rawRow, keys.statusBarang) || "Belum Diambil",
+              refKetStatus: getCell(rawRow, keys.refKetStatus) || null,
+              lokasiBarang: getCell(rawRow, keys.lokasiBarang) || null,
+              pembebananReturn: getCell(rawRow, keys.pembebananReturn) || null,
+              invoiceRekon: getCell(rawRow, keys.invoiceRekon) || null,
+              referensiPembayaran: getCell(rawRow, keys.referensiPembayaran) || null,
+              tanggalPembayaran: getCell(rawRow, keys.tanggalPembayaran) || null,
+              remarks: getCell(rawRow, keys.remarks) || null,
+              sdiReturn: getCell(rawRow, keys.sdiReturn) || null,
+            };
+          });
 
           const res = await fetch("/api/retur", {
             method: "POST",
@@ -579,8 +623,8 @@ export default function ExcelBulkModal({
           });
 
           if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || `Batch ${b + 1} Failed: ${res.status}`);
+             const errData = await res.json().catch(() => ({}));
+             throw new Error(errData.error || `Batch ${b + 1} Failed: ${res.status}`);
           }
 
           const resData = await res.json();
