@@ -8,6 +8,7 @@ const ChartAreaInteractive = dynamic(() => import("@/components/chart-area-inter
 const PODetailModal = dynamic(() => import("@/components/po-detail-modal"), { ssr: false });
 const POEditModal = dynamic(() => import("@/components/po-edit-modal"), { ssr: false });
 const POFilters = dynamic(() => import("@/components/po-filters"), { ssr: false });
+import { DataTable } from "@/components/data-table";
 
 import {
   Bell,
@@ -1038,375 +1039,310 @@ function TableUnderChart({
           </div>
         </div>
       </div>
-      <div className="overflow-x-auto max-h-[70vh] scrollbar-hide">
-        <table className="w-full text-left border-collapse table-fixed text-sm min-w-[1200px]">
-          <thead>
-            <tr className="text-gray-700 text-sm uppercase tracking-wider border-b border-gray-100">
-              <th className="px-6 py-3 font-semibold sticky top-0 left-0 z-20 bg-white w-16 border-r border-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                No
-              </th>
-              {visibleCols.company && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-48">
-                  Company
-                </th>
-              )}
-              {visibleCols.nopo && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-40">
-                  No PO
-                </th>
-              )}
-              {visibleCols.pcsPo && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white text-right w-24">
-                  PCS PO
-                </th>
-              )}
-              {visibleCols.nominal && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white text-right w-36">
-                  Nominal
-                </th>
-              )}
-              {visibleCols.submitDate && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
-                  Submit Date
-                </th>
-              )}
-              {visibleCols.tglPo && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
-                  Tgl PO
-                </th>
-              )}
-              {visibleCols.tglKirim && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
-                  Tgl Kirim
-                </th>
-              )}
-              {visibleCols.dueDate && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
-                  Tgl Expired
-                </th>
-              )}
-              {visibleCols.regional && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-32">
-                  Regional
-                </th>
-              )}
-              {visibleCols.status && (
-                <th className="px-6 py-3 font-semibold sticky top-0 z-10 bg-white w-44">
-                  Status
-                </th>
-              )}
-              {visibleCols.actions && (
-                <th className="px-6 py-3 font-semibold text-center sticky top-0 z-10 bg-white w-36">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className={`divide-y divide-gray-100 text-[0.95rem] transition-opacity duration-200 ${isFetchingPage ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
-            {loading
-              ? Array.from({ length: 10 }).map((_, i) => {
-                  const colCount =
-                    1 +
-                    Number(visibleCols.company) +
-                    Number(visibleCols.nopo) +
-                    Number(visibleCols.pcsPo) +
-                    Number(visibleCols.nominal) +
-                    Number(visibleCols.submitDate) +
-                    Number(visibleCols.tglPo) +
-                    Number(visibleCols.tglKirim) +
-                    Number(visibleCols.dueDate) +
-                    Number(visibleCols.regional) +
-                    Number(visibleCols.status) +
-                    Number(visibleCols.actions);
-                  return (
-                    <TableRowSkeleton key={`sk-${i}`} colCount={colCount} />
-                  );
-                })
-              : pageRows.map((po, idx) => (
-                  <tr
-                    key={idx}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
-                    onClick={() => openDetail(po)}
-                    title="Lihat detail PO"
-                  >
-                    <td className="px-6 py-4 align-top text-slate-600 font-semibold tabular-nums sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-r border-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                      {start + idx + 1}
-                    </td>
-                    {visibleCols.company && (
-                      <td className="px-6 py-4 align-top">
-                        <div
-                          className="text-base font-semibold text-slate-800 tracking-tight max-w-[14rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
-                          title={getCompanyName(po)}
-                        >
-                          {getCompanyName(po)}
-                        </div>
-                      </td>
-                    )}
-                    {visibleCols.nopo && (
-                      <td className="px-6 py-4 align-top">
-                        <div
-                          className="text-base font-mono font-bold text-slate-800 max-w-[12rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
-                          title={po.noPo || po.nopo || po.poNumber || "-"}
-                        >
-                          {po.noPo || po.nopo || po.poNumber || "-"}
-                        </div>
-                      </td>
-                    )}
-                    {visibleCols.pcsPo && (
-                      <td className="px-6 py-4 text-right align-top">
-                        <span className="text-base font-bold text-slate-700 tabular-nums whitespace-nowrap">
-                          {(() => {
-                            const total =
-                              typeof po?.pcsTotal === "number"
-                                ? po.pcsTotal
-                                : (Array.isArray(po?.Items)
-                                    ? po.Items
-                                    : []
-                                  ).reduce(
-                                    (acc: number, it: any) =>
-                                      acc + (Number(it?.pcs) || 0),
-                                    0,
-                                  );
-                            return Number(total || 0).toLocaleString("id-ID");
-                          })()}
-                        </span>
-                      </td>
-                    )}
-                    {visibleCols.nominal && (
-                      <td className="px-6 py-4 text-right align-top">
-                        <div
-                          className="text-base font-bold text-slate-700 tabular-nums max-w-[9rem] ml-auto overflow-x-auto whitespace-nowrap scrollbar-hide"
-                          title={`Rp ${Number(
-                            typeof po?.totalNominal === "number"
-                              ? po.totalNominal
-                              : (Array.isArray(po?.Items)
-                                  ? po.Items
-                                  : []
-                                ).reduce(
-                                  (acc: number, it: any) =>
-                                    acc + (Number(it?.nominal) || 0),
-                                  0,
-                                ) || 0,
-                          ).toLocaleString("id-ID")}`}
-                        >
-                          {(() => {
-                            const total =
-                              typeof po?.totalNominal === "number"
-                                ? po.totalNominal
-                                : (Array.isArray(po?.Items)
-                                    ? po.Items
-                                    : []
-                                  ).reduce(
-                                    (acc: number, it: any) =>
-                                      acc + (Number(it?.nominal) || 0),
-                                    0,
-                                  );
-                            return `Rp ${Number(total || 0).toLocaleString("id-ID")}`;
-                          })()}
-                        </div>
-                      </td>
-                    )}
-                    {visibleCols.submitDate && (
-                      <td className="px-6 py-4 align-top">
-                        <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
-                          Submitted
-                        </span>
-                        <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
-                          {(() => {
-                            const dt =
-                              toDate(po?.createdAt) ||
-                              toDate(po?.updatedAt) ||
-                              toDate(po?.tglPo);
-                            return dt ? dt.toLocaleDateString("id-ID") : "-";
-                          })()}
-                        </span>
-                      </td>
-                    )}
-                    {visibleCols.tglPo && (
-                      <td className="px-6 py-4 align-top">
-                        <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
-                          Tgl PO
-                        </span>
-                        <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
-                          {toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}
-                        </span>
-                      </td>
-                    )}
-                    {visibleCols.tglKirim && (
-                      <td className="px-6 py-4 align-top">
-                        <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
-                          Tgl Kirim
-                        </span>
-                        <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
-                          {toDate(
-                            (po as any).tglkirim || (po as any).tglKirim,
-                          )?.toLocaleDateString("id-ID") || "-"}
-                        </span>
-                      </td>
-                    )}
-                    {visibleCols.dueDate && (
-                      <td className="px-6 py-4 align-top">
-                        <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
-                          Tgl Expired
-                        </span>
-                        <span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap mt-0.5">
-                          {toDate(po.expiredTgl)?.toLocaleDateString("id-ID") ||
-                            "-"}
-                        </span>
-                      </td>
-                    )}
-                    {visibleCols.regional && (
-                      <td className="px-6 py-4 align-top">
-                        <div
-                          className="text-sm font-semibold text-slate-700 max-w-[10rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
-                          title={
-                            po?.regional ||
-                            po?.UnitProduksi?.namaRegional ||
-                            "-"
-                          }
-                        >
-                          {po?.regional ||
-                            po?.UnitProduksi?.namaRegional ||
-                            "-"}
-                        </div>
-                      </td>
-                    )}
-                    {visibleCols.status && (
-                      <td className="px-6 py-4 align-top">
-                        <div className="flex items-center gap-1.5 flex-wrap max-w-[10rem]">
-                          <span
-                            className={`inline-flex items-center gap-2 text-sm font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusChipClass(
-                              statusText(po),
-                            )}`}
-                          >
-                            {statusText(po)}
-                          </span>
-                          {(() => {
-                            const flag = dueFlag(po);
-                            return flag ? (
-                              <span
-                                title="Mendekati due date"
-                                className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${flag.className}`}
-                              >
-                                {flag.label}
-                              </span>
-                            ) : null;
-                          })()}
-                        </div>
-                      </td>
-                    )}
-                    {visibleCols.actions && (
-                      <td className="px-6 py-4 text-center align-top">
-                        <div className="flex items-center justify-center gap-2">
-                          {role === "rm" && group === "assign" ? (
-                            <AssignDropdown
-                              po={po}
-                              units={units}
-                              regional={regional}
-                              onAssigned={(unit: any) => {
-                                setAllPoData((prev) =>
-                                  prev.map((x) =>
-                                    x.noPo === po.noPo
-                                      ? {
-                                          ...x,
-                                          UnitProduksi: {
-                                            ...(x.UnitProduksi || {}),
-                                            siteArea: unit.siteArea,
-                                            namaRegional: unit.namaRegional,
-                                          },
-                                          regional: unit.namaRegional,
-                                        }
-                                      : x,
-                                  ),
-                                );
-                              }}
-                              onClick={(e: any) => e.stopPropagation()}
-                            />
-                          ) : (
-                            <>
-                              {(role === "pusat" || role === "rm") && (
-                                <button
-                                  className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
-                                  title="Edit"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const no = String(
-                                      po?.noPo ||
-                                        po?.nopo ||
-                                        po?.poNumber ||
-                                        "",
-                                    ).trim();
-                                    if (!no) return;
-                                    setEditNoPo(no);
-                                    setEditOpen(true);
-                                  }}
-                                >
-                                  <Pencil
-                                    size={14}
-                                    className="text-amber-500"
-                                  />
-                                </button>
-                              )}
-                              <button
-                                className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
-                                title="View Detail"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openDetail(po);
-                                }}
-                              >
-                                <Eye size={16} className="text-slate-600" />
-                              </button>
-                              {role === "pusat" && (
-                                <>
-                                  <button
-                                    className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
-                                    title="Update"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openDetail(po);
-                                    }}
-                                  >
-                                    <RefreshCw
-                                      size={14}
-                                      className="text-blue-600"
-                                    />
-                                  </button>
-                                  <button
-                                    className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
-                                    title="Extend"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openDetail(po);
-                                    }}
-                                  >
-                                    <CalendarClock
-                                      size={14}
-                                      className="text-emerald-600"
-                                    />
-                                  </button>
-                                </>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-            {!loading && pageRows.length === 0 && (
-              <tr>
-                <td
-                  className="px-6 py-6 text-sm text-gray-500"
-                  colSpan={Object.values(visibleCols).filter(Boolean).length}
+      <DataTable
+        columns={[
+          {
+            key: "company",
+            label: "Company",
+            width: "w-48",
+            hidden: !visibleCols.company,
+            render: (_val: any, po: any) => (
+              <div
+                className="text-base font-semibold text-slate-800 tracking-tight max-w-[14rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                title={getCompanyName(po)}
+              >
+                {getCompanyName(po)}
+              </div>
+            ),
+          },
+          {
+            key: "noPo",
+            label: "No PO",
+            width: "w-40",
+            hidden: !visibleCols.nopo,
+            render: (_val: any, po: any) => (
+              <div
+                className="text-base font-mono font-bold text-slate-800 max-w-[12rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                title={po.noPo || po.nopo || po.poNumber || "-"}
+              >
+                {po.noPo || po.nopo || po.poNumber || "-"}
+              </div>
+            ),
+          },
+          {
+            key: "pcsPo",
+            label: "PCS PO",
+            align: "right" as const,
+            width: "w-24",
+            hidden: !visibleCols.pcsPo,
+            render: (_val: any, po: any) => {
+              const total =
+                typeof po?.pcsTotal === "number"
+                  ? po.pcsTotal
+                  : (Array.isArray(po?.Items) ? po.Items : []).reduce(
+                      (acc: number, it: any) => acc + (Number(it?.pcs) || 0),
+                      0,
+                    );
+              return (
+                <span className="text-base font-bold text-slate-700 tabular-nums whitespace-nowrap">
+                  {Number(total || 0).toLocaleString("id-ID")}
+                </span>
+              );
+            },
+          },
+          {
+            key: "nominal",
+            label: "Nominal",
+            align: "right" as const,
+            width: "w-36",
+            hidden: !visibleCols.nominal,
+            render: (_val: any, po: any) => {
+              const total =
+                typeof po?.totalNominal === "number"
+                  ? po.totalNominal
+                  : (Array.isArray(po?.Items) ? po.Items : []).reduce(
+                      (acc: number, it: any) =>
+                        acc + (Number(it?.nominal) || 0),
+                      0,
+                    );
+              return (
+                <div
+                  className="text-base font-bold text-slate-700 tabular-nums max-w-[9rem] ml-auto overflow-x-auto whitespace-nowrap scrollbar-hide"
+                  title={`Rp ${Number(total || 0).toLocaleString("id-ID")}`}
                 >
-                  Tidak ada data untuk filter ini.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                  {`Rp ${Number(total || 0).toLocaleString("id-ID")}`}
+                </div>
+              );
+            },
+          },
+          {
+            key: "submitDate",
+            label: "Submit Date",
+            width: "w-32",
+            hidden: !visibleCols.submitDate,
+            render: (_val: any, po: any) => {
+              const dt =
+                toDate(po?.createdAt) ||
+                toDate(po?.updatedAt) ||
+                toDate(po?.tglPo);
+              return (
+                <>
+                  <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
+                    Submitted
+                  </span>
+                  <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                    {dt ? dt.toLocaleDateString("id-ID") : "-"}
+                  </span>
+                </>
+              );
+            },
+          },
+          {
+            key: "tglPo",
+            label: "Tgl PO",
+            width: "w-32",
+            hidden: !visibleCols.tglPo,
+            render: (_val: any, po: any) => (
+              <>
+                <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
+                  Tgl PO
+                </span>
+                <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                  {toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}
+                </span>
+              </>
+            ),
+          },
+          {
+            key: "tglKirim",
+            label: "Tgl Kirim",
+            width: "w-32",
+            hidden: !visibleCols.tglKirim,
+            render: (_val: any, po: any) => (
+              <>
+                <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
+                  Tgl Kirim
+                </span>
+                <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                  {toDate(
+                    (po as any).tglkirim || (po as any).tglKirim,
+                  )?.toLocaleDateString("id-ID") || "-"}
+                </span>
+              </>
+            ),
+          },
+          {
+            key: "dueDate",
+            label: "Tgl Expired",
+            width: "w-32",
+            hidden: !visibleCols.dueDate,
+            render: (_val: any, po: any) => (
+              <>
+                <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
+                  Tgl Expired
+                </span>
+                <span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap mt-0.5">
+                  {toDate(po.expiredTgl)?.toLocaleDateString("id-ID") || "-"}
+                </span>
+              </>
+            ),
+          },
+          {
+            key: "regional",
+            label: "Regional",
+            width: "w-32",
+            hidden: !visibleCols.regional,
+            render: (_val: any, po: any) => (
+              <div
+                className="text-sm font-semibold text-slate-700 max-w-[10rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                title={
+                  po?.regional || po?.UnitProduksi?.namaRegional || "-"
+                }
+              >
+                {po?.regional || po?.UnitProduksi?.namaRegional || "-"}
+              </div>
+            ),
+          },
+          {
+            key: "status",
+            label: "Status",
+            width: "w-44",
+            hidden: !visibleCols.status,
+            render: (_val: any, po: any) => {
+              const flag = dueFlag(po);
+              return (
+                <div className="flex items-center gap-1.5 flex-wrap max-w-[10rem]">
+                  <span
+                    className={`inline-flex items-center gap-2 text-sm font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusChipClass(statusText(po))}`}
+                  >
+                    {statusText(po)}
+                  </span>
+                  {flag && (
+                    <span
+                      title="Mendekati due date"
+                      className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${flag.className}`}
+                    >
+                      {flag.label}
+                    </span>
+                  )}
+                </div>
+              );
+            },
+          },
+          {
+            key: "actions",
+            label: "Actions",
+            align: "center" as const,
+            width: "w-36",
+            hidden: !visibleCols.actions,
+            render: (_val: any, po: any) => (
+              <div className="flex items-center justify-center gap-2" onClick={(e: any) => e.stopPropagation()}>
+                {role === "rm" && group === "assign" ? (
+                  <AssignDropdown
+                    po={po}
+                    units={units}
+                    regional={regional}
+                    onAssigned={(unit: any) => {
+                      setAllPoData((prev) =>
+                        prev.map((x) =>
+                          x.noPo === po.noPo
+                            ? {
+                                ...x,
+                                UnitProduksi: {
+                                  ...(x.UnitProduksi || {}),
+                                  siteArea: unit.siteArea,
+                                  namaRegional: unit.namaRegional,
+                                },
+                                regional: unit.namaRegional,
+                              }
+                            : x,
+                        ),
+                      );
+                    }}
+                    onClick={(e: any) => e.stopPropagation()}
+                  />
+                ) : (
+                  <>
+                    {(role === "pusat" || role === "rm") && (
+                      <button
+                        className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                        title="Edit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const no = String(
+                            po?.noPo || po?.nopo || po?.poNumber || "",
+                          ).trim();
+                          if (!no) return;
+                          setEditNoPo(no);
+                          setEditOpen(true);
+                        }}
+                      >
+                        <Pencil size={14} className="text-amber-500" />
+                      </button>
+                    )}
+                    <button
+                      className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                      title="View Detail"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDetail(po);
+                      }}
+                    >
+                      <Eye size={16} className="text-slate-600" />
+                    </button>
+                    {role === "pusat" && (
+                      <>
+                        <button
+                          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                          title="Update"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDetail(po);
+                          }}
+                        >
+                          <RefreshCw size={14} className="text-blue-600" />
+                        </button>
+                        <button
+                          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                          title="Extend"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDetail(po);
+                          }}
+                        >
+                          <CalendarClock
+                            size={14}
+                            className="text-emerald-600"
+                          />
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            ),
+          },
+        ]}
+        data={pageRows}
+        rowKey={(_row: any, idx: number) => idx}
+        total={serverTotal}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        rowsPerPageOptions={[10, 25, 50]}
+        onPageChange={setPage}
+        onRowsPerPageChange={(rpp) => {
+          setRowsPerPage(rpp);
+          setPage(1);
+        }}
+        loading={loading}
+        isFetchingPage={isFetchingPage}
+        onRowClick={(po) => openDetail(po)}
+        rowNumber
+        stickyFirstCol
+        maxHeight="70vh"
+        className=""
+        emptyMessage="Tidak ada data untuk filter ini."
+      />
       <PODetailModal
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
@@ -1452,65 +1388,6 @@ function TableUnderChart({
           });
         }}
       />
-      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white text-sm">
-        <div className="text-sm text-gray-700 flex items-center gap-2">
-          Rows per page
-          <select
-            className="px-2 py-1 rounded-md bg-white border border-gray-300 text-black text-sm"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(Number(e.target.value));
-              setPage(1);
-            }}
-          >
-            {[10, 25, 50].map((n) => (
-              <option key={n} value={n} className="text-black text-sm">
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-black">
-          <span>
-            Page <span className="font-bold">{page}</span> of{" "}
-            <span className="font-bold">{totalPages}</span>
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              onClick={() => setPage(1)}
-              disabled={page === 1}
-              title="Halaman Pertama"
-            >
-              «
-            </button>
-            <button
-              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              title="Sebelumnya"
-            >
-              ‹
-            </button>
-            <button
-              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              title="Selanjutnya"
-            >
-              ›
-            </button>
-            <button
-              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              onClick={() => setPage(totalPages)}
-              disabled={page === totalPages}
-              title="Halaman Terakhir"
-            >
-              »
-            </button>
-          </div>
-        </div>
-      </div>
     </>
   );
 }

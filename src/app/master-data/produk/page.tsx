@@ -13,6 +13,7 @@ import {
   Copy,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { DataTable } from "@/components/data-table";
 import { saveProduct } from "@/lib/api";
 import { StatefulButton } from "@/components/ui/stateful-button";
 import dynamic from "next/dynamic";
@@ -509,129 +510,92 @@ export default function ProdukPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-fixed">
-            <thead>
-              <tr className="bg-gray-50/50 text-gray-500 text-[13px] uppercase tracking-widest border-b border-gray-50">
-                <th className="px-6 py-4 font-semibold w-48">ID Produk</th>
-                <th className="px-6 py-4 font-semibold">Nama Produk</th>
-                <th className="px-6 py-4 font-semibold text-center">
-                  Satuan (Kg/pcs)
-                </th>
-                <th className="px-6 py-4 font-semibold w-40 text-center">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {isLoading ? (
-                <tr>
-                  <td className="px-6 py-5 text-sm" colSpan={4}>
-                    Loading...
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td className="px-6 py-5 text-sm" colSpan={4}>
-                    Tidak ada data
-                  </td>
-                </tr>
-              ) : (
-                currentItems.map((product) => (
-                  <tr
-                    key={product.id}
-                    className="hover:bg-gray-50/30 transition-colors group"
-                  >
-                    <td className="px-6 py-5 text-xs font-bold text-slate-400 tracking-tight">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono" title={product.id}>
-                          {shortId(product.id)}
-                        </span>
-                        <button
-                          onClick={() => handleCopyId(product.id)}
-                          className="p-1 rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200"
-                          title="Salin ID"
-                        >
-                          <Copy size={12} />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-all">
-                          <Package size={16} />
-                        </div>
-                        <span className="text-sm font-bold text-slate-800">
-                          {product.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 text-sm font-bold text-slate-800 text-center tabular-nums">
-                      {typeof product.satuanKg === "number"
-                        ? product.satuanKg
-                        : ""}{" "}
-                      Kg
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <div className="inline-flex gap-2">
-                        <button
-                          onClick={() => setViewProduct(product)}
-                          className="px-3 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditProduct(product);
-                            setEditName(product.name);
-                            setEditSatuan(String(product.satuanKg ?? 1));
-                          }}
-                          className="px-3 py-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="px-3 py-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length > itemsPerPage && (
-          <div className="flex items-center justify-between px-2 py-4">
-            <p className="text-sm text-slate-500">
-              Showing {showingFrom} to {showingTo} of {filtered.length} entries
-              • Total products: {products.length}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      <DataTable
+        columns={[
+          {
+            key: "id",
+            label: "ID Produk",
+            width: "w-48",
+            render: (_v: any, product: any) => (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold text-slate-400 tracking-tight" title={product.id}>
+                  {shortId(product.id)}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleCopyId(product.id); }}
+                  className="p-1 rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  title="Salin ID"
+                >
+                  <Copy size={12} />
+                </button>
+              </div>
+            ),
+          },
+          {
+            key: "name",
+            label: "Nama Produk",
+            render: (_v: any, product: any) => (
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-all">
+                  <Package size={16} />
+                </div>
+                <span className="text-sm font-bold text-slate-800">{product.name}</span>
+              </div>
+            ),
+          },
+          {
+            key: "satuanKg",
+            label: "Satuan (Kg/pcs)",
+            align: "center",
+            render: (_v: any, product: any) => (
+              <span className="text-sm font-bold text-slate-800 tabular-nums">
+                {typeof product.satuanKg === "number" ? product.satuanKg : ""} Kg
+              </span>
+            ),
+          },
+          {
+            key: "actions",
+            label: "Aksi",
+            align: "center",
+            width: "w-40",
+            render: (_v: any, product: any) => (
+              <div className="inline-flex gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setViewProduct(product); }}
+                  className="px-3 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                >
+                  <Eye size={16} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditProduct(product);
+                    setEditName(product.name);
+                    setEditSatuan(String(product.satuanKg ?? 1));
+                  }}
+                  className="px-3 py-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100"
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
+                  className="px-3 py-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ),
+          },
+        ]}
+        data={currentItems}
+        rowKey={(p: any) => p.id}
+        loading={isLoading}
+        total={filtered.length}
+        page={currentPage}
+        rowsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        emptyMessage="Tidak ada data"
+      />
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

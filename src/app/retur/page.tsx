@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
+import { DataTable } from "@/components/data-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 import { 
@@ -495,7 +496,6 @@ function ReturContent() {
   const [loading, setLoading] = useState(true);
   const [isFetchingPage, setIsFetchingPage] = useState(false);
   const [page, setPage] = useState(1);
-  const [clientPage, setClientPage] = useState(1);
   const [rowsPerPage] = useState(15);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -606,14 +606,17 @@ function ReturContent() {
 
     try {
       const params = new URLSearchParams();
-      params.set("page", isGroupedMode ? String(page) : "1"); 
-      if (selectedRetailerId) {
-        params.set("limit", "9999"); // Tarik semua data untuk client-side pagination
-      } else {
-        params.set("limit", String(rowsPerPage));
-      }
+      params.set("page", String(page)); 
+      params.set("limit", String(rowsPerPage));
+      
       if (debouncedSearch) params.set("q", debouncedSearch);
       if (selectedRetailerId) params.set("retailerId", selectedRetailerId);
+      
+      // New filters
+      if (filterInisial) params.set("inisial", filterInisial);
+      if (filterToko) params.set("toko", filterToko);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
 
       const res = await fetch(`/api/retur?${params.toString()}`, {
         signal: abortControllerRef.current.signal,
@@ -633,42 +636,16 @@ function ReturContent() {
       setLoading(false);
       setIsFetchingPage(false);
     }
-  }, [page, debouncedSearch, rowsPerPage, selectedRetailerId]);
+  }, [page, debouncedSearch, rowsPerPage, selectedRetailerId, filterInisial, filterToko, dateFrom, dateTo]);
 
   // --- CLIENT SIDE FILTERING FOR DETAIL MODE ---
   const filteredData = useMemo(() => {
-    if (isGroupedMode) return data;
-    
-    return data.filter(item => {
-      const matchInisial = filterInisial ? item.inisial === filterInisial : true;
-      const matchToko = filterToko ? item.namaCompany === filterToko : true;
-      
-      let matchDate = true;
-      if (item.tanggalRtv) {
-        const itemDate = new Date(item.tanggalRtv);
-        if (dateFrom) {
-          const from = new Date(dateFrom);
-          from.setHours(0,0,0,0);
-          if (itemDate < from) matchDate = false;
-        }
-        if (dateTo) {
-          const to = new Date(dateTo);
-          to.setHours(23,59,59,999);
-          if (itemDate > to) matchDate = false;
-        }
-      } else if (dateFrom || dateTo) {
-        matchDate = false;
-      }
-
-      return matchInisial && matchToko && matchDate;
-    });
-  }, [data, isGroupedMode, filterInisial, filterToko, dateFrom, dateTo]);
+    return data;
+  }, [data]);
 
   const paginatedData = useMemo(() => {
-    if (isGroupedMode) return data;
-    const start = (clientPage - 1) * rowsPerPage;
-    return filteredData.slice(start, start + rowsPerPage);
-  }, [filteredData, clientPage, rowsPerPage, isGroupedMode, data]);
+    return data;
+  }, [data]);
 
   const clientTotalPages = Math.ceil(filteredData.length / rowsPerPage);
 
@@ -971,7 +948,6 @@ function ReturContent() {
   useEffect(() => {
     setData([]); // Bersihkan data agar tidak render crash (missing _count) saat ganti mode
     setPage(1);
-    setClientPage(1);
   }, [selectedRetailerId]);
 
   const filteredInisial = useMemo(() => {
@@ -1313,403 +1289,339 @@ function ReturContent() {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden relative animate-in zoom-in-95 duration-500">
-          <div className="overflow-x-auto scrollbar-hide py-2">
-             <table className="w-full text-left border-collapse table-auto">
-               <thead>
-                 <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                   <th className="sticky left-0 z-20 bg-slate-50/95 backdrop-blur px-6 py-5 w-20 text-center border-r border-slate-100">NO</th>
-                   <th className="px-6 py-5 whitespace-nowrap">RTV/CN</th>
-                   <th className="px-6 py-5 whitespace-nowrap">TANGGAL RTV</th>
-                   <th className="px-6 py-5 whitespace-nowrap">MAX PICKUP</th>
-                   <th className="px-6 py-5 text-center">KODE TOKO</th>
-                   <th className="px-6 py-5">TOKO</th>
-                   <th className="px-6 py-5">INISIAL</th>
-                   <th className="px-6 py-5">LINK</th>
-                   <th className="px-6 py-5">PRODUK</th>
-                   <th className="px-6 py-5 text-center">QTY RETUR</th>
-                   <th className="px-6 py-5 text-right">NOMINAL</th>
-                   <th className="px-6 py-5 text-right">RP/KG</th>
-                   <th className="px-6 py-5">STATUS BARANG</th>
-                   <th className="px-6 py-5">REFERENSI/KET STATUS</th>
-                   <th className="px-6 py-5">LOKASI BARANG</th>
-                   <th className="px-6 py-5">PEMBEBANAN RETUR</th>
-                   <th className="px-6 py-5 text-center">INVOICE REKON</th>
-                   <th className="px-6 py-5">REFERENSI PEMBAYARAN</th>
-                    <th className="px-6 py-5">TANGGAL PEMBAYARAN</th>
-                    <th className="px-6 py-5">REMARKS</th>
-                    <th className="px-6 py-5">SDI RETUR</th>
-                    <th className="sticky right-0 z-20 bg-slate-50/95 backdrop-blur px-6 py-5 text-right border-l border-slate-100">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y divide-slate-50 transition-all duration-300 ${isFetchingPage ? "opacity-50 pointer-events-none scale-[0.998]" : "opacity-100"}`}>
-                  {paginatedData.map((item, idx) => {
-                    const isEditing = editingId === item.id;
-                    return (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => !isEditing && setViewDetailId(item.id)}
-                        className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${isEditing ? 'bg-indigo-50/30' : ''}`}
-                      >
-                        <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 text-xs font-black text-slate-400 text-center tabular-nums border-r border-slate-100 transition-colors">
-                          {isGroupedMode ? (page - 1) * rowsPerPage + idx + 1 : (clientPage - 1) * rowsPerPage + idx + 1}
-                        </td>
-                        <td className="px-6 py-4">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              suppressHydrationWarning
-                              type="text"
-                              className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                              value={editForm.rtvCn || ""}
-                              onChange={e => {
-                                setEditForm({...editForm, rtvCn: e.target.value});
-                              }}
-                            />
-                          ) : (
-                            <span className="font-mono font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg text-xs border border-indigo-100">{item.rtvCn || "-"}</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap uppercase tracking-tighter tabular-nums">
-                          {isEditing && role === "pusat" ? (
-                            <CustomInlineDatePicker 
-                              value={editForm.tanggalRtv}
-                              onChange={(date) => setEditForm({...editForm, tanggalRtv: date})}
-                              colorScheme="indigo"
-                            />
-                          ) : formatDate(item.tanggalRtv)}
-                        </td>
-                        <td className="px-6 py-4 text-xs font-bold text-rose-600 whitespace-nowrap uppercase tracking-tighter tabular-nums">
-                          {isEditing && role === "pusat" ? (
-                            <CustomInlineDatePicker 
-                              value={editForm.maxPickup}
-                              onChange={(date) => setEditForm({...editForm, maxPickup: date})}
-                              colorScheme="rose"
-                            />
-                          ) : formatDate(item.maxPickup)}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              suppressHydrationWarning
-                              type="text"
-                              inputMode="numeric"
-                              className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                              value={editForm.kodeToko || ""}
-                              onChange={e => {
-                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                setEditForm({...editForm, kodeToko: val});
-                              }}
-                            />
-                          ) : (
-                            <span className="font-bold text-slate-600">{item.kodeToko || "-"}</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {isEditing && role === "pusat" ? (
-                            <TableSearchableInput
-                              value={editForm.namaCompany || ""}
-                              onCommit={(val) => {
-                                setEditForm({ ...editForm, namaCompany: val });
-                                setSearchToko(val);
-                              }}
-                              items={filteredToko}
-                              placeholder="Cari Toko..."
-                            />
-                          ) : (
-                            <div className="text-xs font-black text-slate-800 whitespace-nowrap truncate max-w-[150px]" title={item.namaCompany}>{item.namaCompany || "-"}</div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {isEditing && role === "pusat" ? (
-                            <TableSearchableInput
-                              value={editForm.inisial || ""}
-                              onCommit={(val) => {
-                                setEditForm({ ...editForm, inisial: val });
-                                setSearchInisial(val);
-                                setIsInisialOpen(false);
-                              }}
-                              items={filteredInisial}
-                              placeholder="Cari Inisial..."
-                            />
-                          ) : (
-                             <div className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-black border border-slate-200">
-                               {item.inisial || "-"}
-                             </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                              value={editForm.link || ""}
-                              onChange={e => setEditForm({...editForm, link: e.target.value})}
-                            />
-                          ) : (
-                            item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-tighter hover:underline">View Result</a> : "-"
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {isEditing && role === "pusat" ? (
-                            <TableProductInput
-                              value={editForm.produk || ""}
-                              onCommit={(val) => {
-                                setEditForm({ ...editForm, produk: val });
-                                setSearchProduk(val);
-                                const p = products.find((x) => x.name === val);
-                                if (p) setEditForm((prev: any) => ({ ...prev, productId: p.id }));
-                              }}
-                              items={filteredProductsInline}
-                              placeholder="Cari Produk..."
-                            />
-                          ) : (
-                            <div className="text-xs font-bold text-slate-600 whitespace-nowrap max-w-[150px] truncate" title={item.produk}>{item.produk || "-"}</div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-center font-black text-slate-800 tabular-nums text-xs">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              type="number"
-                              className="w-full min-w-[100px] px-3 py-2 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer"
-                              value={editForm.qtyReturn === 0 ? "" : editForm.qtyReturn}
-                              onChange={e => {
-                                const v = e.target.value;
-                                setEditForm({...editForm, qtyReturn: v === '' ? 0 : Number(v)});
-                              }}
-                            />
-                          ) : formatNumber(item.qtyReturn)}
-                        </td>
-                        <td className="px-6 py-4 text-right font-black text-slate-900 tabular-nums text-xs">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              type="number"
-                              className="w-full min-w-[120px] px-3 py-2 text-xs font-bold text-right text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer"
-                              value={editForm.nominal === 0 ? "" : editForm.nominal}
-                              onChange={e => {
-                                const v = e.target.value;
-                                setEditForm({...editForm, nominal: v === '' ? 0 : Number(v)});
-                              }}
-                            />
-                          ) : formatIDR(item.nominal)}
-                        </td>
-                        <td className="px-6 py-4 text-right font-black text-slate-500 tabular-nums text-xs italic">
-                          {isEditing ? (
-                            <div className="w-full min-w-[120px] px-3 py-2 text-xs font-black text-right text-indigo-700 bg-indigo-50/30 rounded-lg border-2 border-transparent tabular-nums">
-                              {formatIDR(editForm.rpKg || 0)}
-                            </div>
-                          ) : (
-                            formatIDR(item.rpKg)
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {isEditing ? (
-                            <SmoothStatusSelect 
-                              value={editForm.statusBarang || "BELUM DIAMBIL"}
-                              onChange={v => setEditForm({...editForm, statusBarang: v})}
-                            />
-                          ) : (
-                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                              item.statusBarang?.toUpperCase() === "SUDAH DIAMBIL" 
-                              ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
-                              : item.statusBarang?.toUpperCase() === "DIMUSNAHKAN"
-                              ? "bg-amber-50 text-amber-600 border-amber-100"
-                              : "bg-rose-50 text-rose-600 border-rose-100"
-                            }`}>
-                              {item.statusBarang || "Belum Diambil"}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-[10px] font-medium text-slate-400 whitespace-nowrap">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                              value={editForm.refKetStatus || ""}
-                              onChange={e => setEditForm({...editForm, refKetStatus: e.target.value})}
-                            />
-                          ) : (item.refKetStatus || "-")}
-                        </td>
-                        <td className="px-6 py-4">
-                          {/* Lokasi Barang Tetap Bisa di Edit oleh Site Area */}
-                          {isEditing ? (
-                            <TableSearchableInput
-                              value={units.find((u) => u.idRegional === editForm.lokasiBarangId)?.siteArea || ""}
-                              onCommit={(val) => {
-                                const u = units.find((x) => x.siteArea === val);
-                                setEditForm({ ...editForm, lokasiBarangId: u?.idRegional || "" });
-                                setSearchLokasi(val);
-                              }}
-                              items={filteredLokasi.map((u) => u.siteArea)}
-                              placeholder="Cari Lokasi/DC..."
-                            />
-                          ) : (
-                            <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
-                              {item.LokasiBarang?.siteArea || "-"}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {/* Pembebanan Hanya Bisa di Edit oleh Pusat */}
-                          {isEditing && role === "pusat" ? (
-                            <TableSearchableInput
-                              value={units.find((u) => u.idRegional === editForm.pembebananReturnId)?.siteArea || ""}
-                              onCommit={(val) => {
-                                const u = units.find((x) => x.siteArea === val);
-                                setEditForm({ ...editForm, pembebananReturnId: u?.idRegional || "" });
-                                setSearchPembebanan(val);
-                              }}
-                              items={filteredPembebanan.map((u) => u.siteArea)}
-                              placeholder="Cari Pembebanan..."
-                            />
-                          ) : (
-                            <div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">
-                              {item.PembebananReturn?.siteArea || "-"}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              className="w-full min-w-[150px] px-3 py-1.5 text-[10px] font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                              value={editForm.invoiceRekon || ""}
-                              onChange={e => setEditForm({...editForm, invoiceRekon: e.target.value})}
-                              placeholder="No Invoice Rekon..."
-                            />
-                          ) : (
-                            item.invoiceRekon ? (
-                              <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-black border border-emerald-100 shadow-sm whitespace-nowrap">
-                                {item.invoiceRekon}
-                              </div>
-                            ) : (
-                              <div className="w-2 h-2 rounded-full mx-auto bg-slate-200" />
-                            )
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-[11px] font-bold text-slate-700 whitespace-nowrap italic">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                              value={editForm.referensiPembayaran || ""}
-                              onChange={e => setEditForm({...editForm, referensiPembayaran: e.target.value})}
-                            />
-                          ) : (item.referensiPembayaran || "-")}
-                        </td>
-                        <td className="px-6 py-4 text-xs font-bold text-slate-500 whitespace-nowrap">
-                          {isEditing && role === "pusat" ? (
-                            <CustomInlineDatePicker 
-                              value={editForm.tanggalPembayaran}
-                              onChange={(date) => setEditForm({...editForm, tanggalPembayaran: date})}
-                              colorScheme="slate"
-                            />
-                          ) : formatDate(item.tanggalPembayaran)}
-                        </td>
-                        <td className="px-6 py-4 text-[10px] font-medium text-slate-400 max-w-[150px] truncate" title={item.remarks}>
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                              value={editForm.remarks || ""}
-                              onChange={e => setEditForm({...editForm, remarks: e.target.value})}
-                            />
-                          ) : (item.remarks || "-")}
-                        </td>
-                        <td className="px-6 py-4 text-[11px] font-bold text-amber-600 whitespace-nowrap">
-                          {isEditing && role === "pusat" ? (
-                            <input 
-                              className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                              value={editForm.sdiReturn || ""}
-                              onChange={e => setEditForm({...editForm, sdiReturn: e.target.value})}
-                            />
-                          ) : (item.sdiReturn || "-")}
-                        </td>
-                        <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 border-l border-slate-100 transition-colors">
-                          <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
-                            {isEditing ? (
-                              <>
-                                <button 
-                                  onClick={() => handleSaveInline(item.id)} 
-                                  disabled={isFetchingPage}
-                                  className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-90 disabled:opacity-50"
-                                >
-                                  {isFetchingPage ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                                </button>
-                                <button onClick={handleCancelEdit} className="p-2 rounded-xl bg-slate-100 text-slate-400 hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-90">
-                                  <X size={15} />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button onClick={() => handleStartEdit(item)} className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all shadow-sm active:scale-90">
-                                  <Pencil size={15} />
-                                </button>
-                                {role === "pusat" && (
-                                  <button 
-                                    onClick={() => handleDelete(item.id)}
-                                    className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-90 cursor-pointer"
-                                  >
-                                    <Trash2 size={15} />
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <ReturDetailModal 
-              isOpen={!!viewDetailId} 
-              onClose={() => setViewDetailId(null)} 
-              data={selectedDetail}
-            />
-
-          {!isGroupedMode && (
-             <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                  Menampilkan <span className="text-indigo-600">{(clientPage - 1) * rowsPerPage + 1}</span> - <span className="text-indigo-600">{Math.min(clientPage * rowsPerPage, filteredData.length)}</span> dari <span className="text-slate-800 font-black">{filteredData.length}</span> data
-                </div>
-                
-                <div className="flex items-center gap-1.5">
-                  <button 
-                    onClick={() => setClientPage(1)} 
-                    disabled={clientPage === 1}
-                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
-                  >
-                    <ChevronsLeft size={16} />
-                  </button>
-                  <button 
-                    onClick={() => setClientPage(p => Math.max(1, p - 1))} 
-                    disabled={clientPage === 1}
-                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  
-                  <div className="px-4 py-1.5 bg-white border border-slate-200 rounded-xl shadow-sm">
-                     <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter tabular-nums">
-                        Page {clientPage} of {clientTotalPages}
-                     </span>
+        <>
+        <DataTable
+          columns={[
+            {
+              key: "rtvCn",
+              label: "RTV/CN",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing && role === "pusat" ? (
+                  <input suppressHydrationWarning type="text" className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.rtvCn || ""} onChange={e => setEditForm({...editForm, rtvCn: e.target.value})} />
+                ) : (
+                  <span className="font-mono font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg text-xs border border-indigo-100">{item.rtvCn || "-"}</span>
+                );
+              },
+            },
+            {
+              key: "tanggalRtv",
+              label: "TANGGAL RTV",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="text-xs font-bold text-slate-700 whitespace-nowrap uppercase tracking-tighter tabular-nums">
+                    {isEditing && role === "pusat" ? (
+                      <CustomInlineDatePicker value={editForm.tanggalRtv} onChange={(date: string) => setEditForm({...editForm, tanggalRtv: date})} colorScheme="indigo" />
+                    ) : formatDate(item.tanggalRtv)}
                   </div>
-                  
-                  <button 
-                    onClick={() => setClientPage(p => Math.min(clientTotalPages, p + 1))} 
-                    disabled={clientPage === clientTotalPages || clientTotalPages === 0}
-                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                  <button 
-                    onClick={() => setClientPage(clientTotalPages)} 
-                    disabled={clientPage === clientTotalPages || clientTotalPages === 0}
-                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
-                  >
-                    <ChevronsRight size={16} />
-                  </button>
-                </div>
-             </div>
-          )}
-        </div>
+                );
+              },
+            },
+            {
+              key: "maxPickup",
+              label: "MAX PICKUP",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="text-xs font-bold text-rose-600 whitespace-nowrap uppercase tracking-tighter tabular-nums">
+                    {isEditing && role === "pusat" ? (
+                      <CustomInlineDatePicker value={editForm.maxPickup} onChange={(date: string) => setEditForm({...editForm, maxPickup: date})} colorScheme="rose" />
+                    ) : formatDate(item.maxPickup)}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "kodeToko",
+              label: "KODE TOKO",
+              align: "center" as const,
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing && role === "pusat" ? (
+                  <input suppressHydrationWarning type="text" inputMode="numeric" className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.kodeToko || ""} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, kodeToko: val}); }} />
+                ) : (
+                  <span className="font-bold text-slate-600">{item.kodeToko || "-"}</span>
+                );
+              },
+            },
+            {
+              key: "namaCompany",
+              label: "TOKO",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing && role === "pusat" ? (
+                  <TableSearchableInput value={editForm.namaCompany || ""} onCommit={(val: string) => { setEditForm({ ...editForm, namaCompany: val }); setSearchToko(val); }} items={filteredToko} placeholder="Cari Toko..." />
+                ) : (
+                  <div className="text-xs font-black text-slate-800 whitespace-nowrap truncate max-w-[150px]" title={item.namaCompany}>{item.namaCompany || "-"}</div>
+                );
+              },
+            },
+            {
+              key: "inisial",
+              label: "INISIAL",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing && role === "pusat" ? (
+                  <TableSearchableInput value={editForm.inisial || ""} onCommit={(val: string) => { setEditForm({ ...editForm, inisial: val }); setSearchInisial(val); setIsInisialOpen(false); }} items={filteredInisial} placeholder="Cari Inisial..." />
+                ) : (
+                  <div className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-black border border-slate-200">{item.inisial || "-"}</div>
+                );
+              },
+            },
+            {
+              key: "link",
+              label: "LINK",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing && role === "pusat" ? (
+                  <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.link || ""} onChange={e => setEditForm({...editForm, link: e.target.value})} />
+                ) : (
+                  item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-tighter hover:underline">View Result</a> : "-"
+                );
+              },
+            },
+            {
+              key: "produk",
+              label: "PRODUK",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing && role === "pusat" ? (
+                  <TableProductInput value={editForm.produk || ""} onCommit={(val: string) => { setEditForm({ ...editForm, produk: val }); setSearchProduk(val); const p = products.find((x: any) => x.name === val); if (p) setEditForm((prev: any) => ({ ...prev, productId: p.id })); }} items={filteredProductsInline} placeholder="Cari Produk..." />
+                ) : (
+                  <div className="text-xs font-bold text-slate-600 whitespace-nowrap max-w-[150px] truncate" title={item.produk}>{item.produk || "-"}</div>
+                );
+              },
+            },
+            {
+              key: "qtyReturn",
+              label: "QTY RETUR",
+              align: "center" as const,
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="font-black text-slate-800 tabular-nums text-xs">
+                    {isEditing && role === "pusat" ? (
+                      <input type="number" className="w-full min-w-[100px] px-3 py-2 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer" value={editForm.qtyReturn === 0 ? "" : editForm.qtyReturn} onChange={e => { const v = e.target.value; setEditForm({...editForm, qtyReturn: v === '' ? 0 : Number(v)}); }} />
+                    ) : formatNumber(item.qtyReturn)}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "nominal",
+              label: "NOMINAL",
+              align: "right" as const,
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="font-black text-slate-900 tabular-nums text-xs">
+                    {isEditing && role === "pusat" ? (
+                      <input type="number" className="w-full min-w-[120px] px-3 py-2 text-xs font-bold text-right text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer" value={editForm.nominal === 0 ? "" : editForm.nominal} onChange={e => { const v = e.target.value; setEditForm({...editForm, nominal: v === '' ? 0 : Number(v)}); }} />
+                    ) : formatIDR(item.nominal)}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "rpKg",
+              label: "RP/KG",
+              align: "right" as const,
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="font-black text-slate-500 tabular-nums text-xs italic">
+                    {isEditing ? (
+                      <div className="w-full min-w-[120px] px-3 py-2 text-xs font-black text-right text-indigo-700 bg-indigo-50/30 rounded-lg border-2 border-transparent tabular-nums">{formatIDR(editForm.rpKg || 0)}</div>
+                    ) : formatIDR(item.rpKg)}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "statusBarang",
+              label: "STATUS BARANG",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing ? (
+                  <SmoothStatusSelect value={editForm.statusBarang || "BELUM DIAMBIL"} onChange={(v: string) => setEditForm({...editForm, statusBarang: v})} />
+                ) : (
+                  <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border whitespace-nowrap ${
+                    item.statusBarang?.toUpperCase() === "SUDAH DIAMBIL" ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                    : item.statusBarang?.toUpperCase() === "DIMUSNAHKAN" ? "bg-amber-50 text-amber-600 border-amber-100"
+                    : "bg-rose-50 text-rose-600 border-rose-100"
+                  }`}>{item.statusBarang || "Belum Diambil"}</div>
+                );
+              },
+            },
+            {
+              key: "refKetStatus",
+              label: "REFERENSI/KET STATUS",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
+                    {isEditing && role === "pusat" ? (
+                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.refKetStatus || ""} onChange={e => setEditForm({...editForm, refKetStatus: e.target.value})} />
+                    ) : (item.refKetStatus || "-")}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "lokasiBarang",
+              label: "LOKASI BARANG",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing ? (
+                  <TableSearchableInput value={units.find((u: any) => u.idRegional === editForm.lokasiBarangId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); setEditForm({ ...editForm, lokasiBarangId: u?.idRegional || "" }); setSearchLokasi(val); }} items={filteredLokasi.map((u: any) => u.siteArea)} placeholder="Cari Lokasi/DC..." />
+                ) : (
+                  <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{item.LokasiBarang?.siteArea || "-"}</div>
+                );
+              },
+            },
+            {
+              key: "pembebananReturn",
+              label: "PEMBEBANAN RETUR",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing && role === "pusat" ? (
+                  <TableSearchableInput value={units.find((u: any) => u.idRegional === editForm.pembebananReturnId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); setEditForm({ ...editForm, pembebananReturnId: u?.idRegional || "" }); setSearchPembebanan(val); }} items={filteredPembebanan.map((u: any) => u.siteArea)} placeholder="Cari Pembebanan..." />
+                ) : (
+                  <div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">{item.PembebananReturn?.siteArea || "-"}</div>
+                );
+              },
+            },
+            {
+              key: "invoiceRekon",
+              label: "INVOICE REKON",
+              align: "center" as const,
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return isEditing && role === "pusat" ? (
+                  <input className="w-full min-w-[150px] px-3 py-1.5 text-[10px] font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.invoiceRekon || ""} onChange={e => setEditForm({...editForm, invoiceRekon: e.target.value})} placeholder="No Invoice Rekon..." />
+                ) : item.invoiceRekon ? (
+                  <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-black border border-emerald-100 shadow-sm whitespace-nowrap">{item.invoiceRekon}</div>
+                ) : (
+                  <div className="w-2 h-2 rounded-full mx-auto bg-slate-200" />
+                );
+              },
+            },
+            {
+              key: "referensiPembayaran",
+              label: "REFERENSI PEMBAYARAN",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="text-[11px] font-bold text-slate-700 whitespace-nowrap italic">
+                    {isEditing && role === "pusat" ? (
+                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.referensiPembayaran || ""} onChange={e => setEditForm({...editForm, referensiPembayaran: e.target.value})} />
+                    ) : (item.referensiPembayaran || "-")}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "tanggalPembayaran",
+              label: "TANGGAL PEMBAYARAN",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="text-xs font-bold text-slate-500 whitespace-nowrap">
+                    {isEditing && role === "pusat" ? (
+                      <CustomInlineDatePicker value={editForm.tanggalPembayaran} onChange={(date: string) => setEditForm({...editForm, tanggalPembayaran: date})} colorScheme="slate" />
+                    ) : formatDate(item.tanggalPembayaran)}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "remarks",
+              label: "REMARKS",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="text-[10px] font-medium text-slate-400 max-w-[150px] truncate" title={item.remarks}>
+                    {isEditing && role === "pusat" ? (
+                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.remarks || ""} onChange={e => setEditForm({...editForm, remarks: e.target.value})} />
+                    ) : (item.remarks || "-")}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "sdiReturn",
+              label: "SDI RETUR",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="text-[11px] font-bold text-amber-600 whitespace-nowrap">
+                    {isEditing && role === "pusat" ? (
+                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.sdiReturn || ""} onChange={e => setEditForm({...editForm, sdiReturn: e.target.value})} />
+                    ) : (item.sdiReturn || "-")}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "actions",
+              label: "AKSI",
+              align: "right" as const,
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                return (
+                  <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                    {isEditing ? (
+                      <>
+                        <button onClick={() => handleSaveInline(item.id)} disabled={isFetchingPage} className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-90 disabled:opacity-50">
+                          {isFetchingPage ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                        </button>
+                        <button onClick={handleCancelEdit} className="p-2 rounded-xl bg-slate-100 text-slate-400 hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-90">
+                          <X size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => handleStartEdit(item)} className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all shadow-sm active:scale-90">
+                          <Pencil size={15} />
+                        </button>
+                        {role === "pusat" && (
+                          <button onClick={() => handleDelete(item.id)} className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-90 cursor-pointer">
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              },
+            },
+          ]}
+          data={paginatedData}
+          rowKey={(item: any) => item.id}
+          loading={loading}
+          isFetchingPage={isFetchingPage}
+          total={total}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          variant="rounded"
+          rowNumber
+          stickyFirstCol
+          stickyLastCol
+          onRowClick={(item: any) => !editingId && setViewDetailId(item.id)}
+          rowClassName={(item: any) => editingId === item.id ? 'bg-indigo-50/30' : ''}
+          className="bg-white rounded-[32px] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden relative animate-in zoom-in-95 duration-500"
+          emptyMessage="Belum ada data retur."
+          hidePagination={isGroupedMode}
+        />
+
+        <ReturDetailModal 
+          isOpen={!!viewDetailId} 
+          onClose={() => setViewDetailId(null)} 
+          data={selectedDetail}
+        />
+        </>
       )}
 
       {/* ── BULK UPLOAD MODAL (SWITCHABLE CONTROLLERS) ─────────────────── */}

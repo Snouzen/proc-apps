@@ -12,6 +12,10 @@ export async function GET(request: Request) {
     const limit = Number(searchParams.get("limit")) || 10;
     const offset = (page - 1) * limit;
     const q = searchParams.get("q") || "";
+    const inisial = searchParams.get("inisial");
+    const toko = searchParams.get("toko");
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
 
     // [RBAC] Ambil Session & Role
     const cookieStore = await cookies();
@@ -31,6 +35,21 @@ export async function GET(request: Request) {
     // Construct dynamic where filter
     const drFilter: Prisma.DataReturWhereInput[] = [];
     if (siteScopeId) drFilter.push({ lokasiBarangId: siteScopeId });
+    
+    if (inisial) drFilter.push({ inisial: inisial });
+    if (toko) drFilter.push({ namaCompany: toko });
+    
+    if (dateFrom || dateTo) {
+      const dateRange: any = {};
+      if (dateFrom) dateRange.gte = new Date(dateFrom);
+      if (dateTo) {
+        const d = new Date(dateTo);
+        d.setHours(23, 59, 59, 999);
+        dateRange.lte = d;
+      }
+      drFilter.push({ tanggalRtv: dateRange });
+    }
+
     if (q) {
       drFilter.push({
         OR: [
@@ -84,19 +103,10 @@ export async function GET(request: Request) {
     const filtersB: Prisma.DataReturWhereInput[] = selectedRitel 
       ? [{ RitelModern: { namaPt: { equals: selectedRitel.namaPt, mode: 'insensitive' } } }]
       : [{ ritelId: retailerId }];
-    
-    if (siteScopeId) filtersB.push({ lokasiBarangId: siteScopeId });
-    
-    if (q) {
-      filtersB.push({
-        OR: [
-          { rtvCn: { contains: q, mode: "insensitive" } },
-          { namaCompany: { contains: q, mode: "insensitive" } },
-          { produk: { contains: q, mode: "insensitive" } },
-          { LokasiBarang: { siteArea: { contains: q, mode: "insensitive" } } },
-          { LokasiBarang: { namaRegional: { contains: q, mode: "insensitive" } } },
-        ]
-      });
+
+    // Gabungkan dengan filter tambahan (inisial, toko, tanggal, q) yang didefinisikan di atas
+    if (drFilter.length > 0) {
+      filtersB.push(...drFilter);
     }
 
     const where: Prisma.DataReturWhereInput = {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, Fragment } from "react";
+import { DataTable } from "@/components/data-table";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -584,441 +585,318 @@ export default function SchedulePage() {
       </div>
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[50px]">
-                  No
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[260px]">
-                  Purchase Order
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[90px]">
-                  Inisial
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[160px]">
-                  Site Area
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[200px]">
-                  Tujuan
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[120px]">
-                  Tgl PO
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[120px]">
-                  Due Date
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap w-[160px]">
-                  Status
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center w-[80px]">
-                  Pcs
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center w-[110px]">
-                  Pcs Kirim
-                </th>
-                <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-right w-[120px]">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
-              ) : paginatedPOs.length > 0 ? (
-                paginatedPOs.map((po, index) => {
-                  const itemsCount = Number(po.itemsCount || 0);
-                  const isMulti = itemsCount > 1;
-                  const isExpanded = expandedRows.has(po.id);
-                  
-                  const site = cleanSiteArea(
-                    po.UnitProduksi?.siteArea || po.siteArea,
-                  );
-                  const isScheduled = !!po.tglkirim;
-
-                  return (
-                    <Fragment key={po.id}>
-                    <tr
-                      onClick={() => handleViewRow(po)}
-                      className={`border-b border-slate-50 hover:bg-indigo-50/50 cursor-pointer transition-all duration-150 group align-top ${isExpanded ? "bg-indigo-50/30" : ""}`}
-                    >
-                      {/* No */}
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-400 font-medium">
-                        {(currentPage - 1) * itemsPerPage + index + 1}
-                      </td>
-
-                      {/* PO Info */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        <p className="font-bold text-slate-800 text-sm leading-tight">
-                          {po.noPo}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[230px]">
-                          {po.RitelModern?.namaPt || "-"}
-                        </p>
-                      </td>
-
-                      {/* Inisial */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-md text-[10px] font-black uppercase tracking-widest">
-                          {po.RitelModern?.inisial || "-"}
+      <DataTable
+          columns={[
+            {
+              key: "noPo",
+              label: "Purchase Order",
+              width: "w-[260px]",
+              render: (_v: any, po: any) => (
+                <div>
+                  <p className="font-bold text-slate-800 text-sm leading-tight">{po.noPo}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[230px]">{po.RitelModern?.namaPt || "-"}</p>
+                </div>
+              ),
+            },
+            {
+              key: "inisial",
+              label: "Inisial",
+              width: "w-[90px]",
+              render: (_v: any, po: any) => (
+                <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-md text-[10px] font-black uppercase tracking-widest">
+                  {po.RitelModern?.inisial || "-"}
+                </span>
+              ),
+            },
+            {
+              key: "siteArea",
+              label: "Site Area",
+              width: "w-[160px]",
+              render: (_v: any, po: any) => {
+                const site = cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea);
+                return (
+                  <div className="flex items-center gap-1.5">
+                    {site !== "-" && <MapPin size={11} className="text-slate-300 shrink-0" />}
+                    <span className={`text-xs font-medium ${site === "-" ? "text-slate-300" : "text-slate-600"}`}>{site}</span>
+                  </div>
+                );
+              },
+            },
+            {
+              key: "tujuanDetail",
+              label: "Tujuan",
+              width: "w-[200px]",
+              render: (_v: any, po: any) => (
+                <p className="text-xs text-slate-600 font-medium truncate max-w-[200px]" title={po.tujuanDetail || "-"}>{po.tujuanDetail || "-"}</p>
+              ),
+            },
+            {
+              key: "tglPo",
+              label: "Tgl PO",
+              width: "w-[120px]",
+              render: (_v: any, po: any) => (
+                <span className="text-xs text-slate-500 tabular-nums whitespace-nowrap">{po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}</span>
+              ),
+            },
+            {
+              key: "expiredTgl",
+              label: "Due Date",
+              width: "w-[120px]",
+              render: (_v: any, po: any) => (
+                <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${
+                  po.expiredTgl && new Date(po.expiredTgl).getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000
+                    ? "text-rose-600" : "text-slate-600"
+                }`}>
+                  {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
+                </span>
+              ),
+            },
+            {
+              key: "status",
+              label: "Status",
+              width: "w-[160px]",
+              render: (_v: any, po: any) => {
+                const isScheduled = !!po.tglkirim;
+                return isScheduled ? (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[10px] font-bold">
+                    <AlertCircle size={11} />
+                    {format(new Date(po.tglkirim), "dd/MM/yy")}
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-400 border border-slate-100 rounded-lg text-[10px] font-medium">
+                    <Clock size={11} />
+                    Belum Dijadwalkan
+                  </div>
+                );
+              },
+            },
+            {
+              key: "pcsTotal",
+              label: "Pcs",
+              align: "center" as const,
+              width: "w-[80px]",
+              render: (_v: any, po: any) => (
+                <span className="font-bold text-slate-600 text-xs">{Number(po.pcsTotal || 0).toLocaleString("id-ID")}</span>
+              ),
+            },
+            {
+              key: "pcsKirim",
+              label: "Pcs Kirim",
+              align: "center" as const,
+              width: "w-[110px]",
+              render: (_v: any, po: any) => {
+                const itemsCount = Number(po.itemsCount || 0);
+                const isMulti = itemsCount > 1;
+                const isExpanded = expandedRows.has(po.id);
+                return (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {isMulti ? (
+                      <div className="flex items-center gap-1.5 justify-center">
+                        <span className="inline-flex items-center justify-center w-24 px-2 py-1.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold tabular-nums">
+                          {Number(po.pcsKirimTotal || 0).toLocaleString("id-ID")}
                         </span>
-                      </td>
-
-                      {/* Site Area — with junk guard */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          {site !== "-" && (
-                            <MapPin
-                              size={11}
-                              className="text-slate-300 shrink-0"
-                            />
-                          )}
-                          <span
-                            className={`text-xs font-medium ${site === "-" ? "text-slate-300" : "text-slate-600"}`}
-                          >
-                            {site}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Tujuan */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        <p className="text-xs text-slate-600 font-medium truncate max-w-[200px]" title={po.tujuanDetail || "-"}>
-                          {po.tujuanDetail || "-"}
-                        </p>
-                      </td>
-
-                      {/* Tgl PO */}
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-500 tabular-nums">
-                        {po.tglPo
-                          ? format(new Date(po.tglPo), "dd MMM yyyy")
-                          : "-"}
-                      </td>
-
-                      {/* Due Date */}
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs tabular-nums">
-                        <span
-                          className={`font-bold ${
-                            po.expiredTgl &&
-                            new Date(po.expiredTgl).getTime() - Date.now() <=
-                              3 * 24 * 60 * 60 * 1000
-                              ? "text-rose-600"
-                              : "text-slate-600"
+                        <button 
+                          onClick={() => toggleRow(po.id)}
+                          className={`p-1.5 rounded-lg transition-all active:scale-95 shadow-sm border ${
+                            isExpanded 
+                            ? "bg-rose-500 text-white border-rose-600 shadow-rose-100" 
+                            : "bg-white text-indigo-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-600 shadow-slate-100"
                           }`}
+                          title={isExpanded ? "Tutup" : "Breakdown PO"}
                         >
-                          {po.expiredTgl
-                            ? format(new Date(po.expiredTgl), "dd MMM yyyy")
-                            : "-"}
-                        </span>
-                      </td>
-
-                      {/* Status Badge */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        {isScheduled ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[10px] font-bold">
-                            <AlertCircle size={11} />
-                            {format(new Date(po.tglkirim), "dd/MM/yy")}
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-400 border border-slate-100 rounded-lg text-[10px] font-medium">
-                            <Clock size={11} />
-                            Belum Dijadwalkan
-                          </div>
+                          {isExpanded ? <X size={10} strokeWidth={4} /> : <PencilLine size={10} strokeWidth={3} />}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative inline-block group/input">
+                        <input
+                          type="number"
+                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                          min="0"
+                          max={po.pcsTotal || 0}
+                          value={po.pcsKirimTotal ?? 0}
+                          onFocus={(e) => e.target.select()}
+                          onBlur={(e) => {
+                            const val = parseInt(e.target.value.toString()) || 0;
+                            handleUpdatePcsKirim(po.id, val.toString());
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.currentTarget.blur();
+                          }}
+                          disabled={savingPcsId === po.id}
+                          className={`w-24 px-2 py-1.5 text-xs font-bold text-center bg-slate-50 border rounded-lg outline-none transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            Number(po.pcsKirimTotal) > Number(po.pcsTotal)
+                              ? "border-rose-500 text-rose-600 bg-rose-50 shadow-[0_0_8px_rgba(225,29,72,0.2)]"
+                              : savingPcsId === po.id
+                              ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse"
+                              : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
+                          }`}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const numVal = Number(val);
+                            const max = Number(po.pcsTotal || 0);
+                            const finalVal = numVal > max ? max.toString() : val;
+                            setPoData((prev) => prev.map((p) => p.id === po.id ? { ...p, pcsKirimTotal: finalVal } : p));
+                          }}
+                        />
+                        {savingPcsId !== po.id && Number(po.pcsKirimTotal) > 0 && (
+                          <div className="absolute -right-1 -top-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" title="Tersimpan" />
                         )}
-                      </td>
-
-                      {/* Kolom Pcs (Read-only) */}
-                      <td className="px-5 py-3.5 whitespace-nowrap text-center font-bold text-slate-600 text-xs">
-                        {Number(po.pcsTotal || 0).toLocaleString("id-ID")}
-                      </td>
-
-                      <td
-                        className="px-5 py-3.5 whitespace-nowrap text-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {isMulti ? (
-                          <div className="flex items-center gap-1.5 justify-center">
-                            <span className="inline-flex items-center justify-center w-24 px-2 py-1.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold tabular-nums">
-                              {Number(po.pcsKirimTotal || 0).toLocaleString("id-ID")}
-                            </span>
-                            <button 
-                              onClick={() => toggleRow(po.id)}
-                              className={`p-1.5 rounded-lg transition-all active:scale-95 shadow-sm border ${
-                                isExpanded 
-                                ? "bg-rose-500 text-white border-rose-600 shadow-rose-100" 
-                                : "bg-white text-indigo-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-600 shadow-slate-100"
-                              }`}
-                              title={isExpanded ? "Tutup" : "Breakdown PO"}
-                            >
-                              {isExpanded ? <X size={10} strokeWidth={4} /> : <PencilLine size={10} strokeWidth={3} />}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="relative inline-block group/input">
-                            <input
-                              type="number"
-                              onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                              min="0"
-                              max={po.pcsTotal || 0}
-                              value={po.pcsKirimTotal ?? 0}
-                              onFocus={(e) => e.target.select()}
-                              onBlur={(e) => {
-                                const val = parseInt(e.target.value.toString()) || 0;
-                                handleUpdatePcsKirim(po.id, val.toString());
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") e.currentTarget.blur();
-                              }}
-                              disabled={savingPcsId === po.id}
-                              className={`w-24 px-2 py-1.5 text-xs font-bold text-center bg-slate-50 border rounded-lg outline-none transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                Number(po.pcsKirimTotal) > Number(po.pcsTotal)
-                                  ? "border-rose-500 text-rose-600 bg-rose-50 shadow-[0_0_8px_rgba(225,29,72,0.2)]"
-                                  : savingPcsId === po.id
-                                  ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse"
-                                  : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700"
-                              }`}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                const numVal = Number(val);
-                                const max = Number(po.pcsTotal || 0);
-                                const finalVal = numVal > max ? max.toString() : val;
-
-                                setPoData((prev) => prev.map((p) => p.id === po.id ? { ...p, pcsKirimTotal: finalVal } : p));
-                              }}
-                            />
-                            {savingPcsId !== po.id && Number(po.pcsKirimTotal) > 0 && (
-                              <div
-                                className="absolute -right-1 -top-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm"
-                                title="Tersimpan"
-                              />
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Action Button */}
-                      <td
-                        className="px-5 py-3.5 whitespace-nowrap text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedPo(po);
-                              setSelectedDate(
-                                po.tglkirim ? po.tglkirim.split("T")[0] : "",
-                              );
-                              setNamaSupir(po.namaSupir || "");
-                              setPlatNomor(po.platNomor || "");
-                              setModalOpen(true);
-                            }}
-                            disabled={updatingId === po.id}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 shadow-sm active:scale-95 ${
-                              isScheduled
-                                ? "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-600 hover:text-white hover:border-slate-600"
-                                : "bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600"
-                            }`}
-                          >
-                            <Calendar size={12} />
-                            {isScheduled ? "Update" : "Set Schedule"}
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRejectPo(po);
-                            }}
-                            disabled={updatingId === po.id}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-600 hover:text-white transition-all text-[11px] font-bold shadow-sm active:scale-95 whitespace-nowrap"
-                            title="Reject / Unassign PO"
-                          >
-                            {updatingId === po.id ? (
-                              <div className="w-3 h-3 border-2 border-rose-600/30 border-t-rose-600 rounded-full animate-spin" />
-                            ) : (
-                              <RotateCcw size={12} />
-                            )}
-                            Reject
-                          </button>
-
-                          {isScheduled && (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePreviewPdf(po);
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-all text-[10px] border border-slate-200 shadow-sm active:scale-95 whitespace-nowrap"
-                                title="Preview Invoice"
-                              >
-                                <Eye size={12} />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownloadInvoice(po);
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 transition-all text-[10px] border border-indigo-200 shadow-sm active:scale-95 whitespace-nowrap"
-                                title="Download Invoice"
-                              >
-                                <FileDown size={12} />
-                                Faktur Penjualan
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                    {isExpanded && po.Items && (
-                      <tr className="bg-slate-50/10" onClick={(e) => e.stopPropagation()}>
-                        <td colSpan={14} className="px-5 py-6">
-                          <div className="bg-white border-2 border-indigo-100 rounded-[32px] overflow-hidden shadow-2xl shadow-indigo-200/10 mx-4">
-                            <table className="w-full text-left">
-                              <thead>
-                                <tr className="bg-slate-50/50 border-b border-slate-100">
-                                  <th className="px-8 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-12">Product Breakdown</th>
-                                  <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Order</th>
-                                  <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Kirim</th>
-                                  <th className="px-12 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {po.Items.map((item: any, idx: number) => (
-                                  <tr key={item.id} className={idx !== po.Items.length - 1 ? "border-b border-slate-50" : ""}>
-                                    <td className="px-8 py-4 text-xs font-bold text-slate-700 pl-12">
-                                      {item.namaProduk}
-                                    </td>
-                                    <td className="px-6 py-4 text-center text-xs font-black text-slate-300">
-                                      {item.pcs}
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                      <div className="relative inline-block">
-                                        <input
-                                          type="number"
-                              onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                          min={0}
-                                          max={item.pcs}
-                                          value={item.pcsKirim}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            const numVal = Number(val);
-                                            const finalVal = numVal > item.pcs ? item.pcs : numVal;
-                                            setPoData(prev => prev.map(p => 
-                                              p.id === po.id 
-                                              ? { ...p, Items: p.Items.map((it: any) => it.id === item.id ? { ...it, pcsKirim: finalVal } : it) } 
-                                              : p
-                                            ));
-                                          }}
-                                          onBlur={(e) => handleUpdateItemPcsKirim(po.id, item.id, e.target.value)}
-                                          className="w-24 px-3 py-1.5 text-center text-xs font-black bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-400 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        />
-                                      </div>
-                                    </td>
-                                    <td className="px-12 py-4 text-right">
-                                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${item.pcsKirim >= item.pcs ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
-                                        {item.pcsKirim >= item.pcs ? "Full" : "Partial"}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </td>
-                      </tr>
+                      </div>
                     )}
-                    </Fragment>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="p-4 bg-slate-50 rounded-2xl">
-                        <CalendarDays size={28} className="text-slate-300" />
+                  </div>
+                );
+              },
+            },
+            {
+              key: "actions",
+              label: "Action",
+              align: "right" as const,
+              width: "w-[120px]",
+              render: (_v: any, po: any) => {
+                const isScheduled = !!po.tglkirim;
+                return (
+                  <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPo(po);
+                        setSelectedDate(po.tglkirim ? po.tglkirim.split("T")[0] : "");
+                        setNamaSupir(po.namaSupir || "");
+                        setPlatNomor(po.platNomor || "");
+                        setModalOpen(true);
+                      }}
+                      disabled={updatingId === po.id}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 shadow-sm active:scale-95 ${
+                        isScheduled
+                          ? "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-600 hover:text-white hover:border-slate-600"
+                          : "bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600"
+                      }`}
+                    >
+                      <Calendar size={12} />
+                      {isScheduled ? "Update" : "Set Schedule"}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRejectPo(po); }}
+                      disabled={updatingId === po.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-600 hover:text-white transition-all text-[11px] font-bold shadow-sm active:scale-95 whitespace-nowrap"
+                      title="Reject / Unassign PO"
+                    >
+                      {updatingId === po.id ? (
+                        <div className="w-3 h-3 border-2 border-rose-600/30 border-t-rose-600 rounded-full animate-spin" />
+                      ) : (
+                        <RotateCcw size={12} />
+                      )}
+                      Reject
+                    </button>
+                    {isScheduled && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handlePreviewPdf(po); }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-all text-[10px] border border-slate-200 shadow-sm active:scale-95 whitespace-nowrap"
+                          title="Preview Invoice"
+                        >
+                          <Eye size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(po); }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 transition-all text-[10px] border border-indigo-200 shadow-sm active:scale-95 whitespace-nowrap"
+                          title="Download Invoice"
+                        >
+                          <FileDown size={12} />
+                          Faktur Penjualan
+                        </button>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-500">
-                          Tidak ada data
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Semua PO sudah dijadwalkan atau tidak ada yang cocok.
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        {/* -- Pagination Controls -- */}
-        {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-            <span className="text-xs text-slate-500 font-medium">
-              Menampilkan{" "}
-              <span className="font-bold text-slate-700">
-                {paginatedPOs.length}
-              </span>{" "}
-              dari{" "}
-              <span className="font-bold text-slate-700">
-                {filteredPo.length}
-              </span>{" "}
-              data
-            </span>
-            <div className="flex items-center gap-1">
-              {/* First Page */}
-              <button
-                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold text-slate-600"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                title="Halaman Pertama"
-              >
-                «
-              </button>
-
-              {/* Previous Page */}
-              <button
-                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-600"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                title="Sebelumnya"
-              >
-                ‹
-              </button>
-
-              {/* Info Page */}
-              <div className="flex items-center justify-center px-4 py-1.5 min-w-[80px] text-xs font-bold text-slate-700 bg-slate-50 border border-slate-100 rounded-lg mx-1 tabular-nums">
-                {currentPage} / {totalPages}
+                    )}
+                  </div>
+                );
+              },
+            },
+          ]}
+          data={paginatedPOs}
+          rowKey={(po: any) => po.id}
+          loading={loading}
+          skeletonRows={6}
+          total={filteredPo.length}
+          page={currentPage}
+          rowsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          hidePagination={totalPages <= 1}
+          variant="default"
+          rowNumber
+          onRowClick={(po: any) => handleViewRow(po)}
+          expandedKeys={expandedRows}
+          onToggleExpand={toggleRow}
+          renderExpandedRow={(po: any) => {
+            if (!po.Items) return null;
+            return (
+              <tr className="bg-slate-50/10" onClick={(e) => e.stopPropagation()}>
+                <td colSpan={14} className="px-5 py-6">
+                  <div className="bg-white border-2 border-indigo-100 rounded-[32px] overflow-hidden shadow-2xl shadow-indigo-200/10 mx-4">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-slate-50/50 border-b border-slate-100">
+                          <th className="px-8 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-12">Product Breakdown</th>
+                          <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Order</th>
+                          <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Kirim</th>
+                          <th className="px-12 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {po.Items.map((item: any, idx: number) => (
+                          <tr key={item.id} className={idx !== po.Items.length - 1 ? "border-b border-slate-50" : ""}>
+                            <td className="px-8 py-4 text-xs font-bold text-slate-700 pl-12">{item.namaProduk}</td>
+                            <td className="px-6 py-4 text-center text-xs font-black text-slate-300">{item.pcs}</td>
+                            <td className="px-6 py-4 text-center">
+                              <div className="relative inline-block">
+                                <input
+                                  type="number"
+                                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                  min={0}
+                                  max={item.pcs}
+                                  value={item.pcsKirim}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const numVal = Number(val);
+                                    const finalVal = numVal > item.pcs ? item.pcs : numVal;
+                                    setPoData(prev => prev.map(p => 
+                                      p.id === po.id 
+                                      ? { ...p, Items: p.Items.map((it: any) => it.id === item.id ? { ...it, pcsKirim: finalVal } : it) } 
+                                      : p
+                                    ));
+                                  }}
+                                  onBlur={(e) => handleUpdateItemPcsKirim(po.id, item.id, e.target.value)}
+                                  className="w-24 px-3 py-1.5 text-center text-xs font-black bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-400 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              </div>
+                            </td>
+                            <td className="px-12 py-4 text-right">
+                              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${item.pcsKirim >= item.pcs ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                                {item.pcsKirim >= item.pcs ? "Full" : "Partial"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            );
+          }}
+          emptyState={
+            <div className="flex flex-col items-center gap-3 py-16">
+              <div className="p-4 bg-slate-50 rounded-2xl">
+                <CalendarDays size={28} className="text-slate-300" />
               </div>
-
-              {/* Next Page */}
-              <button
-                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-600"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                title="Selanjutnya"
-              >
-                ›
-              </button>
-
-              {/* Last Page */}
-              <button
-                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold text-slate-600"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-                title="Halaman Terakhir"
-              >
-                »
-              </button>
+              <div>
+                <p className="text-sm font-semibold text-slate-500">Tidak ada data</p>
+                <p className="text-xs text-slate-400 mt-0.5">Semua PO sudah dijadwalkan atau tidak ada yang cocok.</p>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          }
+          className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
+        />
 
       {/* ── Modal ─────────────────────────────────────────────────────────── */}
       {modalOpen && (

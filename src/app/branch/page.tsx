@@ -23,6 +23,7 @@ import { getMe } from "@/lib/me";
 import SmoothSelect from "@/components/ui/smooth-select";
 import PODetailModal from "@/components/po-detail-modal";
 import DateInputHybrid from "@/components/DateInputHybrid";
+import { DataTable } from "@/components/data-table";
 
 /* ──────────────────────────────────────────────
    Constants
@@ -870,235 +871,163 @@ export default function BranchPage() {
             </div>
           </div>
 
-          {filteredDetailPOs.length > 0 ? (
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm text-left">
-                  <thead className="sticky top-0 z-20 bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-wider">
-                    <tr>
-                      {visibleCols.noPo && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          No PO
-                        </th>
-                      )}
-                      {visibleCols.tglPo && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Tgl PO
-                        </th>
-                      )}
-                      {visibleCols.expired && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Expired
-                        </th>
-                      )}
-                      {visibleCols.produk && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Produk
-                        </th>
-                      )}
-                      {visibleCols.tglKirim && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Tgl Kirim
-                        </th>
-                      )}
-                      {visibleCols.pcs && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50 text-right">
-                          Pcs
-                        </th>
-                      )}
-                      {visibleCols.pcsKirim && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50 text-right">
-                          Pcs Kirim
-                        </th>
-                      )}
-                      {visibleCols.namaSupir && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Nama Supir
-                        </th>
-                      )}
-                      {visibleCols.platNomor && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Plat Nomor
-                        </th>
-                      )}
-                      {visibleCols.totalKg && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50 text-right">
-                          Total Kg
-                        </th>
-                      )}
-                      {visibleCols.tujuan && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Tujuan
-                        </th>
-                      )}
-                      {visibleCols.regional && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Regional
-                        </th>
-                      )}
-                      {visibleCols.siteArea && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50">
-                          Site Area
-                        </th>
-                      )}
-                      {visibleCols.nominal && (
-                        <th className="px-4 py-3 whitespace-nowrap bg-slate-50 text-right">
-                          Nominal
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 uppercase">
-                    {filteredDetailPOs.map((po: any, idx: number) => {
-                      // --- LOGIKA AGREGASI MULTI-PRODUK ---
-                      const items = po.Items || [];
-                      const namaProduk = items
-                        .map((it: any) => it.Product?.name || "-")
-                        .join(", ");
-                      const totalPcs = items.reduce(
-                        (sum: number, it: any) => sum + (Number(it.pcs) || 0),
-                        0,
-                      );
-                      const totalPcsKirim = items.reduce(
-                        (sum: number, it: any) =>
-                          sum + (Number(it.pcsKirim) || 0),
-                        0,
-                      );
-                      const totalKg = items.reduce(
-                        (sum: number, it: any) =>
-                          sum +
-                          (Number(it.pcsKirim) || Number(it.pcs) || 0) *
-                            Number(it.Product?.satuanKg || 1),
-                        0,
-                      );
-                      const totalNominal = items.reduce(
-                        (sum: number, it: any) =>
-                          sum + (Number(it.nominal) || 0),
-                        0,
-                      );
-
-                      return (
-                        <tr
-                          key={po.id || idx}
-                          onClick={() => {
-                            const isShipped = items.some(
-                              (it: any) => (Number(it.pcsKirim) || 0) > 0,
-                            );
-                            setSelectedDetailPO({
-                              ...po,
-                              buktiKirim: po.buktiKirim,
-                              buktiFp: po.buktiFp,
-                              company:
-                                po.RitelModern?.namaPt ||
-                                po.company ||
-                                "Unknown",
-                              siteArea: po.UnitProduksi?.siteArea || "-",
-                              status: {
-                                kirim: !!po.statusKirim || isShipped,
-                                sdif: !!po.statusSdif,
-                                po: !!po.statusPo,
-                                fp: !!po.statusFp,
-                                kwi: !!po.statusKwi,
-                                inv: !!po.statusInv,
-                                tagih: !!po.statusTagih,
-                                bayar: !!po.statusBayar,
-                              },
-                            });
-                          }}
-                          className="border-b border-slate-50 hover:bg-slate-100 cursor-pointer transition-colors"
-                          title="Klik untuk melihat detail PO"
-                        >
-                          {visibleCols.noPo && (
-                            <td className="px-4 py-3 whitespace-nowrap font-bold text-slate-700">
-                              {po.noPo || "-"}
-                            </td>
-                          )}
-                          {visibleCols.tglPo && (
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {formatDateId(po.tglPo)}
-                            </td>
-                          )}
-                          {visibleCols.expired && (
-                            <td className="px-4 py-3 whitespace-nowrap text-rose-600 font-semibold">
-                              {formatDateId(po.expiredTgl)}
-                            </td>
-                          )}
-                          {visibleCols.produk && (
-                            <td
-                              className="px-4 py-3 max-w-[200px] truncate"
-                              title={namaProduk}
-                            >
-                              {namaProduk || "-"}
-                            </td>
-                          )}
-                          {visibleCols.tglKirim && (
-                            <td className="px-4 py-3 whitespace-nowrap text-amber-600 font-semibold">
-                              {formatDateId(po.tglkirim || po.tglKirim)}
-                            </td>
-                          )}
-                          {visibleCols.pcs && (
-                            <td className="px-4 py-3 whitespace-nowrap text-right font-medium">
-                              {totalPcs.toLocaleString("id-ID")}
-                            </td>
-                          )}
-                          {visibleCols.pcsKirim && (
-                            <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-amber-600">
-                              {totalPcsKirim.toLocaleString("id-ID")}
-                            </td>
-                          )}
-                          {visibleCols.namaSupir && (
-                            <td className="px-4 py-3 whitespace-nowrap uppercase">
-                              {po.namaSupir || "-"}
-                            </td>
-                          )}
-                          {visibleCols.platNomor && (
-                            <td className="px-4 py-3 whitespace-nowrap uppercase font-bold">
-                              {po.platNomor || "-"}
-                            </td>
-                          )}
-                          {visibleCols.totalKg && (
-                            <td className="px-4 py-3 whitespace-nowrap text-right font-semibold">
-                              {totalKg.toLocaleString("id-ID")}
-                            </td>
-                          )}
-                          {visibleCols.tujuan && (
-                            <td className="px-4 py-3 whitespace-nowrap text-xs">
-                              {po.tujuanDetail || po.RitelModern?.tujuan || "-"}
-                            </td>
-                          )}
-                          {visibleCols.regional && (
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {po.regional || "-"}
-                            </td>
-                          )}
-                          {visibleCols.siteArea && (
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {po.UnitProduksi?.siteArea || "-"}
-                            </td>
-                          )}
-                          {visibleCols.nominal && (
-                            <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-indigo-700">
-                              Rp {totalNominal.toLocaleString("id-ID")}
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center p-16 bg-slate-50/50 border-2 border-slate-100 border-dashed rounded-3xl animate-in fade-in zoom-in duration-300">
-              <div className="p-4 bg-white rounded-2xl shadow-sm mb-4">
-                <Calendar size={24} className="text-slate-300" />
-              </div>
-              <p className="text-slate-500 font-bold">Tidak ada pengiriman</p>
-              <p className="text-slate-400 text-xs mt-1">
-                Gak ada jadwal PO yang dikirim pada tanggal ini.
-              </p>
-            </div>
-          )}
+            <DataTable
+              columns={[
+                {
+                  key: "noPo",
+                  label: "No PO",
+                  hidden: !visibleCols.noPo,
+                  render: (_v: any, po: any) => (
+                    <span className="font-bold text-slate-700 whitespace-nowrap">{po.noPo || "-"}</span>
+                  ),
+                },
+                {
+                  key: "tglPo",
+                  label: "Tgl PO",
+                  hidden: !visibleCols.tglPo,
+                  render: (_v: any, po: any) => (
+                    <span className="whitespace-nowrap">{formatDateId(po.tglPo)}</span>
+                  ),
+                },
+                {
+                  key: "expired",
+                  label: "Expired",
+                  hidden: !visibleCols.expired,
+                  render: (_v: any, po: any) => (
+                    <span className="whitespace-nowrap text-rose-600 font-semibold">{formatDateId(po.expiredTgl)}</span>
+                  ),
+                },
+                {
+                  key: "produk",
+                  label: "Produk",
+                  hidden: !visibleCols.produk,
+                  render: (_v: any, po: any) => {
+                    const names = (po.Items || []).map((it: any) => it.Product?.name || "-").join(", ");
+                    return (
+                      <span className="max-w-[200px] truncate inline-block" title={names}>{names || "-"}</span>
+                    );
+                  },
+                },
+                {
+                  key: "tglKirim",
+                  label: "Tgl Kirim",
+                  hidden: !visibleCols.tglKirim,
+                  render: (_v: any, po: any) => (
+                    <span className="whitespace-nowrap text-amber-600 font-semibold">{formatDateId(po.tglkirim || po.tglKirim)}</span>
+                  ),
+                },
+                {
+                  key: "pcs",
+                  label: "Pcs",
+                  align: "right" as const,
+                  hidden: !visibleCols.pcs,
+                  render: (_v: any, po: any) => {
+                    const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.pcs) || 0), 0);
+                    return <span className="whitespace-nowrap font-medium">{total.toLocaleString("id-ID")}</span>;
+                  },
+                },
+                {
+                  key: "pcsKirim",
+                  label: "Pcs Kirim",
+                  align: "right" as const,
+                  hidden: !visibleCols.pcsKirim,
+                  render: (_v: any, po: any) => {
+                    const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.pcsKirim) || 0), 0);
+                    return <span className="whitespace-nowrap font-bold text-amber-600">{total.toLocaleString("id-ID")}</span>;
+                  },
+                },
+                {
+                  key: "namaSupir",
+                  label: "Nama Supir",
+                  hidden: !visibleCols.namaSupir,
+                  render: (_v: any, po: any) => (
+                    <span className="whitespace-nowrap uppercase">{po.namaSupir || "-"}</span>
+                  ),
+                },
+                {
+                  key: "platNomor",
+                  label: "Plat Nomor",
+                  hidden: !visibleCols.platNomor,
+                  render: (_v: any, po: any) => (
+                    <span className="whitespace-nowrap uppercase font-bold">{po.platNomor || "-"}</span>
+                  ),
+                },
+                {
+                  key: "totalKg",
+                  label: "Total Kg",
+                  align: "right" as const,
+                  hidden: !visibleCols.totalKg,
+                  render: (_v: any, po: any) => {
+                    const total = (po.Items || []).reduce(
+                      (s: number, it: any) => s + (Number(it.pcsKirim) || Number(it.pcs) || 0) * Number(it.Product?.satuanKg || 1), 0
+                    );
+                    return <span className="whitespace-nowrap font-semibold">{total.toLocaleString("id-ID")}</span>;
+                  },
+                },
+                {
+                  key: "tujuan",
+                  label: "Tujuan",
+                  hidden: !visibleCols.tujuan,
+                  render: (_v: any, po: any) => (
+                    <span className="whitespace-nowrap text-xs">{po.tujuanDetail || po.RitelModern?.tujuan || "-"}</span>
+                  ),
+                },
+                {
+                  key: "regional",
+                  label: "Regional",
+                  hidden: !visibleCols.regional,
+                  render: (_v: any, po: any) => (
+                    <span className="whitespace-nowrap">{po.regional || "-"}</span>
+                  ),
+                },
+                {
+                  key: "siteArea",
+                  label: "Site Area",
+                  hidden: !visibleCols.siteArea,
+                  render: (_v: any, po: any) => (
+                    <span className="whitespace-nowrap">{po.UnitProduksi?.siteArea || "-"}</span>
+                  ),
+                },
+                {
+                  key: "nominal",
+                  label: "Nominal",
+                  align: "right" as const,
+                  hidden: !visibleCols.nominal,
+                  render: (_v: any, po: any) => {
+                    const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.nominal) || 0), 0);
+                    return <span className="whitespace-nowrap font-bold text-indigo-700">Rp {total.toLocaleString("id-ID")}</span>;
+                  },
+                },
+              ]}
+              data={filteredDetailPOs}
+              rowKey={(po: any, idx) => po.id || idx}
+              hidePagination
+              loading={false}
+              onRowClick={(po: any) => {
+                const items = po.Items || [];
+                const isShipped = items.some((it: any) => (Number(it.pcsKirim) || 0) > 0);
+                setSelectedDetailPO({
+                  ...po,
+                  buktiKirim: po.buktiKirim,
+                  buktiFp: po.buktiFp,
+                  company: po.RitelModern?.namaPt || po.company || "Unknown",
+                  siteArea: po.UnitProduksi?.siteArea || "-",
+                  status: {
+                    kirim: !!po.statusKirim || isShipped,
+                    sdif: !!po.statusSdif,
+                    po: !!po.statusPo,
+                    fp: !!po.statusFp,
+                    kwi: !!po.statusKwi,
+                    inv: !!po.statusInv,
+                    tagih: !!po.statusTagih,
+                    bayar: !!po.statusBayar,
+                  },
+                });
+              }}
+              variant="rounded"
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+              emptyMessage="Tidak ada pengiriman"
+            />
         </div>
       )}
 

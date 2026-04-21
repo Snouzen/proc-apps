@@ -24,6 +24,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { DataTable } from "@/components/data-table";
 import * as XLSX from "xlsx";
 import dynamic from "next/dynamic";
 const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
@@ -638,220 +639,145 @@ export default function PromoPage() {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
-          <div className="overflow-x-auto no-scrollbar custom-scrollbar transform-gpu">
-            <table className="w-full text-left min-w-[1200px]">
-              <thead>
-                <tr className="bg-slate-50/50 text-[10px] text-slate-400 uppercase tracking-[0.2em] font-black border-b border-slate-50">
-                  <th className="px-8 py-6">ID Promo</th>
-                  <th className="px-8 py-6">Nomor</th>
-                  <th className="px-8 py-6">Kegiatan</th>
-                  <th className="px-8 py-6">Periode</th>
-                  <th className="px-8 py-6">Tanggal</th>
-                  <th className="px-8 py-6 text-right">DPP</th>
-                  <th className="px-8 py-6 text-right">PPN</th>
-                  <th className="px-8 py-6 text-right text-rose-400">PPH</th>
-                  <th className="px-8 py-6 text-right">Total</th>
-                  <th className="px-8 py-6 text-center">Link Docs</th>
-                  <th className="px-8 py-6 text-center">Faktur Pajak</th>
-                  <th className="px-8 py-6">Remarks</th>
-                  <th className="px-8 py-6 text-center text-slate-300">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 font-bold text-[13px] text-slate-700">
-                {isLoading ? (
-                  <tr>
-                    <td className="px-8 py-10" colSpan={12}>
-                      Memuat Master Data...
-                    </td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td className="px-8 py-10 text-slate-300 italic" colSpan={12}>
-                      Data promo tidak ditemukan.
-                    </td>
-                  </tr>
-                ) : (
-                  currentItems.map((promo: any) => (
-                    <tr
-                      key={promo.id}
-                      className="hover:bg-slate-50/50 transition-colors group"
-                    >
-                      <td className="px-8 py-6 font-mono text-[10px] text-slate-400">
-                        {promo.id}
-                      </td>
-                      <td className="px-8 py-6 text-slate-900 uppercase">
-                        {promo.nomor}
-                      </td>
-                      <td className="px-8 py-6 uppercase font-black text-slate-600 text-[11px]">
-                        {promo.kegiatan}
-                      </td>
-                      <td className="px-8 py-6">{promo.periode}</td>
-                      <td className="px-8 py-6 text-slate-400">
-                        {new Date(promo.tanggal).toLocaleDateString("id-ID", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="px-8 py-6 text-right tabular-nums">
-                        {formatRp(promo.dpp)}
-                      </td>
-                      <td className="px-8 py-6 text-right tabular-nums">
-                        {formatRp(promo.ppn)}
-                      </td>
-                      <td className="px-8 py-6 text-right tabular-nums text-rose-500 italic">
-                        {promo.pph ? `-${formatNumber(promo.pph)}` : "-"}
-                      </td>
-                      <td className="px-8 py-6 text-right text-indigo-600 font-black tabular-nums scale-[1.05] origin-right">
-                        {formatRp(promo.total)}
-                      </td>
-                      <td className="px-8 py-6 text-center">
-                        {promo.linkDocs ? (
-                          <a 
-                            href={promo.linkDocs} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="inline-flex p-2.5 bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all shadow-sm group/btn" 
-                            title="Buka Dokumentasi"
-                          >
-                            <Link2 size={16} />
-                          </a>
-                        ) : (
-                          <span className="text-[10px] font-black text-slate-200 uppercase tracking-tighter italic">No Docs</span>
-                        )}
-                      </td>
-
-                      <td className="px-8 py-6 text-center">
-                        {promo.linkFP ? (
-                          <a 
-                            href={promo.linkFP} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="inline-flex p-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm group/btn" 
-                            title="Buka Faktur Pajak"
-                          >
-                            <Layers size={16} />
-                          </a>
-                        ) : (
-                          <span className="text-[10px] font-black text-slate-200 uppercase tracking-tighter italic">No FP</span>
-                        )}
-                      </td>
-
-                      <td className="px-8 py-6 text-slate-400 italic font-medium text-[11px] max-w-[200px] truncate">
-                        {promo.remarks || "-"}
-                      </td>
-
-                      <td className="px-8 py-6 text-center">
-                        <div className="inline-flex gap-2">
-                          <button
-                            onClick={() => handleEdit(promo)}
-                            className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(promo.id)}
-                            className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Improved Pagination Footer */}
-          <div className="p-8 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6 bg-slate-50/20 text-slate-900">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Rows per page
-                </label>
-                <Popover.Root open={isRowsOpen} onOpenChange={setIsRowsOpen}>
-                  <Popover.Trigger asChild>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-100 rounded-xl text-xs font-black text-slate-900 hover:bg-slate-50 transition-all shadow-sm outline-none">
-                      {itemsPerPage}
-                      <ChevronDown size={14} className="text-slate-300" />
-                    </button>
-                  </Popover.Trigger>
-                  <Popover.Portal>
-                    <Popover.Content
-                      className="z-[110] bg-white rounded-2xl border shadow-2xl p-2 animate-in fade-in zoom-in-95 duration-200"
-                      align="start"
-                    >
-                      {[10, 25, 50].map((val) => (
-                        <button
-                          key={val}
-                          onClick={() => {
-                            setItemsPerPage(val);
-                            setCurrentPage(1);
-                            setIsRowsOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2 rounded-lg text-xs font-black transition-colors ${itemsPerPage === val ? "bg-slate-900 text-white" : "hover:bg-slate-50 text-slate-500"}`}
-                        >
-                          {val}
-                        </button>
-                      ))}
-                    </Popover.Content>
-                  </Popover.Portal>
-                </Popover.Root>
-              </div>
-              <p className="text-[10px] text-slate-400 font-bold">
-                Showing {indexOfFirstItem + 1} to{" "}
-                {Math.min(indexOfLastItem, totalItems)} of {totalItems} items
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(1)}
-                disabled={safePage === 1}
-                className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
-              >
-                <ChevronsLeft size={16} />
-              </button>
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={safePage === 1}
-                className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              <div className="flex items-center px-6 py-3 bg-white border border-slate-100 rounded-[20px] shadow-inner">
-                <span className="text-xs font-black text-slate-900">
-                  {safePage}
+        <DataTable
+          columns={[
+            {
+              key: "id",
+              label: "ID Promo",
+              render: (_v: any, promo: any) => (
+                <span className="font-mono text-[10px] text-slate-400">{promo.id}</span>
+              ),
+            },
+            {
+              key: "nomor",
+              label: "Nomor",
+              render: (_v: any, promo: any) => (
+                <span className="text-slate-900 uppercase font-bold text-[13px]">{promo.nomor}</span>
+              ),
+            },
+            {
+              key: "kegiatan",
+              label: "Kegiatan",
+              render: (_v: any, promo: any) => (
+                <span className="uppercase font-black text-slate-600 text-[11px]">{promo.kegiatan}</span>
+              ),
+            },
+            {
+              key: "periode",
+              label: "Periode",
+              render: (_v: any, promo: any) => (
+                <span className="font-bold text-[13px] text-slate-700">{promo.periode}</span>
+              ),
+            },
+            {
+              key: "tanggal",
+              label: "Tanggal",
+              render: (_v: any, promo: any) => (
+                <span className="text-slate-400 font-bold text-[13px]">
+                  {new Date(promo.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" })}
                 </span>
-                <span className="mx-2 text-slate-200 font-bold">/</span>
-                <span className="text-xs font-bold text-slate-400">
-                  {totalPages}
+              ),
+            },
+            {
+              key: "dpp",
+              label: "DPP",
+              align: "right" as const,
+              render: (_v: any, promo: any) => (
+                <span className="tabular-nums font-bold text-[13px] text-slate-700">{formatRp(promo.dpp)}</span>
+              ),
+            },
+            {
+              key: "ppn",
+              label: "PPN",
+              align: "right" as const,
+              render: (_v: any, promo: any) => (
+                <span className="tabular-nums font-bold text-[13px] text-slate-700">{formatRp(promo.ppn)}</span>
+              ),
+            },
+            {
+              key: "pph",
+              label: "PPH",
+              align: "right" as const,
+              render: (_v: any, promo: any) => (
+                <span className="tabular-nums text-rose-500 italic font-bold text-[13px]">
+                  {promo.pph ? `-${formatNumber(promo.pph)}` : "-"}
                 </span>
-              </div>
-
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={safePage === totalPages}
-                className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
-              >
-                <ChevronRight size={16} />
-              </button>
-              <button
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={safePage === totalPages}
-                className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm disabled:text-slate-300 disabled:cursor-not-allowed outline-none"
-              >
-                <ChevronsRight size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
+              ),
+            },
+            {
+              key: "total",
+              label: "Total",
+              align: "right" as const,
+              render: (_v: any, promo: any) => (
+                <span className="text-indigo-600 font-black tabular-nums text-[13px]">{formatRp(promo.total)}</span>
+              ),
+            },
+            {
+              key: "linkDocs",
+              label: "Link Docs",
+              align: "center" as const,
+              render: (_v: any, promo: any) => promo.linkDocs ? (
+                <a href={promo.linkDocs} target="_blank" rel="noopener noreferrer" className="inline-flex p-2.5 bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all shadow-sm" title="Buka Dokumentasi" onClick={(e) => e.stopPropagation()}>
+                  <Link2 size={16} />
+                </a>
+              ) : (
+                <span className="text-[10px] font-black text-slate-200 uppercase tracking-tighter italic">No Docs</span>
+              ),
+            },
+            {
+              key: "linkFP",
+              label: "Faktur Pajak",
+              align: "center" as const,
+              render: (_v: any, promo: any) => promo.linkFP ? (
+                <a href={promo.linkFP} target="_blank" rel="noopener noreferrer" className="inline-flex p-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm" title="Buka Faktur Pajak" onClick={(e) => e.stopPropagation()}>
+                  <Layers size={16} />
+                </a>
+              ) : (
+                <span className="text-[10px] font-black text-slate-200 uppercase tracking-tighter italic">No FP</span>
+              ),
+            },
+            {
+              key: "remarks",
+              label: "Remarks",
+              render: (_v: any, promo: any) => (
+                <span className="text-slate-400 italic font-medium text-[11px] max-w-[200px] truncate inline-block">{promo.remarks || "-"}</span>
+              ),
+            },
+            {
+              key: "actions",
+              label: "Aksi",
+              align: "center" as const,
+              render: (_v: any, promo: any) => (
+                <div className="inline-flex gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEdit(promo); }}
+                    className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(promo.id); }}
+                    className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+          data={currentItems}
+          rowKey={(p: any) => p.id}
+          loading={isLoading}
+          total={totalItems}
+          page={safePage}
+          rowsPerPage={itemsPerPage}
+          rowsPerPageOptions={[10, 25, 50]}
+          onPageChange={setCurrentPage}
+          onRowsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
+          variant="rounded"
+          className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"
+          emptyMessage="Data promo tidak ditemukan."
+        />
       )}
 
       {/* Modal Pilih Ritel Modern */}

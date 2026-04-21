@@ -25,6 +25,7 @@ import {
 import { getMe } from "@/lib/me";
 import SmoothSelect from "@/components/ui/smooth-select";
 import DateInputHybrid from "@/components/DateInputHybrid";
+import { DataTable } from "@/components/data-table";
 
 /* ──────────────────────────────────────────────
    Constants
@@ -490,162 +491,142 @@ export default function ExpiredCalendarPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-[28px] overflow-hidden shadow-xl shadow-slate-200/50">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse min-w-[1500px]">
-                <thead>
-                  <tr className="bg-slate-50/50 border-b border-slate-100">
-                    {visibleCols.noPo && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">NO PO</th>
-                    )}
-                    {visibleCols.tglPo && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">TGL PO</th>
-                    )}
-                    {visibleCols.expired && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">EXPIRED</th>
-                    )}
-                    {visibleCols.produk && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">PRODUK / PT</th>
-                    )}
-                    {visibleCols.tglKirim && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">TGL KIRIM</th>
-                    )}
-                    {visibleCols.pcs && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">PCS</th>
-                    )}
-                    {visibleCols.pcsKirim && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">PCS KIRIM</th>
-                    )}
-                    {visibleCols.namaSupir && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">NAMA SUPIR</th>
-                    )}
-                    {visibleCols.platNomor && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">PLAT NOMOR</th>
-                    )}
-                    {visibleCols.totalKg && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">TOTAL KG</th>
-                    )}
-                    {visibleCols.tujuan && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">TUJUAN</th>
-                    )}
-                    {visibleCols.nominal && (
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">NOMINAL</th>
-                    )}
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {filteredDetailPOs.length > 0 ? (
-                    filteredDetailPOs.map((po) => {
-                      const totalKg = (Array.isArray(po.Items) ? po.Items : []).reduce(
-                        (acc: number, it: any) => acc + (Number(it.pcs) || 0) * Number(it.Product?.satuanKg || 1), 0
-                      );
-                      const totalPcs = (Array.isArray(po.Items) ? po.Items : []).reduce(
-                        (acc: number, it: any) => acc + (Number(it.pcs) || 0), 0
-                      );
-                      const totalPcsKirim = (Array.isArray(po.Items) ? po.Items : []).reduce(
-                        (acc: number, it: any) => acc + (Number(it.pcsKirim) || 0), 0
-                      );
-                      const productNames = (Array.isArray(po.Items) ? po.Items : [])
-                        .map((it: any) => it.Product?.name || "")
-                        .filter(Boolean)
-                        .join(", ");
-
-                      return (
-                        <tr key={po.id} className="hover:bg-slate-50/50 transition-colors group">
-                          {visibleCols.noPo && (
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-xs font-black text-[#1e3a8a]">{po.noPo}</span>
-                            </td>
-                          )}
-                          {visibleCols.tglPo && (
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-[11px] font-bold text-slate-600">{formatDatePremium(po.tglPo)}</span>
-                            </td>
-                          )}
-                          {visibleCols.expired && (
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-[11px] font-black text-rose-500">{formatDatePremium(po.expiredTgl)}</span>
-                            </td>
-                          )}
-                          {visibleCols.produk && (
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-[11px] font-bold text-slate-700 uppercase">
-                                {productNames || "-"}
-                              </span>
-                            </td>
-                          )}
-                          {visibleCols.tglKirim && (
-                            <td className="px-6 py-4 whitespace-nowrap">
-                               <span className={`text-[11px] font-black ${po.tglkirim ? 'text-amber-600' : 'text-slate-300'}`}>
-                                 {po.tglkirim ? formatDatePremium(po.tglkirim) : "-"}
-                               </span>
-                            </td>
-                          )}
-                          {visibleCols.pcs && (
-                            <td className="px-6 py-4 text-center">
-                              <span className="text-[11px] font-black text-slate-700">{totalPcs.toLocaleString("id-ID")}</span>
-                            </td>
-                          )}
-                          {visibleCols.pcsKirim && (
-                            <td className="px-6 py-4 text-center">
-                              <span className="text-[11px] font-black text-amber-500">{totalPcsKirim ? totalPcsKirim.toLocaleString("id-ID") : "-"}</span>
-                            </td>
-                          )}
-                          {visibleCols.namaSupir && (
-                            <td className="px-6 py-4">
-                              <span className="text-[11px] font-bold text-slate-600 uppercase">{po.namaSupir || "-"}</span>
-                            </td>
-                          )}
-                          {visibleCols.platNomor && (
-                            <td className="px-6 py-4">
-                              <span className="text-[11px] font-bold text-slate-600 uppercase">{po.platNomor || "-"}</span>
-                            </td>
-                          )}
-                          {visibleCols.totalKg && (
-                            <td className="px-6 py-4 text-center">
-                              <span className="text-[11px] font-black text-slate-700">{totalKg.toLocaleString("id-ID")}</span>
-                            </td>
-                          )}
-                          {visibleCols.tujuan && (
-                            <td className="px-6 py-4">
-                              <span className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[150px] inline-block">
-                                {po.tujuanDetail || "-"}
-                              </span>
-                            </td>
-                          )}
-                          {visibleCols.nominal && (
-                            <td className="px-6 py-4 text-right whitespace-nowrap">
-                              <span className="text-[11px] font-black text-indigo-600">
-                                {formatCurrencyPremium(po.Items?.reduce((a:number,b:any)=>a+(Number(b.nominal)||0),0))}
-                              </span>
-                            </td>
-                          )}
-                          <td className="px-6 py-4 text-right">
-                             <button
-                               onClick={() => window.open(`/po?noPo=${po.noPo}`, '_blank')}
-                               className="p-2 text-slate-300 hover:text-indigo-600 transition-colors"
-                             >
-                                <ExternalLink size={14} />
-                             </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={15} className="px-6 py-20 text-center">
-                        <div className="flex flex-col items-center gap-2 opacity-30">
-                           <Search size={32} />
-                           <p className="text-xs font-black uppercase tracking-[0.2em]">Data Tidak Ditemukan</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DataTable
+            columns={[
+              {
+                key: "noPo",
+                label: "NO PO",
+                hidden: !visibleCols.noPo,
+                render: (_v: any, po: any) => (
+                  <span className="text-xs font-black text-[#1e3a8a] whitespace-nowrap">{po.noPo}</span>
+                ),
+              },
+              {
+                key: "tglPo",
+                label: "TGL PO",
+                hidden: !visibleCols.tglPo,
+                render: (_v: any, po: any) => (
+                  <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">{formatDatePremium(po.tglPo)}</span>
+                ),
+              },
+              {
+                key: "expired",
+                label: "EXPIRED",
+                hidden: !visibleCols.expired,
+                render: (_v: any, po: any) => (
+                  <span className="text-[11px] font-black text-rose-500 whitespace-nowrap">{formatDatePremium(po.expiredTgl)}</span>
+                ),
+              },
+              {
+                key: "produk",
+                label: "PRODUK / PT",
+                hidden: !visibleCols.produk,
+                render: (_v: any, po: any) => {
+                  const names = (Array.isArray(po.Items) ? po.Items : [])
+                    .map((it: any) => it.Product?.name || "").filter(Boolean).join(", ");
+                  return <span className="text-[11px] font-bold text-slate-700 uppercase whitespace-nowrap">{names || "-"}</span>;
+                },
+              },
+              {
+                key: "tglKirim",
+                label: "TGL KIRIM",
+                hidden: !visibleCols.tglKirim,
+                render: (_v: any, po: any) => (
+                  <span className={`text-[11px] font-black whitespace-nowrap ${po.tglkirim ? 'text-amber-600' : 'text-slate-300'}`}>
+                    {po.tglkirim ? formatDatePremium(po.tglkirim) : "-"}
+                  </span>
+                ),
+              },
+              {
+                key: "pcs",
+                label: "PCS",
+                align: "center" as const,
+                hidden: !visibleCols.pcs,
+                render: (_v: any, po: any) => {
+                  const total = (Array.isArray(po.Items) ? po.Items : []).reduce((a: number, it: any) => a + (Number(it.pcs) || 0), 0);
+                  return <span className="text-[11px] font-black text-slate-700">{total.toLocaleString("id-ID")}</span>;
+                },
+              },
+              {
+                key: "pcsKirim",
+                label: "PCS KIRIM",
+                align: "center" as const,
+                hidden: !visibleCols.pcsKirim,
+                render: (_v: any, po: any) => {
+                  const total = (Array.isArray(po.Items) ? po.Items : []).reduce((a: number, it: any) => a + (Number(it.pcsKirim) || 0), 0);
+                  return <span className="text-[11px] font-black text-amber-500">{total ? total.toLocaleString("id-ID") : "-"}</span>;
+                },
+              },
+              {
+                key: "namaSupir",
+                label: "NAMA SUPIR",
+                hidden: !visibleCols.namaSupir,
+                render: (_v: any, po: any) => (
+                  <span className="text-[11px] font-bold text-slate-600 uppercase">{po.namaSupir || "-"}</span>
+                ),
+              },
+              {
+                key: "platNomor",
+                label: "PLAT NOMOR",
+                hidden: !visibleCols.platNomor,
+                render: (_v: any, po: any) => (
+                  <span className="text-[11px] font-bold text-slate-600 uppercase">{po.platNomor || "-"}</span>
+                ),
+              },
+              {
+                key: "totalKg",
+                label: "TOTAL KG",
+                align: "center" as const,
+                hidden: !visibleCols.totalKg,
+                render: (_v: any, po: any) => {
+                  const total = (Array.isArray(po.Items) ? po.Items : []).reduce(
+                    (a: number, it: any) => a + (Number(it.pcs) || 0) * Number(it.Product?.satuanKg || 1), 0
+                  );
+                  return <span className="text-[11px] font-black text-slate-700">{total.toLocaleString("id-ID")}</span>;
+                },
+              },
+              {
+                key: "tujuan",
+                label: "TUJUAN",
+                hidden: !visibleCols.tujuan,
+                render: (_v: any, po: any) => (
+                  <span className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[150px] inline-block">
+                    {po.tujuanDetail || "-"}
+                  </span>
+                ),
+              },
+              {
+                key: "nominal",
+                label: "NOMINAL",
+                align: "right" as const,
+                hidden: !visibleCols.nominal,
+                render: (_v: any, po: any) => {
+                  const total = (po.Items || []).reduce((a: number, b: any) => a + (Number(b.nominal) || 0), 0);
+                  return <span className="text-[11px] font-black text-indigo-600 whitespace-nowrap">{formatCurrencyPremium(total)}</span>;
+                },
+              },
+              {
+                key: "actions",
+                label: "AKSI",
+                align: "right" as const,
+                render: (_v: any, po: any) => (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); window.open(`/po?noPo=${po.noPo}`, '_blank'); }}
+                    className="p-2 text-slate-300 hover:text-indigo-600 transition-colors"
+                  >
+                    <ExternalLink size={14} />
+                  </button>
+                ),
+              },
+            ]}
+            data={filteredDetailPOs}
+            rowKey={(po: any) => po.id}
+            hidePagination
+            loading={false}
+            variant="rounded"
+            className="bg-white border border-slate-100 rounded-[28px] overflow-hidden shadow-xl shadow-slate-200/50"
+            emptyMessage="Data Tidak Ditemukan"
+          />
         </div>
       )}
 
