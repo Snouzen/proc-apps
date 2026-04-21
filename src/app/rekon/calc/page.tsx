@@ -28,10 +28,11 @@ import {
   Upload,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
 import Swal from "sweetalert2";
 import dynamic from "next/dynamic";
+import { Suspense } from "react";
 
 const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
 
@@ -66,7 +67,7 @@ interface Promo {
   total: number;
 }
 
-export default function RekonPage() {
+function RekonContent() {
   const [masterCompanies, setMasterCompanies] = useState<Company[]>([]);
   const [masterInvoices, setMasterInvoices] = useState<any[]>([]);
   const [masterRtvs, setMasterRtvs] = useState<any[]>([]);
@@ -85,12 +86,46 @@ export default function RekonPage() {
   const [rtvSearch, setRtvSearch] = useState("");
   const [promoSearch, setPromoSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [rekonNo, setRekonNo] = useState<string | null>(null);
 
   const [isCompanyOpen, setIsCompanyOpen] = useState(false);
   const [isPromoOpen, setIsPromoOpen] = useState(false);
   const [isInvOpen, setIsInvOpen] = useState(false);
   const [isRtvOpen, setIsRtvOpen] = useState(false);
   const [openExcelModal, setOpenExcelModal] = useState(false);
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+
+  // Effect to load Draft Data if editId exists
+  useEffect(() => {
+    if (editId) {
+      const loadDraft = async () => {
+        setIsLoading(true);
+        try {
+          const res = await fetch(`/api/rekon?id=${editId}`);
+          const json = await res.json();
+          if (res.ok && json.data) {
+            const d = json.data;
+            if (d.RitelModern) {
+              setSelectedCompany(d.RitelModern);
+              fetchCompanyData(d.RitelModern.namaPt, d.RitelModern.id);
+            }
+            setBankStatement(d.bankStatement || 0);
+            setAdminFee(d.biayaAdmin || 0);
+            setSelectedInvoices(d.detailedInvoices || []);
+            setSelectedRtvs(d.detailedRtvs || []);
+            setSelectedPromo(d.detailedPromo || null);
+            setRekonNo(d.noRekonsiliasi || null);
+          }
+        } catch (err) {
+          console.error("Load Draft Error:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadDraft();
+    }
+  }, [editId]);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -225,20 +260,22 @@ export default function RekonPage() {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(val);
   };
 
-  const handleSaveRekon = async () => {
+  const handleSaveRekon = async (status: string = "final") => {
     if (!selectedCompany) {
       Swal.fire({ icon: "warning", title: "Oops!", text: "Pilih company terlebih dahulu!", customClass: { popup: "rounded-[32px] font-sans" } });
       return;
     }
 
     const { isConfirmed } = await Swal.fire({
-      title: "Simpan Rekonsiliasi?",
-      text: "Data ini akan disimpan ke dalam arsip rekonsiliasi.",
+      title: status === "draft" ? "Simpan Draft?" : "Simpan Rekonsiliasi?",
+      text: status === "draft" 
+        ? "Data ini akan disimpan sebagai draft dan bisa diedit kembali." 
+        : "Data ini akan disimpan ke dalam arsip rekonsiliasi.",
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "Ya, Simpan!",
+      confirmButtonText: status === "draft" ? "Ya, Simpan Draft!" : "Ya, Simpan!",
       cancelButtonText: "Batal",
-      confirmButtonColor: "#5c56f6",
+      confirmButtonColor: status === "draft" ? "#10b981" : "#5c56f6",
       customClass: { popup: "rounded-[32px] font-sans", confirmButton: "rounded-xl px-6 py-3", cancelButton: "rounded-xl px-6 py-3" }
     });
 
@@ -259,7 +296,9 @@ export default function RekonPage() {
           noRtv: rtv.noRtv, 
           refInvoice: rtv.refInvoice || "" 
         })),
-        noPromo: selectedPromo?.nomor || null
+        noPromo: selectedPromo?.nomor || null,
+        status: status,
+        id: editId || undefined
       };
 
       const res = await fetch("/api/rekon", {
@@ -268,12 +307,15 @@ export default function RekonPage() {
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error("Gagal menyimpan data");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Gagal menyimpan data");
+      }
 
       await Swal.fire({
         icon: "success",
         title: "Berhasil!",
-        text: "Data rekonsiliasi telah disimpan ke arsip.",
+        text: status === "draft" ? "Data rekonsiliasi disimpan sebagai draft." : "Data rekonsiliasi telah disimpan ke arsip.",
         timer: 2000,
         showConfirmButton: false,
         customClass: { popup: "rounded-[32px] font-sans" }
@@ -299,7 +341,9 @@ export default function RekonPage() {
            </div>
            <div>
               <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase leading-none">Kalkulator Rekon</h1>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Rekonsiliasi &gt; Kalkulasi</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
+                Rekonsiliasi &gt; Kalkulasi {rekonNo && <span className="text-indigo-500 ml-2 border-l border-slate-200 pl-2">Draft: {rekonNo}</span>}
+              </p>
            </div>
         </div>
         <div className="flex gap-4">
@@ -821,33 +865,55 @@ export default function RekonPage() {
                      )}
                  </div>
 
-                 {/* SUBMIT BUTTON AREA */}
-                 <div className="pt-10">
-                    <button 
-                       onClick={handleSaveRekon}
-                       disabled={isSubmitting}
-                       className="w-full h-20 bg-[#5c56f6] hover:bg-indigo-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-[30px] flex items-center justify-center gap-4 transition-all shadow-[0_20px_40px_-10px_rgba(92,86,246,0.3)] group active:scale-95 text-white"
-                    >
-                       {isSubmitting ? (
-                          <Loader2 size={24} className="animate-spin text-indigo-200" />
-                       ) : (
-                          <>
-                             <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center group-hover:bg-white/20 transition-all">
-                                <Save size={18} />
-                             </div>
-                             <span className="text-[11px] font-black uppercase tracking-[0.25em]">Submit Rekonsiliasi</span>
-                          </>
-                       )}
-                    </button>
-                    <div className="flex items-center justify-center gap-2 mt-8 opacity-40">
-                       <div className="w-1 h-1 rounded-full bg-slate-500"></div>
-                       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest italic text-center">Auto-Arsip ke Database Rekon</p>
-                       <div className="w-1 h-1 rounded-full bg-slate-500"></div>
-                    </div>
-                 </div>
-              </div>
-           </div>
-        </div>
+                  {/* MINIMALIST PREMIUM BUTTONS */}
+                  <div className="pt-10 grid grid-cols-2 gap-4">
+                     {/* SAVE AS DRAFT */}
+                     <button 
+                        onClick={() => handleSaveRekon("draft")}
+                        disabled={isSubmitting}
+                        className="group relative h-16 bg-gradient-to-br from-emerald-400 to-teal-600 disabled:from-slate-800 disabled:to-slate-900 rounded-2xl flex items-center px-6 gap-4 transition-all duration-300 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.3)] hover:shadow-[0_20px_40px_-10px_rgba(16,185,129,0.4)] active:scale-95 overflow-hidden"
+                     >
+                        {isSubmitting ? (
+                           <div className="w-full flex justify-center"><Loader2 size={20} className="animate-spin text-emerald-100" /></div>
+                        ) : (
+                           <>
+                              <div className="w-10 h-10 border border-white/20 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center text-white shrink-0 group-hover:bg-white/20 transition-colors">
+                                 <FileText size={18} strokeWidth={2} />
+                              </div>
+                              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Save as Draft</span>
+                              <div className="absolute top-0 -right-4 w-12 h-full bg-white/5 skew-x-[25deg] group-hover:translate-x-4 transition-transform duration-700" />
+                           </>
+                        )}
+                     </button>
+
+                     {/* SUBMIT REKON */}
+                     <button 
+                        onClick={() => handleSaveRekon("final")}
+                        disabled={isSubmitting}
+                        className="group relative h-16 bg-gradient-to-br from-indigo-500 to-violet-700 disabled:from-slate-800 disabled:to-slate-900 rounded-2xl flex items-center px-6 gap-4 transition-all duration-300 shadow-[0_10px_30px_-10px_rgba(92,86,246,0.3)] hover:shadow-[0_20px_40px_-10px_rgba(92,86,246,0.4)] active:scale-95 overflow-hidden"
+                     >
+                        {isSubmitting ? (
+                           <div className="w-full flex justify-center"><Loader2 size={20} className="animate-spin text-indigo-100" /></div>
+                        ) : (
+                           <>
+                              <div className="w-10 h-10 border border-white/20 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center text-white shrink-0 group-hover:bg-white/20 transition-colors">
+                                 <Save size={18} strokeWidth={2} />
+                              </div>
+                              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Submit Rekon</span>
+                              <div className="absolute top-0 -right-4 w-12 h-full bg-white/5 skew-x-[25deg] group-hover:translate-x-4 transition-transform duration-700" />
+                           </>
+                        )}
+                     </button>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 mt-8 opacity-20">
+                     <div className="w-1 h-1 rounded-full bg-slate-500"></div>
+                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest italic text-center">Auto-Arsip ke Database Rekon</p>
+                     <div className="w-1 h-1 rounded-full bg-slate-500"></div>
+                  </div>
+               </div>
+            </div>
+         </div>
       </div>
 
       {/* MODAL BULK UPLOAD */}
@@ -864,5 +930,13 @@ export default function RekonPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function RekonPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-900"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>}>
+      <RekonContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Fragment } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Layers,
   Search,
@@ -35,6 +36,7 @@ const lazyGenerateRekonPdf = (
 ) => import("@/lib/generateRekonPdf").then((m) => m.generateRekonPdf(...args));
 
 export default function DataRekonPage() {
+  const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -341,6 +343,15 @@ export default function DataRekonPage() {
                               >
                                  <Trash2 size={14} />
                               </button>
+                              {item.status === "draft" && (
+                                <button 
+                                  onClick={() => router.push(`/rekon/calc?edit=${item.id}`)}
+                                  className="w-8 h-8 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shadow-sm hover:bg-amber-600 hover:text-white transition-all cursor-pointer group/draft"
+                                  title="Lanjutkan Draft"
+                                >
+                                  <FileText size={14} className="group-hover/draft:scale-110 transition-transform" />
+                                </button>
+                              )}
                            </div>
                         </td>
                       </tr>

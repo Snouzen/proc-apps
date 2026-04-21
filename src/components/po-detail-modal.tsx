@@ -6,9 +6,11 @@ import {
   Truck,
   CheckCircle2,
   ExternalLink,
+  Eye,
 } from "lucide-react";
 import Modal from "./modal";
 import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 
 type POData = {
   id: string;
@@ -16,11 +18,13 @@ type POData = {
   company: string;
   createdAt?: string | null;
   updatedAt?: string | null;
+  inisial?: string | null;
   tglPo: string;
   tglKirim?: string | null;
   expiredTgl: string | null;
   linkPo: string | null;
   noInvoice: string | null;
+  noFaktur: string | null;
   siteArea: string | null;
   regional: string | null;
   tujuanDetail: string | null;
@@ -32,10 +36,14 @@ type POData = {
   buktiFp?: string | null;
   Items: {
     id: string;
+    namaProduk?: string;
     pcs: number;
     pcsKirim: number;
+    pcsKirimNum?: number;
     hargaPcs: number;
     discount?: number | string;
+    diskon?: number | string;
+    discountNum?: number | string;
     nominal: number;
     rpTagih: number;
     Product: {
@@ -54,6 +62,15 @@ type POData = {
     bayar: boolean;
   };
   remarks: string | null;
+  RitelModern?: {
+    namaPt?: string;
+    inisial?: string;
+  };
+  UnitProduksi?: {
+    siteArea?: string;
+    namaRegional?: string;
+  };
+  tglkirim?: string | null;
 };
 
 type Props = {
@@ -122,8 +139,14 @@ export default function PODetailModal({ open, onClose, data }: Props) {
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Company / Ritel
             </p>
-            <h2 className="text-lg font-black text-slate-800 uppercase">
-              {data.company}
+            <h2 className="text-lg font-black text-slate-800 uppercase flex items-center gap-2">
+              {data.company || data.RitelModern?.namaPt || "-"}
+              {(data.RitelModern?.inisial || data.inisial) && (
+                <span className="text-indigo-500 text-sm font-bold bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
+                  [{data.RitelModern?.inisial || data.inisial}]
+                </span>
+              )}
+              <span className="text-[9px] text-slate-300 font-normal lowercase tracking-tighter">rev.2.1</span>
             </h2>
           </div>
           <button
@@ -164,10 +187,18 @@ export default function PODetailModal({ open, onClose, data }: Props) {
               </div>
               <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase">
+                  No Faktur Penjualan
+                </p>
+                <p className="font-bold text-teal-600 text-xs text-wrap">
+                  {data.noFaktur || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">
                   Regional
                 </p>
-                <p className="font-semibold text-slate-800 text-xs">
-                  {formatLocation(data.regional)}
+                <p className="font-semibold text-slate-800 text-xs text-wrap">
+                  {formatLocation(data.regional || data.UnitProduksi?.namaRegional)}
                 </p>
               </div>
               <div>
@@ -175,7 +206,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   Site Area
                 </p>
                 <p className="font-semibold text-slate-800 text-xs">
-                  {formatLocation(data.siteArea)}
+                  {formatLocation(data.siteArea || data.UnitProduksi?.siteArea)}
                 </p>
               </div>
               <div className="col-span-2">
@@ -211,7 +242,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   Tgl Kirim
                 </p>
                 <p className="font-bold text-amber-600 text-xs">
-                  {formatDate(data.tglKirim)}
+                  {formatDate(data.tglKirim || data.tglkirim)}
                 </p>
               </div>
               <div>
@@ -353,33 +384,108 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.Items?.map((item, idx) => (
-                  <tr key={item.id || idx} className="hover:bg-slate-50">
-                    <td className="px-4 py-2.5 font-bold text-slate-700">
-                      {item.Product?.name || "-"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-medium">
-                      {item.pcs}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-bold text-amber-600">
-                      {item.pcsKirim}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      {formatCurrency(item.hargaPcs)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-rose-500">
-                      {Number(item.discount) > 0
-                        ? formatCurrency(item.discount)
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-semibold">
-                      {formatCurrency(item.nominal)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-bold text-indigo-700">
-                      {formatCurrency(item.rpTagih)}
-                    </td>
-                  </tr>
-                ))}
+                {data.Items?.map((item, idx) => {
+                  const orderPcs = Math.max(1, Number(item.pcs) || 0);
+                  const shipped = Number(item.pcsKirim || item.pcsKirimNum || 0);
+                  const hargaPcs = Number(item.hargaPcs) || 0;
+                  
+                  // Helper robust parsing untuk diskon (menangani string berformat atau number)
+                  const parseVal = (v: any) => {
+                    if (typeof v === "number" && !isNaN(v)) return v;
+                    const clean = String(v || "").replace(/[^0-9]/g, "");
+                    return Number(clean) || 0;
+                  };
+
+                  const rawDiscount = item.discount ?? item.diskon ?? item.discountNum ?? 0;
+                  const itemDiscountBase = parseVal(rawDiscount);
+                  
+                  // Perhitungan Aktual berdasarkan Pcs Kirim (Actual = Base / OrderPcs * Shipped)
+                  const actualNominal = hargaPcs * shipped; // Gross Aktual
+                  
+                  // NEW: Cek jika rpTagih di DB sudah ada dan selisihnya logis, gunakan itu sebagai backup diskon
+                  const dbRpTagih = Number(item.rpTagih) || 0;
+                  let actualDiscount = orderPcs > 0 ? (itemDiscountBase / orderPcs) * shipped : 0; 
+                  
+                  // Jika di data item.rpTagih ada dlm DB tapi actualDiscount kita 0, coba cari selisihnya
+                  if (Math.round(actualDiscount) === 0 && dbRpTagih > 0 && dbRpTagih < actualNominal) {
+                    actualDiscount = actualNominal - dbRpTagih;
+                  }
+
+                  // [SMART RECONSTRUCTION]
+                  // Jika itemDiscountBase kosong tapi kita punya actualDiscount (dari fallback),
+                  // kita hitung mundur Diskon Master-nya agar icon Eye bisa muncul.
+                  let finalDiscountBase = itemDiscountBase;
+                  if (finalDiscountBase === 0 && actualDiscount > 0 && orderPcs > 0 && shipped > 0) {
+                    finalDiscountBase = (actualDiscount / shipped) * orderPcs;
+                  }
+
+                  const actualRpTagih = Math.max(0, Math.round(actualNominal - actualDiscount));
+
+                  return (
+                    <tr
+                      key={item.id || idx}
+                      className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                    >
+                      <td className="px-4 py-2.5">
+                        <p className="font-bold text-slate-800 text-xs">
+                          {item.Product?.name || item.namaProduk}
+                        </p>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-600 text-xs text-center font-medium">
+                        {orderPcs}
+                      </td>
+                      <td className="px-4 py-2.5 text-amber-600 text-xs text-center font-bold">
+                        {shipped}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-slate-600 text-xs font-medium">
+                        {formatCurrency(hargaPcs)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-rose-500 font-bold">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>{Math.round(actualDiscount) > 0 ? formatCurrency(Math.round(actualDiscount)) : "-"}</span>
+                          {finalDiscountBase > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                Swal.fire({
+                                  title: "<strong>INFO DISKON AWAL</strong>",
+                                  icon: "info",
+                                  html: `
+                                    <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+                                      <div style="margin-bottom: 8px;"><b>Produk:</b> <br/><span style="color: #64748b">${item.Product?.name || item.namaProduk}</span></div>
+                                      <div style="margin-bottom: 8px;"><b>Diskon Master (100%):</b> <br/><span style="color: #e11d48; font-weight: 800; font-size: 16px;">${formatCurrency(finalDiscountBase)}</span></div>
+                                      <div><b>Untuk Qty Total:</b> <br/><span style="color: #64748b">${item.pcs} PCS</span></div>
+                                      <div style="margin-top: 10px; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; pt-2;">* Direkonstruksi dari Rp Tagih</div>
+                                    </div>
+                                  `,
+                                  confirmButtonText: "Tutup",
+                                  confirmButtonColor: "#004a87",
+                                  customClass: {
+                                    container: "z-[999999]",
+                                    popup: "rounded-[24px]"
+                                  }
+                                });
+                              }}
+                              className="p-1 hover:bg-rose-50 rounded-md transition-all group/eye"
+                              title="Klik untuk lihat diskon awal"
+                            >
+                              <Eye 
+                                size={14} 
+                                className="text-slate-300 group-hover/eye:text-rose-400 transition-colors"
+                              />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-semibold">
+                        {formatCurrency(actualNominal)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-bold text-indigo-700">
+                        {formatCurrency(actualRpTagih)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot className="bg-slate-50 border-t border-slate-200">
                 <tr>
@@ -394,10 +500,28 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                     className="px-4 py-3 text-right font-black text-slate-900 text-sm"
                   >
                     {formatCurrency(
-                      data.Items?.reduce(
-                        (acc, curr) => acc + (Number(curr.rpTagih) || 0),
-                        0,
-                      ) || 0,
+                      data.Items?.reduce((acc, curr) => {
+                        const ord = Math.max(1, Number(curr.pcs) || 0);
+                        const shp = Number(curr.pcsKirim || curr.pcsKirimNum || 0);
+                        const hrg = Number(curr.hargaPcs) || 0;
+                        const nom = hrg * shp;
+                        
+                        const parseV = (v: any) => {
+                          if (typeof v === "number" && !isNaN(v)) return v;
+                          return Number(String(v || "").replace(/[^0-9]/g, "")) || 0;
+                        };
+
+                        const dBase = parseV(curr.discount ?? curr.diskon ?? curr.discountNum ?? 0);
+                        const dbRpT = Number(curr.rpTagih) || 0;
+                        
+                        let actDisc = ord > 0 ? (dBase / ord) * shp : 0;
+                        // Fallback jika diskon master kosong tapi rpTagih ada selisih
+                        if (Math.round(actDisc) === 0 && dbRpT > 0 && dbRpT < nom) {
+                          actDisc = nom - dbRpT;
+                        }
+                        
+                        return acc + Math.max(0, Math.round(nom - actDisc));
+                      }, 0) || 0,
                     )}
                   </td>
                 </tr>

@@ -203,7 +203,15 @@ function InputPODetailPageInner() {
   const currentKg = currentPcsNum * (satuanKgSelected || 0);
   const currentKgKirim = currentPcsKirimNum * (satuanKgSelected || 0);
 
-  const totalNominalAll = items.reduce((acc, item) => acc + item.nominal, 0);
+  const totalsAll = useMemo(() => {
+    return items.reduce(
+      (acc, it) => ({
+        nominal: acc.nominal + it.nominal,
+        tagihan: acc.tagihan + it.rpTagih,
+      }),
+      { nominal: 0, tagihan: 0 },
+    );
+  }, [items]);
 
   const getSatuanKg = (namaProduk: string) => {
     const satuan =
@@ -1337,19 +1345,33 @@ function InputPODetailPageInner() {
                     {formatNumber(currentKgKirim)}
                   </div>
                 </div>
-                <div className="md:col-span-4">
-                  <div className="space-y-1 max-w-[320px]">
+                <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
                     <label
                       className="text-[10px] font-black text-slate-400 uppercase ml-1"
                       title="Rumus: Nominal = (Harga/Pcs × PCS) - Discount"
                     >
-                      Nominal
+                      Nominal Original
                     </label>
                     <div
                       className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
                       title="Nominal = (Harga/Pcs × PCS) - Discount"
                     >
                       {formatCurrency(currentNominal)}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      className="text-[10px] font-black text-indigo-400 uppercase ml-1"
+                      title="Rumus: Rp Tagih = (Harga/Pcs × PCS Kirim) - Discount"
+                    >
+                      Rp Tagih (Preview)
+                    </label>
+                    <div
+                      className="w-full px-4 py-3 bg-indigo-50/50 rounded-2xl text-sm font-bold text-indigo-600 border border-indigo-100"
+                      title="Rp Tagih = (Harga/Pcs × PCS Kirim) - Discount"
+                    >
+                      {formatCurrency(currentRpTagih)}
                     </div>
                   </div>
                 </div>
@@ -1406,11 +1428,14 @@ function InputPODetailPageInner() {
                         >
                           Discount
                         </th>
+                        <th className="px-4 py-3 text-right">
+                          Nominal Original
+                        </th>
                         <th
-                          className="px-4 py-3 text-right"
-                          title="Nominal = (PCS × Harga/Pcs) - Discount"
+                          className="px-4 py-3 text-right text-indigo-700"
+                          title="Rp Tagih = (PCS Kirim × Harga/Pcs) - Discount"
                         >
-                          Nominal
+                          Rp Tagih
                         </th>
                         <th className="px-4 py-3 text-center">Aksi</th>
                       </tr>
@@ -1532,8 +1557,11 @@ function InputPODetailPageInner() {
                                   formatCurrency(Number(item.discount || 0))
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-right font-bold text-slate-800">
+                              <td className="px-4 py-3 text-right font-medium text-slate-500 tabular-nums">
                                 {formatCurrency(Number(derived.nominal || 0))}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-indigo-700 tabular-nums">
+                                {formatCurrency(Number(derived.rpTagih || 0))}
                               </td>
                               <td className="px-4 py-3 text-center">
                                 {isEditing ? (
@@ -1643,11 +1671,21 @@ function InputPODetailPageInner() {
                                     </div>
                                     <div>
                                       <div className="text-slate-400 font-black uppercase text-[10px]">
-                                        Nominal
+                                        Nominal Original
                                       </div>
                                       <div className="mt-1 font-bold text-slate-700 text-right">
                                         {formatCurrency(
                                           Number(derived.nominal || 0),
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="bg-indigo-50/30 p-2 rounded-xl border border-indigo-100/50">
+                                      <div className="text-indigo-400 font-black uppercase text-[10px]">
+                                        Rp Tagih
+                                      </div>
+                                      <div className="mt-1 font-bold text-indigo-700 text-right">
+                                        {formatCurrency(
+                                          Number(derived.rpTagih || 0),
                                         )}
                                       </div>
                                     </div>
@@ -1673,13 +1711,18 @@ function InputPODetailPageInner() {
                     <tfoot className="bg-slate-50 border-t border-slate-200">
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           className="px-4 py-3 text-right font-black text-slate-500 uppercase tracking-wider text-xs"
                         >
-                          Total Nominal
+                          Total (Original / Tagihan)
                         </td>
-                        <td className="px-4 py-3 text-right font-black text-slate-800 text-base">
-                          {formatCurrency(totalNominalAll)}
+                        <td className="px-4 py-3 text-right text-sm">
+                          <div className="font-medium text-slate-400 line-through decoration-slate-300">
+                            {formatCurrency(totalsAll.nominal)}
+                          </div>
+                          <div className="font-black text-indigo-700 text-base">
+                            {formatCurrency(totalsAll.tagihan)}
+                          </div>
                         </td>
                         <td></td>
                       </tr>

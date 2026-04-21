@@ -24,18 +24,17 @@ export const generateInvoicePdf = (
   const yyyy = today.getFullYear();
   const printTime = `${String(today.getDate()).padStart(2, "0")}-${mm}-${yyyy} | ${String(today.getHours()).padStart(2, "0")}:${String(today.getMinutes()).padStart(2, "0")}`;
 
-  // Perhitungan Nominal, Discount, dan Total Tagihan Berdasarkan PCS KIRIM (Actual Shipment)
+  // Perhitungan Nominal (Gross), Discount (Proportional), dan Total Tagihan (Net)
   const totalNominal =
     data?.Items?.reduce((sum: number, item: any) => {
-      const pcs = Number(item.pcs) || 1;
       const shipped = Number(item.pcsKirim) || 0;
-      const nominal = Number(item.nominal) || 0;
-      return sum + (nominal / pcs) * shipped;
+      const price = Number(item.hargaPcs) || 0;
+      return sum + (shipped * price);
     }, 0) || 0;
 
   const totalDiscount =
     data?.Items?.reduce((sum: number, item: any) => {
-      const pcs = Number(item.pcs) || 1;
+      const pcs = Math.max(1, Number(item.pcs) || 0);
       const shipped = Number(item.pcsKirim) || 0;
       const discount = Number(item.discount) || 0;
       return sum + (discount / pcs) * shipped;
@@ -49,7 +48,7 @@ export const generateInvoicePdf = (
   const siteArea = data?.UnitProduksi?.siteArea
     ? `27100 - ${data.UnitProduksi.siteArea}`
     : "27100 - SPB DKI";
-  const invNumber = data?.noInvoice || `001/${mm}/${yyyy}/27100`;
+  const invNumber = data?.noFaktur || `001/${mm}/${yyyy}/27100`;
 
   // --- 2. HEADER & LOGO ---
   try {
@@ -109,8 +108,8 @@ export const generateInvoicePdf = (
           const namaProduk = item?.namaProduk || item?.Product?.name || "Produk";
           const satuanKg = item?.Product?.satuanKg || 1;
           const shipped = Number(item.pcsKirim) || 0;
-          const orderPcs = Number(item.pcs) || 1;
-          const actualNominal = (Number(item.nominal) || 0) / orderPcs * shipped;
+          const hargaPcs = Number(item.hargaPcs) || 0;
+          const actualNominal = shipped * hargaPcs;
 
           const kuantitas = `${shipped.toLocaleString("id-ID")} \nPack ${satuanKg} KG`;
           const kuantum = `${(shipped * satuanKg).toLocaleString("id-ID")} \nKg`;

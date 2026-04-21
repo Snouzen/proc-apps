@@ -32,6 +32,7 @@ model PurchaseOrder {
   expiredTgl     DateTime?
   linkPo         String?
   noInvoice      String?
+  noFaktur       String?
   tujuanDetail   String?
   regional       String?
   statusKirim    Boolean             @default(false)
@@ -111,6 +112,7 @@ model UnitProduksi {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime
   alamat        String?         @default("")
+  kodeRegional  String?
   PurchaseOrder       PurchaseOrder[]
   LokasiReturs        DataRetur[]     @relation("LokasiRetur")
   PembebananReturs    DataRetur[]     @relation("PembebananRetur")
@@ -194,6 +196,7 @@ model Reconcile {
   invoices         String[]     // List nomor invoice
   rtvs             String[]     // List nomor rtv/cn
   noPromo          String?      // Nomor promo (opsional)
+  status           String       @default("final")
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 

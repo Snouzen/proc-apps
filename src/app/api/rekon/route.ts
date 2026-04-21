@@ -6,6 +6,69 @@ import { verifySession } from "@/lib/auth";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const idParam = searchParams.get("id");
+    
+    // --- CASE 1: Fetch Single Reconcile by ID (For Edit/Draft) ---
+    if (idParam) {
+      const rekon = await prisma.reconcile.findUnique({
+        where: { id: idParam },
+        include: { RitelModern: true }
+      });
+
+      if (!rekon) return NextResponse.json({ error: "Data not found" }, { status: 404 });
+
+      // Fetch Full Invoice Details
+      const detailedInvoices = await prisma.purchaseOrder.findMany({
+        where: { noInvoice: { in: rekon.invoices || [] } },
+        include: { Items: true }
+      });
+
+      // Calculate totals for invoices (shared logic)
+      const invoicesWithTotals = detailedInvoices.map(p => {
+        const total = p.Items?.reduce((sum, item: any) => {
+          return sum + (Number(item.rpTagih) || (Number(item.hargaPcs) * Number(item.pcsKirim)) || 0);
+        }, 0) || 0;
+        return { 
+          id: p.id, 
+          noInvoice: p.noInvoice, 
+          noPo: p.noPo, 
+          companyId: p.ritelId, 
+          total: total 
+        };
+      });
+
+      // Fetch Full RTV Details
+      const detailedRtvs = await prisma.dataRetur.findMany({
+        where: { rtvCn: { in: rekon.rtvs || [] } }
+      });
+      const rtvsWithData = (rekon.rtvs || []).map(rtvNo => {
+        const rtvData = detailedRtvs.find(r => r.rtvCn === rtvNo);
+        return {
+          id: rtvData?.id || Math.random().toString(),
+          noRtv: rtvNo,
+          total: Number(rtvData?.nominal || 0),
+          qty: rtvData?.qtyReturn || 0,
+          refInvoice: rtvData?.referensiPembayaran || "-"
+        };
+      });
+
+      // Fetch Promo if exists
+      let promoData = null;
+      if (rekon.noPromo) {
+        promoData = await prisma.promo.findUnique({ where: { nomor: rekon.noPromo } });
+      }
+
+      return NextResponse.json({ 
+        data: {
+          ...rekon,
+          detailedInvoices: invoicesWithTotals,
+          detailedRtvs: rtvsWithData,
+          detailedPromo: promoData
+        } 
+      });
+    }
+
+    // --- CASE 2: List Data with Filtering ---
     const q = searchParams.get("q") || "";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
@@ -118,32 +181,48 @@ export async function POST(request: Request) {
       nominal, 
       invoices, 
       rtvs, 
-      noPromo 
+      noPromo,
+      status = "final",
+      id // Cek apakah ini edit/update dari draft
     } = body;
 
-    // 1. Generate No. Rekonsiliasi (R-001/MM/YYYY)
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const datePattern = `${month}/${year}`;
+    let GeneratedNoRekon = "";
+    let finalId = id;
 
-    // Hitung data bulan ini untuk nentuin urutan selanjutnya
-    const countThisMonth = await prisma.reconcile.count({
-      where: {
-        noRekonsiliasi: { contains: datePattern }
-      }
-    });
+    // 1. Generate No. Rekonsiliasi Only for NEW records
+    if (!finalId) {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const datePattern = `${month}/${year}`;
 
-    const nextNumber = String(countThisMonth + 1).padStart(3, '0');
-    const GeneratedNoRekon = `R-${nextNumber}/${datePattern}`;
+      const countThisMonth = await prisma.reconcile.count({
+        where: { noRekonsiliasi: { contains: datePattern } }
+      });
 
-    // 2. Generate Unique Primary ID (Short 8 char)
-    const shortId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const nextNumber = String(countThisMonth + 1).padStart(3, '0');
+      GeneratedNoRekon = `R-${nextNumber}/${datePattern}`;
+      finalId = Math.random().toString(36).substring(2, 10).toUpperCase();
+    }
 
-    // 3. Simpan ke Database
-    const newRekon = await prisma.reconcile.create({
-      data: {
-        id: shortId,
+    // 3. Simpan / Update Database
+    const newRekon = await prisma.reconcile.upsert({
+      where: { id: finalId },
+      update: {
+        ritelId,
+        bankStatement: Number(bankStatement) || 0,
+        biayaAdmin: Number(biayaAdmin) || 0,
+        totalInvoices: Number(totalInvoices) || 0,
+        totalRtvs: Number(totalRtvs) || 0,
+        totalPromo: Number(totalPromo) || 0,
+        nominal: Number(nominal) || 0,
+        invoices: invoices || [],
+        rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
+        noPromo: noPromo || null,
+        status: status || "final",
+      },
+      create: {
+        id: finalId,
         noRekonsiliasi: GeneratedNoRekon,
         ritelId,
         bankStatement: Number(bankStatement) || 0,
@@ -155,6 +234,7 @@ export async function POST(request: Request) {
         invoices: invoices || [],
         rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
         noPromo: noPromo || null,
+        status: status || "final",
       }
     });
 

@@ -18,6 +18,8 @@ import {
 } from "@/lib/text";
 import { POBodySchema } from "@/lib/schemas/po";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
+import { ensureInvoiceNumber } from "@/lib/generatePoInvoiceNumber";
+import Swal from "sweetalert2";
 
 // [ENV] Timezone offset from env, not hardcoded magic number
 const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
@@ -313,6 +315,15 @@ export async function POST(request: Request) {
           }
         }
 
+        let finalNoFaktur = existing?.noFaktur || null;
+
+        if (poTglKirim && !finalNoFaktur) {
+            finalNoFaktur = await ensureInvoiceNumber(tx, {
+               noFaktur: finalNoFaktur,
+               unitProduksiId: poUnitProduksiId
+            }, poTglKirim);
+        }
+
         const po = existing
           ? await tx.purchaseOrder.update({
               where: { id: existing.id },
@@ -324,6 +335,7 @@ export async function POST(request: Request) {
                 expiredTgl: poExpiredTgl,
                 linkPo: poLinkPo,
                 noInvoice: poNoInvoice,
+                noFaktur: finalNoFaktur,
                 tujuanDetail: poTujuanDetail,
                 regional: poRegional,
                 statusKirim: poStatusKirim,
@@ -354,6 +366,7 @@ export async function POST(request: Request) {
                 expiredTgl: poExpiredTgl,
                 linkPo: poLinkPo,
                 noInvoice: poNoInvoice,
+                noFaktur: finalNoFaktur,
                 tujuanDetail: poTujuanDetail,
                 regional: poRegional,
                 statusKirim: poStatusKirim,
@@ -380,6 +393,7 @@ export async function POST(request: Request) {
                 expiredTgl: poExpiredTgl,
                 linkPo: poLinkPo,
                 noInvoice: poNoInvoice,
+                noFaktur: finalNoFaktur,
                 tujuanDetail: poTujuanDetail,
                 regional: poRegional,
                 statusKirim: poStatusKirim,
@@ -433,6 +447,11 @@ export async function POST(request: Request) {
           for (const p of created) existingMap.set(p.name, p as ProdLite);
         }
 
+        const parseAmt = (v: any) => {
+          if (typeof v === "number") return v;
+          return Number(String(v || "").replace(/[^0-9]/g, "")) || 0;
+        };
+
         const rows = items.map((item: any) => {
           const nm = canonicalProductName(item.namaProduk);
           const product = existingMap.get(nm)!;
@@ -441,10 +460,12 @@ export async function POST(request: Request) {
           const pcsNum = Number(item.pcs) || 0;
           const pcsKirimNum = Number(item.pcsKirim || 0) || 0;
           const hargaPcsNum = Number(item.hargaPcs) || 0;
-          const discountNum = Math.max(0, Number(item.discount || 0) || 0);
+          const discountNum = parseAmt(item.discount);
           const hargaKg = satuan > 0 ? hargaPcsNum / satuan : 0;
+          const divider = pcsNum || 1;
           const nominal = Math.max(0, hargaPcsNum * pcsNum - discountNum);
-          const rpTagih = Math.max(0, hargaPcsNum * pcsKirimNum - discountNum);
+          const proportionalDiscount = (discountNum / divider) * pcsKirimNum;
+          const rpTagih = Math.max(0, hargaPcsNum * pcsKirimNum - proportionalDiscount);
           return {
             id: randomUUID(),
             purchaseOrderId: po.id,
@@ -1136,6 +1157,7 @@ export async function GET(request: Request) {
                   tglPo: true,
                   expiredTgl: true,
                   noInvoice: true,
+                  noFaktur: true,
                   tujuanDetail: true,
                   regional: true,
                   remarks: true,
@@ -1164,6 +1186,7 @@ export async function GET(request: Request) {
                   expiredTgl: true,
                   linkPo: true,
                   noInvoice: true,
+                  noFaktur: true,
                   tujuanDetail: true,
                   regional: true,
                   statusKirim: true,
@@ -1237,6 +1260,7 @@ export async function GET(request: Request) {
                 tglPo: true,
                 expiredTgl: true,
                 noInvoice: true,
+                noFaktur: true,
                 tujuanDetail: true,
                 regional: true,
                 remarks: true,
@@ -1267,6 +1291,7 @@ export async function GET(request: Request) {
                 expiredTgl: true,
                 linkPo: true,
                 noInvoice: true,
+                noFaktur: true,
                 tujuanDetail: true,
                 regional: true,
                 statusKirim: true,

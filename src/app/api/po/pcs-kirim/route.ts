@@ -20,13 +20,14 @@ export async function PATCH(request: Request) {
       // Update specific item
       const item = await prisma.purchaseOrderItem.findUnique({
         where: { id: itemId },
-        select: { hargaPcs: true, discount: true }
+        select: { hargaPcs: true, discount: true, pcs: true }
       });
       
       if (!item) return NextResponse.json({ error: "Item tidak ditemukan" }, { status: 404 });
       
-      // Hitung ulang Rp Tagih (Pcs Kirim * Harga Pcs - Discount)
-      const rpTagih = Math.max(0, (value * item.hargaPcs) - (item.discount || 0));
+      const orderPcs = Number(item.pcs) || 1;
+      const actualDiscount = (Number(item.discount || 0) / orderPcs) * value;
+      const rpTagih = Math.max(0, (value * item.hargaPcs) - actualDiscount);
 
       await prisma.purchaseOrderItem.update({
         where: { id: itemId },
@@ -40,12 +41,14 @@ export async function PATCH(request: Request) {
       // Update ALL items in PO (Legacy/Global method)
       const items = await prisma.purchaseOrderItem.findMany({
         where: { purchaseOrderId: id },
-        select: { id: true, hargaPcs: true, discount: true }
+        select: { id: true, hargaPcs: true, discount: true, pcs: true }
       });
 
       // Update one by one to ensure Rp Tagih recalculated per item price
       await Promise.all(items.map(it => {
-        const rpTagih = Math.max(0, (value * it.hargaPcs) - (it.discount || 0));
+        const orderPcs = Number(it.pcs) || 1;
+        const actualDiscount = (Number(it.discount || 0) / orderPcs) * value;
+        const rpTagih = Math.max(0, (value * it.hargaPcs) - actualDiscount);
         return prisma.purchaseOrderItem.update({
           where: { id: it.id },
           data: { 

@@ -6,9 +6,10 @@ import { getMe, getMeSync } from "@/lib/me";
 import Modal from "@/components/modal";
 import Combobox from "@/components/combobox";
 import Select from "@/components/select";
-import { LinkIcon, MapPin, Minus, Plus, Copy, Truck } from "lucide-react";
+import { LinkIcon, MapPin, Minus, Plus, Copy, Truck, Eye } from "lucide-react";
 import { PO_FORM_LABELS } from "@/lib/po-form-labels";
 import DateInputHybrid from "@/components/DateInputHybrid";
+import Swal from "sweetalert2";
 
 type ReturnMode = "full" | "summary";
 
@@ -151,8 +152,12 @@ export default function POEditModal({
       const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
       const kg = pcs * satuan;
       const kgKirim = pcsKirim * satuan;
-      const nominal = Math.max(0, hargaPcs * pcs - discount);
-      const rpTagih = Math.max(0, hargaPcs * pcsKirim - discount);
+      const divider = pcs || 1;
+      const nominalOriginal = Math.max(0, hargaPcs * pcs - discount);
+      const nominalAktualGross = hargaPcs * pcsKirim;
+      const actualDiscount = (discount / divider) * pcsKirim;
+      const rpTagih = Math.max(0, nominalAktualGross - actualDiscount);
+
       return {
         pcs,
         pcsKirim,
@@ -161,8 +166,9 @@ export default function POEditModal({
         hargaKg,
         kg,
         kgKirim,
-        nominal,
-        rpTagih,
+        nominal: nominalOriginal, // Original Net (Contract)
+        rpTagih, // Net Aktual (Billable)
+        actualDiscount
       };
     },
     [getSatuanKg],
@@ -560,13 +566,25 @@ export default function POEditModal({
         platNomor: platNomor || null,
         tglKirim: tglKirim || undefined,
         status,
-        items: items.map((it) => ({
-          namaProduk: String(it.namaProduk || "").trim(),
-          pcs: Number(it.pcs) || 0,
-          pcsKirim: Number(it.pcsKirim) || 0,
-          hargaPcs: Number(it.hargaPcs) || 0,
-          discount: parseRupiah(it.discount),
-        })),
+        items: items.map((it) => {
+          const pcsBase = Number(it.pcs) || 1;
+          const hargaPcs = Number(it.hargaPcs) || 0;
+          const pcsKirim = Number(it.pcsKirim) || 0;
+          const discountBase = Number(typeof it.discount === "number" ? it.discount : parseRupiah(it.discount)) || 0;
+          
+          // Re-calculate rpTagih during save for maximum safety
+          const actualDiscount = (discountBase / pcsBase) * pcsKirim;
+          const rpTagih = Math.max(0, Math.round((pcsKirim * hargaPcs) - actualDiscount));
+
+          return {
+            namaProduk: String(it.namaProduk || "").trim(),
+            pcs: Math.round(pcsBase),
+            pcsKirim: Math.round(pcsKirim),
+            hargaPcs: hargaPcs,
+            discount: discountBase,
+            rpTagih: rpTagih
+          };
+        }),
       };
 
       const res = await fetch("/api/po", {
@@ -944,8 +962,8 @@ export default function POEditModal({
               <h4 className="font-bold text-slate-800">
                 {PO_FORM_LABELS.preview}
               </h4>
-              <div className="text-sm font-bold text-slate-700">
-                Total Nominal: {formatCurrency(totals.nominal)}
+              <div className="text-sm font-bold text-indigo-700">
+                Total Tagihan: {formatCurrency(totals.tagih)}
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -1051,41 +1069,66 @@ export default function POEditModal({
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={
-                              parseRupiah(it.discount)
-                                ? parseRupiah(it.discount).toLocaleString(
-                                    "id-ID",
-                                  )
-                                : ""
-                            }
-                            onChange={(e) =>
-                              setItems((prev) =>
-                                prev.map((x) =>
-                                  x.id === it.id
-                                    ? { ...x, discount: e.target.value }
-                                    : x,
-                                ),
-                              )
-                            }
-                            onBlur={() =>
-                              setItems((prev) =>
-                                prev.map((x) => {
-                                  if (x.id !== it.id) return x;
-                                  const n = parseRupiah(x.discount);
-                                  return {
-                                    ...x,
-                                    discount: n
-                                      ? n.toLocaleString("id-ID")
-                                      : "",
-                                  };
-                                }),
-                              )
-                            }
-                            className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
-                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={
+                                d.actualDiscount > 0
+                                  ? Math.round(d.actualDiscount).toLocaleString("id-ID")
+                                  : ""
+                              }
+                              onChange={(e) => {
+                                const val = parseRupiah(e.target.value);
+                                const orderPcs = Number(it.pcs) || 1;
+                                const shipped = Number(it.pcsKirim) || 1;
+                                // Reverse calculate base discount for the whole PO
+                                const baseDiscount = (val / shipped) * orderPcs;
+
+                                setItems((prev) =>
+                                  prev.map((x) =>
+                                    x.id === it.id
+                                      ? { ...x, discount: Math.round(baseDiscount) }
+                                      : x,
+                                  ),
+                                );
+                              }}
+                              className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                            />
+                            {parseRupiah(it.discount) > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const base = parseRupiah(it.discount);
+                                  Swal.fire({
+                                    title: "<strong>INFO DISKON AWAL</strong>",
+                                    icon: "info",
+                                    html: `
+                                      <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+                                        <div style="margin-bottom: 8px;"><b>Produk:</b> <br/><span style="color: #64748b">${it.namaProduk}</span></div>
+                                        <div style="margin-bottom: 8px;"><b>Diskon Master (100%):</b> <br/><span style="color: #e11d48; font-weight: 800; font-size: 16px;">Rp ${base.toLocaleString("id-ID")}</span></div>
+                                        <div><b>Untuk Qty Total:</b> <br/><span style="color: #64748b">${it.pcs} PCS</span></div>
+                                      </div>
+                                    `,
+                                    confirmButtonText: "Tutup",
+                                    confirmButtonColor: "#004a87",
+                                    customClass: {
+                                      container: "z-[999999]",
+                                      popup: "rounded-[24px]"
+                                    }
+                                  });
+                                }}
+                                className="p-1 hover:bg-slate-100 rounded-md transition-all group/eye"
+                                title="Lihat diskon awal"
+                                style={{ pointerEvents: 'auto' }}
+                              >
+                                <Eye 
+                                  size={14} 
+                                  className="text-slate-300 group-hover/eye:text-slate-600 transition-colors"
+                                />
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-slate-800 tabular-nums">
                           {formatCurrency(d.nominal)}

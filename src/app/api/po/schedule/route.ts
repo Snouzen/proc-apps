@@ -76,14 +76,30 @@ export async function PATCH(request: Request) {
 
     const parsedDate = parseDate(tglKirim);
     
+    let updateData: any = {
+      tglkirim: parsedDate,
+      namaSupir: namaSupir || null,
+      platNomor: platNomor || null,
+    };
+
+    if (parsedDate) {
+      // Get existing PO first
+      const existingPo = await prisma.purchaseOrder.findUnique({
+        where: { id }
+      });
+      if (existingPo) {
+        const { ensureInvoiceNumber } = await import("@/lib/generatePoInvoiceNumber");
+        const noFaktur = await ensureInvoiceNumber(prisma, existingPo, parsedDate);
+        if (noFaktur && !existingPo.noFaktur) {
+          updateData.noFaktur = noFaktur;
+        }
+      }
+    }
+
     // Update Prisma: Note the field name is 'tglkirim' as per schema.prisma
     const updated = await prisma.purchaseOrder.update({
       where: { id },
-      data: {
-        tglkirim: parsedDate,
-        namaSupir: namaSupir || null,
-        platNomor: platNomor || null,
-      }
+      data: updateData
     });
 
     const { cacheClearPrefix } = await import("@/lib/ttl-cache");
