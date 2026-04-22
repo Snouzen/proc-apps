@@ -27,7 +27,7 @@ export const generateInvoicePdf = (
   // Perhitungan Nominal (Gross), Discount (Proportional), dan Total Tagihan (Net)
   const totalNominal =
     data?.Items?.reduce((sum: number, item: any) => {
-      const shipped = Number(item.pcsKirim) || 0;
+      const shipped = Number(item.pcsKirim ?? item.pcsKirimNum ?? item.pcs) || 0;
       const price = Number(item.hargaPcs) || 0;
       return sum + (shipped * price);
     }, 0) || 0;
@@ -35,7 +35,7 @@ export const generateInvoicePdf = (
   const totalDiscount =
     data?.Items?.reduce((sum: number, item: any) => {
       const pcs = Math.max(1, Number(item.pcs) || 0);
-      const shipped = Number(item.pcsKirim) || 0;
+      const shipped = Number(item.pcsKirim ?? item.pcsKirimNum ?? item.pcs) || 0;
       const discount = Number(item.discount) || 0;
       return sum + (discount / pcs) * shipped;
     }, 0) || 0;
@@ -107,7 +107,7 @@ export const generateInvoicePdf = (
       ? data.Items.map((item: any) => {
           const namaProduk = item?.namaProduk || item?.Product?.name || "Produk";
           const satuanKg = item?.Product?.satuanKg || 1;
-          const shipped = Number(item.pcsKirim) || 0;
+          const shipped = Number(item.pcsKirim ?? item.pcsKirimNum ?? item.pcs) || 0;
           const hargaPcs = Number(item.hargaPcs) || 0;
           const actualNominal = shipped * hargaPcs;
 
