@@ -509,6 +509,7 @@ function ReturContent() {
   const [filterToko, setFilterToko] = useState("");
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkStep, setBulkStep] = useState(1); 
@@ -540,6 +541,13 @@ function ReturContent() {
   const [searchPembebanan, setSearchPembebanan] = useState("");
   const [viewDetailId, setViewDetailId] = useState<string | null>(null);
   const selectedDetail = useMemo(() => data.find(d => d.id === viewDetailId), [data, viewDetailId]);
+  
+  const [stats, setStats] = useState({
+    sudah_diambil: 0,
+    belum_diambil: 0,
+    dimusnahkan: 0,
+    total: 0
+  });
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const comboRef = useRef<HTMLTableCellElement>(null);
@@ -617,6 +625,7 @@ function ReturContent() {
       if (filterToko) params.set("toko", filterToko);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
+      if (selectedStatus) params.set("status", selectedStatus);
 
       const res = await fetch(`/api/retur?${params.toString()}`, {
         signal: abortControllerRef.current.signal,
@@ -635,8 +644,30 @@ function ReturContent() {
     } finally {
       setLoading(false);
       setIsFetchingPage(false);
+      fetchStats();
     }
-  }, [page, debouncedSearch, rowsPerPage, selectedRetailerId, filterInisial, filterToko, dateFrom, dateTo]);
+  }, [page, debouncedSearch, rowsPerPage, selectedRetailerId, filterInisial, filterToko, dateFrom, dateTo, selectedStatus]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("q", debouncedSearch);
+      if (selectedRetailerId) params.set("retailerId", selectedRetailerId);
+      if (filterInisial) params.set("inisial", filterInisial);
+      if (filterToko) params.set("toko", filterToko);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      // We don't filter stats by status, otherwise cards would hide themselves
+
+      const res = await fetch(`/api/retur/stats?${params.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        setStats(json);
+      }
+    } catch (err) {
+      console.error("Fetch Stats Error:", err);
+    }
+  }, [debouncedSearch, selectedRetailerId, filterInisial, filterToko, dateFrom, dateTo]);
 
   // --- CLIENT SIDE FILTERING FOR DETAIL MODE ---
   const filteredData = useMemo(() => {
@@ -651,7 +682,17 @@ function ReturContent() {
 
   useEffect(() => {
     fetchRetur();
-  }, [fetchRetur]);
+    fetchStats();
+  }, [fetchRetur, fetchStats]);
+
+  // --- HANDLE INCOMING QUERY PARAMS (REDIRECTION FROM SCHEDULE) ---
+  useEffect(() => {
+    const statusParam = searchParams.get("status");
+    if (statusParam) {
+      setSelectedStatus(statusParam.toUpperCase());
+      setPage(1);
+    }
+  }, [searchParams]);
 
   // --- AUTO CALCULATE RP/KG FOR INLINE EDIT ---
   useEffect(() => {
@@ -1150,6 +1191,69 @@ function ReturContent() {
         </div>
       </div>
 
+      {/* ── Status Cards ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div 
+          onClick={() => {
+            setSelectedStatus(selectedStatus === "SUDAH DIAMBIL" ? null : "SUDAH DIAMBIL");
+            setPage(1);
+          }}
+          className={`cursor-pointer bg-white border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "SUDAH DIAMBIL" ? "border-emerald-500 ring-4 ring-emerald-500/10 shadow-emerald-100" : "border-emerald-100 hover:shadow-emerald-500/10"}`}
+        >
+          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-emerald-50 opacity-10 group-hover:scale-110 transition-transform duration-700">
+             <CheckCircle2 size={120} />
+          </div>
+          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Sudah Diambil
+          </p>
+          <h4 className="text-3xl font-black text-slate-800 tracking-tight tabular-nums">
+            {stats.sudah_diambil.toLocaleString("id-ID")}
+            <span className="text-xs font-bold text-slate-400 ml-2 uppercase tracking-tight">Records</span>
+          </h4>
+        </div>
+
+        <div 
+          onClick={() => {
+            setSelectedStatus(selectedStatus === "BELUM DIAMBIL" ? null : "BELUM DIAMBIL");
+            setPage(1);
+          }}
+          className={`cursor-pointer bg-white border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "BELUM DIAMBIL" ? "border-rose-500 ring-4 ring-rose-500/10 shadow-rose-100" : "border-rose-100 hover:shadow-rose-500/10"}`}
+        >
+          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-rose-50 opacity-10 group-hover:scale-110 transition-transform duration-700">
+             <Calendar size={120} />
+          </div>
+          <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            Belum Diambil
+          </p>
+          <h4 className="text-3xl font-black text-slate-800 tracking-tight tabular-nums">
+            {stats.belum_diambil.toLocaleString("id-ID")}
+            <span className="text-xs font-bold text-slate-400 ml-2 uppercase tracking-tight">Records</span>
+          </h4>
+        </div>
+
+        <div 
+          onClick={() => {
+            setSelectedStatus(selectedStatus === "DIMUSNAHKAN" ? null : "DIMUSNAHKAN");
+            setPage(1);
+          }}
+          className={`cursor-pointer bg-white border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "DIMUSNAHKAN" ? "border-amber-500 ring-4 ring-amber-500/10 shadow-amber-100" : "border-amber-100 hover:shadow-amber-500/10"}`}
+        >
+          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-amber-50 opacity-10 group-hover:scale-110 transition-transform duration-700">
+             <Trash2 size={120} />
+          </div>
+          <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            Dimusnahkan
+          </p>
+          <h4 className="text-3xl font-black text-slate-800 tracking-tight tabular-nums">
+            {stats.dimusnahkan.toLocaleString("id-ID")}
+            <span className="text-xs font-bold text-slate-400 ml-2 uppercase tracking-tight">Records</span>
+          </h4>
+        </div>
+      </div>
+
       {/* ── Filter & Search ─────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1213,13 +1317,14 @@ function ReturContent() {
                />
             </div>
 
-            {(filterInisial || filterToko || dateFrom || dateTo) && (
+            {(filterInisial || filterToko || dateFrom || dateTo || selectedStatus) && (
               <button 
                 onClick={() => {
                   setFilterInisial("");
                   setFilterToko("");
                   setDateFrom(null);
                   setDateTo(null);
+                  setSelectedStatus(null);
                 }}
                 className="px-6 py-3 bg-white text-rose-500 border border-rose-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 shadow-sm"
               >

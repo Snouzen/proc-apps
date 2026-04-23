@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     const toko = searchParams.get("toko");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
+    const status = searchParams.get("status");
 
     // [RBAC] Ambil Session & Role
     const cookieStore = await cookies();
@@ -23,22 +24,42 @@ export async function GET(request: Request) {
     const user = verifySession(sessionToken);
 
     let siteScopeId: string | null = null;
+    let rmInisial: string | null = null;
+
+    const safeRole = String(user?.role || "").toLowerCase().trim();
 
     // Jika Role adalah SiteArea, batasi hanya untuk region mereka
-    if (user?.role === "sitearea" && user.siteArea) {
+    if (safeRole === "sitearea" && user?.siteArea) {
       const unit = await prisma.unitProduksi.findFirst({
         where: { siteArea: { contains: user.siteArea, mode: "insensitive" } },
       });
       if (unit) siteScopeId = unit.idRegional;
+    } else if (safeRole === "rm" && user?.regional) {
+      rmInisial = user.regional;
     }
 
     // Construct dynamic where filter
     const drFilter: Prisma.DataReturWhereInput[] = [];
     if (siteScopeId) drFilter.push({ lokasiBarangId: siteScopeId });
+    if (rmInisial) drFilter.push({ inisial: { equals: rmInisial, mode: 'insensitive' } });
     
     if (inisial) drFilter.push({ inisial: inisial });
     if (toko) drFilter.push({ namaCompany: toko });
     
+    if (status) {
+      if (status.toUpperCase() === "BELUM DIAMBIL") {
+        drFilter.push({
+          OR: [
+            { statusBarang: { equals: "BELUM DIAMBIL", mode: "insensitive" } },
+            { statusBarang: null },
+            { statusBarang: { equals: "" } }
+          ]
+        });
+      } else {
+        drFilter.push({ statusBarang: { equals: status, mode: "insensitive" } });
+      }
+    }
+
     if (dateFrom || dateTo) {
       const dateRange: any = {};
       if (dateFrom) dateRange.gte = new Date(dateFrom);

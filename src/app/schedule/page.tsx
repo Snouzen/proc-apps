@@ -138,6 +138,7 @@ export default function SchedulePage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailData, setDetailData] = useState<any>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   // -- Filter State --
   const [activeFilter, setActiveFilter] = useState<
@@ -172,7 +173,9 @@ export default function SchedulePage() {
   }, []);
 
   useEffect(() => {
-    getMe().then(() => {});
+    getMe().then((u) => {
+      setUser(u);
+    });
     fetchData();
   }, [fetchData]);
 
@@ -214,6 +217,42 @@ export default function SchedulePage() {
           timer: 1500,
           showConfirmButton: false,
         });
+
+        // --- RETUR REMINDER LOGIC (RM & SITEAREA ONLY) ---
+        const safeRole = String(user?.role || "").toLowerCase().trim();
+        if (safeRole === "rm" || safeRole === "sitearea") {
+          try {
+            const statsRes = await fetch("/api/retur/stats");
+            if (statsRes.ok) {
+              const stats = await statsRes.json();
+              if (stats.belum_diambil > 0) {
+                await Swal.fire({
+                  title: "📌 Pengingat Retur!",
+                  html: `Anda memiliki <b>${stats.belum_diambil}</b> data retur yang <b>Belum Diambil</b>.<br/>Mohon pastikan untuk melakukan pengambilan barang retur segera.`,
+                  icon: "info",
+                  showCancelButton: true,
+                  confirmButtonColor: "#4f46e5",
+                  cancelButtonColor: "#94a3b8",
+                  confirmButtonText: "Lihat Data Retur",
+                  cancelButtonText: "Nanti Saja",
+                  background: "#ffffff",
+                  customClass: {
+                    popup: "rounded-[32px] border border-slate-100 shadow-2xl",
+                    confirmButton: "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4",
+                    cancelButton: "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4",
+                  }
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    router.push("/retur?status=BELUM DIAMBIL");
+                  }
+                });
+              }
+            }
+          } catch (err) {
+            console.error("Retur check failed", err);
+          }
+        }
+
         fetchData();
       } else {
         const errData = await res.json().catch(() => ({}));
