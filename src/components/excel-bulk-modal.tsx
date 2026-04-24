@@ -368,10 +368,43 @@ export default function ExcelBulkModal({
       return;
     }
     if (variant === "retur") {
-      // Untuk retur kita skip dulu de-duplikasi di level ExcelModal
-      // Kita biarkan API yang menangani atau user yang memfilter
-      setDupeCount(0);
-      setDupeGroups([]);
+      const rtvCns = rows
+        .map((r) => String(getCell(r, keys.rtvCn)).trim())
+        .filter((k) => !!k);
+      
+      if (rtvCns.length === 0) {
+        setDupeCount(0);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/retur/check-dupes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rtvCnList: rtvCns }),
+        });
+        if (!res.ok) throw new Error("Gagal cek duplikat");
+        const data = await res.json();
+        const exists = Array.isArray(data.exists) ? data.exists : [];
+        setDupeCount(exists.length);
+
+        if (exists.length > 0) {
+            const dupeSet = new Set(exists.map(String));
+            const groups = new Map<string, { label: string; rows: number[] }>();
+            for (let i = 0; i < rows.length; i++) {
+                const rtv = String(getCell(rows[i], keys.rtvCn)).trim();
+                if (dupeSet.has(rtv)) {
+                    const excelRow = i + 2;
+                    const entry = groups.get(rtv) ?? { label: rtv, rows: [] };
+                    entry.rows.push(excelRow);
+                    groups.set(rtv, entry);
+                }
+            }
+            setDupeGroups(Array.from(groups.values()));
+        }
+      } catch (err) {
+        console.error("Dupe Check Error:", err);
+      }
       return;
     }
     if (variant === "promo") {
@@ -631,7 +664,10 @@ export default function ExcelBulkModal({
           const res = await fetch("/api/retur", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(records),
+            body: JSON.stringify({ 
+                data: records,
+                replaceDuplicates: replaceDupes
+            }),
           });
 
           if (!res.ok) {
@@ -1006,25 +1042,38 @@ export default function ExcelBulkModal({
           {rows.length > 0 && dupeCount > 0 && (
             <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm">
               <div className="flex items-center justify-between gap-2">
-                <div className="text-blue-700 font-semibold">
+                <div className="text-blue-700 font-semibold text-xs whitespace-nowrap">
                   Deteksi Duplikat: {dupeCount} data sudah ada di database
                 </div>
-                {variant === "ritel" && dupeGroups.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowDupeRows((v) => !v)}
-                    className="px-2 py-1 rounded-md border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold"
-                  >
-                    {showDupeRows ? "Sembunyikan Baris" : "Lihat Baris"}
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                    {(variant === "ritel" || variant === "retur") && dupeGroups.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => setShowDupeRows((v) => !v)}
+                        className="px-2 py-1 rounded-md border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-[10px] font-bold uppercase transition-all"
+                    >
+                        {showDupeRows ? "Hide Rows" : "View Rows"}
+                    </button>
+                    )}
+                    {(variant === "ritel" || variant === "retur") && (
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input 
+                              type="checkbox" 
+                              checked={replaceDupes} 
+                              onChange={e => setReplaceDupes(e.target.checked)}
+                              className="w-3.5 h-3.5 rounded border-blue-300 text-blue-600 focus:ring-blue-500" 
+                            />
+                            <span className="text-[10px] font-bold text-blue-800 uppercase">Replace Data</span>
+                        </label>
+                    )}
+                </div>
               </div>
-              {variant === "ritel" && showDupeRows && dupeGroups.length > 0 && (
-                <div className="mt-2 text-xs text-blue-800">
+              {(variant === "ritel" || variant === "retur") && showDupeRows && dupeGroups.length > 0 && (
+                <div className="mt-2 text-[10px] text-blue-800">
                   <div className="max-h-36 overflow-y-auto border border-blue-100 rounded-md bg-white p-2 space-y-1">
                     {dupeGroups.slice(0, 25).map((g) => (
                       <div key={g.label} className="flex gap-2">
-                        <span className="font-semibold">{g.label}</span>
+                        <span className="font-mono font-bold">{g.label}</span>
                         <span className="text-blue-700/80">
                           Row: {g.rows.slice(0, 25).join(", ")}
                           {g.rows.length > 25 && " ..."}
@@ -1039,6 +1088,13 @@ export default function ExcelBulkModal({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {rows.length > 0 && variant === "retur" && dupeCount === 0 && (
+            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-[10px] font-bold text-emerald-700 uppercase tracking-widest flex items-center gap-2 animate-in fade-in duration-500">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+               Validasi: Tidak ada duplikasi RTV/CN di database
             </div>
           )}
 

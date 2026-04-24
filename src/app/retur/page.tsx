@@ -648,6 +648,27 @@ function ReturContent() {
     }
   }, [page, debouncedSearch, rowsPerPage, selectedRetailerId, filterInisial, filterToko, dateFrom, dateTo, selectedStatus]);
 
+  const handleExportExcel = useCallback(async () => {
+    if (!selectedRetailerId) return;
+    
+    try {
+      const params = new URLSearchParams();
+      params.set("retailerId", selectedRetailerId);
+      if (search) params.set("q", search);
+      if (filterInisial) params.set("inisial", filterInisial);
+      if (filterToko) params.set("toko", filterToko);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      if (selectedStatus) params.set("status", selectedStatus);
+
+      // Trigger download
+      window.location.href = `/api/retur/export?${params.toString()}`;
+    } catch (err) {
+      console.error("Export Error:", err);
+      Swal.fire("Error", "Gagal melakukan export excel", "error");
+    }
+  }, [selectedRetailerId, search, filterInisial, filterToko, dateFrom, dateTo, selectedStatus]);
+
   const fetchStats = useCallback(async () => {
     try {
       const params = new URLSearchParams();
@@ -1163,6 +1184,17 @@ function ReturContent() {
         </div>
 
         <div className="flex items-center gap-3">
+          {selectedRetailerId && (
+            <button 
+              suppressHydrationWarning
+              onClick={handleExportExcel}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md active:scale-95 group"
+            >
+              <FileSpreadsheet size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+              Export Excel
+            </button>
+          )}
+
           {role === "pusat" && (
             <>
               <button 

@@ -19,24 +19,8 @@ export async function GET(request: Request) {
     const sessionToken = cookieStore.get("session")?.value;
     const user = verifySession(sessionToken);
 
-    let siteScopeId: string | null = null;
-    let rmInisial: string | null = null;
-
-    const safeRole = String(user?.role || "").toLowerCase().trim();
-
-    if (safeRole === "sitearea" && user?.siteArea) {
-      const unit = await prisma.unitProduksi.findFirst({
-        where: { siteArea: { contains: user.siteArea, mode: "insensitive" } },
-      });
-      if (unit) siteScopeId = unit.idRegional;
-    } else if (safeRole === "rm" && user?.regional) {
-      rmInisial = user.regional;
-    }
-
-    // Construct common where filter
+    // Access is now global for all roles as per user request
     const filters: Prisma.DataReturWhereInput[] = [];
-    if (siteScopeId) filters.push({ lokasiBarangId: siteScopeId });
-    if (rmInisial) filters.push({ inisial: { equals: rmInisial, mode: 'insensitive' } });
     
     if (retailerId) {
       const selectedRitel = await prisma.ritelModern.findUnique({ where: { id: retailerId } });

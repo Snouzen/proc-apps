@@ -23,25 +23,9 @@ export async function GET(request: Request) {
     const sessionToken = cookieStore.get("session")?.value;
     const user = verifySession(sessionToken);
 
-    let siteScopeId: string | null = null;
-    let rmInisial: string | null = null;
-
-    const safeRole = String(user?.role || "").toLowerCase().trim();
-
-    // Jika Role adalah SiteArea, batasi hanya untuk region mereka
-    if (safeRole === "sitearea" && user?.siteArea) {
-      const unit = await prisma.unitProduksi.findFirst({
-        where: { siteArea: { contains: user.siteArea, mode: "insensitive" } },
-      });
-      if (unit) siteScopeId = unit.idRegional;
-    } else if (safeRole === "rm" && user?.regional) {
-      rmInisial = user.regional;
-    }
-
     // Construct dynamic where filter
     const drFilter: Prisma.DataReturWhereInput[] = [];
-    if (siteScopeId) drFilter.push({ lokasiBarangId: siteScopeId });
-    if (rmInisial) drFilter.push({ inisial: { equals: rmInisial, mode: 'insensitive' } });
+    // Access is now global for RM and Site Area as per user request
     
     if (inisial) drFilter.push({ inisial: inisial });
     if (toko) drFilter.push({ namaCompany: toko });
@@ -90,7 +74,7 @@ export async function GET(request: Request) {
         include: {
           _count: {
             select: {
-              DataRetur: { where: siteScopeId ? { lokasiBarangId: siteScopeId } : {} }
+              DataRetur: { where: {} }
             }
           }
         },
@@ -166,7 +150,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const bodyRaw = await request.json();
+    const isArray = Array.isArray(bodyRaw);
+    const body = isArray ? bodyRaw : (bodyRaw.data || bodyRaw);
+    const replaceDuplicates = bodyRaw.replaceDuplicates === true;
 
     if (Array.isArray(body)) {
       // BULK INSERT
@@ -210,6 +197,15 @@ export async function POST(request: Request) {
         return null;
       };
 
+      // Extract unique RTV/CNs for deletion if replacement is ON
+      const rtvCns = Array.from(new Set(body.map((item: any) => item.rtvCn ? String(item.rtvCn).trim() : null).filter(Boolean)));
+
+      if (replaceDuplicates && rtvCns.length > 0) {
+        await prisma.dataRetur.deleteMany({
+          where: { rtvCn: { in: rtvCns as string[] } }
+        });
+      }
+
       // [OPTIMASI 4] Gunakan createMany untuk kecepatan maksimal (anti-timeout)
       const dataToCreate = body.map((item: any) => {
         const stringLokasi = item.lokasiBarangId || getFuzzyValue(item, ['lokasi', 'lokasi barang', 'dc']);
@@ -243,7 +239,7 @@ export async function POST(request: Request) {
 
       const result = await prisma.dataRetur.createMany({
         data: dataToCreate,
-        skipDuplicates: false,
+        skipDuplicates: !replaceDuplicates,
       });
 
       return NextResponse.json({ success: true, count: result.count });

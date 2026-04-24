@@ -106,6 +106,7 @@ export default function ClientLayout({
                 {/* SEKARANG TOGGLE INI PASTI FUNGSI */}
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
+                  suppressHydrationWarning
                   className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-500"
                 >
                   <Menu size={22} />
@@ -174,6 +175,7 @@ export default function ClientLayout({
                     onClick={() => {
                       setLogoutOpen(true);
                     }}
+                    suppressHydrationWarning
                     className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all group relative"
                   >
                     <LogOut size={20} />

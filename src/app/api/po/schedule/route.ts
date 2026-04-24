@@ -76,7 +76,7 @@ export async function PATCH(request: Request) {
 
     const parsedDate = parseDate(tglKirim);
     
-    let updateData: any = {
+    const updateData: any = {
       tglkirim: parsedDate,
       namaSupir: namaSupir || null,
       platNomor: platNomor || null,

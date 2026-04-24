@@ -94,6 +94,8 @@ model RitelModern {
   namaPt        String
   inisial       String?
   tujuan        String?
+  logoPt        String?  // URL Logo Perusahaan
+  logoInisial   String?  // URL Logo Brand/Inisial
   createdAt     DateTime        @default(now())
   updatedAt     DateTime
   PurchaseOrder PurchaseOrder[]

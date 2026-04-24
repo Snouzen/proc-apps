@@ -939,7 +939,7 @@ function TableUnderChart({
           <div className="flex flex-wrap items-center gap-2 w-full">
             {!modalOpen && (
               <>
-                <div className="relative w-full md:w-auto z-[60]">
+                <div className="relative w-full md:w-auto z-10">
                   <SmoothSelect
                     width={172}
                     value={group}

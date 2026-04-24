@@ -16,7 +16,7 @@ import {
   TrendingDown,
   CalendarDays,
   CalendarClock,
-  PackageSearch
+  PackageSearch,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -103,12 +103,24 @@ export default function Sidebar({
 
   const rekonSubItems = [
     { name: "Kalkulasi", icon: <Calculator size={16} />, path: "/rekon/calc" },
-    { name: "Data Rekonsiliasi", icon: <FileText size={16} />, path: "/rekon/data" },
+    {
+      name: "Data Rekonsiliasi",
+      icon: <FileText size={16} />,
+      path: "/rekon/data",
+    },
   ];
 
   const branchSubItems = [
-    { name: "Delivery Calendar", icon: <CalendarDays size={16} />, path: "/branch" },
-    { name: "Expired Calendar", icon: <CalendarClock size={16} />, path: "/branch/expired" },
+    {
+      name: "Delivery Calendar",
+      icon: <CalendarDays size={16} />,
+      path: "/branch",
+    },
+    {
+      name: "Expired Calendar",
+      icon: <CalendarClock size={16} />,
+      path: "/branch/expired",
+    },
   ];
 
   const menuItems =
@@ -164,9 +176,12 @@ export default function Sidebar({
         {/* Header Logo */}
         <div className="h-20 flex items-center px-6 mb-2">
           {isOpen ? (
-            <Link href="/" className="block transition-opacity hover:opacity-80">
+            <Link
+              href="/"
+              className="block transition-opacity hover:opacity-80"
+            >
               <img
-                src="/logo-bulog.png"
+                src="https://mytkqzkpywdrpnrgafss.supabase.co/storage/v1/object/public/img_logo/logo-bulog/logo-bulog.png"
                 alt="Bulog Logo"
                 className="h-10 w-auto object-contain"
               />
