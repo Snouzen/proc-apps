@@ -67,6 +67,24 @@ interface Promo {
   total: number;
 }
 
+const highlightMatch = (text: string, search: string) => {
+  if (!text) return text;
+  if (!search) return text;
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, "gi");
+  const parts = String(text).split(regex);
+  return (
+    <span>
+      {parts.map((p, i) =>
+        p.toLowerCase() === search.toLowerCase() ? (
+          <span key={i} className="bg-amber-200 text-amber-900 px-0.5 rounded-sm">{p}</span>
+        ) : (
+          <span key={i}>{p}</span>
+        )
+      )}
+    </span>
+  );
+};
+
 function RekonContent() {
   const [masterCompanies, setMasterCompanies] = useState<Company[]>([]);
   const [masterInvoices, setMasterInvoices] = useState<any[]>([]);
@@ -82,6 +100,7 @@ function RekonContent() {
   const [selectedPromo, setSelectedPromo] = useState<Promo | null>(null);
   const [adminFee, setAdminFee] = useState<number>(0);
 
+  const [companySearch, setCompanySearch] = useState("");
   const [invSearch, setInvSearch] = useState("");
   const [rtvSearch, setRtvSearch] = useState("");
   const [promoSearch, setPromoSearch] = useState("");
@@ -390,26 +409,44 @@ function RekonContent() {
               </div>
 
               {/* Company Selection Dropdown - Premium */}
-              <div className="w-full">
-                 <Popover.Root open={isCompanyOpen} onOpenChange={setIsCompanyOpen}>
-                    <Popover.Trigger asChild>
-                       <button className={`w-full h-16 px-10 rounded-[28px] border transition-all flex items-center justify-between outline-none ${selectedCompany ? 'bg-indigo-50 border-indigo-100 text-indigo-600 shadow-xl shadow-indigo-100/30' : 'bg-[#f8fafc] border-slate-50 text-slate-400 hover:bg-slate-50'}`}>
-                          <div className="flex items-center gap-5">
-                             <Building2 size={22} className={selectedCompany ? 'text-indigo-500' : 'text-slate-300'} />
-                             <span className="font-black uppercase tracking-[0.2em] text-[10px] italic">{selectedCompany ? selectedCompany.namaPt : "Pilih Company / Ritel Modern..."}</span>
+              <div className="w-full relative group">
+                 <Popover.Root open={isCompanyOpen} onOpenChange={setIsCompanyOpen} modal={false}>
+                    <Popover.Anchor asChild>
+                       <div className={`relative w-full h-16 rounded-[28px] border transition-all flex items-center justify-between overflow-hidden cursor-pointer ${selectedCompany && !isCompanyOpen ? 'bg-indigo-50 border-indigo-100 shadow-xl shadow-indigo-100/30' : 'bg-[#f8fafc] border-slate-50 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-50/50'}`}>
+                          <div className="flex items-center gap-5 w-full pl-10 pr-12">
+                             <Building2 size={22} className={selectedCompany && !isCompanyOpen ? 'text-indigo-500' : 'text-slate-300 group-focus-within:text-indigo-500 transition-colors'} />
+                             <input
+                                type="text"
+                                placeholder={selectedCompany ? selectedCompany.namaPt : "PILIH COMPANY / RITEL MODERN..."}
+                                className={`w-full bg-transparent border-none outline-none font-black uppercase tracking-[0.2em] text-[10px] ${selectedCompany && !isCompanyOpen ? 'text-indigo-600 italic cursor-pointer' : 'text-slate-600 placeholder:text-slate-400 placeholder:italic'}`}
+                                value={companySearch}
+                                onChange={e => { setCompanySearch(e.target.value); setIsCompanyOpen(true); }}
+                                onFocus={() => setIsCompanyOpen(true)}
+                                onBlur={() => setTimeout(() => setIsCompanyOpen(false), 300)}
+                             />
                           </div>
-                          <ChevronDown size={18} className={selectedCompany ? 'text-indigo-400' : 'text-slate-200'} />
-                       </button>
-                    </Popover.Trigger>
+                          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                             <ChevronDown size={18} className={selectedCompany && !isCompanyOpen ? 'text-indigo-400' : 'text-slate-200'} />
+                          </div>
+                       </div>
+                    </Popover.Anchor>
                     <Popover.Portal>
-                       <Popover.Content className="z-[110] w-[var(--radix-popover-trigger-width)] bg-white rounded-[40px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.18)] border border-slate-50 p-6 animate-in fade-in zoom-in-95" align="start">
+                       <Popover.Content className="z-[110] w-[var(--radix-popover-trigger-width)] bg-white rounded-[40px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.18)] border border-slate-50 p-6 animate-in fade-in zoom-in-95 mt-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                           <div className="max-h-[350px] overflow-y-auto no-scrollbar space-y-1">
-                             {Array.from(new Map(masterCompanies.map(item => [item.namaPt, item])).values()).map(c => (
-                                <button key={c.id} onClick={() => { setSelectedCompany(c); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromo(null); fetchCompanyData(c.namaPt, c.id); }} className={`w-full text-left p-5 rounded-[22px] transition-all font-black text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'}`}>
-                                   {c.namaPt}
+                             {Array.from(new Map(masterCompanies.map(item => [item.namaPt, item])).values())
+                                .filter(c => c.namaPt.toLowerCase().includes(companySearch.toLowerCase()))
+                                .map(c => (
+                                <button key={c.id} onClick={() => { setSelectedCompany(c); setCompanySearch(""); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromo(null); fetchCompanyData(c.namaPt, c.id); }} className={`w-full text-left p-5 rounded-[22px] transition-all font-black text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'}`}>
+                                   {highlightMatch(c.namaPt, companySearch)}
                                    <ChevronRight size={14} className={selectedCompany?.id === c.id ? 'opacity-100' : 'opacity-0'} />
                                 </button>
                              ))}
+                             {Array.from(new Map(masterCompanies.map(item => [item.namaPt, item])).values())
+                                .filter(c => c.namaPt.toLowerCase().includes(companySearch.toLowerCase())).length === 0 && (
+                                <div className="p-8 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">
+                                   Tidak ada Company ditemukan
+                                </div>
+                             )}
                           </div>
                        </Popover.Content>
                     </Popover.Portal>
@@ -462,7 +499,7 @@ function RekonContent() {
                                                className="w-full p-5 hover:bg-indigo-50 rounded-2xl transition-all flex justify-between items-center group text-left border border-transparent hover:border-indigo-100"
                                             >
                                                <div>
-                                                  <p className="font-black text-[12px] text-slate-800 uppercase tracking-tight">{invNo}</p>
+                                                  <p className="font-black text-[12px] text-slate-800 uppercase tracking-tight">{highlightMatch(invNo, invSearch)}</p>
                                                   <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Pilih Invoice ini</p>
                                                </div>
                                                <div className="text-right">
@@ -558,8 +595,8 @@ function RekonContent() {
                                                className="w-full p-5 hover:bg-rose-50 rounded-2xl transition-all flex justify-between items-center group text-left border border-transparent hover:border-rose-100"
                                             >
                                                <div>
-                                                  <p className="font-black text-[12px] text-slate-800 uppercase tracking-tight">{rtvNo}</p>
-                                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic tracking-widest italic">Pilih RTV ini</p>
+                                                  <p className="font-black text-[12px] text-slate-800 uppercase tracking-tight">{highlightMatch(rtvNo, rtvSearch)}</p>
+                                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Pilih RTV ini</p>
                                                </div>
                                                <div className="text-right">
                                                   <div className="flex items-center gap-1 text-[8px] font-black text-rose-500 uppercase">
@@ -702,8 +739,8 @@ function RekonContent() {
                                                    <Percent size={18} />
                                                 </div>
                                                 <div>
-                                                   <p className="font-black text-[12px] text-slate-800 uppercase tracking-tight">{promo.nomor}</p>
-                                                   <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">{promo.kegiatan} • {promo.periode}</p>
+                                                   <p className="font-black text-[12px] text-slate-800 uppercase tracking-tight">{highlightMatch(promo.nomor, promoSearch)}</p>
+                                                   <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">{highlightMatch(promo.kegiatan, promoSearch)} • {promo.periode}</p>
                                                 </div>
                                              </div>
                                              <div className="text-right">

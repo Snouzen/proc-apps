@@ -112,17 +112,53 @@ export async function PATCH(request: Request) {
   try {
     const { default: prisma } = await import("@/lib/db");
     const body = await request.json();
-    const { namaPt, inisial } = body as { namaPt?: string; inisial?: string };
+    const { id, namaPt, inisial, newInisial, logoPt, logoInisial } = body as { 
+      id?: string; 
+      namaPt?: string; 
+      inisial?: string; 
+      newInisial?: string;
+      logoPt?: string;
+      logoInisial?: string;
+    };
+
     if (!namaPt) {
-      return NextResponse.json(
-        { error: "namaPt wajib diisi" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "namaPt wajib diisi" }, { status: 400 });
     }
-    await prisma.ritelModern.updateMany({
-      where: { namaPt: { equals: namaPt, mode: "insensitive" } },
-      data: { inisial: inisial ?? null, updatedAt: new Date() },
-    });
+
+    // 1. Update logoPt untuk SEMUA baris dengan namaPt yang sama
+    if (logoPt !== undefined) {
+      await prisma.ritelModern.updateMany({
+        where: { namaPt: { equals: namaPt, mode: "insensitive" } },
+        data: { logoPt: logoPt || null, updatedAt: new Date() },
+      });
+    }
+
+    // 2. Update inisial & logoInisial untuk baris yang spesifik
+    const targetInisial = newInisial !== undefined ? newInisial : (inisial !== undefined ? inisial : undefined);
+    
+    if (targetInisial !== undefined || logoInisial !== undefined) {
+      const whereClause: any = { namaPt: { equals: namaPt, mode: "insensitive" } };
+      
+      // Jika kita mengupdate inisial, kita harus tau inisial MANA yang mau diubah
+      if (inisial !== undefined) {
+        if (inisial === null) {
+          whereClause.inisial = null;
+        } else {
+          whereClause.inisial = { equals: inisial, mode: "insensitive" };
+        }
+      }
+
+      const updateData: any = { updatedAt: new Date() };
+      if (targetInisial !== undefined) updateData.inisial = targetInisial || null;
+      if (logoInisial !== undefined) updateData.logoInisial = logoInisial || null;
+
+      const result = await prisma.ritelModern.updateMany({
+        where: whereClause,
+        data: updateData,
+      });
+      console.log(`PATCH Ritel: Updated ${result.count} rows for inisial ${inisial}`);
+    }
+
     cacheClearPrefix("ritel:");
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -316,7 +316,7 @@ export default function DataTable<T = any>({
   return (
     <div className={className || wrapperCls}>
       <div
-        className={`overflow-x-auto scrollbar-hide ${isRounded ? "py-2" : ""}`}
+        className={`overflow-x-auto premium-scrollbar ${isRounded ? "py-2" : ""}`}
         style={maxHeight ? { maxHeight, overflowY: "auto" } : undefined}
       >
         <table

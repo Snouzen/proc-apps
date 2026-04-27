@@ -385,18 +385,23 @@ function SmoothStatusSelect({
           sideOffset={5}
           align="start"
         >
-          {options.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => {
-                onChange(opt);
-                setOpen(false);
-              }}
-              className={`w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors ${value.toUpperCase() === opt ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}
-            >
-              {opt}
-            </button>
-          ))}
+          {options.map((opt) => {
+              const hoverColor = opt === "SUDAH DIAMBIL" ? "hover:bg-emerald-50 hover:text-emerald-600"
+                : opt === "DIMUSNAHKAN" ? "hover:bg-amber-50 hover:text-amber-600"
+                : "hover:bg-rose-50 hover:text-rose-600";
+              return (
+              <button
+                key={opt}
+                onClick={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors ${value.toUpperCase() === opt ? "bg-indigo-600 text-white" : `text-slate-600 ${hoverColor}`}`}
+              >
+                {opt}
+              </button>
+              );
+            })}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
@@ -501,6 +506,7 @@ function ReturContent() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | null>(null);
   const [userArea, setUserArea] = useState<string | null>(null);
+  const [userRegional, setUserRegional] = useState<string | null>(null);
   
   const [retailers, setRetailers] = useState<any[]>([]);
   const [selectedRetailerId, setSelectedRetailerId] = useState<string | null>(null);
@@ -594,8 +600,25 @@ function ReturContent() {
       setProducts(Array.isArray(productJson) ? productJson : (productJson?.data || []));
       setUnits(Array.isArray(unitJson) ? unitJson : (unitJson?.data || []));
       if (me?.authenticated) {
-        setRole(me.role || null);
-        setUserArea(me.siteArea || me.regional || null);
+        let r = (me.role as any) || null;
+        if (r === "pic_site") r = "sitearea";
+        setRole(r as any);
+        setUserRegional(me.regional || null);
+        // Set userArea: prefer me.siteArea, fallback derive from email prefix
+        const parsedUnits = Array.isArray(unitJson) ? unitJson : (unitJson?.data || []);
+        if (me.siteArea) {
+          setUserArea(me.siteArea);
+        } else if ((r === "sitearea") && me.email) {
+          // Derive siteArea from email: "spbsukoharjo@bulog.co.id" → "spbsukoharjo"
+          const emailPrefix = (me.email.split("@")[0] || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const matchedUnit = parsedUnits.find((u: any) => {
+            const sa = (u.siteArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            return sa === emailPrefix;
+          });
+          setUserArea(matchedUnit?.siteArea || null);
+        } else {
+          setUserArea(null);
+        }
       }
     });
   }, []);
@@ -668,6 +691,16 @@ function ReturContent() {
       Swal.fire("Error", "Gagal melakukan export excel", "error");
     }
   }, [selectedRetailerId, search, filterInisial, filterToko, dateFrom, dateTo, selectedStatus]);
+
+  const handleExportAll = useCallback(async () => {
+    try {
+      // Trigger download without any filters to grab everything
+      window.location.href = `/api/retur/export`;
+    } catch (err) {
+      console.error("Export All Error:", err);
+      Swal.fire("Error", "Gagal melakukan export keseluruhan", "error");
+    }
+  }, []);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -868,7 +901,12 @@ function ReturContent() {
         color: '#0f172a'
       });
 
-      fetchRetur();
+      // Preserve scroll position after re-fetch
+      const scrollY = window.scrollY;
+      await fetchRetur();
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior });
+      });
     } catch (error: any) {
       console.error(error);
       // --- ERROR MODAL ---
@@ -1195,6 +1233,17 @@ function ReturContent() {
             </button>
           )}
 
+          {isGroupedMode && (
+            <button 
+              suppressHydrationWarning
+              onClick={handleExportAll}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md active:scale-95 group"
+            >
+              <FileSpreadsheet size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+              Export Semua
+            </button>
+          )}
+
           {role === "pusat" && (
             <>
               <button 
@@ -1470,6 +1519,76 @@ function ReturContent() {
               },
             },
             {
+              key: "statusBarang",
+              label: "STATUS BARANG",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                // RULE: Site Area can only edit status if lokasi barang = their site area
+                // Also allow when they just picked their lokasi during this edit session (realtime)
+                const currentLokasi = isEditing
+                  ? (units.find((u: any) => u.idRegional === editForm.lokasiBarangId)?.siteArea || "")
+                  : (item.LokasiBarang?.siteArea || "");
+                const currentLokasiNorm = currentLokasi.toLowerCase().replace(/[^a-z0-9]/g, "");
+                const userAreaStatusNorm = (userArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                const userRegNorm = (userRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                // For sitearea: match against userArea (siteArea), fallback to regional match
+                const isSiteareaMatch = userAreaStatusNorm
+                  ? (currentLokasiNorm === userAreaStatusNorm)
+                  : (userRegNorm ? !!units.find((u: any) => {
+                      const sa = (u.siteArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                      const rg = (u.namaRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                      return sa === currentLokasiNorm && rg === userRegNorm;
+                    }) : false);
+                const canEditStatus = role === "pusat" ||
+                  (role === "sitearea" && currentLokasiNorm !== "" && isSiteareaMatch) ||
+                  (role === "rm"); // RM has no special rule on status barang, follows existing behavior
+                return isEditing && canEditStatus ? (
+                  <SmoothStatusSelect value={editForm.statusBarang || "BELUM DIAMBIL"} onChange={(v: string) => setEditForm({...editForm, statusBarang: v})} />
+                ) : (
+                  <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border whitespace-nowrap ${
+                    item.statusBarang?.toUpperCase() === "SUDAH DIAMBIL" ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                    : item.statusBarang?.toUpperCase() === "DIMUSNAHKAN" ? "bg-amber-50 text-amber-600 border-amber-100"
+                    : "bg-rose-50 text-rose-600 border-rose-100"
+                  }`}>{item.statusBarang || "Belum Diambil"}</div>
+                );
+              },
+            },
+            {
+              key: "lokasiBarang",
+              label: "LOKASI BARANG",
+              render: (_v: any, item: any) => {
+                const isEditing = editingId === item.id;
+                // RULE: Site Area can only edit lokasi if currently empty, options = only their own site area
+                const lokasiIsEmpty = !item.LokasiBarang?.siteArea;
+                const canEditLokasi = role === "pusat" ||
+                  (role === "sitearea" && lokasiIsEmpty);
+                // For sitearea, restrict options to only their own site area
+                const userAreaNorm = (userArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                const userRegLokasiNorm = (userRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                const lokasiOptions = role === "sitearea"
+                  ? (userAreaNorm
+                    // If userArea (siteArea) is set, match directly
+                    ? units.filter((u: any) => {
+                        const sa = (u.siteArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                        return sa === userAreaNorm;
+                      }).map((u: any) => u.siteArea)
+                    // Fallback: if siteArea is null, find units in user's regional
+                    : (userRegLokasiNorm
+                      ? units.filter((u: any) => {
+                          const rg = (u.namaRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                          return rg === userRegLokasiNorm;
+                        }).map((u: any) => u.siteArea)
+                      : [])
+                  )
+                  : filteredLokasi.map((u: any) => u.siteArea);
+                return isEditing && canEditLokasi ? (
+                  <TableSearchableInput value={units.find((u: any) => u.idRegional === editForm.lokasiBarangId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); setEditForm({ ...editForm, lokasiBarangId: u?.idRegional || "" }); setSearchLokasi(val); }} items={lokasiOptions} placeholder="Cari Lokasi/DC..." />
+                ) : (
+                  <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{item.LokasiBarang?.siteArea || "-"}</div>
+                );
+              },
+            },
+            {
               key: "kodeToko",
               label: "KODE TOKO",
               align: "center" as const,
@@ -1576,22 +1695,6 @@ function ReturContent() {
               },
             },
             {
-              key: "statusBarang",
-              label: "STATUS BARANG",
-              render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing ? (
-                  <SmoothStatusSelect value={editForm.statusBarang || "BELUM DIAMBIL"} onChange={(v: string) => setEditForm({...editForm, statusBarang: v})} />
-                ) : (
-                  <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border whitespace-nowrap ${
-                    item.statusBarang?.toUpperCase() === "SUDAH DIAMBIL" ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
-                    : item.statusBarang?.toUpperCase() === "DIMUSNAHKAN" ? "bg-amber-50 text-amber-600 border-amber-100"
-                    : "bg-rose-50 text-rose-600 border-rose-100"
-                  }`}>{item.statusBarang || "Belum Diambil"}</div>
-                );
-              },
-            },
-            {
               key: "refKetStatus",
               label: "REFERENSI/KET STATUS",
               render: (_v: any, item: any) => {
@@ -1606,23 +1709,16 @@ function ReturContent() {
               },
             },
             {
-              key: "lokasiBarang",
-              label: "LOKASI BARANG",
-              render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing ? (
-                  <TableSearchableInput value={units.find((u: any) => u.idRegional === editForm.lokasiBarangId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); setEditForm({ ...editForm, lokasiBarangId: u?.idRegional || "" }); setSearchLokasi(val); }} items={filteredLokasi.map((u: any) => u.siteArea)} placeholder="Cari Lokasi/DC..." />
-                ) : (
-                  <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{item.LokasiBarang?.siteArea || "-"}</div>
-                );
-              },
-            },
-            {
               key: "pembebananReturn",
               label: "PEMBEBANAN RETUR",
               render: (_v: any, item: any) => {
                 const isEditing = editingId === item.id;
-                return isEditing && role === "pusat" ? (
+                // RULE: RM can edit pembebanan if lokasi barang belongs to their regional
+                const lokasiSiteArea = item.LokasiBarang?.siteArea || "";
+                const lokasiUnit = units.find((u: any) => (u.siteArea || "").toLowerCase() === lokasiSiteArea.toLowerCase());
+                const lokasiRegional = lokasiUnit?.namaRegional || "";
+                const canRmEdit = role === "rm" && lokasiSiteArea && lokasiRegional.toLowerCase() === (userRegional || "").toLowerCase();
+                return isEditing && (role === "pusat" || canRmEdit) ? (
                   <TableSearchableInput value={units.find((u: any) => u.idRegional === editForm.pembebananReturnId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); setEditForm({ ...editForm, pembebananReturnId: u?.idRegional || "" }); setSearchPembebanan(val); }} items={filteredPembebanan.map((u: any) => u.siteArea)} placeholder="Cari Pembebanan..." />
                 ) : (
                   <div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">{item.PembebananReturn?.siteArea || "-"}</div>

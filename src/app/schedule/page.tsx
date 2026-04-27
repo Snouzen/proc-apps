@@ -218,9 +218,8 @@ export default function SchedulePage() {
           showConfirmButton: false,
         });
 
-        // --- RETUR REMINDER LOGIC (RM & SITEAREA ONLY) ---
-        const safeRole = String(user?.role || "").toLowerCase().trim();
-        if (safeRole === "rm" || safeRole === "sitearea") {
+        // --- RETUR REMINDER LOGIC (ALL ROLES) ---
+        if (user) {
           try {
             const statsRes = await fetch("/api/retur/stats");
             if (statsRes.ok) {

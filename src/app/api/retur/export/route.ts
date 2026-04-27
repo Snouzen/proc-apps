@@ -25,23 +25,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Identifikasi Ritel
-    if (!retailerId) {
-      return NextResponse.json({ error: "Retailer ID is required" }, { status: 400 });
-    }
-
-    const selectedRitel = await prisma.ritelModern.findUnique({ where: { id: retailerId } });
-    if (!selectedRitel) {
-      return NextResponse.json({ error: "Retailer not found" }, { status: 404 });
+    // Identifikasi Ritel (Optional)
+    let selectedRitel = null;
+    if (retailerId) {
+      selectedRitel = await prisma.ritelModern.findUnique({ where: { id: retailerId } });
+      if (!selectedRitel) {
+        return NextResponse.json({ error: "Retailer not found" }, { status: 404 });
+      }
     }
 
     // Build common filter (SAME as in /api/retur/route.ts but without pagination)
     const drFilter: Prisma.DataReturWhereInput[] = [];
     
-    // DETAIL MODE FILTER: By Name (ensure all branches are included)
-    const filtersB: Prisma.DataReturWhereInput[] = [
-      { RitelModern: { namaPt: { equals: selectedRitel.namaPt, mode: 'insensitive' } } }
-    ];
+    // DETAIL MODE FILTER: By Name if retailerId provided, otherwise all
+    const filtersB: Prisma.DataReturWhereInput[] = [];
+    
+    if (selectedRitel) {
+      filtersB.push({ RitelModern: { namaPt: { equals: selectedRitel.namaPt, mode: 'insensitive' } } });
+    }
 
     if (inisial) drFilter.push({ inisial: inisial });
     if (toko) drFilter.push({ namaCompany: toko });
@@ -169,15 +170,16 @@ export async function GET(request: Request) {
     worksheet.getColumn('maxPickup').numFmt = 'dd/mm/yyyy';
     worksheet.getColumn('tanggalPembayaran').numFmt = 'dd/mm/yyyy';
 
-    // Formatting money columns (IDR format)
-    const idrFmt = '_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"??_);_(@_)';
+    // Update IDR format for better Excel compatibility
+    const idrFmt = '\"Rp\" #,##0'; 
     worksheet.getColumn('nominal').numFmt = idrFmt;
     worksheet.getColumn('rpKg').numFmt = idrFmt;
 
     // Generate buffer
     const buffer = await workbook.xlsx.writeBuffer();
 
-    const filename = `Data_Retur_${selectedRitel.namaPt.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const ritelName = selectedRitel ? selectedRitel.namaPt.replace(/\s+/g, '_') : "ALL_RETAILERS";
+    const filename = `Data_Retur_${ritelName}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
     return new Response(buffer, {
       status: 200,
