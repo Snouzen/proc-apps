@@ -21,7 +21,9 @@ import { saveRitel } from "@/lib/api";
 import { StatefulButton } from "@/components/ui/stateful-button";
 import Combobox from "@/components/combobox";
 import dynamic from "next/dynamic";
-const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
+const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), {
+  ssr: false,
+});
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 
 const highlightText = (text: string, query: string) => {
@@ -257,23 +259,27 @@ export default function RitelModernPage() {
         const namaPt = getCellValue(row, namaPtKey);
         const tujuan = getCellValue(row, tujuanKey);
         if (!namaPt || !tujuan) continue;
-        
+
         const inisialKey = findColumnKey(row, inisialAliases);
         const excelInisial = getCellValue(row, inisialKey);
         const inisial = companyMapping[namaPt] ?? (excelInisial || null);
-        
+
         // Find logo keys if they exist in Excel (Logo PT, Logo Inisial)
         const logoPtKey = findColumnKey(row, ["logo pt", "logopt", "logo_pt"]);
-        const logoInisialKey = findColumnKey(row, ["logo inisial", "logoinitial", "logo_inisial"]);
+        const logoInisialKey = findColumnKey(row, [
+          "logo inisial",
+          "logoinitial",
+          "logo_inisial",
+        ]);
         const excelLogoPt = getCellValue(row, logoPtKey);
         const excelLogoInisial = getCellValue(row, logoInisialKey);
 
-        const payload = { 
-            namaPt, 
-            inisial: inisial || undefined, 
-            tujuan,
-            logoPt: excelLogoPt || undefined,
-            logoInisial: excelLogoInisial || undefined
+        const payload = {
+          namaPt,
+          inisial: inisial || undefined,
+          tujuan,
+          logoPt: excelLogoPt || undefined,
+          logoInisial: excelLogoInisial || undefined,
         };
 
         const key = `${namaPt.trim().toLowerCase()}|${tujuan.trim().toLowerCase()}`;
@@ -340,10 +346,10 @@ export default function RitelModernPage() {
 
       if (result) {
         Swal.fire({
-            icon: "success",
-            title: "Berhasil",
-            text: "Data Berhasil disimpan!",
-            timer: 1500
+          icon: "success",
+          title: "Berhasil",
+          text: "Data Berhasil disimpan!",
+          timer: 1500,
         });
         setIsModalOpen(false);
         setSelectedCompany("");
@@ -356,7 +362,7 @@ export default function RitelModernPage() {
       Swal.fire({
         icon: "error",
         title: "Gagal",
-        text: "Gagal konek server backend"
+        text: "Gagal konek server backend",
       });
     }
   };
@@ -368,21 +374,27 @@ export default function RitelModernPage() {
         displayId: item.id,
         namaPt: item.namaPt,
         logoPt: item.logoPt,
-        inisials: {} as Record<string, { logoInisial?: string | null; stores: { id: string; tujuan: string }[] }>,
+        inisials: {} as Record<
+          string,
+          {
+            logoInisial?: string | null;
+            stores: { id: string; tujuan: string }[];
+          }
+        >,
       };
       acc.push(group);
     }
-    
+
     // Always update logoPt if current item has it (in case some rows don't)
     if (item.logoPt && !group.logoPt) group.logoPt = item.logoPt;
 
     const alias = String(item.inisial ?? "—");
     if (!group.inisials[alias]) {
-        group.inisials[alias] = { logoInisial: item.logoInisial, stores: [] };
+      group.inisials[alias] = { logoInisial: item.logoInisial, stores: [] };
     }
     // Update logoInisial if current item has it
     if (item.logoInisial && !group.inisials[alias].logoInisial) {
-        group.inisials[alias].logoInisial = item.logoInisial;
+      group.inisials[alias].logoInisial = item.logoInisial;
     }
 
     if (item.tujuan && String(item.tujuan).trim().length > 0) {
@@ -398,21 +410,23 @@ export default function RitelModernPage() {
     new Set([...Object.keys(companyMapping), ...existingCompanies]),
   ).sort();
 
-  const filteredData = groupedData.filter((item) => {
-    const term = searchTerm.toLowerCase();
-    const matchPt = item.namaPt.toLowerCase().includes(term);
-    const matchAlias = Object.keys(item.inisials).some((a) =>
-      a.toLowerCase().includes(term),
-    );
-    const matchStore = Object.values(item.inisials).some((data: any) =>
-      data.stores.some((s: any) =>
-        String(s.tujuan || "")
-          .toLowerCase()
-          .includes(term),
-      ),
-    );
-    return matchPt || matchAlias || matchStore;
-  });
+  const filteredData = groupedData
+    .filter((item) => {
+      const term = searchTerm.toLowerCase();
+      const matchPt = item.namaPt.toLowerCase().includes(term);
+      const matchAlias = Object.keys(item.inisials).some((a) =>
+        a.toLowerCase().includes(term),
+      );
+      const matchStore = Object.values(item.inisials).some((data: any) =>
+        data.stores.some((s: any) =>
+          String(s.tujuan || "")
+            .toLowerCase()
+            .includes(term),
+        ),
+      );
+      return matchPt || matchAlias || matchStore;
+    })
+    .sort((a, b) => a.namaPt.localeCompare(b.namaPt));
 
   // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -451,9 +465,9 @@ export default function RitelModernPage() {
 
       if (!jsonData.length) {
         Swal.fire({
-            icon: "error",
-            title: "Gagal",
-            text: "File Excel kosong atau tidak ada data di sheet pertama."
+          icon: "error",
+          title: "Gagal",
+          text: "File Excel kosong atau tidak ada data di sheet pertama.",
         });
         e.target.value = "";
         return;
@@ -484,9 +498,9 @@ export default function RitelModernPage() {
         const existingKeys =
           Object.keys(first || {}).join(", ") || "(tidak ada kolom)";
         Swal.fire({
-            icon: "error",
-            title: "Format Salah",
-            text: `Format Excel tidak dikenali. Gunakan header: "Nama PT" dan "Tujuan". Kolom terbaca: ${existingKeys}.`
+          icon: "error",
+          title: "Format Salah",
+          text: `Format Excel tidak dikenali. Gunakan header: "Nama PT" dan "Tujuan". Kolom terbaca: ${existingKeys}.`,
         });
         e.target.value = "";
         return;
@@ -633,7 +647,7 @@ export default function RitelModernPage() {
             {loadError ? "—" : "Belum ada data di database."}
           </div>
         ) : (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {currentItems.map((group) => (
               <div
                 key={group.displayId}
@@ -641,17 +655,18 @@ export default function RitelModernPage() {
               >
                 {/* Logo Banner */}
                 <div
-                  className="relative h-20 flex items-center justify-center overflow-hidden border-b border-slate-100 px-4"
+                  className="relative h-20 flex items-center justify-center overflow-hidden border-b border-slate-100 px-2"
                   style={{
-                    background: "radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0) 0 0 / 16px 16px",
-                    backgroundColor: "#f8fafc"
+                    background:
+                      "radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0) 0 0 / 16px 16px",
+                    backgroundColor: "#f8fafc",
                   }}
                 >
                   {group.logoPt ? (
                     <img
                       src={group.logoPt}
                       alt={group.namaPt}
-                      className="max-h-14 max-w-[85%] w-auto object-contain drop-shadow-sm"
+                      className="h-[80%] w-[90%] object-contain drop-shadow-sm"
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-1 opacity-15">
@@ -931,19 +946,23 @@ export default function RitelModernPage() {
                         >
                           <div className="flex items-center gap-4">
                             <div className="w-24 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
-                                {data.logoInisial ? (
-                                    <img src={data.logoInisial} alt="logo" className="w-full h-full object-contain" />
-                                ) : (
-                                    <Store size={20} className="text-slate-200" />
-                                )}
+                              {data.logoInisial ? (
+                                <img
+                                  src={data.logoInisial}
+                                  alt="logo"
+                                  className="w-full h-full object-contain"
+                                />
+                              ) : (
+                                <Store size={20} className="text-slate-200" />
+                              )}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <div className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-black tracking-widest uppercase inline-block mb-1 border border-slate-200/50">
-                                    {alias || "—"}
-                                </div>
-                                <div className="text-xs text-slate-400 font-medium">
-                                    {data.stores.length} Distribusi Toko
-                                </div>
+                              <div className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-black tracking-widest uppercase inline-block mb-1 border border-slate-200/50">
+                                {alias || "—"}
+                              </div>
+                              <div className="text-xs text-slate-400 font-medium">
+                                {data.stores.length} Distribusi Toko
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -966,18 +985,21 @@ export default function RitelModernPage() {
                             <button
                               onClick={() => {
                                 setViewAliases(null);
-                                const masterGroup = (dataRitel || []).find(r => 
-                                    r.namaPt === viewAliases.namaPt && 
-                                    (r.inisial || "—") === alias
+                                const masterGroup = (dataRitel || []).find(
+                                  (r) =>
+                                    r.namaPt === viewAliases.namaPt &&
+                                    (r.inisial || "—") === alias,
                                 );
                                 setTimeout(() => {
                                   setEditCompany({
                                     id: masterGroup?.id,
                                     namaPt: viewAliases.namaPt,
                                     inisial: alias === "—" ? null : alias,
-                                    originalInisial: alias === "—" ? null : alias,
+                                    originalInisial:
+                                      alias === "—" ? null : alias,
                                     logoPt: masterGroup?.logoPt || null,
-                                    logoInisial: masterGroup?.logoInisial || null,
+                                    logoInisial:
+                                      masterGroup?.logoInisial || null,
                                   });
                                 }, 0);
                               }}
@@ -1273,7 +1295,11 @@ export default function RitelModernPage() {
                   />
                   {logoPt && (
                     <div className="mt-1 flex justify-center p-1 bg-white border border-blue-100 rounded-lg">
-                        <img src={logoPt} alt="preview" className="h-8 object-contain" />
+                      <img
+                        src={logoPt}
+                        alt="preview"
+                        className="h-8 object-contain"
+                      />
                     </div>
                   )}
                 </div>
@@ -1290,7 +1316,11 @@ export default function RitelModernPage() {
                   />
                   {logoInisial && (
                     <div className="mt-1 flex justify-center p-1 bg-white border border-amber-100 rounded-lg">
-                        <img src={logoInisial} alt="preview" className="h-8 object-contain" />
+                      <img
+                        src={logoInisial}
+                        alt="preview"
+                        className="h-8 object-contain"
+                      />
                     </div>
                   )}
                 </div>
@@ -1313,7 +1343,7 @@ export default function RitelModernPage() {
                       namaPt: selectedCompany,
                       inisial: inisial,
                       logoPt: logoPt || undefined,
-                      logoInisial: logoInisial || undefined
+                      logoInisial: logoInisial || undefined,
                     };
                     const result = await saveRitel(payload);
                     setIsModalOpen(false);
@@ -1374,7 +1404,9 @@ export default function RitelModernPage() {
                   <input
                     type="text"
                     value={editCompany.logoPt ?? ""}
-                    onChange={(e) => setEditCompany({ ...editCompany, logoPt: e.target.value })}
+                    onChange={(e) =>
+                      setEditCompany({ ...editCompany, logoPt: e.target.value })
+                    }
                     placeholder="https://..."
                     className="w-full px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px]"
                   />
@@ -1386,7 +1418,12 @@ export default function RitelModernPage() {
                   <input
                     type="text"
                     value={editCompany.logoInisial ?? ""}
-                    onChange={(e) => setEditCompany({ ...editCompany, logoInisial: e.target.value })}
+                    onChange={(e) =>
+                      setEditCompany({
+                        ...editCompany,
+                        logoInisial: e.target.value,
+                      })
+                    }
                     placeholder="https://..."
                     className="w-full px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px]"
                   />
@@ -1409,29 +1446,37 @@ export default function RitelModernPage() {
                           id: editCompany.id,
                           namaPt: editCompany.namaPt,
                           inisial: editCompany.originalInisial, // original value to find rows
-                          newInisial: editCompany.inisial,      // new value to update
+                          newInisial: editCompany.inisial, // new value to update
                           logoPt: editCompany.logoPt,
-                          logoInisial: editCompany.logoInisial
+                          logoInisial: editCompany.logoInisial,
                         }),
                       });
                       if (!res.ok) {
                         const j = await res.json().catch(() => ({}));
                         Swal.fire({
-                            icon: "error",
-                            title: "Gagal",
-                            text: j?.error || "Gagal update inisial"
+                          icon: "error",
+                          title: "Gagal",
+                          text: j?.error || "Gagal update inisial",
                         });
                         return;
                       }
                       // Update state
                       setDataRitel((prev) =>
                         prev.map((x: any) =>
-                          x.namaPt.toLowerCase() === editCompany.namaPt.toLowerCase() &&
-                          (x.inisial ?? "—") === (editCompany.originalInisial ?? "—")
-                            ? { ...x, inisial: editCompany.inisial, logoPt: editCompany.logoPt, logoInisial: editCompany.logoInisial }
-                            : x.namaPt.toLowerCase() === editCompany.namaPt.toLowerCase()
-                            ? { ...x, logoPt: editCompany.logoPt } // Also update PT logo for other initials
-                            : x,
+                          x.namaPt.toLowerCase() ===
+                            editCompany.namaPt.toLowerCase() &&
+                          (x.inisial ?? "—") ===
+                            (editCompany.originalInisial ?? "—")
+                            ? {
+                                ...x,
+                                inisial: editCompany.inisial,
+                                logoPt: editCompany.logoPt,
+                                logoInisial: editCompany.logoInisial,
+                              }
+                            : x.namaPt.toLowerCase() ===
+                                editCompany.namaPt.toLowerCase()
+                              ? { ...x, logoPt: editCompany.logoPt } // Also update PT logo for other initials
+                              : x,
                         ),
                       );
                       Swal.fire({
@@ -1441,14 +1486,14 @@ export default function RitelModernPage() {
                         timer: 1500,
                         showConfirmButton: false,
                         position: "top-end",
-                        toast: true
+                        toast: true,
                       });
                       setEditCompany(null);
                     } catch {
                       Swal.fire({
                         icon: "error",
                         title: "Oops...",
-                        text: "Gagal update inisial"
+                        text: "Gagal update inisial",
                       });
                     }
                   }}

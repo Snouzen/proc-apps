@@ -113,8 +113,7 @@ export default function ExpiredCalendarPage() {
     try {
       const params = new URLSearchParams({
         limit: "5000",
-        status: "active",
-        filterBy: "expired", // 👈 Point API to filter by expired date
+        filterBy: "expired", // 👈 Kembalikan agar query API berdasarkan expiredTgl
         month: selectedMonth,
         year: selectedYear,
         includeItems: "true", // 👈 Agar bisa hitung total Kg
