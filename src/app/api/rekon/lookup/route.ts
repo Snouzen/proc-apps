@@ -4,9 +4,9 @@ import prisma from "@/lib/prisma";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const invoiceNo = searchParams.get("invoiceNo");
-    const rtvNo = searchParams.get("rtvNo");
-    const companyName = searchParams.get("companyName");
+    const invoiceNo = searchParams.get("invoiceNo")?.trim();
+    const rtvNo = searchParams.get("rtvNo")?.trim();
+    const companyName = searchParams.get("companyName")?.trim();
 
     // --- CASE A: Suggestion Mode (Hanya Company Name disediakan) ---
     // Dipakai untuk dropdown autocomplete di frontend
@@ -15,14 +15,21 @@ export async function GET(request: Request) {
         prisma.purchaseOrder.findMany({
           where: { 
              RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } },
-             noInvoice: { not: null } 
+             AND: [
+               { noInvoice: { not: null } },
+               { noInvoice: { not: "" } }
+             ]
           },
           select: { noInvoice: true },
           distinct: ['noInvoice'],
         }),
         prisma.dataRetur.findMany({
           where: { 
-             RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } } 
+             RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } },
+             AND: [
+               { rtvCn: { not: null } },
+               { rtvCn: { not: "" } }
+             ]
           },
           select: { rtvCn: true },
           distinct: ['rtvCn'],
@@ -30,8 +37,8 @@ export async function GET(request: Request) {
       ]);
 
       return NextResponse.json({ 
-        invoices: availableInvoices.map(i => i.noInvoice),
-        rtvs: availableRtvs.map(r => r.rtvCn)
+        invoices: availableInvoices.map(i => i.noInvoice).filter(Boolean),
+        rtvs: availableRtvs.map(r => r.rtvCn).filter(Boolean)
       });
     }
 

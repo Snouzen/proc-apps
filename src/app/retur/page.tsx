@@ -498,6 +498,8 @@ function ReturContent() {
   const initialRitelId = searchParams.get("ritelId");
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalQty, setTotalQty] = useState(0);
+  const [totalNominal, setTotalNominal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isFetchingPage, setIsFetchingPage] = useState(false);
   const [page, setPage] = useState(1);
@@ -513,6 +515,8 @@ function ReturContent() {
   const [isGroupedMode, setIsGroupedMode] = useState(true);
   const [filterInisial, setFilterInisial] = useState("");
   const [filterToko, setFilterToko] = useState("");
+  const [filterLokasi, setFilterLokasi] = useState("");
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
@@ -646,6 +650,7 @@ function ReturContent() {
       // New filters
       if (filterInisial) params.set("inisial", filterInisial);
       if (filterToko) params.set("toko", filterToko);
+      if (filterLokasi) params.set("lokasi", filterLokasi);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       if (selectedStatus) params.set("status", selectedStatus);
@@ -659,6 +664,9 @@ function ReturContent() {
         setIsGroupedMode(json.isGrouped);
         setData(json.data || []);
         setTotal(json.total || 0);
+        setTotalQty(json.totalQty || 0);
+        setTotalNominal(json.totalNominal || 0);
+        setAvailableLocations(json.availableLocations || []);
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
@@ -669,7 +677,7 @@ function ReturContent() {
       setIsFetchingPage(false);
       fetchStats();
     }
-  }, [page, debouncedSearch, rowsPerPage, selectedRetailerId, filterInisial, filterToko, dateFrom, dateTo, selectedStatus]);
+  }, [page, debouncedSearch, rowsPerPage, selectedRetailerId, filterInisial, filterToko, filterLokasi, dateFrom, dateTo, selectedStatus]);
 
   const handleExportExcel = useCallback(async () => {
     if (!selectedRetailerId) return;
@@ -683,6 +691,7 @@ function ReturContent() {
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       if (selectedStatus) params.set("status", selectedStatus);
+      if (filterLokasi) params.set("lokasi", filterLokasi);
 
       // Trigger download
       window.location.href = `/api/retur/export?${params.toString()}`;
@@ -690,7 +699,7 @@ function ReturContent() {
       console.error("Export Error:", err);
       Swal.fire("Error", "Gagal melakukan export excel", "error");
     }
-  }, [selectedRetailerId, search, filterInisial, filterToko, dateFrom, dateTo, selectedStatus]);
+  }, [selectedRetailerId, search, filterInisial, filterToko, filterLokasi, dateFrom, dateTo, selectedStatus]);
 
   const handleExportAll = useCallback(async () => {
     try {
@@ -721,7 +730,7 @@ function ReturContent() {
     } catch (err) {
       console.error("Fetch Stats Error:", err);
     }
-  }, [debouncedSearch, selectedRetailerId, filterInisial, filterToko, dateFrom, dateTo]);
+  }, [debouncedSearch, selectedRetailerId, filterInisial, filterToko, filterLokasi, dateFrom, dateTo]);
 
   // --- CLIENT SIDE FILTERING FOR DETAIL MODE ---
   const filteredData = useMemo(() => {
@@ -1354,9 +1363,19 @@ function ReturContent() {
           </div>
           
           {!isGroupedMode && (
-            <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
-               <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Record</span>
-               <span className="text-sm font-black text-indigo-700 tabular-nums">{filteredData.length}</span>
+            <div className="hidden lg:flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
+                 <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Record</span>
+                 <span className="text-sm font-black text-indigo-700 tabular-nums">{total}</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Total QTY</span>
+                 <span className="text-sm font-black text-emerald-700 tabular-nums">{formatNumber(totalQty)}</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-100 rounded-xl">
+                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Total Nominal</span>
+                 <span className="text-sm font-black text-amber-700 tabular-nums">{formatIDR(totalNominal)}</span>
+              </div>
             </div>
           )}
         </div>
@@ -1379,6 +1398,14 @@ function ReturContent() {
               onCommit={setFilterToko}
               items={filterOptions.tokos}
             />
+            <FilterSelect 
+              label="Lokasi Barang"
+              placeholder="Semua Lokasi"
+              icon={Package}
+              value={filterLokasi}
+              onCommit={setFilterLokasi}
+              items={["BELUM ADA LOKASI", ...availableLocations]}
+            />
             
             <div className="flex-1 min-w-[180px]">
                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 text-slate-400">Mulai Dari</label>
@@ -1398,11 +1425,12 @@ function ReturContent() {
                />
             </div>
 
-            {(filterInisial || filterToko || dateFrom || dateTo || selectedStatus) && (
+            {(filterInisial || filterToko || filterLokasi || dateFrom || dateTo || selectedStatus) && (
               <button 
                 onClick={() => {
                   setFilterInisial("");
                   setFilterToko("");
+                  setFilterLokasi("");
                   setDateFrom(null);
                   setDateTo(null);
                   setSelectedStatus(null);

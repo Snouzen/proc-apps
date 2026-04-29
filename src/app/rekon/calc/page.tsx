@@ -247,15 +247,17 @@ function RekonContent() {
   };
 
   const availableInvoices = useMemo(() => {
-    return masterInvoicesList.filter(no => 
-       no.toLowerCase().includes(invSearch.toLowerCase()) && 
+    return (masterInvoicesList || []).filter(no => 
+       no && typeof no === 'string' &&
+       no.toLowerCase().includes((invSearch || "").toLowerCase()) && 
        !selectedInvoices.find(s => s.noInvoice === no)
     );
   }, [masterInvoicesList, invSearch, selectedInvoices]);
 
   const availableRtvs = useMemo(() => {
-    return masterRtvsList.filter(no => 
-       no.toLowerCase().includes(rtvSearch.toLowerCase()) && 
+    return (masterRtvsList || []).filter(no => 
+       no && typeof no === 'string' &&
+       no.toLowerCase().includes((rtvSearch || "").toLowerCase()) && 
        !selectedRtvs.find(s => s.noRtv === no)
     );
   }, [masterRtvsList, rtvSearch, selectedRtvs]);

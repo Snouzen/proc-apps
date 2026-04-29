@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { Area, AreaChart as ReAreaChart, CartesianGrid, XAxis } from "recharts";
+import { Bar, BarChart as ReBarChart, CartesianGrid, XAxis } from "recharts";
 import { ChevronDown } from "lucide-react";
 import SmoothSelect from "@/components/ui/smooth-select";
 import {
@@ -158,20 +158,8 @@ export function ChartAreaInteractive({
           config={chartConfig}
           className="aspect-auto h-[300px] w-full"
         >
-          <ReAreaChart data={filteredData}>
+          <ReBarChart data={filteredData}>
             <defs>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
               <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
                 <stop
                   offset="5%"
@@ -206,12 +194,11 @@ export function ChartAreaInteractive({
                 />
               }
             />
-            <Area
+            <Bar
               dataKey="mobile"
-              type="natural"
               fill="url(#fillMobile)"
-              stroke="var(--color-mobile)"
-              stackId="a"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={40}
             />
             <ChartLegend
               content={
@@ -226,7 +213,7 @@ export function ChartAreaInteractive({
                 </div>
               }
             />
-          </ReAreaChart>
+          </ReBarChart>
         </ChartContainer>
       </CardContent>
     </Card>

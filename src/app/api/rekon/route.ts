@@ -48,7 +48,7 @@ export async function GET(request: Request) {
           noRtv: rtvNo,
           total: Number(rtvData?.nominal || 0),
           qty: rtvData?.qtyReturn || 0,
-          refInvoice: rtvData?.referensiPembayaran || "-"
+          refInvoice: rtvData?.invoiceRekon || rtvData?.referensiPembayaran || "-"
         };
       });
 
@@ -113,50 +113,50 @@ export async function GET(request: Request) {
     const allInvNos = [...new Set(reconciles.flatMap(r => r.invoices || []))];
     const allRtvNos = [...new Set(reconciles.flatMap(r => r.rtvs || []))];
 
-    const [posData, retursData] = await Promise.all([
-      prisma.purchaseOrder.findMany({
-        where: { noInvoice: { in: allInvNos } },
-        select: { 
-          noInvoice: true, 
-          Items: {
-            select: { rpTagih: true, hargaPcs: true, pcsKirim: true }
+      const [posData, retursData] = await Promise.all([
+        prisma.purchaseOrder.findMany({
+          where: { noInvoice: { in: allInvNos } },
+          select: { 
+            noInvoice: true, 
+            Items: {
+              select: { rpTagih: true, hargaPcs: true, pcsKirim: true }
+            }
           }
-        }
-      }),
-      prisma.dataRetur.findMany({
-        where: { rtvCn: { in: allRtvNos } },
-        select: { rtvCn: true, referensiPembayaran: true, nominal: true }
-      })
-    ]);
+        }),
+        prisma.dataRetur.findMany({
+          where: { rtvCn: { in: allRtvNos } },
+          select: { rtvCn: true, referensiPembayaran: true, invoiceRekon: true, nominal: true }
+        })
+      ]);
 
-    // Create lookup maps for O(1) speed
-    const poMap = new Map(posData.map(p => {
-      // Hitung total dari Items (sama kayak logika di kalkulator)
-      const total = p.Items?.reduce((sum, item: any) => {
-        return sum + (Number(item.rpTagih) || (Number(item.hargaPcs) * Number(item.pcsKirim)) || 0);
-      }, 0) || 0;
-      return [p.noInvoice, { ...p, calculatedTotal: total }];
-    }));
-    const returMap = new Map(retursData.map(r => [r.rtvCn, r]));
+      // Create lookup maps for O(1) speed
+      const poMap = new Map(posData.map(p => {
+        // Hitung total dari Items (sama kayak logika di kalkulator)
+        const total = p.Items?.reduce((sum, item: any) => {
+          return sum + (Number(item.rpTagih) || (Number(item.hargaPcs) * Number(item.pcsKirim)) || 0);
+        }, 0) || 0;
+        return [p.noInvoice, { ...p, calculatedTotal: total }];
+      }));
+      const returMap = new Map(retursData.map(r => [r.rtvCn, r]));
 
-    // 3. Gabungkan Data
-    const data = reconciles.map((rekon) => {
-      const invoicesWithData = (rekon.invoices || []).map(invNo => {
-        const po = poMap.get(invNo);
-        return {
-          noInvoice: invNo,
-          nominal: po?.calculatedTotal || 0
-        };
-      });
+      // 3. Gabungkan Data
+      const data = reconciles.map((rekon) => {
+        const invoicesWithData = (rekon.invoices || []).map(invNo => {
+          const po = poMap.get(invNo);
+          return {
+            noInvoice: invNo,
+            nominal: po?.calculatedTotal || 0
+          };
+        });
 
-      const rtvsWithData = (rekon.rtvs || []).map(rtvNo => {
-        const retur = returMap.get(rtvNo);
-        return {
-          noRtv: rtvNo,
-          refInvoice: retur?.referensiPembayaran || "-",
-          nominal: Number(retur?.nominal || 0)
-        };
-      });
+        const rtvsWithData = (rekon.rtvs || []).map(rtvNo => {
+          const retur = returMap.get(rtvNo);
+          return {
+            noRtv: rtvNo,
+            refInvoice: retur?.invoiceRekon || retur?.referensiPembayaran || "-",
+            nominal: Number(retur?.nominal || 0)
+          };
+        });
 
       return { ...rekon, invoices: invoicesWithData, rtvs: rtvsWithData };
     });

@@ -55,6 +55,20 @@ export async function GET(request: Request) {
       drFilter.push({ tanggalRtv: dateRange });
     }
 
+    const lokasiParam = searchParams.get("lokasi");
+    if (lokasiParam) {
+      if (lokasiParam.toUpperCase() === "BELUM ADA LOKASI") {
+        drFilter.push({
+          OR: [
+            { lokasiBarangId: null },
+            { LokasiBarang: { is: null } }
+          ]
+        });
+      } else {
+        drFilter.push({ LokasiBarang: { siteArea: { equals: lokasiParam, mode: 'insensitive' } } });
+      }
+    }
+
     if (q) {
       drFilter.push({
         OR: [
@@ -102,14 +116,12 @@ export async function GET(request: Request) {
     }
 
     // SCENARIO B: Detail Mode - Kembalikan data retur spesifik untuk ritel tsb
-    // Menggunakan Nama PT agar semua cabang/ID yang namanya sama ikut terbawa
     const selectedRitel = await prisma.ritelModern.findUnique({ where: { id: retailerId } });
     
     const filtersB: Prisma.DataReturWhereInput[] = selectedRitel 
       ? [{ RitelModern: { namaPt: { equals: selectedRitel.namaPt, mode: 'insensitive' } } }]
       : [{ ritelId: retailerId }];
 
-    // Gabungkan dengan filter tambahan (inisial, toko, tanggal, q) yang didefinisikan di atas
     if (drFilter.length > 0) {
       filtersB.push(...drFilter);
     }
@@ -118,7 +130,21 @@ export async function GET(request: Request) {
       AND: filtersB
     };
 
-    const [data, total] = await Promise.all([
+    // [OPTIMASI] Ambil daftar lokasi unik yang tersedia untuk filter ini
+    const availableLocs = await prisma.dataRetur.findMany({
+      where: {
+        AND: [
+          selectedRitel ? { RitelModern: { namaPt: { equals: selectedRitel.namaPt, mode: 'insensitive' } } } : { ritelId: retailerId },
+          // Kita tidak menyertakan drFilter lokasi agar dropdown tidak menciut saat salah satu dipilih
+          ...drFilter.filter(f => !('LokasiBarang' in f || 'OR' in f && JSON.stringify(f).includes('lokasiBarangId'))) 
+        ]
+      },
+      select: { LokasiBarang: { select: { siteArea: true } } },
+      distinct: ['lokasiBarangId']
+    });
+    const locationsList = Array.from(new Set(availableLocs.map(l => l.LokasiBarang?.siteArea).filter(Boolean)));
+
+    const [data, total, summary] = await Promise.all([
       prisma.dataRetur.findMany({
         where,
         skip: offset,
@@ -132,12 +158,22 @@ export async function GET(request: Request) {
         },
       }),
       prisma.dataRetur.count({ where }),
+      prisma.dataRetur.aggregate({
+        where,
+        _sum: {
+          qtyReturn: true,
+          nominal: true
+        }
+      })
     ]);
 
     return NextResponse.json({
       isGrouped: false,
       data,
       total,
+      totalQty: summary._sum.qtyReturn || 0,
+      totalNominal: Number(summary._sum.nominal || 0),
+      availableLocations: locationsList,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
@@ -157,62 +193,80 @@ export async function POST(request: Request) {
 
     if (Array.isArray(body)) {
       // BULK INSERT
-
-      // [OPTIMASI 1] Tarik kamus data Unit Produksi untuk menerjemahkan nama ke ID
+      
+      // [OPTIMASI 1] Tarik kamus data Unit Produksi
       const masterUnits = await prisma.unitProduksi.findMany({
         select: { idRegional: true, siteArea: true }
       });
 
-      // [OPTIMASI 2] Helper untuk mencocokkan string dari Excel ke idRegional
       const findUnitId = (nameVal: any) => {
         if (!nameVal) return null;
         const searchStr = String(nameVal).trim();
         const lowerSearch = searchStr.toLowerCase();
-
-        // 1. Cek dulu apakah ini SUDAH berupa ID yang valid (idRegional)
-        const isAlreadyId = masterUnits.some((u) => u.idRegional === searchStr);
-        if (isAlreadyId) return searchStr;
-
-        // 2. Cari berdasarkan kecocokan nama (siteArea)
-        const match = masterUnits.find(
-          (u) => u.siteArea.trim().toLowerCase() === lowerSearch,
-        );
-        if (match) return match.idRegional;
-
-        // 3. Fallback: Jika ID mengandung dash (legacy UUID style) tapi tdk ada di master
-        if (searchStr.length > 15 && searchStr.includes("-")) return searchStr;
-
-        return null;
+        const match = masterUnits.find(u => u.siteArea.trim().toLowerCase() === lowerSearch || u.idRegional === searchStr);
+        return match ? match.idRegional : (searchStr.length > 15 && searchStr.includes("-") ? searchStr : null);
       };
 
-      // [RADAR CERDAS] Mencari value di dalam object meskipun nama key-nya agak berbeda/typo
       const getFuzzyValue = (obj: any, keywords: string[]) => {
         const keys = Object.keys(obj);
         for (const key of keys) {
-          const lowerKey = key.toLowerCase();
-          if (keywords.some(kw => lowerKey.includes(kw))) {
-            return obj[key];
-          }
+          if (keywords.some(kw => key.toLowerCase().includes(kw))) return obj[key];
         }
         return null;
       };
 
-      // Extract unique RTV/CNs for deletion if replacement is ON
-      const rtvCns = Array.from(new Set(body.map((item: any) => item.rtvCn ? String(item.rtvCn).trim() : null).filter(Boolean)));
+      // [RULE BARU] Validasi Unik (RTV + Produk)
+      // 1. Bersihkan dan Filter data batch
+      const processedBatch = body.map((item: any) => {
+        const rtv = (item.rtvCn !== null && item.rtvCn !== undefined) ? String(item.rtvCn).trim() : null;
+        const prod = item.produk ? String(item.produk).trim() : null;
+        return { ...item, rtv, prod };
+      }).filter(item => item.prod); // Harus ada produk
 
-      if (replaceDuplicates && rtvCns.length > 0) {
-        await prisma.dataRetur.deleteMany({
-          where: { rtvCn: { in: rtvCns as string[] } }
-        });
+      // 2. Jika REPLACE aktif, hapus data lama yang rtvCn DAN produk-nya bentrok
+      if (replaceDuplicates) {
+        // Karena Prisma deleteMany tidak support filter multiple (A AND B) OR (C AND D) secara elegan untuk batch besar,
+        // Kita gunakan loop atau filter IN jika memungkinkan. Untuk keamanan & presisi:
+        for (const item of processedBatch) {
+          if (item.rtv) {
+            await prisma.dataRetur.deleteMany({
+              where: {
+                rtvCn: item.rtv,
+                produk: item.prod
+              }
+            });
+          }
+        }
       }
 
-      // [OPTIMASI 4] Gunakan createMany untuk kecepatan maksimal (anti-timeout)
-      const dataToCreate = body.map((item: any) => {
+      // 3. Jika SKIP aktif (replaceDuplicates: false), filter out yang sudah ada di DB
+      let finalDataToCreate = processedBatch;
+      if (!replaceDuplicates) {
+        const existingRecords = await prisma.dataRetur.findMany({
+          where: {
+            OR: processedBatch.map(item => ({
+              rtvCn: item.rtv,
+              produk: item.prod
+            }))
+          },
+          select: { rtvCn: true, produk: true }
+        });
+
+        const existingKeys = new Set(existingRecords.map(r => `${r.rtvCn}|${r.produk}`));
+        finalDataToCreate = processedBatch.filter(item => !existingKeys.has(`${item.rtv}|${item.prod}`));
+      }
+
+      if (finalDataToCreate.length === 0) {
+        return NextResponse.json({ success: true, count: 0, message: "Semua data sudah ada (skipped)" });
+      }
+
+      // 4. Mapping data final untuk createMany
+      const dataToCreate = finalDataToCreate.map((item: any) => {
         const stringLokasi = item.lokasiBarangId || getFuzzyValue(item, ['lokasi', 'lokasi barang', 'dc']);
         const stringPembebanan = item.pembebananReturnId || getFuzzyValue(item, ['pembebanan', 'beban', 'pembebanan retur']);
 
         return {
-          rtvCn: (item.rtvCn !== null && item.rtvCn !== undefined) ? String(item.rtvCn).trim() : null,
+          rtvCn: item.rtv,
           tanggalRtv: item.tanggalRtv ? new Date(item.tanggalRtv) : null,
           maxPickup: item.maxPickup ? new Date(item.maxPickup) : null,
           kodeToko: item.kodeToko ? Number(item.kodeToko) : null,
@@ -220,7 +274,7 @@ export async function POST(request: Request) {
           inisial: item.inisial || null,
           ritelId: item.ritelId || null,
           link: item.link || null,
-          produk: item.produk || null,
+          produk: item.prod,
           productId: item.productId || null,
           qtyReturn: item.qtyReturn ? Number(item.qtyReturn) : null,
           nominal: item.nominal ? new Prisma.Decimal(item.nominal) : null,
@@ -239,27 +293,44 @@ export async function POST(request: Request) {
 
       const result = await prisma.dataRetur.createMany({
         data: dataToCreate,
-        skipDuplicates: !replaceDuplicates,
+        skipDuplicates: true, // Safety net level DB
       });
 
       return NextResponse.json({ success: true, count: result.count });
     }
 
-    // Validasi baru (lebih longgar, karena rtvCn dan namaCompany bisa null)
+    // --- SINGLE MANUAL INSERT ---
     if (!body.produk && (!body.qtyReturn && body.qtyReturn !== 0)) {
       return NextResponse.json({ error: "Data produk dan QTY tidak valid" }, { status: 400 });
     }
 
+    const rtv = body.rtvCn ? String(body.rtvCn).trim() : null;
+    const prod = body.produk ? String(body.produk).trim() : null;
+
+    // Cek Duplikat Eksisting
+    const existing = await prisma.dataRetur.findFirst({
+      where: {
+        rtvCn: rtv,
+        produk: prod
+      }
+    });
+
+    if (existing) {
+      return NextResponse.json({ 
+        error: `Produk "${prod}" sudah ada di Nomor RTV "${rtv || '-'}"` 
+      }, { status: 409 });
+    }
+
     const newData = await prisma.dataRetur.create({
       data: {
-        rtvCn: body.rtvCn ? String(body.rtvCn).trim() : undefined,
+        rtvCn: rtv || undefined,
         tanggalRtv: body.tanggalRtv ? new Date(body.tanggalRtv) : null,
         maxPickup: body.maxPickup ? new Date(body.maxPickup) : null,
         namaCompany: body.namaCompany || null,
         inisial: body.inisial || null,
         ritelId: body.ritelId || null,
         kodeToko: body.kodeToko ? Number(body.kodeToko) : null,
-        produk: body.produk || null,
+        produk: prod,
         productId: body.productId || null,
         qtyReturn: body.qtyReturn ? Number(body.qtyReturn) : 0,
         nominal: body.nominal ? new Prisma.Decimal(body.nominal) : 0,

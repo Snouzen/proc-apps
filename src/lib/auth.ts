@@ -1,4 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import prisma from "@/lib/prisma";
+
 
 export type Role = "pusat" | "rm" | "sitearea";
 
@@ -38,7 +40,8 @@ function getExpectedCredentials(): { email?: string; password?: string } {
 const SESSION_TTL_MS =
   Number(process.env.SESSION_TTL_MS) || 7 * 24 * 60 * 60 * 1000;
 
-import prisma from "./prisma";
+
+
 
 export async function authenticate(
   email: string,

@@ -642,6 +642,16 @@ export default function PromoPage() {
         <DataTable
           columns={[
             {
+              key: "no",
+              label: "No.",
+              align: "center" as const,
+              render: (_v: any, _row: any, index: number) => (
+                <span className="text-slate-400 font-bold text-[11px]">
+                  {(safePage - 1) * itemsPerPage + index + 1}
+                </span>
+              ),
+            },
+            {
               key: "id",
               label: "ID Promo",
               render: (_v: any, promo: any) => (
@@ -893,315 +903,317 @@ export default function PromoPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-10 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Nomor Dokumen */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Nomor Dokumen
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: 1672/Apr/24"
-                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
-                    value={formData.nomor}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nomor: e.target.value })
-                    }
-                  />
-                </div>
+            <form onSubmit={handleSubmit}>
+              <div className="p-10 space-y-8 max-h-[65vh] overflow-y-auto custom-scrollbar shadow-inner">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Nomor Dokumen */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Nomor Dokumen
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: 1672/Apr/24"
+                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                      value={formData.nomor}
+                      onChange={(e) =>
+                        setFormData({ ...formData, nomor: e.target.value })
+                      }
+                    />
+                  </div>
 
-                {/* Jenis Kegiatan (Searchable / Combobox) */}
-                <div className="space-y-2 relative">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Jenis Kegiatan
-                  </label>
-                  <Popover.Root
-                    open={isKegiatanOpen}
-                    onOpenChange={(open) => {
-                      setIsKegiatanOpen(open);
-                      if (!open) setKegiatanSearch("");
-                    }}
-                  >
-                    <Popover.Trigger asChild>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder={formData.kegiatan || "Pilih Kegiatan..."}
-                          className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all pr-12"
-                          value={kegiatanSearch}
-                          onChange={(e) => {
-                            setKegiatanSearch(e.target.value);
-                            if (!isKegiatanOpen) setIsKegiatanOpen(true);
-                            setActiveKegiatanIdx(0);
-                          }}
-                          onFocus={() => setIsKegiatanOpen(true)}
-                          onKeyDown={handleKegiatanKeyDown}
-                        />
-                        <ChevronDown
-                          size={18}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
-                        />
-                      </div>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content
-                        className="z-[110] w-[300px] bg-white rounded-3xl border shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
-                        align="start"
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                      >
-                        <div className="space-y-1 max-h-60 overflow-y-auto custom-scrollbar text-slate-700 font-bold uppercase">
-                          {filteredKegiatans.length === 0 ? (
-                            <div className="p-4 text-center text-[10px] font-bold text-slate-300">
-                              TIDAK ADA HASIL
-                            </div>
-                          ) : (
-                            filteredKegiatans.map((opt, i) => (
-                              <button
-                                key={opt}
-                                type="button"
-                                onClick={() => {
-                                  setFormData({ ...formData, kegiatan: opt });
-                                  setKegiatanSearch("");
-                                  setIsKegiatanOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${formData.kegiatan === opt || activeKegiatanIdx === i ? "bg-slate-900 text-white shadow-lg" : "hover:bg-slate-50 text-slate-500"}`}
-                              >
-                                {opt}
-                              </button>
-                            ))
-                          )}
+                  {/* Jenis Kegiatan (Searchable / Combobox) */}
+                  <div className="space-y-2 relative">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Jenis Kegiatan
+                    </label>
+                    <Popover.Root
+                      open={isKegiatanOpen}
+                      onOpenChange={(open) => {
+                        setIsKegiatanOpen(open);
+                        if (!open) setKegiatanSearch("");
+                      }}
+                    >
+                      <Popover.Trigger asChild>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder={formData.kegiatan || "Pilih Kegiatan..."}
+                            className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all pr-12"
+                            value={kegiatanSearch}
+                            onChange={(e) => {
+                              setKegiatanSearch(e.target.value);
+                              if (!isKegiatanOpen) setIsKegiatanOpen(true);
+                              setActiveKegiatanIdx(0);
+                            }}
+                            onFocus={() => setIsKegiatanOpen(true)}
+                            onKeyDown={handleKegiatanKeyDown}
+                          />
+                          <ChevronDown
+                            size={18}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+                          />
                         </div>
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
-                </div>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content
+                          className="z-[110] w-[300px] bg-white rounded-3xl border shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
+                          align="start"
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                        >
+                          <div className="space-y-1 max-h-60 overflow-y-auto custom-scrollbar text-slate-700 font-bold uppercase">
+                            {filteredKegiatans.length === 0 ? (
+                              <div className="p-4 text-center text-[10px] font-bold text-slate-300">
+                                TIDAK ADA HASIL
+                              </div>
+                            ) : (
+                              filteredKegiatans.map((opt, i) => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData({ ...formData, kegiatan: opt });
+                                    setKegiatanSearch("");
+                                    setIsKegiatanOpen(false);
+                                  }}
+                                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${formData.kegiatan === opt || activeKegiatanIdx === i ? "bg-slate-900 text-white shadow-lg" : "hover:bg-slate-50 text-slate-500"}`}
+                                >
+                                  {opt}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
+                  </div>
 
-                {/* Periode Bulan (Searchable / Combobox) */}
-                <div className="space-y-2 relative">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Periode Bulan
-                  </label>
-                  <Popover.Root
-                    open={isPeriodeOpen}
-                    onOpenChange={(open) => {
-                      setIsPeriodeOpen(open);
-                      if (!open) setPeriodeSearch("");
-                    }}
-                  >
-                    <Popover.Trigger asChild>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder={formData.periode || "Pilih Periode..."}
-                          className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all pr-12"
-                          value={periodeSearch}
-                          onChange={(e) => {
-                            setPeriodeSearch(e.target.value);
-                            if (!isPeriodeOpen) setIsPeriodeOpen(true);
-                            setActivePeriodeIdx(0);
-                          }}
-                          onFocus={() => setIsPeriodeOpen(true)}
-                          onKeyDown={handlePeriodeKeyDown}
-                        />
-                        <ChevronDown
-                          size={18}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
-                        />
-                      </div>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content
-                        className="z-[110] w-[200px] bg-white rounded-3xl border shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
-                        align="start"
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                      >
-                        <div className="space-y-1 max-h-60 overflow-y-auto no-scrollbar text-slate-700 font-bold uppercase">
-                          {filteredPeriodes.length === 0 ? (
-                            <div className="p-4 text-center text-[10px] font-bold text-slate-300">
-                              TIDAK ADA HASIL
-                            </div>
-                          ) : (
-                            filteredPeriodes.map((opt, i) => (
-                              <button
-                                key={opt}
-                                type="button"
-                                onClick={() => {
-                                  setFormData({ ...formData, periode: opt });
-                                  setPeriodeSearch("");
-                                  setIsPeriodeOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${formData.periode === opt || activePeriodeIdx === i ? "bg-slate-900 text-white shadow-lg" : "hover:bg-slate-50 text-slate-500"}`}
-                              >
-                                {opt}
-                              </button>
-                            ))
-                          )}
+                  {/* Periode Bulan (Searchable / Combobox) */}
+                  <div className="space-y-2 relative">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Periode Bulan
+                    </label>
+                    <Popover.Root
+                      open={isPeriodeOpen}
+                      onOpenChange={(open) => {
+                        setIsPeriodeOpen(open);
+                        if (!open) setPeriodeSearch("");
+                      }}
+                    >
+                      <Popover.Trigger asChild>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder={formData.periode || "Pilih Periode..."}
+                            className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all pr-12"
+                            value={periodeSearch}
+                            onChange={(e) => {
+                              setPeriodeSearch(e.target.value);
+                              if (!isPeriodeOpen) setIsPeriodeOpen(true);
+                              setActivePeriodeIdx(0);
+                            }}
+                            onFocus={() => setIsPeriodeOpen(true)}
+                            onKeyDown={handlePeriodeKeyDown}
+                          />
+                          <ChevronDown
+                            size={18}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+                          />
                         </div>
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content
+                          className="z-[110] w-[200px] bg-white rounded-3xl border shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
+                          align="start"
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                        >
+                          <div className="space-y-1 max-h-60 overflow-y-auto no-scrollbar text-slate-700 font-bold uppercase">
+                            {filteredPeriodes.length === 0 ? (
+                              <div className="p-4 text-center text-[10px] font-bold text-slate-300">
+                                TIDAK ADA HASIL
+                              </div>
+                            ) : (
+                              filteredPeriodes.map((opt, i) => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData({ ...formData, periode: opt });
+                                    setPeriodeSearch("");
+                                    setIsPeriodeOpen(false);
+                                  }}
+                                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${formData.periode === opt || activePeriodeIdx === i ? "bg-slate-900 text-white shadow-lg" : "hover:bg-slate-50 text-slate-500"}`}
+                                >
+                                  {opt}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
+                  </div>
+
+                  {/* Tanggal Entry (Custom Date Picker) */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Tanggal Record
+                    </label>
+                    <Popover.Root open={isDateOpen} onOpenChange={setIsDateOpen}>
+                      <Popover.Trigger asChild>
+                        <button
+                          type="button"
+                          className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl flex items-center justify-between font-bold text-slate-700 group focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all shadow-sm"
+                        >
+                          <span>
+                            {formData.tanggal
+                              ? new Date(formData.tanggal).toLocaleDateString(
+                                  "id-ID",
+                                  {
+                                    day: "2-digit",
+                                    month: "long",
+                                    year: "numeric",
+                                  },
+                                )
+                              : "--/--/--"}
+                          </span>
+                          <Calendar
+                            size={18}
+                            className="text-slate-300 group-hover:text-slate-900"
+                          />
+                        </button>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content
+                          className="z-[110] bg-white rounded-[40px] border shadow-2xl outline-none animate-in fade-in zoom-in-95 duration-200"
+                          align="start"
+                        >
+                          <DatePickerContent />
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Link Docs (Cloud)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/..."
+                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                      value={formData.linkDocs}
+                      onChange={(e) =>
+                        setFormData({ ...formData, linkDocs: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Link Faktur Pajak (Cloud)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/..."
+                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                      value={formData.linkFP || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, linkFP: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Remarks / Catatan
+                    </label>
+                    <textarea
+                      placeholder="Contoh: Potongan tagihan bulan April..."
+                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none resize-none h-24"
+                      value={formData.remarks || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, remarks: e.target.value })
+                      }
+                    />
+                  </div>
                 </div>
 
-                {/* Tanggal Entry (Custom Date Picker) */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Tanggal Record
-                  </label>
-                  <Popover.Root open={isDateOpen} onOpenChange={setIsDateOpen}>
-                    <Popover.Trigger asChild>
-                      <button
-                        type="button"
-                        className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl flex items-center justify-between font-bold text-slate-700 group focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all shadow-sm"
-                      >
-                        <span>
-                          {formData.tanggal
-                            ? new Date(formData.tanggal).toLocaleDateString(
-                                "id-ID",
-                                {
-                                  day: "2-digit",
-                                  month: "long",
-                                  year: "numeric",
-                                },
-                              )
-                            : "--/--/--"}
-                        </span>
-                        <Calendar
-                          size={18}
-                          className="text-slate-300 group-hover:text-slate-900"
-                        />
-                      </button>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content
-                        className="z-[110] bg-white rounded-[40px] border shadow-2xl outline-none animate-in fade-in zoom-in-95 duration-200"
-                        align="start"
-                      >
-                        <DatePickerContent />
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Link Docs (Cloud)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://drive.google.com/..."
-                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
-                    value={formData.linkDocs}
-                    onChange={(e) =>
-                      setFormData({ ...formData, linkDocs: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Link Faktur Pajak (Cloud)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://drive.google.com/..."
-                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
-                    value={formData.linkFP || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, linkFP: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Remarks / Catatan
-                  </label>
-                  <textarea
-                    placeholder="Contoh: Potongan tagihan bulan April..."
-                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none resize-none h-24"
-                    value={formData.remarks || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, remarks: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Calculator Section */}
-              <div className="p-8 bg-slate-50 rounded-[32px] grid grid-cols-1 md:grid-cols-3 gap-8 border border-slate-100 shadow-inner">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    DPP (IDR)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-4 py-3 bg-white rounded-xl border-none font-black text-lg text-slate-700 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
-                    placeholder="0"
-                    value={formData.dpp ? formatNumber(formData.dpp) : ""}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, "");
-                      setFormData({ ...formData, dpp: Number(raw) });
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                    <span>PPN (IDR)</span>
-                    <span className="text-[9px] text-slate-300 normal-case font-bold italic">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-white rounded-xl border-none font-black text-lg text-slate-400 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
-                    placeholder="0"
-                    value={formData.ppn ? formatNumber(formData.ppn) : ""}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, "");
-                      setFormData({ ...formData, ppn: raw === "" ? 0 : Number(raw) });
-                    }}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                    <span>PPH (IDR)</span>
-                    <span className="text-[9px] text-slate-300 normal-case font-bold italic">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-white rounded-xl border-none font-black text-lg text-rose-400 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
-                    placeholder="0"
-                    value={formData.pph ? formatNumber(formData.pph) : ""}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, "");
-                      setFormData({ ...formData, pph: raw === "" ? 0 : Number(raw) });
-                    }}
-                  />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest italic">
-                    Net Settlement
-                  </label>
-                  <div className="w-full px-4 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-xl tabular-nums shadow-sm">
-                    {formatRp(calculatedTotal)}
+                {/* Calculator Section */}
+                <div className="p-8 bg-white border-2 border-slate-100 rounded-[32px] grid grid-cols-1 md:grid-cols-3 gap-8 shadow-sm">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      DPP (IDR)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none font-black text-lg text-slate-700 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
+                      placeholder="0"
+                      value={formData.dpp ? formatNumber(formData.dpp) : ""}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        setFormData({ ...formData, dpp: Number(raw) });
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                      <span>PPN (IDR)</span>
+                      <span className="text-[9px] text-slate-300 normal-case font-bold italic">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none font-black text-lg text-slate-400 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
+                      placeholder="0"
+                      value={formData.ppn ? formatNumber(formData.ppn) : ""}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        setFormData({ ...formData, ppn: raw === "" ? 0 : Number(raw) });
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                      <span>PPH (IDR)</span>
+                      <span className="text-[9px] text-slate-300 normal-case font-bold italic">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none font-black text-lg text-rose-400 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
+                      placeholder="0"
+                      value={formData.pph ? formatNumber(formData.pph) : ""}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        setFormData({ ...formData, pph: raw === "" ? 0 : Number(raw) });
+                      }}
+                    />
+                  </div>
+                  <div className="md:col-span-3 space-y-2 text-center pt-4 border-t border-slate-50">
+                    <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest italic">
+                      Net Settlement
+                    </label>
+                    <div className="text-4xl font-black text-emerald-600 tabular-nums tracking-tighter">
+                      {formatRp(calculatedTotal)}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="p-10 bg-slate-50/50 border-t border-slate-100 flex gap-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black hover:bg-slate-200 transition-all text-[11px] uppercase tracking-widest text-slate-900"
+                  className="flex-1 px-4 py-5 bg-white border border-slate-200 text-slate-500 rounded-3xl font-black hover:bg-slate-50 transition-all text-[11px] uppercase tracking-widest"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-[2] px-12 py-5 bg-slate-900 text-white rounded-[32px] font-black hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 active:scale-95 text-[11px] uppercase tracking-widest disabled:opacity-50"
+                  className="flex-[2] px-12 py-5 bg-slate-900 text-white rounded-[32px] font-black hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 text-[11px] uppercase tracking-widest disabled:opacity-50"
                 >
                   {saving
                     ? "Deploying..."

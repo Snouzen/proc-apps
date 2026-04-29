@@ -5,7 +5,9 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
 } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
 import type { DataTableProps, ColumnDef } from "./types";
 import { Fragment, ReactNode, useMemo } from "react";
 
@@ -87,20 +89,40 @@ function TablePagination({
       <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {onRowsPerPageChange && rowsPerPageOptions && (
-            <select
-              className="px-2 py-1.5 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-600 uppercase tracking-widest shadow-sm outline-none"
-              value={rowsPerPage}
-              onChange={(e) => {
-                onRowsPerPageChange(Number(e.target.value));
-                onPageChange(1);
-              }}
-            >
-              {rowsPerPageOptions.map((n) => (
-                <option key={n} value={n}>
-                  {n} / page
-                </option>
-              ))}
-            </select>
+            <Popover.Root>
+              <Popover.Trigger asChild>
+                <button className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-[10px] font-black text-slate-600 uppercase tracking-widest shadow-sm hover:border-indigo-100 hover:text-indigo-600 transition-all outline-none">
+                  <span>{rowsPerPage} / PAGE</span>
+                  <ChevronDown size={12} className="text-slate-300" />
+                </button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content 
+                  className="z-[110] w-[120px] bg-white rounded-2xl border border-slate-100 shadow-2xl p-1.5 outline-none animate-in fade-in zoom-in-95 duration-200"
+                  align="start"
+                  sideOffset={5}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    {rowsPerPageOptions.map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => {
+                          onRowsPerPageChange(n);
+                          onPageChange(1);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                          rowsPerPage === n 
+                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
+                            : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
+                        }`}
+                      >
+                        {n} / PAGE
+                      </button>
+                    ))}
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
           )}
           <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
             Menampilkan{" "}
@@ -157,20 +179,40 @@ function TablePagination({
       <div className="text-sm text-gray-700 flex items-center gap-2">
         Rows per page
         {onRowsPerPageChange && rowsPerPageOptions ? (
-          <select
-            className="px-2 py-1 rounded-md bg-white border border-gray-300 text-black text-sm"
-            value={rowsPerPage}
-            onChange={(e) => {
-              onRowsPerPageChange(Number(e.target.value));
-              onPageChange(1);
-            }}
-          >
-            {rowsPerPageOptions.map((n) => (
-              <option key={n} value={n} className="text-black text-sm">
-                {n}
-              </option>
-            ))}
-          </select>
+          <Popover.Root>
+            <Popover.Trigger asChild>
+              <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-all outline-none">
+                <span>{rowsPerPage}</span>
+                <ChevronDown size={14} className="text-gray-400" />
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content 
+                className="z-[110] w-[80px] bg-white rounded-xl border border-gray-100 shadow-xl p-1 outline-none animate-in fade-in zoom-in-95 duration-200"
+                align="center"
+                sideOffset={5}
+              >
+                <div className="flex flex-col gap-0.5">
+                  {rowsPerPageOptions.map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => {
+                        onRowsPerPageChange(n);
+                        onPageChange(1);
+                      }}
+                      className={`w-full text-center px-2 py-1.5 rounded-md text-xs font-bold transition-all ${
+                        rowsPerPage === n 
+                          ? "bg-gray-900 text-white" 
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
         ) : (
           <span className="font-bold">{rowsPerPage}</span>
         )}
