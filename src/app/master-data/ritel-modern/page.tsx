@@ -647,58 +647,61 @@ export default function RitelModernPage() {
             {loadError ? "—" : "Belum ada data di database."}
           </div>
         ) : (
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="p-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
             {currentItems.map((group) => (
               <div
                 key={group.displayId}
-                className="rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg hover:border-slate-300 transition-all duration-200 bg-white group"
+                className="group relative bg-white rounded-[32px] border border-slate-100 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.05)] hover:shadow-[0_40px_80px_-25px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-500 overflow-hidden"
               >
-                {/* Logo Banner */}
-                <div
-                  className="relative h-20 flex items-center justify-center overflow-hidden border-b border-slate-100 px-2"
-                  style={{
-                    background:
-                      "radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0) 0 0 / 16px 16px",
-                    backgroundColor: "#f8fafc",
-                  }}
-                >
+                {/* Logo Area - Large & Clear */}
+                <div className="relative h-[130px] w-full bg-[#f8fafc] border-b border-slate-50 flex items-center justify-center p-6 overflow-hidden">
+                  <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
+                  
                   {group.logoPt ? (
                     <img
                       src={group.logoPt}
                       alt={group.namaPt}
-                      className="h-[80%] w-[90%] object-contain drop-shadow-sm"
+                      className="max-h-full max-w-full object-contain drop-shadow-xl group-hover:scale-110 transition-transform duration-700"
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-1 opacity-15">
-                      <Building2 size={36} className="text-slate-500" />
+                    <div className="flex flex-col items-center gap-2 opacity-20">
+                      <Building2 size={40} className="text-slate-400" />
                     </div>
                   )}
-                  {/* Inisial count badge */}
-                  <div className="absolute top-2 right-2 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full text-[9px] font-black text-slate-600 border border-slate-200/80 shadow-sm">
-                    {Object.keys(group.inisials).length} Inisial
+
+                  {/* Badge Inisial - Top Right */}
+                  <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full border border-slate-100 shadow-sm flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4 duration-500">
+                    <span className="text-[10px] font-black text-slate-800 tabular-nums">
+                      {Object.keys(group.inisials).length}
+                    </span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Inisial</span>
                   </div>
                 </div>
 
-                {/* Footer Info */}
-                <div className="px-3 py-2.5 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-bold text-slate-800 truncate leading-tight">
+                {/* Content Area */}
+                <div className="p-6 space-y-5">
+                  <div className="space-y-1">
+                    <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-tight leading-tight group-hover:text-indigo-600 transition-colors truncate" title={group.namaPt}>
                       {highlightText(group.namaPt, searchTerm)}
-                    </div>
+                    </h3>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+
+                  {/* Actions Footer */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                     <button
                       onClick={() => setViewAliases({ namaPt: group.namaPt })}
-                      className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold hover:bg-slate-700 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 text-white hover:bg-indigo-600 transition-all duration-300 shadow-lg shadow-slate-200 hover:shadow-indigo-100 active:scale-95"
                     >
-                      View
+                      <Eye size={14} strokeWidth={2.5} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">View Details</span>
                     </button>
+
                     <button
                       onClick={() => setDeleteCompany(group.namaPt)}
-                      className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all"
-                      title="Hapus Company"
+                      className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white transition-all duration-300 group/del"
+                      title="Hapus Ritel"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={15} strokeWidth={2.5} className="group-hover/del:scale-110 transition-transform" />
                     </button>
                   </div>
                 </div>
