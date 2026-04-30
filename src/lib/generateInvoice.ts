@@ -45,28 +45,41 @@ export const generateInvoicePdf = (
   const rawRegional =
     data?.UnitProduksi?.namaRegional || "KANTOR WILAYAH BULOG";
   const regionalName = rawRegional.toUpperCase();
+  
+  // Mapping Kode Regional Dinamis
+  let regCode = "27100"; // Default
+  if (regionalName.includes("REGIONAL 1") || regionalName.includes("BANDUNG")) regCode = "27100";
+  else if (regionalName.includes("REGIONAL 2") || regionalName.includes("SURABAYA")) regCode = "27200";
+  else if (regionalName.includes("REGIONAL 3") || regionalName.includes("MAKASSAR")) regCode = "27300";
+
   const siteArea = data?.UnitProduksi?.siteArea
-    ? `27100 - ${data.UnitProduksi.siteArea}`
-    : "27100 - SPB DKI";
-  const invNumber = data?.noFaktur || `001/${mm}/${yyyy}/27100`;
+    ? `${regCode} - ${data.UnitProduksi.siteArea}`
+    : `${regCode} - SPB DKI`;
+  const invNumber = data?.noFaktur || `001/${mm}/${yyyy}/${regCode}`;
 
-  // --- 2. HEADER & LOGO ---
-  try {
-    const logoUrl = "/logo-bulog.png";
-    doc.addImage(logoUrl, "PNG", 15, 10, 30, 10, "logo", "FAST");
-  } catch (e) {
-    console.error("Gagal memuat logo di PDF:", e);
-  }
-
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text(regionalName.toUpperCase(), 105, 16, { align: "center" });
 
   // --- 3. ALAMAT INVOICE & INFO BANK ---
   doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  const startYHeader = 15;
+  
+  // UB Industri & Alamat Pusat
+  doc.text("UB Industri Bulog", 15, startYHeader);
   doc.setFont("helvetica", "normal");
-  const startYAddress = 28;
+  doc.setFontSize(7);
+  const fullAddress = "Kantor Pusat Gedung BULOG, Jl. Gatot Subroto No.Kav. 49, RT.5/RW.4, Kuningan Tim., Kecamatan Setiabudi, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12950";
+  const splitAddress = doc.splitTextToSize(fullAddress, 85);
+  doc.text(splitAddress, 15, startYHeader + 4);
+  
+  // Hitung tinggi alamat dinamis (tiap baris ~3mm)
+  const addressLines = splitAddress.length;
+  const telpY = startYHeader + 4 + (addressLines * 3) + 1;
+  doc.text("Telp: (021) 5252209", 15, telpY);
 
+  // Kode Toko / Site Area (Dinamis di bawah Telp)
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  const startYAddress = telpY + 7;
   doc.text(siteArea.toUpperCase(), 15, startYAddress);
 
   // [FITUR BARU] Tambahan No PO persis di bawah siteArea
@@ -173,7 +186,7 @@ export const generateInvoicePdf = (
 
   // --- [FITUR BARU] STEMPEL LOGO BULOG ---
   try {
-    const logoUrl = "/logo-bulog.png";
+    const logoUrl = "https://rzjlkpumrsjpafduhlgt.supabase.co/storage/v1/object/public/logo-img/logo-bulog/logo-bulog.png";
     // Posisi stempel di X=150 (pas di area kosong kanan bawah) dan Y=finalY+28
     doc.addImage(
       logoUrl,
