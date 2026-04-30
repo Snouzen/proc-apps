@@ -64,8 +64,8 @@ export async function PATCH(request: Request) {
 
     const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
 
-    // SECURITY CHECK: picsite (spbdki), pusat, or sitearea only
-    if (safeRole !== 'picsite' && safeRole !== 'spbdki' && safeRole !== 'pusat' && safeRole !== 'sitearea') {
+    // SECURITY CHECK: picsite (spbdki), pusat, sitearea, or rm only
+    if (safeRole !== 'picsite' && safeRole !== 'spbdki' && safeRole !== 'pusat' && safeRole !== 'sitearea' && safeRole !== 'rm') {
       return NextResponse.json({ error: "Forbidden: Unauthorized role for scheduling" }, { status: 403 });
     }
 

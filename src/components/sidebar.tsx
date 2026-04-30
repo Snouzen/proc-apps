@@ -17,6 +17,7 @@ import {
   CalendarDays,
   CalendarClock,
   PackageSearch,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -99,6 +100,7 @@ export default function Sidebar({
     },
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
     { name: "Data Retur", icon: <RotateCcw size={20} />, path: "/retur" },
+    { name: "Image Lab", icon: <ImageIcon size={20} />, path: "/tools/image-lab" },
   ];
 
   const rekonSubItems = [

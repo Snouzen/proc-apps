@@ -654,7 +654,7 @@ export default function RitelModernPage() {
                 className="group relative bg-white rounded-[32px] border border-slate-100 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.05)] hover:shadow-[0_40px_80px_-25px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-500 overflow-hidden"
               >
                 {/* Logo Area - Large & Clear */}
-                <div className="relative h-[130px] w-full bg-[#f8fafc] border-b border-slate-50 flex items-center justify-center p-6 overflow-hidden">
+                <div className="relative h-[130px] w-full bg-white border-b border-slate-50 flex items-center justify-center p-6 overflow-hidden">
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
                   
                   {group.logoPt ? (
