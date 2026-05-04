@@ -19,7 +19,7 @@ import {
 import { POBodySchema } from "@/lib/schemas/po";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
 import { ensureInvoiceNumber } from "@/lib/generatePoInvoiceNumber";
-import Swal from "sweetalert2";
+
 
 // [ENV] Timezone offset from env, not hardcoded magic number
 const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
@@ -54,6 +54,7 @@ function parseDate(v?: string | null) {
 }
 
 export async function POST(request: Request) {
+  console.log("🚀 [API DEBUG] POST /api/po hit!");
   try {
     const bag = await cookies();
     let token = bag.get("session")?.value;
@@ -514,6 +515,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  console.log("🚀 [API DEBUG] GET /api/po hit!");
   try {
     const bag = await cookies();
     let token = bag.get("session")?.value;
@@ -542,7 +544,10 @@ export async function GET(request: Request) {
     // 3. Ekstrak Role & Hard-Fallback
     const rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
 
-    const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+    let safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+    if (safeRole === "superadmin" || safeRole === "admin" || safeRole === "adminpusat") {
+      safeRole = "pusat";
+    }
 
     // 4. Debugger (WAJIB CEK TERMINAL)
     console.log("🚨 [DEBUG API] EMAIL:", email, "| DB_USER:", dbUser ? "KETEMU" : "KOSONG", "| SAFE_ROLE:", safeRole);
@@ -1067,11 +1072,11 @@ export async function GET(request: Request) {
                 : ({ createdAt: "desc" } as const);
 
     const attachSummary = async (rows: any[]) => {
+      console.log(`🔍 [API DEBUG] attachSummary started for ${rows.length} rows`);
       const ids = rows.map((r) => r.id).filter(Boolean);
       if (ids.length === 0) return rows;
 
-      // [OPTIMIZATION 1] Gunakan findMany murni. Prisma sangat cepat menghandle klausa 'IN' 
-      // secara internal tanpa membuat Node.js nge-freeze.
+      console.log(`🔍 [API DEBUG] Fetching items for PO IDs:`, ids.slice(0, 3), "...");
       const allItems = await prisma.purchaseOrderItem.findMany({
         where: { purchaseOrderId: { in: ids } },
         select: {
@@ -1145,8 +1150,8 @@ export async function GET(request: Request) {
 
     if (!paged) {
       if (cached) return NextResponse.json(cached);
-      const data = await singleFlight(cacheKey, () =>
-        prisma.purchaseOrder.findMany(
+      // const data = await singleFlight(cacheKey, () => {
+      const data = await prisma.purchaseOrder.findMany(
           summary
             ? ({
                 where,
@@ -1233,9 +1238,11 @@ export async function GET(request: Request) {
                 },
                 orderBy,
               } as any),
-        ),
-      );
+        );
+      // });
+      console.log(`🔍 [API DEBUG] Query returned ${data.length} rows`);
       const payload = summary ? await attachSummary(data as any) : data;
+      console.log(`🔍 [API DEBUG] attachSummary finished`);
       cacheSet(cacheKey, payload, 15000);
       return NextResponse.json(payload);
     }
@@ -1245,7 +1252,10 @@ export async function GET(request: Request) {
 
     if (cached) return NextResponse.json(cached);
 
-    const [total, data] = await singleFlight(cacheKey, async () => {
+    // const [total, data] = await singleFlight(cacheKey, async () => {
+    const [total, data] = await (async () => {
+      console.log("🔍 [API DEBUG] Executing findMany (Paged)...");
+      console.log("🔍 [API DEBUG] Where Clause:", JSON.stringify(where, null, 2));
       const t =
         cachedTotal ??
         (typeof approxTotal === "number" ? approxTotal : undefined) ??
@@ -1342,7 +1352,8 @@ export async function GET(request: Request) {
             } as any),
       );
       return [t, d] as const;
-    });
+    })();
+    // });
     const payload = {
       total,
       data: summary ? await attachSummary(data as any) : data,

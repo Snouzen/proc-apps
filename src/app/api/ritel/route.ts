@@ -198,6 +198,7 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const namaPt = searchParams.get("namaPt") || undefined;
     const id = searchParams.get("id") || undefined;
+    const inisial = searchParams.get("inisial");
     if (!namaPt && !id) {
       return NextResponse.json(
         { error: "namaPt atau id wajib disertakan sebagai query param" },
@@ -209,8 +210,18 @@ export async function DELETE(request: Request) {
       cacheClearPrefix("ritel:");
       return NextResponse.json({ ok: true });
     }
+    
+    const whereClause: any = { namaPt: { equals: namaPt!, mode: "insensitive" } };
+    if (inisial !== null) {
+      if (inisial === "—" || inisial === "") {
+        whereClause.inisial = null;
+      } else {
+        whereClause.inisial = { equals: inisial, mode: "insensitive" };
+      }
+    }
+    
     await prisma.ritelModern.deleteMany({
-      where: { namaPt: { equals: namaPt!, mode: "insensitive" } },
+      where: whereClause,
     });
     cacheClearPrefix("ritel:");
     return NextResponse.json({ ok: true });

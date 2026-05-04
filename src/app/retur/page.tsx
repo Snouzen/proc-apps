@@ -408,6 +408,45 @@ function SmoothStatusSelect({
   );
 }
 
+function SmoothRowSelect({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (val: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = [10, 25, 50];
+
+  return (
+    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 bg-white/50 px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm">
+      <span>Tampilkan</span>
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger asChild>
+          <button className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm">
+            <span className="tabular-nums font-black text-slate-800">{value}</span>
+            <ChevronDown size={12} className={`text-slate-300 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content className="z-[160] w-24 bg-white rounded-xl shadow-2xl border border-slate-50 p-1 animate-in fade-in zoom-in-95 duration-200" sideOffset={5} align="center">
+            {options.map((opt) => (
+              <button 
+                key={opt}
+                onClick={() => { onChange(opt); setOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-[10px] font-black rounded-lg transition-all ${value === opt ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-600 hover:bg-slate-50'}`}
+              >
+                {opt}
+              </button>
+            ))}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+      <span>data</span>
+    </div>
+  );
+}
+
 // --- NEW COMPONENT: Filter Select for Header Bar ---
 function FilterSelect({
   label,
@@ -503,7 +542,7 @@ function ReturContent() {
   const [loading, setLoading] = useState(true);
   const [isFetchingPage, setIsFetchingPage] = useState(false);
   const [page, setPage] = useState(1);
-  const [rowsPerPage] = useState(15);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | null>(null);
@@ -539,6 +578,9 @@ function ReturContent() {
   const [units, setUnits] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
+  const [isMassEditing, setIsMassEditing] = useState(false);
+  const [massEditForms, setMassEditForms] = useState<Record<string, any>>({});
+  const [isSavingMass, setIsSavingMass] = useState(false);
   const [searchToko, setSearchToko] = useState("");
   const [searchProduk, setSearchProduk] = useState("");
   const [isTokoOpen, setIsTokoOpen] = useState(false);
@@ -852,6 +894,97 @@ function ReturContent() {
     setSearchInisial("");
   };
 
+  const handleStartMassEdit = () => {
+    setIsMassEditing(true);
+    setEditingId(null);
+    setEditForm({});
+    const initial: Record<string, any> = {};
+    data.forEach(item => {
+      initial[item.id] = { ...item };
+    });
+    setMassEditForms(initial);
+  };
+
+  const handleCancelMassEdit = () => {
+    setIsMassEditing(false);
+    setMassEditForms({});
+  };
+
+  const handleSaveMassEdit = async () => {
+    try {
+      setIsSavingMass(true);
+      const ids = Object.keys(massEditForms);
+      
+      const promises = ids.map(async (id) => {
+        const itemData = massEditForms[id];
+        const { RitelModern, LokasiBarang, Product, PembebananReturn, createdAt, updatedAt, _count, ...pureData } = itemData;
+
+        const cleanedPayload = {
+          ...pureData,
+          id,
+          rtvCn: pureData.rtvCn ? String(pureData.rtvCn).trim() : null,
+          kodeToko: pureData.kodeToko ? Number(pureData.kodeToko.toString().replace(/[^0-9]/g, '')) : null,
+          qtyReturn: Number(pureData.qtyReturn) || 0,
+          nominal: Number(pureData.nominal) || 0,
+          rpKg: Number(pureData.rpKg) || 0,
+          tanggalRtv: pureData.tanggalRtv ? new Date(pureData.tanggalRtv).toISOString() : null,
+          maxPickup: pureData.maxPickup ? new Date(pureData.maxPickup).toISOString() : null,
+          tanggalPembayaran: pureData.tanggalPembayaran ? new Date(pureData.tanggalPembayaran).toISOString() : null,
+          invoiceRekon: pureData.invoiceRekon || "",
+          inisial: pureData.inisial || ""
+        };
+
+        const res = await fetch(`/api/retur`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cleanedPayload),
+        });
+
+        if (!res.ok) throw new Error("Gagal menyimpan beberapa data");
+      });
+
+      await Promise.all(promises);
+
+      Swal.fire({ icon: 'success', title: 'Semua data diperbarui', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+      
+      setIsMassEditing(false);
+      setMassEditForms({});
+      
+      const scrollY = window.scrollY;
+      await fetchRetur();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior }));
+    } catch (error: any) {
+      console.error(error);
+      Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: error.message || "Gagal menyimpan perubahan!" });
+    } finally {
+      setIsSavingMass(false);
+    }
+  };
+
+  const handleFieldChange = (item: any, field: string, value: any) => {
+    if (isMassEditing) {
+      setMassEditForms(prev => {
+        const current = { ...(prev[item.id] || item), [field]: value };
+        if (field === 'nominal' || field === 'qtyReturn') {
+          const nominal = Number(current.nominal) || 0;
+          const qty = Number(current.qtyReturn) || 0;
+          current.rpKg = qty > 0 ? Math.round(nominal / qty) : 0;
+        }
+        return { ...prev, [item.id]: current };
+      });
+    } else {
+      setEditForm((prev: any) => {
+        const current = { ...prev, [field]: value };
+        if (field === 'nominal' || field === 'qtyReturn') {
+          const nominal = Number(current.nominal) || 0;
+          const qty = Number(current.qtyReturn) || 0;
+          current.rpKg = qty > 0 ? Math.round(nominal / qty) : 0;
+        }
+        return current;
+      });
+    }
+  };
+
   const handleSaveInline = async (id: string) => {
     try {
       setIsFetchingPage(true);
@@ -1060,13 +1193,19 @@ function ReturContent() {
   }, [selectedRetailerId]);
 
   const filteredInisial = useMemo(() => {
-    if (retailers.length === 0 || !editingId) return [];
-    const item = data.find(d => d.id === editingId);
-    // Jika tidak ada info PT di item, coba cari dari retailers berdasarkan ritelId
-    const ptName = item?.RitelModern?.namaPt || retailers.find(r => r.id === item?.ritelId)?.namaPt;
-    if (!ptName) return [];
+    if (retailers.length === 0) return [];
+    if (!editingId && !isMassEditing) return [];
 
-    const targetPt = ptName.trim().toLowerCase();
+    let targetPt = "";
+    if (isMassEditing && selectedRetailerId) {
+      targetPt = retailers.find(r => r.id === selectedRetailerId)?.namaPt || "";
+    } else {
+      const item = data.find(d => d.id === editingId);
+      targetPt = item?.RitelModern?.namaPt || retailers.find(r => r.id === item?.ritelId)?.namaPt || "";
+    }
+
+    if (!targetPt) return [];
+    targetPt = targetPt.trim().toLowerCase();
     return Array.from(
       new Set(
         retailers
@@ -1125,9 +1264,16 @@ function ReturContent() {
   const PRIORITY_PRODUCTS = useMemo(() => ["PUNOKAWAN 5 KG", "BEFOOD SETRA RAMOS 5 KG"], []);
 
   const availableToko = useMemo(() => {
-    if (!editForm.id || retailers.length === 0) return [];
-    // Ambil PT dari item yang sedang diedit (lewat RitelModern relation)
-    const targetPt = editForm.RitelModern?.namaPt;
+    if (retailers.length === 0) return [];
+    
+    let targetPt = "";
+    if (isMassEditing && selectedRetailerId) {
+      targetPt = retailers.find(r => r.id === selectedRetailerId)?.namaPt || "";
+    } else {
+      if (!editForm.id) return [];
+      targetPt = editForm.RitelModern?.namaPt || "";
+    }
+    
     if (!targetPt) return [];
 
     return Array.from(new Set(
@@ -1193,7 +1339,7 @@ function ReturContent() {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-7 animate-in fade-in duration-500 overflow-x-hidden">
+    <div className="p-6 max-w-[1600px] mx-auto space-y-6 animate-in fade-in duration-500 overflow-x-hidden">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {selectedRetailerId && (
@@ -1254,7 +1400,6 @@ function ReturContent() {
           )}
 
           {role === "pusat" && (
-            <>
               <button 
                 suppressHydrationWarning
                 onClick={() => {
@@ -1268,6 +1413,8 @@ function ReturContent() {
                 <Upload size={18} className="group-hover:-translate-y-0.5 transition-transform" />
                 Bulk Upload
               </button>
+          )}
+          {(role === "pusat" || role === "sitearea") && (
               <button 
                 suppressHydrationWarning
                 onClick={handleAddReturn}
@@ -1276,7 +1423,6 @@ function ReturContent() {
                 <Plus size={18} />
                 Add Return
               </button>
-            </>
           )}
         </div>
       </div>
@@ -1362,26 +1508,31 @@ function ReturContent() {
             />
           </div>
           
-          {!isGroupedMode && (
-            <div className="hidden lg:flex items-center gap-3">
-              <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
-                 <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Record</span>
-                 <span className="text-sm font-black text-indigo-700 tabular-nums">{total}</span>
+          <div className="flex items-center gap-3">
+            {!isGroupedMode && (
+              <div className="flex items-center gap-3">
+                <div className="hidden lg:flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
+                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Record</span>
+                     <span className="text-sm font-black text-indigo-700 tabular-nums">{total}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+                     <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Total QTY</span>
+                     <span className="text-sm font-black text-emerald-700 tabular-nums">{formatNumber(totalQty)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-100 rounded-xl">
+                     <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Total Nominal</span>
+                     <span className="text-sm font-black text-amber-700 tabular-nums">{formatIDR(totalNominal)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
-                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Total QTY</span>
-                 <span className="text-sm font-black text-emerald-700 tabular-nums">{formatNumber(totalQty)}</span>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-100 rounded-xl">
-                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Total Nominal</span>
-                 <span className="text-sm font-black text-amber-700 tabular-nums">{formatIDR(totalNominal)}</span>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {selectedRetailerId && (
-          <div className="p-5 lg:p-6 bg-slate-50/50 rounded-[32px] border border-slate-100/50 flex flex-wrap items-end gap-5 animate-in slide-in-from-top-4 duration-500">
+          <div className="mt-2">
+            <div className="p-4 lg:p-5 bg-slate-50/50 rounded-[32px] border border-slate-100/50 flex flex-wrap items-end gap-x-5 gap-y-2.5 animate-in slide-in-from-top-4 duration-500">
             <FilterSelect 
               label="Inisial Ritel"
               placeholder="Semua Inisial"
@@ -1425,27 +1576,49 @@ function ReturContent() {
                />
             </div>
 
-            {(filterInisial || filterToko || filterLokasi || dateFrom || dateTo || selectedStatus) && (
-              <button 
-                onClick={() => {
-                  setFilterInisial("");
-                  setFilterToko("");
-                  setFilterLokasi("");
-                  setDateFrom(null);
-                  setDateTo(null);
-                  setSelectedStatus(null);
-                }}
-                className="px-6 py-3 bg-white text-rose-500 border border-rose-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 shadow-sm"
-              >
-                Reset
-              </button>
-            )}
+            <div className="w-full flex items-center justify-end gap-3 mt-0.5 pt-2 border-t border-slate-100/30">
+               {(filterInisial || filterToko || filterLokasi || dateFrom || dateTo || selectedStatus) && (
+                 <button 
+                   onClick={() => {
+                     setFilterInisial("");
+                     setFilterToko("");
+                     setFilterLokasi("");
+                     setDateFrom(null);
+                     setDateTo(null);
+                     setSelectedStatus(null);
+                   }}
+                   className="px-4 py-2 bg-white text-rose-500 border border-rose-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95 shadow-sm"
+                 >
+                   Reset Filter
+                 </button>
+               )}
+               <SmoothRowSelect 
+                 value={rowsPerPage} 
+                 onChange={(v) => { setRowsPerPage(v); setPage(1); }}
+               />
+               
+               {/* Mass Edit Controls */}
+               {isMassEditing ? (
+                 <div className="flex items-center gap-2">
+                   <button onClick={handleCancelMassEdit} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-rose-100 transition-all shadow-sm active:scale-95">Batal</button>
+                   <button onClick={handleSaveMassEdit} disabled={isSavingMass} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-emerald-700 transition-all shadow-md active:scale-95">
+                     {isSavingMass ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save All
+                   </button>
+                 </div>
+               ) : (
+                 <button onClick={handleStartMassEdit} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-indigo-100 transition-all shadow-sm active:scale-95">
+                   <Pencil size={14} /> Edit All
+                 </button>
+               )}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       {/* ── Main Content Area ───────────────────────────────────────────── */}
-      {isGroupedMode ? (
+      <div className="-mt-4">
+        {isGroupedMode ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-in slide-in-from-bottom-5 duration-700">
           {loading ? (
             Array.from({ length: 9 }).map((_, i) => (
@@ -1510,9 +1683,10 @@ function ReturContent() {
               key: "rtvCn",
               label: "RTV/CN",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing && role === "pusat" ? (
-                  <input suppressHydrationWarning type="text" className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.rtvCn || ""} onChange={e => setEditForm({...editForm, rtvCn: e.target.value})} />
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
+                return isEditing && (role === "pusat" || role === "sitearea") ? (
+                  <input suppressHydrationWarning type="text" className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={currentForm.rtvCn || ""} onChange={e => handleFieldChange(item, 'rtvCn', e.target.value)} />
                 ) : (
                   <span className="font-mono font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg text-xs border border-indigo-100">{item.rtvCn || "-"}</span>
                 );
@@ -1522,11 +1696,12 @@ function ReturContent() {
               key: "tanggalRtv",
               label: "TANGGAL RTV",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="text-xs font-bold text-slate-700 whitespace-nowrap uppercase tracking-tighter tabular-nums">
-                    {isEditing && role === "pusat" ? (
-                      <CustomInlineDatePicker value={editForm.tanggalRtv} onChange={(date: string) => setEditForm({...editForm, tanggalRtv: date})} colorScheme="indigo" />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <CustomInlineDatePicker value={currentForm.tanggalRtv} onChange={(date: string) => handleFieldChange(item, 'tanggalRtv', date)} colorScheme="indigo" />
                     ) : formatDate(item.tanggalRtv)}
                   </div>
                 );
@@ -1536,11 +1711,12 @@ function ReturContent() {
               key: "maxPickup",
               label: "MAX PICKUP",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="text-xs font-bold text-rose-600 whitespace-nowrap uppercase tracking-tighter tabular-nums">
-                    {isEditing && role === "pusat" ? (
-                      <CustomInlineDatePicker value={editForm.maxPickup} onChange={(date: string) => setEditForm({...editForm, maxPickup: date})} colorScheme="rose" />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <CustomInlineDatePicker value={currentForm.maxPickup} onChange={(date: string) => handleFieldChange(item, 'maxPickup', date)} colorScheme="rose" />
                     ) : formatDate(item.maxPickup)}
                   </div>
                 );
@@ -1550,16 +1726,14 @@ function ReturContent() {
               key: "statusBarang",
               label: "STATUS BARANG",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                // RULE: Site Area can only edit status if lokasi barang = their site area
-                // Also allow when they just picked their lokasi during this edit session (realtime)
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 const currentLokasi = isEditing
-                  ? (units.find((u: any) => u.idRegional === editForm.lokasiBarangId)?.siteArea || "")
+                  ? (units.find((u: any) => u.idRegional === currentForm.lokasiBarangId)?.siteArea || "")
                   : (item.LokasiBarang?.siteArea || "");
                 const currentLokasiNorm = currentLokasi.toLowerCase().replace(/[^a-z0-9]/g, "");
                 const userAreaStatusNorm = (userArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
                 const userRegNorm = (userRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-                // For sitearea: match against userArea (siteArea), fallback to regional match
                 const isSiteareaMatch = userAreaStatusNorm
                   ? (currentLokasiNorm === userAreaStatusNorm)
                   : (userRegNorm ? !!units.find((u: any) => {
@@ -1569,9 +1743,9 @@ function ReturContent() {
                     }) : false);
                 const canEditStatus = role === "pusat" ||
                   (role === "sitearea" && currentLokasiNorm !== "" && isSiteareaMatch) ||
-                  (role === "rm"); // RM has no special rule on status barang, follows existing behavior
+                  (role === "rm");
                 return isEditing && canEditStatus ? (
-                  <SmoothStatusSelect value={editForm.statusBarang || "BELUM DIAMBIL"} onChange={(v: string) => setEditForm({...editForm, statusBarang: v})} />
+                  <SmoothStatusSelect value={currentForm.statusBarang || "BELUM DIAMBIL"} onChange={(v: string) => handleFieldChange(item, 'statusBarang', v)} />
                 ) : (
                   <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border whitespace-nowrap ${
                     item.statusBarang?.toUpperCase() === "SUDAH DIAMBIL" ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
@@ -1585,22 +1759,19 @@ function ReturContent() {
               key: "lokasiBarang",
               label: "LOKASI BARANG",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                // RULE: Site Area can only edit lokasi if currently empty, options = only their own site area
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 const lokasiIsEmpty = !item.LokasiBarang?.siteArea;
                 const canEditLokasi = role === "pusat" ||
                   (role === "sitearea" && lokasiIsEmpty);
-                // For sitearea, restrict options to only their own site area
                 const userAreaNorm = (userArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
                 const userRegLokasiNorm = (userRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
                 const lokasiOptions = role === "sitearea"
                   ? (userAreaNorm
-                    // If userArea (siteArea) is set, match directly
                     ? units.filter((u: any) => {
                         const sa = (u.siteArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
                         return sa === userAreaNorm;
                       }).map((u: any) => u.siteArea)
-                    // Fallback: if siteArea is null, find units in user's regional
                     : (userRegLokasiNorm
                       ? units.filter((u: any) => {
                           const rg = (u.namaRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -1610,7 +1781,7 @@ function ReturContent() {
                   )
                   : filteredLokasi.map((u: any) => u.siteArea);
                 return isEditing && canEditLokasi ? (
-                  <TableSearchableInput value={units.find((u: any) => u.idRegional === editForm.lokasiBarangId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); setEditForm({ ...editForm, lokasiBarangId: u?.idRegional || "" }); setSearchLokasi(val); }} items={lokasiOptions} placeholder="Cari Lokasi/DC..." />
+                  <TableSearchableInput value={units.find((u: any) => u.idRegional === currentForm.lokasiBarangId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); handleFieldChange(item, 'lokasiBarangId', u?.idRegional || ""); setSearchLokasi(val); }} items={lokasiOptions} placeholder="Cari Lokasi/DC..." />
                 ) : (
                   <div className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{item.LokasiBarang?.siteArea || "-"}</div>
                 );
@@ -1621,9 +1792,10 @@ function ReturContent() {
               label: "KODE TOKO",
               align: "center" as const,
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing && role === "pusat" ? (
-                  <input suppressHydrationWarning type="text" inputMode="numeric" className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.kodeToko || ""} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, kodeToko: val}); }} />
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
+                return isEditing && (role === "pusat" || role === "sitearea") ? (
+                  <input suppressHydrationWarning type="text" inputMode="numeric" className="w-full min-w-[100px] px-3 py-1.5 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={currentForm.kodeToko || ""} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); handleFieldChange(item, 'kodeToko', val); }} />
                 ) : (
                   <span className="font-bold text-slate-600">{item.kodeToko || "-"}</span>
                 );
@@ -1633,9 +1805,10 @@ function ReturContent() {
               key: "namaCompany",
               label: "TOKO",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing && role === "pusat" ? (
-                  <TableSearchableInput value={editForm.namaCompany || ""} onCommit={(val: string) => { setEditForm({ ...editForm, namaCompany: val }); setSearchToko(val); }} items={filteredToko} placeholder="Cari Toko..." />
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
+                return isEditing && (role === "pusat" || role === "sitearea") ? (
+                  <TableSearchableInput value={currentForm.namaCompany || ""} onCommit={(val: string) => { handleFieldChange(item, 'namaCompany', val); setSearchToko(val); }} items={filteredToko} placeholder="Cari Toko..." />
                 ) : (
                   <div className="text-xs font-black text-slate-800 whitespace-nowrap truncate max-w-[150px]" title={item.namaCompany}>{item.namaCompany || "-"}</div>
                 );
@@ -1645,9 +1818,10 @@ function ReturContent() {
               key: "inisial",
               label: "INISIAL",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing && role === "pusat" ? (
-                  <TableSearchableInput value={editForm.inisial || ""} onCommit={(val: string) => { setEditForm({ ...editForm, inisial: val }); setSearchInisial(val); setIsInisialOpen(false); }} items={filteredInisial} placeholder="Cari Inisial..." />
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
+                return isEditing && (role === "pusat" || role === "sitearea") ? (
+                  <TableSearchableInput value={currentForm.inisial || ""} onCommit={(val: string) => { handleFieldChange(item, 'inisial', val); setSearchInisial(val); setIsInisialOpen(false); }} items={filteredInisial} placeholder="Cari Inisial..." />
                 ) : (
                   <div className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-black border border-slate-200">{item.inisial || "-"}</div>
                 );
@@ -1657,9 +1831,10 @@ function ReturContent() {
               key: "link",
               label: "LINK",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing && role === "pusat" ? (
-                  <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.link || ""} onChange={e => setEditForm({...editForm, link: e.target.value})} />
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
+                return isEditing && (role === "pusat" || role === "sitearea") ? (
+                  <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={currentForm.link || ""} onChange={e => handleFieldChange(item, 'link', e.target.value)} />
                 ) : (
                   item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-tighter hover:underline">View Result</a> : "-"
                 );
@@ -1669,9 +1844,10 @@ function ReturContent() {
               key: "produk",
               label: "PRODUK",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing && role === "pusat" ? (
-                  <TableProductInput value={editForm.produk || ""} onCommit={(val: string) => { setEditForm({ ...editForm, produk: val }); setSearchProduk(val); const p = products.find((x: any) => x.name === val); if (p) setEditForm((prev: any) => ({ ...prev, productId: p.id })); }} items={filteredProductsInline} placeholder="Cari Produk..." />
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
+                return isEditing && (role === "pusat" || role === "sitearea") ? (
+                  <TableProductInput value={currentForm.produk || ""} onCommit={(val: string) => { handleFieldChange(item, 'produk', val); setSearchProduk(val); const p = products.find((x: any) => x.name === val); if (p) handleFieldChange(item, 'productId', p.id); }} items={filteredProductsInline} placeholder="Cari Produk..." />
                 ) : (
                   <div className="text-xs font-bold text-slate-600 whitespace-nowrap max-w-[150px] truncate" title={item.produk}>{item.produk || "-"}</div>
                 );
@@ -1682,11 +1858,12 @@ function ReturContent() {
               label: "QTY RETUR",
               align: "center" as const,
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="font-black text-slate-800 tabular-nums text-xs">
-                    {isEditing && role === "pusat" ? (
-                      <input type="number" className="w-full min-w-[100px] px-3 py-2 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer" value={editForm.qtyReturn === 0 ? "" : editForm.qtyReturn} onChange={e => { const v = e.target.value; setEditForm({...editForm, qtyReturn: v === '' ? 0 : Number(v)}); }} />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <input type="number" className="w-full min-w-[100px] px-3 py-2 text-xs font-bold text-center text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer" value={currentForm.qtyReturn === 0 ? "" : currentForm.qtyReturn} onChange={e => { const v = e.target.value; handleFieldChange(item, 'qtyReturn', v === '' ? 0 : Number(v)); }} />
                     ) : formatNumber(item.qtyReturn)}
                   </div>
                 );
@@ -1697,11 +1874,12 @@ function ReturContent() {
               label: "NOMINAL",
               align: "right" as const,
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="font-black text-slate-900 tabular-nums text-xs">
-                    {isEditing && role === "pusat" ? (
-                      <input type="number" className="w-full min-w-[120px] px-3 py-2 text-xs font-bold text-right text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer" value={editForm.nominal === 0 ? "" : editForm.nominal} onChange={e => { const v = e.target.value; setEditForm({...editForm, nominal: v === '' ? 0 : Number(v)}); }} />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <input type="number" className="w-full min-w-[120px] px-3 py-2 text-xs font-bold text-right text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-pointer" value={currentForm.nominal === 0 ? "" : currentForm.nominal} onChange={e => { const v = e.target.value; handleFieldChange(item, 'nominal', v === '' ? 0 : Number(v)); }} />
                     ) : formatIDR(item.nominal)}
                   </div>
                 );
@@ -1712,11 +1890,12 @@ function ReturContent() {
               label: "RP/KG",
               align: "right" as const,
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="font-black text-slate-500 tabular-nums text-xs italic">
                     {isEditing ? (
-                      <div className="w-full min-w-[120px] px-3 py-2 text-xs font-black text-right text-indigo-700 bg-indigo-50/30 rounded-lg border-2 border-transparent tabular-nums">{formatIDR(editForm.rpKg || 0)}</div>
+                      <div className="w-full min-w-[120px] px-3 py-2 text-xs font-black text-right text-indigo-700 bg-indigo-50/30 rounded-lg border-2 border-transparent tabular-nums">{formatIDR(currentForm.rpKg || 0)}</div>
                     ) : formatIDR(item.rpKg)}
                   </div>
                 );
@@ -1726,11 +1905,12 @@ function ReturContent() {
               key: "refKetStatus",
               label: "REFERENSI/KET STATUS",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
-                    {isEditing && role === "pusat" ? (
-                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.refKetStatus || ""} onChange={e => setEditForm({...editForm, refKetStatus: e.target.value})} />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={currentForm.refKetStatus || ""} onChange={e => handleFieldChange(item, 'refKetStatus', e.target.value)} />
                     ) : (item.refKetStatus || "-")}
                   </div>
                 );
@@ -1740,14 +1920,14 @@ function ReturContent() {
               key: "pembebananReturn",
               label: "PEMBEBANAN RETUR",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                // RULE: RM can edit pembebanan if lokasi barang belongs to their regional
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 const lokasiSiteArea = item.LokasiBarang?.siteArea || "";
                 const lokasiUnit = units.find((u: any) => (u.siteArea || "").toLowerCase() === lokasiSiteArea.toLowerCase());
                 const lokasiRegional = lokasiUnit?.namaRegional || "";
                 const canRmEdit = role === "rm" && lokasiSiteArea && lokasiRegional.toLowerCase() === (userRegional || "").toLowerCase();
                 return isEditing && (role === "pusat" || canRmEdit) ? (
-                  <TableSearchableInput value={units.find((u: any) => u.idRegional === editForm.pembebananReturnId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); setEditForm({ ...editForm, pembebananReturnId: u?.idRegional || "" }); setSearchPembebanan(val); }} items={filteredPembebanan.map((u: any) => u.siteArea)} placeholder="Cari Pembebanan..." />
+                  <TableSearchableInput value={units.find((u: any) => u.idRegional === currentForm.pembebananReturnId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); handleFieldChange(item, 'pembebananReturnId', u?.idRegional || ""); setSearchPembebanan(val); }} items={filteredPembebanan.map((u: any) => u.siteArea)} placeholder="Cari Pembebanan..." />
                 ) : (
                   <div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">{item.PembebananReturn?.siteArea || "-"}</div>
                 );
@@ -1758,9 +1938,10 @@ function ReturContent() {
               label: "INVOICE REKON",
               align: "center" as const,
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
-                return isEditing && role === "pusat" ? (
-                  <input className="w-full min-w-[150px] px-3 py-1.5 text-[10px] font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.invoiceRekon || ""} onChange={e => setEditForm({...editForm, invoiceRekon: e.target.value})} placeholder="No Invoice Rekon..." />
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
+                return isEditing && (role === "pusat" || role === "sitearea") ? (
+                  <input className="w-full min-w-[150px] px-3 py-1.5 text-[10px] font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={currentForm.invoiceRekon || ""} onChange={e => handleFieldChange(item, 'invoiceRekon', e.target.value)} placeholder="No Invoice Rekon..." />
                 ) : item.invoiceRekon ? (
                   <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-black border border-emerald-100 shadow-sm whitespace-nowrap">{item.invoiceRekon}</div>
                 ) : (
@@ -1772,11 +1953,12 @@ function ReturContent() {
               key: "referensiPembayaran",
               label: "REFERENSI PEMBAYARAN",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="text-[11px] font-bold text-slate-700 whitespace-nowrap italic">
-                    {isEditing && role === "pusat" ? (
-                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.referensiPembayaran || ""} onChange={e => setEditForm({...editForm, referensiPembayaran: e.target.value})} />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={currentForm.referensiPembayaran || ""} onChange={e => handleFieldChange(item, 'referensiPembayaran', e.target.value)} />
                     ) : (item.referensiPembayaran || "-")}
                   </div>
                 );
@@ -1786,11 +1968,12 @@ function ReturContent() {
               key: "tanggalPembayaran",
               label: "TANGGAL PEMBAYARAN",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="text-xs font-bold text-slate-500 whitespace-nowrap">
-                    {isEditing && role === "pusat" ? (
-                      <CustomInlineDatePicker value={editForm.tanggalPembayaran} onChange={(date: string) => setEditForm({...editForm, tanggalPembayaran: date})} colorScheme="slate" />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <CustomInlineDatePicker value={currentForm.tanggalPembayaran} onChange={(date: string) => handleFieldChange(item, 'tanggalPembayaran', date)} colorScheme="slate" />
                     ) : formatDate(item.tanggalPembayaran)}
                   </div>
                 );
@@ -1800,11 +1983,12 @@ function ReturContent() {
               key: "remarks",
               label: "REMARKS",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="text-[10px] font-medium text-slate-400 max-w-[150px] truncate" title={item.remarks}>
-                    {isEditing && role === "pusat" ? (
-                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.remarks || ""} onChange={e => setEditForm({...editForm, remarks: e.target.value})} />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={currentForm.remarks || ""} onChange={e => handleFieldChange(item, 'remarks', e.target.value)} />
                     ) : (item.remarks || "-")}
                   </div>
                 );
@@ -1814,11 +1998,12 @@ function ReturContent() {
               key: "sdiReturn",
               label: "SDI RETUR",
               render: (_v: any, item: any) => {
-                const isEditing = editingId === item.id;
+                const isEditing = editingId === item.id || isMassEditing;
+                const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 return (
                   <div className="text-[11px] font-bold text-amber-600 whitespace-nowrap">
-                    {isEditing && role === "pusat" ? (
-                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={editForm.sdiReturn || ""} onChange={e => setEditForm({...editForm, sdiReturn: e.target.value})} />
+                    {isEditing && (role === "pusat" || role === "sitearea") ? (
+                      <input className="w-full min-w-[200px] px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border-2 border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" value={currentForm.sdiReturn || ""} onChange={e => handleFieldChange(item, 'sdiReturn', e.target.value)} />
                     ) : (item.sdiReturn || "-")}
                   </div>
                 );
@@ -1829,6 +2014,7 @@ function ReturContent() {
               label: "AKSI",
               align: "right" as const,
               render: (_v: any, item: any) => {
+                if (isMassEditing) return null; // Hide actions during mass edit
                 const isEditing = editingId === item.id;
                 return (
                   <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
@@ -1866,12 +2052,13 @@ function ReturContent() {
           page={page}
           rowsPerPage={rowsPerPage}
           onPageChange={setPage}
+          onRowsPerPageChange={setRowsPerPage}
           variant="rounded"
           rowNumber
           stickyFirstCol
           stickyLastCol
-          onRowClick={(item: any) => !editingId && setViewDetailId(item.id)}
-          rowClassName={(item: any) => editingId === item.id ? 'bg-indigo-50/30' : ''}
+          onRowClick={(item: any) => !editingId && !isMassEditing && setViewDetailId(item.id)}
+          rowClassName={(item: any) => (editingId === item.id || isMassEditing) ? 'bg-indigo-50/30' : ''}
           className="bg-white rounded-[32px] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden relative animate-in zoom-in-95 duration-500"
           emptyMessage="Belum ada data retur."
           hidePagination={isGroupedMode}
@@ -1884,6 +2071,7 @@ function ReturContent() {
         />
         </>
       )}
+      </div>
 
       {/* ── BULK UPLOAD MODAL (SWITCHABLE CONTROLLERS) ─────────────────── */}
       {showBulkModal && (

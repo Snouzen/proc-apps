@@ -557,9 +557,6 @@ function TableUnderChart({
     async (signal?: AbortSignal) => {
       setLoading(true);
       try {
-        if (typeof document !== "undefined" && !document.hasFocus()) {
-          return;
-        }
         const params = new URLSearchParams();
         params.set("includeUnknown", "true");
         params.set("summary", "true");
@@ -640,7 +637,6 @@ function TableUnderChart({
 
   useEffect(() => {
     if (!role) return;
-    if (typeof document !== "undefined" && !document.hasFocus()) return;
     let active = true;
     const controller = new AbortController();
     
@@ -1263,7 +1259,7 @@ function TableUnderChart({
                   />
                 ) : (
                   <>
-                    {(role === "pusat" || role === "rm") && (
+                    {(role === "pusat" || role === "rm" || role === "sitearea") && (
                       <button
                         className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
                         title="Edit"

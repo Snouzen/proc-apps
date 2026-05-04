@@ -17,7 +17,6 @@ import {
   CalendarDays,
   CalendarClock,
   PackageSearch,
-  Image as ImageIcon,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -100,7 +99,6 @@ export default function Sidebar({
     },
     { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
     { name: "Data Retur", icon: <RotateCcw size={20} />, path: "/retur" },
-    { name: "Image Lab", icon: <ImageIcon size={20} />, path: "/tools/image-lab" },
   ];
 
   const rekonSubItems = [
@@ -135,31 +133,38 @@ export default function Sidebar({
         ]
       : baseMenu;
 
-  const subItems =
-    role === "rm" || !role
-      ? []
-      : [
-          {
-            name: `Unit Produksi`,
-            icon: <FileLock size={16} />,
-            path: "/master-data/unit-produksi",
-          },
-          {
-            name: `Produk`,
-            icon: <FileCheck size={16} />,
-            path: "/master-data/produk",
-          },
-          {
-            name: `Ritel Modern`,
-            icon: <ClipboardList size={16} />,
-            path: "/master-data/ritel-modern",
-          },
-          {
-            name: `Promo`,
-            icon: <TrendingDown size={16} />,
-            path: "/master-data/promo",
-          },
-        ];
+  const subItems = !role || role === "sitearea"
+    ? []
+    : role === "rm"
+    ? [
+        {
+          name: `Ritel Modern`,
+          icon: <ClipboardList size={16} />,
+          path: "/master-data/ritel-modern",
+        },
+      ]
+    : [
+        {
+          name: `Unit Produksi`,
+          icon: <FileLock size={16} />,
+          path: "/master-data/unit-produksi",
+        },
+        {
+          name: `Produk`,
+          icon: <FileCheck size={16} />,
+          path: "/master-data/produk",
+        },
+        {
+          name: `Ritel Modern`,
+          icon: <ClipboardList size={16} />,
+          path: "/master-data/ritel-modern",
+        },
+        {
+          name: `Promo`,
+          icon: <TrendingDown size={16} />,
+          path: "/master-data/promo",
+        },
+      ];
 
   return (
     <>
@@ -323,9 +328,9 @@ export default function Sidebar({
             )}
           </div>
 
-          {/* Collapsible Master Data (hide for RM) */}
+          {/* Collapsible Master Data */}
           <div className="space-y-1">
-            {role !== "rm" && role !== "sitearea" && (
+            {role !== "sitearea" && (
               <>
                 <div
                   onClick={() =>

@@ -44,6 +44,7 @@ export default function POEditModal({
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ");
+  const isSiteArea = getMeSync()?.role === "sitearea";
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{
@@ -679,6 +680,7 @@ export default function POEditModal({
                     setInisial("");
                   }}
                   placeholder="Pilih/Ketik Perusahaan..."
+                  disabled={isSiteArea}
                 />
               </div>
 
@@ -692,6 +694,7 @@ export default function POEditModal({
                   value={inisial}
                   onChange={(v) => setInisial(v)}
                   placeholder="Ketik/cari inisial..."
+                  disabled={isSiteArea}
                 />
               </div>
 
@@ -704,6 +707,7 @@ export default function POEditModal({
                   value={tujuan}
                   onChange={(v) => setTujuan(v)}
                   placeholder="Ketik/cari tujuan..."
+                  disabled={isSiteArea}
                 />
               </div>
 
@@ -717,7 +721,7 @@ export default function POEditModal({
                     setTglPo(v);
                     if (expiredTgl && v && expiredTgl < v) setExpiredTgl(v);
                   }}
-                  className="w-full bg-slate-50 rounded-2xl"
+                  className={`w-full bg-slate-50 rounded-2xl ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}
                   placeholder="YYYY-MM-DD"
                   maxDate={expiredTgl}
                 />
@@ -730,7 +734,7 @@ export default function POEditModal({
                 <DateInputHybrid
                   value={expiredTgl}
                   onChange={setExpiredTgl}
-                  className="w-full bg-slate-50 rounded-2xl"
+                  className={`w-full bg-slate-50 rounded-2xl ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}
                   placeholder="YYYY-MM-DD"
                   minDate={tglPo}
                 />
@@ -743,7 +747,7 @@ export default function POEditModal({
                 <DateInputHybrid
                   value={tglKirim}
                   onChange={setTglKirim}
-                  className="w-full bg-blue-50/30 rounded-2xl border border-blue-100"
+                  className={`w-full bg-blue-50/30 rounded-2xl border border-blue-100 ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}
                   placeholder="YYYY-MM-DD (opsional)"
                 />
               </div>
@@ -769,16 +773,18 @@ export default function POEditModal({
                     />
                   </div>
                 ) : (
-                  <Select
-                    options={regionalOptions}
-                    value={regional}
-                    onChange={(v) => {
-                      setRegional(v);
-                      setSiteArea(""); // Reset site area agar tidak nyangkut dari regional sebelumnya
-                    }}
-                    placeholder="Pilih Regional"
-                    leftIcon={<MapPin size={16} />}
-                  />
+                  <div className={isSiteArea ? "opacity-60 pointer-events-none" : ""}>
+                    <Select
+                      options={regionalOptions}
+                      value={regional}
+                      onChange={(v) => {
+                        setRegional(v);
+                        setSiteArea(""); // Reset site area agar tidak nyangkut dari regional sebelumnya
+                      }}
+                      placeholder="Pilih Regional"
+                      leftIcon={<MapPin size={16} />}
+                    />
+                  </div>
                 )}
               </div>
 
@@ -794,6 +800,7 @@ export default function POEditModal({
                   placeholder="Ketik/cari site area..."
                   leftIcon={<MapPin size={16} />}
                   inputClassName="pl-11 pr-4"
+                  disabled={isSiteArea}
                 />
               </div>
 
@@ -810,7 +817,8 @@ export default function POEditModal({
                     type="url"
                     placeholder="https://..."
                     value={linkPo}
-                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    disabled={isSiteArea}
+                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all disabled:opacity-60 disabled:bg-slate-50"
                     onChange={(e) => setLinkPo(e.target.value)}
                   />
                 </div>
@@ -824,7 +832,8 @@ export default function POEditModal({
                   value={noPoValue}
                   onChange={(e) => setNoPoValue(e.target.value)}
                   placeholder="Masukkan Nomor PO..."
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  disabled={isSiteArea}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all disabled:opacity-60 disabled:bg-slate-50"
                 />
               </div>
 
@@ -855,7 +864,7 @@ export default function POEditModal({
                 {PO_FORM_LABELS.tambahItem}
               </h4>
             </div>
-            <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className={`p-6 grid grid-cols-2 md:grid-cols-4 gap-4 ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
               <div className="md:col-span-4">
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
                   {PO_FORM_LABELS.namaProduk}
@@ -957,7 +966,7 @@ export default function POEditModal({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+          <div className={`rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h4 className="font-bold text-slate-800">
                 {PO_FORM_LABELS.preview}
@@ -1166,7 +1175,7 @@ export default function POEditModal({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+            <section className={`bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
               <div className="flex items-center justify-between gap-3 mb-4">
                 <h2 className="font-bold text-slate-800 text-lg">
                   {PO_FORM_LABELS.checklistDokumen}
@@ -1321,7 +1330,7 @@ export default function POEditModal({
               </div>
             </section>
 
-            <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+            <section className={`bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
               <div className="flex items-center gap-3 mb-4">
                 <h2 className="font-bold text-slate-800 text-lg">
                   {PO_FORM_LABELS.remarks}

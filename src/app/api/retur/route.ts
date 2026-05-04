@@ -149,7 +149,10 @@ export async function GET(request: Request) {
         where,
         skip: offset,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "asc" }
+        ],
         include: {
           RitelModern: true,
           LokasiBarang: true,
