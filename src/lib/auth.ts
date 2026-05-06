@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 
 
@@ -55,38 +56,39 @@ export async function authenticate(
 
   // 1. Database User Query
   try {
-    console.log("1. [AUTH] Mencoba login dengan email:", lower);
-
     const dbUser = await prisma.user.findFirst({ where: { email: lower } });
 
-    console.log(
-      "2. [AUTH] Hasil pencarian di DB:",
-      dbUser ? "KETEMU!" : "KOSONG/NULL",
-    );
-
     if (dbUser) {
-      console.log(
-        "3. [AUTH] Ngecek password... Input:",
-        password,
-        "| DB:",
-        (dbUser as any).password,
-      );
+      const storedPw = (dbUser as any).password;
+      if (storedPw) {
+        // Support both bcrypt-hashed and legacy plaintext passwords
+        const isHashed = storedPw.startsWith("$2");
+        const match = isHashed
+          ? await bcrypt.compare(password, storedPw)
+          : password === storedPw;
 
-      if (password === "password" || password === (dbUser as any).password) {
-        console.log("4. [AUTH] PASSWORD COCOK! Akses Diberikan.");
-        return {
-          ok: true,
-          payload: {
-            email: lower,
-            role: dbUser.role as Role,
-            regional: dbUser.regional,
-            siteArea: dbUser.siteArea,
-            exp: Date.now() + SESSION_TTL_MS,
-            jti: randomBytes(8).toString("hex"),
-          },
-        };
-      } else {
-        console.log("4. [AUTH] PASSWORD SALAH!");
+        if (match) {
+          // Auto-upgrade: hash plaintext password on successful login
+          if (!isHashed) {
+            const hashed = await bcrypt.hash(password, 12);
+            await prisma.user.update({
+              where: { id: dbUser.id },
+              data: { password: hashed } as any,
+            }).catch(() => {}); // non-fatal
+          }
+
+          return {
+            ok: true,
+            payload: {
+              email: lower,
+              role: dbUser.role as Role,
+              regional: dbUser.regional,
+              siteArea: dbUser.siteArea,
+              exp: Date.now() + SESSION_TTL_MS,
+              jti: randomBytes(8).toString("hex"),
+            },
+          };
+        }
       }
     }
   } catch (err) {

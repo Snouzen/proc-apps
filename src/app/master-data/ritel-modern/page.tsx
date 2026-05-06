@@ -46,7 +46,10 @@ const highlightText = (text: string, query: string) => {
 };
 
 export default function RitelModernPage() {
-  const isRm = getMeSync()?.role === "rm";
+  const me = getMeSync();
+  const isRm = me?.role === "rm";
+  const isPusat = me?.role === "pusat";
+  const canEdit = isRm || isPusat;
   const refreshTick = useAutoRefreshTick();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"addInisial" | "addCompany">("addInisial");
@@ -70,10 +73,12 @@ export default function RitelModernPage() {
   const [editCompany, setEditCompany] = useState<{
     id?: string;
     namaPt: string;
+    originalNamaPt?: string;
     inisial: string | null;
     originalInisial: string | null;
     logoPt?: string | null;
     logoInisial?: string | null;
+    ptOnly?: boolean;
   } | null>(null);
   const [viewCompany, setViewCompany] = useState<{
     namaPt: string;
@@ -677,7 +682,7 @@ export default function RitelModernPage() {
             {currentItems.map((group) => (
               <div
                 key={group.displayId}
-                className="group relative bg-white rounded-[32px] border border-slate-100 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.05)] hover:shadow-[0_40px_80px_-25px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-500 overflow-hidden"
+                className="group relative bg-white rounded-[32px] border border-slate-100 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_45px_100px_-25px_rgba(0,0,0,0.15)] hover:-translate-y-1.5 transition-all duration-500 overflow-hidden"
               >
                 {/* Logo Area - Large & Clear */}
                 <div className="relative h-[130px] w-full bg-white border-b border-slate-50 flex items-center justify-center p-6 overflow-hidden">
@@ -713,24 +718,48 @@ export default function RitelModernPage() {
                   </div>
 
                   {/* Actions Footer */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-50 gap-2">
                     <button
                       onClick={() => setViewAliases({ namaPt: group.namaPt })}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 text-white hover:bg-indigo-600 transition-all duration-300 shadow-lg shadow-slate-200 hover:shadow-indigo-100 active:scale-95"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 text-white hover:bg-indigo-600 transition-all duration-300 shadow-lg shadow-slate-200 hover:shadow-indigo-100 active:scale-95"
                     >
                       <Eye size={14} strokeWidth={2.5} />
                       <span className="text-[10px] font-black uppercase tracking-widest">View Details</span>
                     </button>
 
-                    {!isRm && (
-                    <button
-                      onClick={() => setDeleteCompany(group.namaPt)}
-                      className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white transition-all duration-300 group/del"
-                      title="Hapus Ritel"
-                    >
-                      <Trash2 size={15} strokeWidth={2.5} className="group-hover/del:scale-110 transition-transform" />
-                    </button>
-                  )}
+                    <div className="flex items-center gap-1.5">
+                      {canEdit && (
+                        <button
+                          onClick={() => {
+                            const firstAlias = Object.keys(group.inisials)[0];
+                            const firstData = group.inisials[firstAlias];
+                            setEditCompany({
+                              id: group.displayId,
+                              namaPt: group.namaPt,
+                              originalNamaPt: group.namaPt,
+                              inisial: null,
+                              originalInisial: null,
+                              logoPt: group.logoPt,
+                              ptOnly: true
+                            });
+                          }}
+                          className="p-3 rounded-2xl bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white transition-all duration-300 group/edit"
+                          title="Edit Logo / Nama PT"
+                        >
+                          <Edit2 size={15} strokeWidth={2.5} className="group-hover/edit:rotate-12 transition-transform" />
+                        </button>
+                      )}
+
+                      {!isRm && (
+                        <button
+                          onClick={() => setDeleteCompany(group.namaPt)}
+                          className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white transition-all duration-300 group/del"
+                          title="Hapus Ritel"
+                        >
+                          <Trash2 size={15} strokeWidth={2.5} className="group-hover/del:scale-110 transition-transform" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -794,6 +823,16 @@ export default function RitelModernPage() {
                             : r,
                         ),
                       );
+                      if (viewCompany) {
+                        setViewCompany({
+                          ...viewCompany,
+                          stores: viewCompany.stores.map((s) =>
+                            s.id === editStore.id
+                              ? { ...s, tujuan: newStoreName }
+                              : s,
+                          ),
+                        });
+                      }
                     } catch {}
                   }}
                   className="flex-1"
@@ -806,7 +845,7 @@ export default function RitelModernPage() {
         </div>
       )}
       {addStoreFor && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setAddStoreFor(null)}
@@ -818,9 +857,6 @@ export default function RitelModernPage() {
                   type="button"
                   onClick={() => {
                     setAddStoreFor(null);
-                    setTimeout(() => {
-                      setViewAliases({ namaPt: addStoreFor.namaPt });
-                    }, 0);
                   }}
                   className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-slate-700 hover:bg-gray-50"
                 >
@@ -855,9 +891,7 @@ export default function RitelModernPage() {
                   variant="cancel"
                   onClick={() => {
                     setAddStoreFor(null);
-                    setTimeout(() => {
-                      setViewAliases({ namaPt: addStoreFor.namaPt });
-                    }, 0);
+
                   }}
                 >
                   Batal
@@ -873,6 +907,17 @@ export default function RitelModernPage() {
                       };
                       const result = await saveRitel(payload);
                       setDataRitel((prev) => [result, ...prev]);
+                      
+                      // Sync with viewCompany if active
+                      if (viewCompany && 
+                          viewCompany.namaPt === addStoreFor.namaPt && 
+                          (viewCompany.inisial || "—") === (addStoreFor.inisial || "—")) {
+                        setViewCompany({
+                          ...viewCompany,
+                          stores: [...viewCompany.stores, { id: result.id, tujuan: result.tujuan }]
+                        });
+                      }
+
                       setAddStoreFor(null);
                       setNewStoreForName("");
                     } catch {
@@ -924,6 +969,14 @@ export default function RitelModernPage() {
                     setDataRitel((prev) =>
                       prev.filter((r) => r.id !== deleteStore.id),
                     );
+                    if (viewCompany) {
+                      setViewCompany({
+                        ...viewCompany,
+                        stores: viewCompany.stores.filter(
+                          (s) => s.id !== deleteStore.id,
+                        ),
+                      });
+                    }
                   } catch {}
                 }}
                 className="bg-rose-600 hover:bg-rose-700"
@@ -1004,14 +1057,11 @@ export default function RitelModernPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => {
-                                setViewAliases(null);
-                                setTimeout(() => {
-                                  setViewCompany({
-                                    namaPt: viewAliases.namaPt,
-                                    inisial: alias,
-                                    stores: data.stores,
-                                  });
-                                }, 0);
+                                setViewCompany({
+                                  namaPt: viewAliases.namaPt,
+                                  inisial: alias,
+                                  stores: data.stores,
+                                });
                               }}
                               className="p-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-800"
                               title="Lihat Toko"
@@ -1020,24 +1070,21 @@ export default function RitelModernPage() {
                             </button>
                             <button
                               onClick={() => {
-                                setViewAliases(null);
                                 const masterGroup = (dataRitel || []).find(
                                   (r) =>
                                     r.namaPt === viewAliases.namaPt &&
                                     (r.inisial || "—") === alias,
                                 );
-                                setTimeout(() => {
-                                  setEditCompany({
-                                    id: masterGroup?.id,
-                                    namaPt: viewAliases.namaPt,
-                                    inisial: alias === "—" ? null : alias,
-                                    originalInisial:
-                                      alias === "—" ? null : alias,
-                                    logoPt: masterGroup?.logoPt || null,
-                                    logoInisial:
-                                      masterGroup?.logoInisial || null,
-                                  });
-                                }, 0);
+                                setEditCompany({
+                                  id: masterGroup?.id,
+                                  namaPt: viewAliases.namaPt,
+                                  inisial: alias === "—" ? null : alias,
+                                  originalInisial:
+                                    alias === "—" ? null : alias,
+                                  logoPt: masterGroup?.logoPt || null,
+                                  logoInisial:
+                                    masterGroup?.logoInisial || null,
+                                });
                               }}
                               className="p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700"
                               title="Edit Data & Logo"
@@ -1046,14 +1093,11 @@ export default function RitelModernPage() {
                             </button>
                             <button
                               onClick={() => {
-                                setViewAliases(null);
-                                setTimeout(() => {
-                                  setAddStoreFor({
-                                    namaPt: viewAliases.namaPt,
-                                    inisial: alias,
-                                  });
-                                  setNewStoreForName("");
-                                }, 0);
+                                setAddStoreFor({
+                                  namaPt: viewAliases.namaPt,
+                                  inisial: alias,
+                                });
+                                setNewStoreForName("");
                               }}
                               className="p-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
                               title="Tambah Toko/DC"
@@ -1063,7 +1107,7 @@ export default function RitelModernPage() {
                             {!isRm && (
                               <button
                                 onClick={() => {
-                                  setViewAliases(null);
+  
                                   setTimeout(() => {
                                     setDeleteInisial({
                                       namaPt: viewAliases.namaPt,
@@ -1285,7 +1329,7 @@ export default function RitelModernPage() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setIsModalOpen(false)}
@@ -1499,7 +1543,7 @@ export default function RitelModernPage() {
 
       {/* Edit Inisial Modal */}
       {editCompany && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setEditCompany(null)}
@@ -1507,7 +1551,9 @@ export default function RitelModernPage() {
           <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
               <h3 className="text-lg font-extrabold text-slate-800">
-                Edit Inisial - {editCompany.namaPt}
+                {editCompany.ptOnly 
+                  ? "Edit Profil Perusahaan" 
+                  : `Edit Inisial - ${editCompany.namaPt}`}
               </h3>
               <button
                 onClick={() => setEditCompany(null)}
@@ -1517,54 +1563,75 @@ export default function RitelModernPage() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
-                  Inisial
-                </label>
-                <input
-                  type="text"
-                  value={editCompany.inisial ?? ""}
-                  onChange={(e) =>
-                    setEditCompany({ ...editCompany, inisial: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
-                />
-              </div>
+              {editCompany.ptOnly && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    Nama PT (Perusahaan)
+                  </label>
+                  <input
+                    type="text"
+                    value={editCompany.namaPt ?? ""}
+                    onChange={(e) =>
+                      setEditCompany({ ...editCompany, namaPt: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-bold text-slate-800 shadow-sm"
+                  />
+                </div>
+              )}
+
+              {!editCompany.ptOnly && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    Inisial
+                  </label>
+                  <input
+                    type="text"
+                    value={editCompany.inisial ?? ""}
+                    onChange={(e) =>
+                      setEditCompany({ ...editCompany, inisial: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                  />
+                </div>
+              )}
 
               <div className="space-y-3">
                 {!isRm && (<>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-blue-600 mb-1 uppercase tracking-wider">
-                    Suntik Logo PT (URL)
-                  </label>
-                  <input
-                    type="text"
-                    value={editCompany.logoPt ?? ""}
-                    onChange={(e) =>
-                      setEditCompany({ ...editCompany, logoPt: e.target.value })
-                    }
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-amber-600 mb-1 uppercase tracking-wider">
-                    Suntik Logo Inisial (URL)
-                  </label>
-                  <input
-                    type="text"
-                    value={editCompany.logoInisial ?? ""}
-                    onChange={(e) =>
-                      setEditCompany({
-                        ...editCompany,
-                        logoInisial: e.target.value,
-                      })
-                    }
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px]"
-                  />
-                </div>
+                {editCompany.ptOnly ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-blue-600 mb-1 uppercase tracking-wider">
+                      Suntik Logo PT (URL)
+                    </label>
+                    <input
+                      type="text"
+                      value={editCompany.logoPt ?? ""}
+                      onChange={(e) =>
+                        setEditCompany({ ...editCompany, logoPt: e.target.value })
+                      }
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px]"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-[11px] font-bold text-amber-600 mb-1 uppercase tracking-wider">
+                      Suntik Logo Inisial (URL)
+                    </label>
+                    <input
+                      type="text"
+                      value={editCompany.logoInisial ?? ""}
+                      onChange={(e) =>
+                        setEditCompany({
+                          ...editCompany,
+                          logoInisial: e.target.value,
+                        })
+                      }
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px]"
+                    />
+                  </div>
+                )}
               
                 </>)}
               </div>
@@ -1583,7 +1650,8 @@ export default function RitelModernPage() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           id: editCompany.id,
-                          namaPt: editCompany.namaPt,
+                          namaPt: editCompany.originalNamaPt, // Send original name to find the PT group
+                          newNamaPt: editCompany.namaPt,      // Send new name to update it
                           inisial: editCompany.originalInisial, // original value to find rows
                           newInisial: editCompany.inisial, // new value to update
                           logoPt: editCompany.logoPt,
@@ -1599,24 +1667,24 @@ export default function RitelModernPage() {
                         });
                         return;
                       }
-                      // Update state
+                      // Update state locally
                       setDataRitel((prev) =>
-                        prev.map((x: any) =>
-                          x.namaPt.toLowerCase() ===
-                            editCompany.namaPt.toLowerCase() &&
-                          (x.inisial ?? "—") ===
-                            (editCompany.originalInisial ?? "—")
-                            ? {
-                                ...x,
-                                inisial: editCompany.inisial,
-                                logoPt: editCompany.logoPt,
-                                logoInisial: editCompany.logoInisial,
-                              }
-                            : x.namaPt.toLowerCase() ===
-                                editCompany.namaPt.toLowerCase()
-                              ? { ...x, logoPt: editCompany.logoPt } // Also update PT logo for other initials
-                              : x,
-                        ),
+                        prev.map((x: any) => {
+                          const oldPtName = (editCompany.originalNamaPt || editCompany.namaPt).toLowerCase();
+                          const isSamePt = x.namaPt.toLowerCase() === oldPtName;
+                          
+                          if (isSamePt) {
+                            const isTargetInisial = (x.inisial ?? "—") === (editCompany.originalInisial ?? "—");
+                            return {
+                              ...x,
+                              namaPt: editCompany.namaPt,
+                              logoPt: editCompany.logoPt,
+                              inisial: isTargetInisial ? (editCompany.inisial || null) : x.inisial,
+                              logoInisial: isTargetInisial ? (editCompany.logoInisial || null) : x.logoInisial,
+                            };
+                          }
+                          return x;
+                        }),
                       );
                       Swal.fire({
                         icon: "success",
@@ -1648,7 +1716,7 @@ export default function RitelModernPage() {
 
       {/* View Stores Modal */}
       {viewCompany && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setViewCompany(null)}
@@ -1660,9 +1728,6 @@ export default function RitelModernPage() {
                   type="button"
                   onClick={() => {
                     setViewCompany(null);
-                    setTimeout(() => {
-                      setViewAliases({ namaPt: viewCompany.namaPt });
-                    }, 0);
                   }}
                   className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-slate-700 hover:bg-gray-50"
                 >
@@ -1695,12 +1760,39 @@ export default function RitelModernPage() {
                       {pageStores.map((s) => (
                         <li
                           key={s.id}
-                          className="px-3 py-2 bg-white border border-slate-200 rounded-xl flex items-center gap-2"
+                          className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-2 group/store-item hover:border-amber-200 transition-all shadow-sm"
                         >
-                          <Store size={14} className="text-amber-600" />
-                          <span className="text-sm font-bold text-slate-700">
-                            {s.tujuan}
-                          </span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Store size={14} className="text-amber-600 flex-shrink-0" />
+                            <span className="text-sm font-bold text-slate-700 truncate">
+                              {s.tujuan}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  setNewStoreName(s.tujuan);
+                                  setEditStore({ id: s.id, tujuan: s.tujuan, namaPt: viewCompany.namaPt });
+                                }}
+                                className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
+                                title="Edit Nama Toko"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                            )}
+                            {isPusat && (
+                              <button
+                                onClick={() => {
+                                  setDeleteStore({ id: s.id, tujuan: s.tujuan, namaPt: viewCompany.namaPt });
+                                }}
+                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                                title="Hapus Toko"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -1737,7 +1829,7 @@ export default function RitelModernPage() {
 
       {/* Delete Company Modal */}
       {deleteCompany && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setDeleteCompany(null)}
@@ -1796,7 +1888,7 @@ export default function RitelModernPage() {
 
       {/* Delete Inisial Modal */}
       {deleteInisial && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setDeleteInisial(null)}

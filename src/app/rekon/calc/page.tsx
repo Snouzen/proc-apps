@@ -35,6 +35,7 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
 const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
+import DateInputHybrid from "@/components/DateInputHybrid";
 
 interface Company {
   id: string;
@@ -94,6 +95,10 @@ function RekonContent() {
   const [masterPromos, setMasterPromos] = useState<Promo[]>([]);
 
   const [bankStatement, setBankStatement] = useState(0);
+  const [tglBayar, setTglBayar] = useState<string>("");
+  const [buktiBayarFile, setBuktiBayarFile] = useState<File | null>(null);
+  const [buktiBayarUrl, setBuktiBayarUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([]);
   const [selectedRtvs, setSelectedRtvs] = useState<Rtv[]>([]);
@@ -382,24 +387,107 @@ function RekonContent() {
         {/* Left Workflow Area (LOCKED TO PREVENT SIDEBAR PUSHING) */}
         <div className="flex-1 space-y-12 min-w-0">
            
-           {/* STEP 1: Bank Statement */}
-           <div className="bg-white rounded-[40px] p-10 border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] space-y-8 relative">
-              <div className="flex items-center gap-4">
-                 <div className="w-8 h-8 rounded-full bg-[#f59e0b] text-white flex items-center justify-center font-black text-xs shadow-lg">1</div>
-                 <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Rekening Koran (Bank Statement)</h3>
-              </div>
-              <div className="relative group">
-                 <div className="absolute left-10 top-1/2 -translate-y-1/2 text-slate-200 group-focus-within:text-[#f59e0b] transition-colors">
-                    <CircleDollarSign size={36} />
+           {/* STEP 1: Bank Statement & Payment Proof */}
+           <div className="bg-white rounded-[40px] p-10 border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] space-y-10 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none"></div>
+              
+              <div className="flex items-center justify-between relative z-10">
+                 <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[#f59e0b] text-white flex items-center justify-center font-black text-xs shadow-lg">1</div>
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Rekening Koran & Bukti Bayar</h3>
                  </div>
-                 <input 
-                    type="text" 
-                    placeholder="Input Nominal Rp..." 
-                    className="w-full h-28 pl-32 pr-12 bg-[#f8fafc] rounded-[36px] border-none outline-none font-black text-4xl text-slate-700 placeholder:text-slate-200 transition-all focus:bg-white focus:ring-4 focus:ring-orange-50/50"
-                    onChange={e => setBankStatement(Number(e.target.value.replace(/[^0-9]/g, '')))}
-                    value={bankStatement ? new Intl.NumberFormat("id-ID").format(bankStatement) : ""}
-                 />
-                 <span className="absolute right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-200 uppercase tracking-widest">Rekening Koran</span>
+                 {tglBayar && (
+                    <div className="px-4 py-1.5 bg-amber-50 text-[#f59e0b] rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-100/50 animate-in fade-in slide-in-from-right-2">
+                       Payment Ready
+                    </div>
+                 )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 relative z-10">
+                 {/* Nominal Input */}
+                 <div className="md:col-span-12 space-y-3">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nominal Rekening Koran</label>
+                    <div className="relative group">
+                       <div className="absolute left-10 top-1/2 -translate-y-1/2 text-slate-200 group-focus-within:text-[#f59e0b] transition-colors">
+                          <CircleDollarSign size={36} />
+                       </div>
+                       <input 
+                          type="text" 
+                          placeholder="0" 
+                          className="w-full h-28 pl-32 pr-12 bg-[#f8fafc] rounded-[36px] border-none outline-none font-black text-4xl text-slate-700 placeholder:text-slate-200 transition-all focus:bg-white focus:ring-4 focus:ring-orange-50/50 shadow-sm group-hover:shadow-md"
+                          onChange={e => setBankStatement(Number(e.target.value.replace(/[^0-9]/g, '')))}
+                          value={bankStatement ? new Intl.NumberFormat("id-ID").format(bankStatement) : ""}
+                       />
+                       <span className="absolute right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-200 uppercase tracking-widest">Nominal Rp</span>
+                    </div>
+                 </div>
+
+                 {/* Date Picker & Upload Proof */}
+                 <div className="md:col-span-5 space-y-3">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Tanggal Pembayaran</label>
+                    <div className="h-16 flex items-center">
+                       <DateInputHybrid 
+                          value={tglBayar} 
+                          onChange={setTglBayar}
+                          placeholder="Pilih Tanggal..."
+                          className="w-full h-full"
+                       />
+                    </div>
+                 </div>
+
+                 <div className="md:col-span-7 space-y-3">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bukti Bayar (Max 1MB)</label>
+                    <div className="relative group h-16">
+                       <input 
+                          type="file" 
+                          accept="image/*,.pdf"
+                          className="hidden" 
+                          id="bukti-bayar-upload"
+                          onChange={(e) => {
+                             const file = e.target.files?.[0];
+                             if (file) {
+                                if (file.size > 1024 * 1024) {
+                                   Swal.fire({
+                                      icon: 'error',
+                                      title: 'File Terlalu Besar',
+                                      text: 'Maksimal ukuran file adalah 1MB bro!',
+                                      customClass: { popup: "rounded-[32px] font-sans" }
+                                   });
+                                   e.target.value = '';
+                                   return;
+                                }
+                                setBuktiBayarFile(file);
+                             }
+                          }}
+                       />
+                       <label 
+                          htmlFor="bukti-bayar-upload"
+                          className={`w-full h-full rounded-2xl border-2 border-dashed flex items-center px-6 gap-4 cursor-pointer transition-all ${buktiBayarFile ? 'border-amber-400 bg-amber-50/30' : 'border-slate-100 bg-[#f8fafc] hover:border-amber-300 hover:bg-amber-50/20'}`}
+                       >
+                          <div className={`p-2 rounded-xl ${buktiBayarFile ? 'bg-amber-400 text-white shadow-lg shadow-amber-200' : 'bg-white text-slate-300 shadow-sm'}`}>
+                             <Upload size={18} strokeWidth={2.5} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                             <p className={`text-[11px] font-black uppercase tracking-tight truncate ${buktiBayarFile ? 'text-amber-600' : 'text-slate-400'}`}>
+                                {buktiBayarFile ? buktiBayarFile.name : "Upload Bukti Bayar..."}
+                             </p>
+                             {buktiBayarFile && (
+                                <p className="text-[8px] font-bold text-amber-400 uppercase tracking-widest mt-0.5">
+                                   {(buktiBayarFile.size / 1024).toFixed(1)} KB • Klik untuk ganti
+                                </p>
+                             )}
+                          </div>
+                          {buktiBayarFile && (
+                             <button 
+                                onClick={(e) => { e.preventDefault(); setBuktiBayarFile(null); }}
+                                className="p-2 hover:bg-rose-50 text-rose-400 rounded-lg transition-colors"
+                             >
+                                <X size={14} />
+                             </button>
+                          )}
+                       </label>
+                    </div>
+                 </div>
               </div>
            </div>
 

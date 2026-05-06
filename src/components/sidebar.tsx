@@ -17,6 +17,10 @@ import {
   CalendarDays,
   CalendarClock,
   PackageSearch,
+  Database,
+  Package,
+  Undo2,
+  Target,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -31,6 +35,39 @@ interface SidebarProps {
   initialRegional?: string | null;
 }
 
+const RenderLink = ({
+  item,
+  pathname,
+  isOpen,
+}: {
+  item: any;
+  pathname: string;
+  isOpen: boolean;
+}) => {
+  const isActive = pathname === item.path;
+  return (
+    <Link
+      href={item.path}
+      prefetch={false}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group
+        ${
+          isActive
+            ? "bg-amber-50 text-amber-600 font-bold shadow-sm"
+            : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+        }`}
+    >
+      <div className="w-6 h-6 flex items-center justify-center shrink-0">
+        <span
+          className={`${isActive ? "text-amber-600" : "group-hover:scale-110 transition-transform"}`}
+        >
+          {item.icon}
+        </span>
+      </div>
+      {isOpen && <span className="text-sm whitespace-nowrap">{item.name}</span>}
+    </Link>
+  );
+};
+
 export default function Sidebar({
   isOpen,
   setIsOpen,
@@ -41,6 +78,7 @@ export default function Sidebar({
   const [poMenuOpen, setPoMenuOpen] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
   const [rekonMenuOpen, setRekonMenuOpen] = useState(false);
+  const [actionPlanOpen, setActionPlanOpen] = useState(false);
   const [role, setRole] = useState<
     "pusat" | "rm" | "sitearea" | "spb_dki" | null
   >(initialRole || null);
@@ -58,6 +96,9 @@ export default function Sidebar({
     }
     if (pathname.includes("/rekon")) {
       setRekonMenuOpen(true);
+    }
+    if (pathname === "/schedule" || pathname === "/need-assign") {
+      setActionPlanOpen(true);
     }
   }, [pathname]);
 
@@ -88,17 +129,18 @@ export default function Sidebar({
     })();
   }, [initialRole, initialRegional]);
 
-  const baseMenu = [
-    { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" },
-    { name: "Schedule", icon: <CalendarDays size={20} />, path: "/schedule" },
-    { name: "Company", icon: <BookOpen size={20} />, path: "/company" },
+  const dashboardItem = { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" };
+  const poItem = { name: "Purchase Order", icon: <Package size={20} />, path: "/purchase-order" };
+  const reportItem = { name: "Report", icon: <BarChart3 size={20} />, path: "/report" };
+  const returItem = { name: "Data Retur", icon: <Undo2 size={20} />, path: "/retur" };
+
+  const actionPlanSubItems = [
+    { name: "Schedule", icon: <CalendarDays size={16} />, path: "/schedule" },
     {
       name: "Need To Assign",
-      icon: <ClipboardList size={20} />,
+      icon: <ClipboardList size={16} />,
       path: "/need-assign",
     },
-    { name: "Report", icon: <BarChart3 size={20} />, path: "/report" },
-    { name: "Data Retur", icon: <RotateCcw size={20} />, path: "/retur" },
   ];
 
   const rekonSubItems = [
@@ -122,16 +164,6 @@ export default function Sidebar({
       path: "/branch/expired",
     },
   ];
-
-  const menuItems =
-    role === "sitearea"
-      ? [
-          baseMenu[0], // Dashboard
-          baseMenu[1], // Schedule
-          baseMenu[4], // Report
-          baseMenu[5], // Data Retur
-        ]
-      : baseMenu;
 
   const subItems = !role || role === "sitearea"
     ? []
@@ -177,7 +209,7 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-100 z-50 transition-all duration-300 ease-in-out
+        className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-100 z-50 transition-all duration-300 ease-in-out flex flex-col
         ${isOpen ? "w-64 translate-x-0" : "w-20 -translate-x-full lg:translate-x-0"}`}
       >
         {/* Header Logo */}
@@ -201,163 +233,220 @@ export default function Sidebar({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.path;
-            return (
-              <Link
-                key={item.name}
-                href={item.path}
-                prefetch={false}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group
-                  ${
-                    isActive
-                      ? "bg-amber-50 text-amber-600 font-bold shadow-sm"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                  }`}
+        <nav 
+          className="flex-1 px-3 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar"
+          style={{ scrollbarGutter: 'stable' }}
+        >
+          {/* Helper to render a single link */}
+          {/* 1. Dashboard */}
+          <RenderLink item={dashboardItem} pathname={pathname} isOpen={isOpen} />
+
+          {/* 2. Purchase Order */}
+          {role !== "sitearea" && <RenderLink item={poItem} pathname={pathname} isOpen={isOpen} />}
+
+          {/* 3. Action Plan */}
+          <div className="space-y-1">
+            <div
+              onClick={() =>
+                isOpen ? setActionPlanOpen(!actionPlanOpen) : setIsOpen(true)
+              }
+              className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+            ${pathname === "/schedule" || pathname === "/need-assign" ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                  <Target size={20} />
+                </div>
+                {isOpen && (
+                  <span className="text-sm whitespace-nowrap">
+                    Action Plan
+                  </span>
+                )}
+              </div>
+              {isOpen && (
+                <span
+                  className={`transition-transform duration-200 ${actionPlanOpen ? "rotate-90" : ""}`}
+                >
+                  <ChevronRight size={16} />
+                </span>
+              )}
+            </div>
+
+            <div className={`grid transition-all duration-300 ease-in-out ${isOpen && actionPlanOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
+              <div className="overflow-hidden">
+                <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                  {actionPlanSubItems
+                    .filter(sub => role !== "sitearea" || sub.path === "/schedule")
+                    .map((sub) => {
+                      const subActive = pathname === sub.path;
+                      return (
+                        <Link
+                          key={sub.name}
+                          href={sub.path}
+                          prefetch={false}
+                          className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        >
+                          <span className="shrink-0">{sub.icon}</span>
+                          <span className="text-xs whitespace-nowrap">
+                            {sub.name}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Branch Plan */}
+          {role !== "sitearea" && (
+            <div className="space-y-1">
+              <div
+                onClick={() =>
+                  isOpen ? setBranchMenuOpen(!branchMenuOpen) : setIsOpen(true)
+                }
+                className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+              ${pathname.includes("/branch") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
               >
-                <span
-                  className={`shrink-0 ${isActive ? "text-amber-600" : "group-hover:scale-110 transition-transform"}`}
-                >
-                  {item.icon}
-                </span>
-                {isOpen && (
-                  <span className="text-sm whitespace-nowrap animate-in slide-in-from-left-2">
-                    {item.name}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-
-          {/* Collapsible Branch Plan */}
-          <div className="space-y-1">
-            <div
-              onClick={() =>
-                isOpen ? setBranchMenuOpen(!branchMenuOpen) : setIsOpen(true)
-              }
-              className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-            ${pathname.includes("/branch") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
-            >
-              <div className="flex items-center gap-3">
-                <CalendarDays size={20} className="shrink-0" />
-                {isOpen && (
-                  <span className="text-sm whitespace-nowrap animate-in slide-in-from-left-2">
-                    Branch Plan
-                  </span>
-                )}
-              </div>
-              {isOpen && (
-                <span
-                  className={`transition-transform duration-200 ${branchMenuOpen ? "rotate-90" : ""}`}
-                >
-                  <ChevronRight size={16} />
-                </span>
-              )}
-            </div>
-
-            {isOpen && branchMenuOpen && (
-              <div className="mt-1 space-y-1 ml-4 border-l-2 border-slate-50 animate-in fade-in slide-in-from-top-2 duration-300">
-                {branchSubItems.map((sub) => {
-                  const subActive = pathname === sub.path;
-                  return (
-                    <Link
-                      key={sub.name}
-                      href={sub.path}
-                      prefetch={false}
-                      className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
-                    ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
-                    >
-                      <span className="shrink-0">{sub.icon}</span>
-                      <span className="text-xs whitespace-nowrap">
-                        {sub.name}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Collapsible Rekonsiliasi */}
-          <div className="space-y-1">
-            <div
-              onClick={() =>
-                isOpen ? setRekonMenuOpen(!rekonMenuOpen) : setIsOpen(true)
-              }
-              className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-            ${pathname.includes("/rekon") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
-            >
-              <div className="flex items-center gap-3">
-                <Calculator size={20} className="shrink-0" />
-                {isOpen && (
-                  <span className="text-sm whitespace-nowrap animate-in slide-in-from-left-2">
-                    Rekonsiliasi
-                  </span>
-                )}
-              </div>
-              {isOpen && (
-                <span
-                  className={`transition-transform duration-200 ${rekonMenuOpen ? "rotate-90" : ""}`}
-                >
-                  <ChevronRight size={16} />
-                </span>
-              )}
-            </div>
-
-            {isOpen && rekonMenuOpen && (
-              <div className="mt-1 space-y-1 ml-4 border-l-2 border-slate-50 animate-in fade-in slide-in-from-top-2 duration-300">
-                {rekonSubItems.map((sub) => {
-                  const subActive = pathname === sub.path;
-                  return (
-                    <Link
-                      key={sub.name}
-                      href={sub.path}
-                      prefetch={false}
-                      className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
-                    ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
-                    >
-                      <span className="shrink-0">{sub.icon}</span>
-                      <span className="text-xs whitespace-nowrap">
-                        {sub.name}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Collapsible Master Data */}
-          <div className="space-y-1">
-            {role !== "sitearea" && (
-              <>
-                <div
-                  onClick={() =>
-                    isOpen ? setPoMenuOpen(!poMenuOpen) : setIsOpen(true)
-                  }
-                  className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-                ${pathname.includes("/master-data") ? "bg-slate-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText size={20} className="shrink-0" />
-                    {isOpen && (
-                      <span className="text-sm whitespace-nowrap animate-in slide-in-from-left-2">
-                        Master Data
-                      </span>
-                    )}
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                    <CalendarDays size={20} />
                   </div>
                   {isOpen && (
-                    <span
-                      className={`transition-transform duration-200 ${poMenuOpen ? "rotate-90" : ""}`}
-                    >
-                      <ChevronRight size={16} />
+                    <span className="text-sm whitespace-nowrap">
+                      Branch Plan
                     </span>
                   )}
                 </div>
+                {isOpen && (
+                  <span
+                    className={`transition-transform duration-200 ${branchMenuOpen ? "rotate-90" : ""}`}
+                  >
+                    <ChevronRight size={16} />
+                  </span>
+                )}
+              </div>
 
-                {isOpen && poMenuOpen && (
-                  <div className="mt-1 space-y-1 ml-4 border-l-2 border-slate-50 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className={`grid transition-all duration-300 ease-in-out ${isOpen && branchMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                    {branchSubItems.map((sub) => {
+                      const subActive = pathname === sub.path;
+                      return (
+                        <Link
+                          key={sub.name}
+                          href={sub.path}
+                          prefetch={false}
+                          className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        >
+                          <span className="shrink-0">{sub.icon}</span>
+                          <span className="text-xs whitespace-nowrap">
+                            {sub.name}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 5. Data Retur */}
+          <RenderLink item={returItem} pathname={pathname} isOpen={isOpen} />
+
+          {/* 6. Rekonsiliasi */}
+          {role !== "sitearea" && (
+            <div className="space-y-1">
+              <div
+                onClick={() =>
+                  isOpen ? setRekonMenuOpen(!rekonMenuOpen) : setIsOpen(true)
+                }
+                className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+              ${pathname.includes("/rekon") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                    <Calculator size={20} />
+                  </div>
+                  {isOpen && (
+                    <span className="text-sm whitespace-nowrap">
+                      Rekonsiliasi
+                    </span>
+                  )}
+                </div>
+                {isOpen && (
+                  <span
+                    className={`transition-transform duration-200 ${rekonMenuOpen ? "rotate-90" : ""}`}
+                  >
+                    <ChevronRight size={16} />
+                  </span>
+                )}
+              </div>
+
+              <div className={`grid transition-all duration-300 ease-in-out ${isOpen && rekonMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                    {rekonSubItems.map((sub) => {
+                      const subActive = pathname === sub.path;
+                      return (
+                        <Link
+                          key={sub.name}
+                          href={sub.path}
+                          prefetch={false}
+                          className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        >
+                          <span className="shrink-0">{sub.icon}</span>
+                          <span className="text-xs whitespace-nowrap">
+                            {sub.name}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 7. Report */}
+          <RenderLink item={reportItem} pathname={pathname} isOpen={isOpen} />
+
+          {/* 8. Master Data */}
+          {role !== "sitearea" && (
+            <div className="space-y-1">
+              <div
+                onClick={() =>
+                  isOpen ? setPoMenuOpen(!poMenuOpen) : setIsOpen(true)
+                }
+                className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+              ${pathname.includes("/master-data") ? "bg-slate-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                    <Database size={20} />
+                  </div>
+                  {isOpen && (
+                    <span className="text-sm whitespace-nowrap">
+                      Master Data
+                    </span>
+                  )}
+                </div>
+                {isOpen && (
+                  <span
+                    className={`transition-transform duration-200 ${poMenuOpen ? "rotate-90" : ""}`}
+                  >
+                    <ChevronRight size={16} />
+                  </span>
+                )}
+              </div>
+
+              <div className={`grid transition-all duration-300 ease-in-out ${isOpen && poMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-1 ml-4 border-l-2 border-slate-100">
                     {subItems.map((sub) => {
                       const subActive = pathname === sub.path;
                       return (
@@ -376,10 +465,10 @@ export default function Sidebar({
                       );
                     })}
                   </div>
-                )}
-              </>
-            )}
-          </div>
+                </div>
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* User Profile Section removed as requested */}

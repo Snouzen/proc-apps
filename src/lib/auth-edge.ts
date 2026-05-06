@@ -49,8 +49,25 @@ export async function verifySessionEdge(
   const [base, sig] = token.split(".");
   if (!base || !sig) return null;
   try {
-    const expected = await hmacSHA256(getAuthSecret(), base);
-    if (sig !== expected) return null;
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      enc.encode(getAuthSecret()),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+    const sigBytes = Uint8Array.from(
+      atob(sig.replace(/-/g, "+").replace(/_/g, "/")),
+      (c) => c.charCodeAt(0),
+    );
+    const isValid = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      sigBytes,
+      enc.encode(base),
+    );
+    if (!isValid) return null;
     const json = new TextDecoder().decode(
       Uint8Array.from(atob(base.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
         c.charCodeAt(0),

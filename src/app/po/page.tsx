@@ -829,7 +829,7 @@ function InputPODetailPageInner() {
           localStorage.removeItem("po.current.items");
           localStorage.removeItem("po.drafts");
         } catch {}
-        router.push(`/company`);
+        router.push(`/purchase-order`);
       })
       .catch((err) => {
         const msg =

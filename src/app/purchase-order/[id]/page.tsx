@@ -10,7 +10,7 @@ import POEditModal from "@/components/po-edit-modal";
 import { LoaderThree } from "@/components/ui/loader";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 
-export default function CompanyDetail() {
+export default function PurchaseOrderDetail() {
   const params = useParams<{ id: string }>();
   const company = decodeURIComponent(params.id);
   const [loading, setLoading] = useState(true);
@@ -295,7 +295,7 @@ export default function CompanyDetail() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">{company}</h1>
           <p className="text-sm text-slate-500">
-            Daftar PO lengkap per company
+            Daftar Purchase Order lengkap per company
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">

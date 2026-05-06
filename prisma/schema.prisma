@@ -199,6 +199,8 @@ model Reconcile {
   rtvs             String[]     // List nomor rtv/cn
   noPromo          String?      // Nomor promo (opsional)
   status           String       @default("final")
+  tglBayar         DateTime?
+  buktiBayarUrl    String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 

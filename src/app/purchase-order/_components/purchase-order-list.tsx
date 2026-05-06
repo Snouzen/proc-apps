@@ -38,7 +38,7 @@ type Retailer = {
   inisial: string | null;
 };
 
-export default function CompanyList() {
+export default function PurchaseOrderList() {
   const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [selectedRetailerName, setSelectedRetailerName] = useState("");
   const [loadingRetailers, setLoadingRetailers] = useState(true);
@@ -136,7 +136,7 @@ export default function CompanyList() {
           <Building size={120} />
         </div>
         <CardHeader className="relative z-10">
-          <CardTitle className="text-3xl font-black tracking-tight">Company Monitoring</CardTitle>
+          <CardTitle className="text-3xl font-black tracking-tight">Purchase Order Monitoring</CardTitle>
           <CardDescription className="text-slate-300 font-medium">
             Pilih peritel untuk memantau ringkasan Purchase Order secara real-time.
           </CardDescription>

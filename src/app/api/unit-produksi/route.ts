@@ -7,6 +7,8 @@ import {
   singleFlight,
 } from "@/lib/ttl-cache";
 import { supabaseAdmin } from "@/lib/supabase";
+import bcrypt from "bcryptjs";
+import { UnitProduksiCreateSchema, UnitProduksiPatchSchema } from "@/lib/schemas/master-data";
 
 export async function GET() {
   const cacheKey = "unit_produksi:list";
@@ -44,15 +46,16 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    // Destructuring sesuai apa yang dikirim frontend (page.tsx)
-    let { regional, siteArea } = body;
-    const { alamat } = body;
-    if (!regional || siteArea === undefined || siteArea === null) {
+    const parsed = UnitProduksiCreateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "regional wajib diisi. siteArea boleh kosong." },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 },
       );
     }
+    // Destructuring sesuai apa yang dikirim frontend (page.tsx)
+    let { regional, siteArea } = parsed.data;
+    const { alamat } = parsed.data;
     // Normalisasi ringan di sisi server untuk robustness
     const v = String(regional).trim().toLowerCase();
     if (v.includes("bandung") || v.includes("reg 1") || /\b1\b/.test(v)) {
@@ -89,7 +92,12 @@ export async function POST(req: Request) {
       const formattedAlias = rawSiteArea.toLowerCase().replace(/[^a-z0-9]/g, "");
       if (formattedAlias) {
         const email = `${formattedAlias}@bulog.co.id`;
-        const password = process.env.DEFAULT_PIC_PASSWORD || "password";
+        const password = process.env.DEFAULT_PIC_PASSWORD;
+        if (!password) {
+          console.warn("DEFAULT_PIC_PASSWORD not set, skipping PIC provisioning");
+          throw new Error("DEFAULT_PIC_PASSWORD required");
+        }
+        const hashedPassword = await bcrypt.hash(password, 12);
 
         // 1. Check/Create in Supabase Auth via Admin client
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -111,14 +119,16 @@ export async function POST(req: Request) {
             role: "pic_site",
             regional: regional,
             siteArea: siteArea,
+            password: hashedPassword,
             updatedAt: new Date()
-          },
+          } as any,
           create: {
             email: email,
             role: "pic_site",
             regional: regional,
-            siteArea: siteArea
-          }
+            siteArea: siteArea,
+            password: hashedPassword,
+          } as any
         });
       }
     } catch (provisionErr) {
@@ -195,19 +205,14 @@ export async function DELETE(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { namaRegional, siteArea, newRegionalName, newSiteArea, alamat } = body as {
-      namaRegional?: string;
-      siteArea?: string;
-      newRegionalName?: string;
-      newSiteArea?: string;
-      alamat?: string;
-    };
-    if (!namaRegional || !siteArea || !newSiteArea) {
+    const parsed = UnitProduksiPatchSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "namaRegional, siteArea, dan newSiteArea wajib diisi" },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 },
       );
     }
+    const { namaRegional, siteArea, newRegionalName, newSiteArea, alamat } = parsed.data;
     await db.unitProduksi.updateMany({
       where: { namaRegional, siteArea },
       data: { 

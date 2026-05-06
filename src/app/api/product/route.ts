@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { canonicalProductName, dedupeKey } from "@/lib/text";
+import { ProductCreateSchema, ProductUpdateSchema } from "@/lib/schemas/master-data";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -73,12 +74,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const nameRaw: string | undefined = body?.name;
-    const satuanKgRaw = body?.satuanKg;
-    const satuanKg =
-      satuanKgRaw === undefined || satuanKgRaw === null
-        ? undefined
-        : Number(satuanKgRaw);
+    const parsed = ProductCreateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 },
+      );
+    }
+    const nameRaw = parsed.data.name;
+    const satuanKg = parsed.data.satuanKg ?? undefined;
     const name = canonicalProductName(nameRaw);
     if (!name || !name.trim()) {
       return NextResponse.json(

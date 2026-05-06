@@ -10,8 +10,8 @@ const routeNameMap: Record<string, string> = {
   "unit-produksi": "Unit Produksi",
   produk: "Produk",
   "ritel-modern": "Ritel Modern",
-  company: "Company",
-  po: "Purchase Order",
+  "purchase-order": "Purchase Order List",
+  po: "Add Purchase Order",
   report: "Report",
 };
 
@@ -34,10 +34,10 @@ export default function Breadcrumbs() {
     <div className="flex items-center gap-2 text-sm text-slate-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
       {useCompanyRoot ? (
         <Link
-          href="/company"
+          href="/purchase-order"
           className="hover:text-slate-800 transition-colors truncate max-w-[150px]"
         >
-          Company
+          Purchase Order
         </Link>
       ) : (
         <Link

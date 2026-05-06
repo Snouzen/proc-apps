@@ -153,7 +153,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
             type="button"
             onClick={() => {
               onClose();
-              router.push(`/company/${encodeURIComponent(data.company)}`);
+              router.push(`/purchase-order/${encodeURIComponent(data.company)}`);
             }}
             className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
           >

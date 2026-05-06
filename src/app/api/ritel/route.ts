@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { RitelCreateSchema, RitelPatchSchema } from "@/lib/schemas/master-data";
 import {
   cacheClearPrefix,
   cacheGet,
@@ -83,13 +84,14 @@ export async function POST(request: Request) {
   try {
     const { default: prisma } = await import("@/lib/db");
     const body = await request.json();
-    const { namaPt, inisial, tujuan } = body;
-    if (!namaPt) {
+    const parsed = RitelCreateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "namaPt wajib diisi" },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 },
       );
     }
+    const { namaPt, inisial, tujuan } = parsed.data;
     const result = await prisma.ritelModern.create({
       data: {
         id: randomUUID(),
@@ -112,32 +114,35 @@ export async function PATCH(request: Request) {
   try {
     const { default: prisma } = await import("@/lib/db");
     const body = await request.json();
-    const { id, namaPt, inisial, newInisial, logoPt, logoInisial } = body as { 
-      id?: string; 
-      namaPt?: string; 
-      inisial?: string; 
-      newInisial?: string;
-      logoPt?: string;
-      logoInisial?: string;
-    };
-
-    if (!namaPt) {
-      return NextResponse.json({ error: "namaPt wajib diisi" }, { status: 400 });
+    const parsed = RitelPatchSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 },
+      );
     }
+    const { id, namaPt: originalNamaPt, newNamaPt, inisial, newInisial, logoPt, logoInisial } = parsed.data;
+    let currentNamaPt = originalNamaPt;
 
-    // 1. Update logoPt untuk SEMUA baris dengan namaPt yang sama
-    if (logoPt !== undefined) {
+    // 1. Update namaPt & logoPt untuk SEMUA baris dengan namaPt yang lama
+    if (newNamaPt !== undefined || logoPt !== undefined) {
+      const updateData: any = { updatedAt: new Date() };
+      if (newNamaPt !== undefined) updateData.namaPt = newNamaPt;
+      if (logoPt !== undefined) updateData.logoPt = logoPt || null;
+
       await prisma.ritelModern.updateMany({
-        where: { namaPt: { equals: namaPt, mode: "insensitive" } },
-        data: { logoPt: logoPt || null, updatedAt: new Date() },
+        where: { namaPt: { equals: originalNamaPt, mode: "insensitive" } },
+        data: updateData,
       });
+
+      if (newNamaPt) currentNamaPt = newNamaPt;
     }
 
     // 2. Update inisial & logoInisial untuk baris yang spesifik
     const targetInisial = newInisial !== undefined ? newInisial : (inisial !== undefined ? inisial : undefined);
     
     if (targetInisial !== undefined || logoInisial !== undefined) {
-      const whereClause: any = { namaPt: { equals: namaPt, mode: "insensitive" } };
+      const whereClause: any = { namaPt: { equals: currentNamaPt, mode: "insensitive" } };
       
       // Jika kita mengupdate inisial, kita harus tau inisial MANA yang mau diubah
       if (inisial !== undefined) {

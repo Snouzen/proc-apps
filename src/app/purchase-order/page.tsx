@@ -84,7 +84,7 @@ function AlertCircle(props: any) {
   );
 }
 
-export default function CompanyPage() {
+export default function PurchaseOrderPage() {
   const [retailers, setRetailers] = useState<Retailer[]>([]);
   // [FIX LOGIC] Kita simpan Nama PT-nya, bukan ID pertama-nya
   const [selectedNamaPt, setSelectedNamaPt] = useState<string>("");
@@ -365,7 +365,7 @@ export default function CompanyPage() {
           <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
               <CardTitle className="text-3xl font-black text-slate-800">
-                Company Dashboard
+                Purchase Order Dashboard
               </CardTitle>
               <CardDescription className="text-slate-500">
                 Sistem filter presisi untuk memantau performa per inisial peritel.

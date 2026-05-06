@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"; // Re-sync build
 import prisma from "@/lib/prisma";
+import { PromoCreateSchema, PromoUpdateSchema, PromoBatchSchema } from "@/lib/schemas/master-data";
 
 // Helper for ultra short unique ID (6 chars)
 function generateShortId() {
@@ -95,6 +96,13 @@ export async function POST(request: Request) {
 
     // Support Batch Upload
     if (Array.isArray(body)) {
+      const parsed = PromoBatchSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: parsed.error.issues.map((i) => i.message).join(", ") },
+          { status: 400 },
+        );
+      }
       const records = body.map((item: any) => {
         const dpp = Number(item.dpp || 0);
         const ppn = Number(item.ppn || 0);
@@ -126,11 +134,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, count: count.count });
     }
 
-    const { nomor, linkDocs, kegiatan, periode, tanggal, dpp, ppn, pph, linkFP, remarks } = body;
-
-    if (!nomor || !kegiatan || !periode || !tanggal || dpp === undefined || ppn === undefined) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    const parsed = PromoCreateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 },
+      );
     }
+    const { nomor, linkDocs, kegiatan, periode, tanggal, dpp, ppn, pph, linkFP, remarks } = parsed.data;
 
     const calculatedTotal = Number(dpp) + Number(ppn || 0);
 
@@ -161,11 +172,14 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, nomor, linkDocs, kegiatan, periode, tanggal, dpp, ppn, pph, linkFP, remarks } = body;
-
-    if (!id || !nomor || !kegiatan || !periode || !tanggal || dpp === undefined || ppn === undefined) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    const parsed = PromoUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 },
+      );
     }
+    const { id, nomor, linkDocs, kegiatan, periode, tanggal, dpp, ppn, pph, linkFP, remarks } = parsed.data;
 
     const calculatedTotal = Number(dpp) + Number(ppn || 0);
 
