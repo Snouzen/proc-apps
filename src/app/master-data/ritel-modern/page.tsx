@@ -768,7 +768,7 @@ export default function RitelModernPage() {
         )}
       </div>
       {editStore && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[190] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setEditStore(null)}
@@ -933,7 +933,7 @@ export default function RitelModernPage() {
         </div>
       )}
       {deleteStore && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[190] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setDeleteStore(null)}
@@ -988,7 +988,7 @@ export default function RitelModernPage() {
         </div>
       )}
       {viewAliases && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setViewAliases(null)}
@@ -1104,7 +1104,7 @@ export default function RitelModernPage() {
                             >
                               <Plus size={14} />
                             </button>
-                            {!isRm && (
+                            {(isPusat || isRm) && (
                               <button
                                 onClick={() => {
   
@@ -1160,7 +1160,7 @@ export default function RitelModernPage() {
         </div>
       )}
       {bulkDialog && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setBulkDialog(null)}
@@ -1259,7 +1259,7 @@ export default function RitelModernPage() {
         </div>
       )}
       {editAlias && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setEditAlias(null)}
@@ -1716,7 +1716,7 @@ export default function RitelModernPage() {
 
       {/* View Stores Modal */}
       {viewCompany && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setViewCompany(null)}
@@ -1781,7 +1781,7 @@ export default function RitelModernPage() {
                                 <Edit2 size={13} />
                               </button>
                             )}
-                            {isPusat && (
+                            {canEdit && (
                               <button
                                 onClick={() => {
                                   setDeleteStore({ id: s.id, tujuan: s.tujuan, namaPt: viewCompany.namaPt });
