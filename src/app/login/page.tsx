@@ -117,9 +117,10 @@ function LoginPageInner() {
       >
         {/* ── White card with logos + form ── */}
         <div
-          className="rounded-2xl shadow-2xl overflow-hidden"
+          className="rounded-2xl overflow-hidden"
           style={{
-            boxShadow: "0 25px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05)",
+            boxShadow:
+              "0 30px 80px rgba(0,0,0,0.45), 0 15px 35px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.08)",
           }}
         >
           {/* ── Logo header area (white background) ── */}
@@ -130,7 +131,7 @@ function LoginPageInner() {
                 alt="UBI Logo"
                 className="h-11 w-auto object-contain"
               />
-              <div className="w-px h-9 bg-slate-200" />
+              <div className="w-px h-9 bg-slate-800" />
               <img
                 src="https://rzjlkpumrsjpafduhlgt.supabase.co/storage/v1/object/public/logo-img/logo-bulog/logo-bulog.png"
                 alt="Bulog Logo"
@@ -139,7 +140,7 @@ function LoginPageInner() {
             </div>
             <div className="text-center mt-5">
               <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-                Procurement System
+                Business Management
               </h1>
               <p className="text-[13px] text-slate-400 mt-1">
                 Masuk ke akun Anda untuk melanjutkan
@@ -151,7 +152,8 @@ function LoginPageInner() {
           <div
             className="h-[3px]"
             style={{
-              background: "linear-gradient(90deg, #2563eb 0%, #3b82f6 40%, #60a5fa 70%, #93c5fd 100%)",
+              background:
+                "linear-gradient(90deg, #2563eb 0%, #3b82f6 40%, #60a5fa 70%, #93c5fd 100%)",
             }}
           />
 
@@ -159,8 +161,7 @@ function LoginPageInner() {
           <div
             className="px-8 py-7"
             style={{
-              background:
-                "linear-gradient(180deg, #1a2d4a 0%, #162240 100%)",
+              background: "linear-gradient(180deg, #1a2d4a 0%, #162240 100%)",
             }}
           >
             <form
@@ -299,7 +300,7 @@ function LoginPageInner() {
 
         {/* Footer */}
         <p className="text-center text-[11px] text-slate-400/40 mt-6 tracking-wide">
-          © {new Date().getFullYear()} Perum BULOG • Procurement System
+          © {new Date().getFullYear()} Perum BULOG • Business Management
         </p>
       </div>
 

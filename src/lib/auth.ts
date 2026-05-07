@@ -37,9 +37,9 @@ function getExpectedCredentials(): { email?: string; password?: string } {
   };
 }
 
-// [SECURITY] Session TTL from env, default 7 days
+// [SECURITY] Session TTL from env, default 1 hour
 const SESSION_TTL_MS =
-  Number(process.env.SESSION_TTL_MS) || 7 * 24 * 60 * 60 * 1000;
+  Number(process.env.SESSION_TTL_MS) || 1 * 60 * 60 * 1000;
 
 
 
