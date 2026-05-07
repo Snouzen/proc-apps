@@ -38,3 +38,5 @@ prisma/migrations/**/README.md
 ### Misc
 coverage/
 *.local
+
+scratch/
