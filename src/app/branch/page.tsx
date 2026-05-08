@@ -235,8 +235,6 @@ export default function BranchPage() {
       params.set("includeUnknown", "true");
       params.set("month", selectedMonth);
       params.set("year", selectedYear);
-      params.set("month", selectedMonth);
-      params.set("year", selectedYear);
       if (selectedRegional && selectedRegional !== "ALL")
         params.set("regional", selectedRegional);
       if (selectedSiteArea && selectedSiteArea !== "ALL")
@@ -257,7 +255,7 @@ export default function BranchPage() {
     } finally {
       setPoLoading(false);
     }
-  }, [selectedRegional, selectedSiteArea]);
+  }, [selectedRegional, selectedSiteArea, selectedMonth, selectedYear]);
 
   useEffect(() => {
     fetchPOData();

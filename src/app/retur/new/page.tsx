@@ -789,7 +789,7 @@ function NewReturPageContent() {
                   className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 hidden">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
                   Kode Toko
                 </label>

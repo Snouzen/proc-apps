@@ -1762,10 +1762,14 @@ function ReturContent() {
                 const isEditing = editingId === item.id || isMassEditing;
                 const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
                 const lokasiIsEmpty = !item.LokasiBarang?.siteArea;
-                const canEditLokasi = role === "pusat" ||
-                  (role === "sitearea" && lokasiIsEmpty);
                 const userAreaNorm = (userArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
                 const userRegLokasiNorm = (userRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                const lokasiSiteAreaNorm = (item.LokasiBarang?.siteArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                const lokasiUnitMatch = units.find((u: any) => (u.siteArea || "").toLowerCase().replace(/[^a-z0-9]/g, "") === lokasiSiteAreaNorm);
+                const lokasiIsUnderRmRegional = !!lokasiUnitMatch && (lokasiUnitMatch.namaRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "") === userRegLokasiNorm;
+                const canEditLokasi = role === "pusat" ||
+                  (role === "sitearea" && lokasiIsEmpty) ||
+                  (role === "rm" && (lokasiIsEmpty || lokasiIsUnderRmRegional));
                 const lokasiOptions = role === "sitearea"
                   ? (userAreaNorm
                     ? units.filter((u: any) => {
@@ -1779,7 +1783,12 @@ function ReturContent() {
                         }).map((u: any) => u.siteArea)
                       : [])
                   )
-                  : filteredLokasi.map((u: any) => u.siteArea);
+                  : role === "rm"
+                    ? filteredLokasi.filter((u: any) => {
+                        const rg = (u.namaRegional || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                        return rg === userRegLokasiNorm;
+                      }).map((u: any) => u.siteArea)
+                    : filteredLokasi.map((u: any) => u.siteArea);
                 return isEditing && canEditLokasi ? (
                   <TableSearchableInput value={units.find((u: any) => u.idRegional === currentForm.lokasiBarangId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); handleFieldChange(item, 'lokasiBarangId', u?.idRegional || ""); setSearchLokasi(val); }} items={lokasiOptions} placeholder="Cari Lokasi/DC..." />
                 ) : (
@@ -1922,12 +1931,14 @@ function ReturContent() {
               render: (_v: any, item: any) => {
                 const isEditing = editingId === item.id || isMassEditing;
                 const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
-                const lokasiSiteArea = item.LokasiBarang?.siteArea || "";
-                const lokasiUnit = units.find((u: any) => (u.siteArea || "").toLowerCase() === lokasiSiteArea.toLowerCase());
-                const lokasiRegional = lokasiUnit?.namaRegional || "";
-                const canRmEdit = role === "rm" && lokasiSiteArea && lokasiRegional.toLowerCase() === (userRegional || "").toLowerCase();
-                return isEditing && (role === "pusat" || canRmEdit) ? (
-                  <TableSearchableInput value={units.find((u: any) => u.idRegional === currentForm.pembebananReturnId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); handleFieldChange(item, 'pembebananReturnId', u?.idRegional || ""); setSearchPembebanan(val); }} items={filteredPembebanan.map((u: any) => u.siteArea)} placeholder="Cari Pembebanan..." />
+                const pembebananSiteArea = item.PembebananReturn?.siteArea || "";
+                const pembebananIsEmpty = !pembebananSiteArea;
+                const pembebananUnit = units.find((u: any) => (u.siteArea || "").toLowerCase() === pembebananSiteArea.toLowerCase());
+                const pembebananRegional = pembebananUnit?.namaRegional || "";
+                const pembebananIsUnderRmRegional = !!pembebananSiteArea && pembebananRegional.toLowerCase() === (userRegional || "").toLowerCase();
+                const canRmEditPembebanan = role === "rm" && (pembebananIsEmpty || pembebananIsUnderRmRegional);
+                return isEditing && (role === "pusat" || canRmEditPembebanan) ? (
+                  <TableSearchableInput value={units.find((u: any) => u.idRegional === currentForm.pembebananReturnId)?.siteArea || ""} onCommit={(val: string) => { const u = units.find((x: any) => x.siteArea === val); handleFieldChange(item, 'pembebananReturnId', u?.idRegional || ""); setSearchPembebanan(val); }} items={role === "rm" ? filteredPembebanan.filter((u: any) => { const rg = (u.namaRegional || "").toLowerCase().replace(/[^a-z0-9]/g, ""); return rg === (userRegional || "").toLowerCase().replace(/[^a-z0-9]/g, ""); }).map((u: any) => u.siteArea) : filteredPembebanan.map((u: any) => u.siteArea)} placeholder="Cari Pembebanan..." />
                 ) : (
                   <div className="text-[10px] font-bold text-indigo-500 whitespace-nowrap">{item.PembebananReturn?.siteArea || "-"}</div>
                 );

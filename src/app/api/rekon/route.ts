@@ -196,11 +196,10 @@ export async function POST(request: Request) {
       const year = now.getFullYear();
       const datePattern = `${month}/${year}`;
 
-      const countThisMonth = await prisma.reconcile.count({
-        where: { noRekonsiliasi: { contains: datePattern } }
-      });
+      // Count ALL reconcile records globally (no monthly reset)
+      const countAll = await prisma.reconcile.count();
 
-      const nextNumber = String(countThisMonth + 1).padStart(3, '0');
+      const nextNumber = String(countAll + 1).padStart(3, '0');
       GeneratedNoRekon = `R-${nextNumber}/${datePattern}`;
       finalId = Math.random().toString(36).substring(2, 10).toUpperCase();
     }

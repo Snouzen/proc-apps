@@ -202,6 +202,12 @@ export const generateInvoicePdf = (
     console.error("Gagal memuat stempel di PDF:", e);
   }
 
+  // --- [FITUR BARU] DITERIMA OLEH ---
+  const namaPt = data?.RitelModern?.namaPt || "-";
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Diterima oleh : ${namaPt}`, 15, finalY + 28);
+
   // --- 7. FOOTER CETAKAN BAWAH (DINAMIS Y) ---
   const footerY = finalY + 50; // Jarak diturunin dikit biar stempel muat dengan aman
   doc.setLineWidth(0.3);
