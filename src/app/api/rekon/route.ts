@@ -182,6 +182,10 @@ export async function POST(request: Request) {
       invoices, 
       rtvs, 
       noPromo,
+      notesDesc,
+      notesNominal,
+      buktiBayarUrl,
+      tglBayar,
       status = "final",
       id // Cek apakah ini edit/update dari draft
     } = body;
@@ -196,11 +200,10 @@ export async function POST(request: Request) {
       const year = now.getFullYear();
       const datePattern = `${month}/${year}`;
 
-      const countThisMonth = await prisma.reconcile.count({
-        where: { noRekonsiliasi: { contains: datePattern } }
-      });
+      // Count ALL reconcile records globally (no monthly reset)
+      const countAll = await prisma.reconcile.count();
 
-      const nextNumber = String(countThisMonth + 1).padStart(3, '0');
+      const nextNumber = String(countAll + 1).padStart(3, '0');
       GeneratedNoRekon = `R-${nextNumber}/${datePattern}`;
       finalId = Math.random().toString(36).substring(2, 10).toUpperCase();
     }
@@ -218,7 +221,11 @@ export async function POST(request: Request) {
         nominal: Number(nominal) || 0,
         invoices: invoices || [],
         rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
+        notesDesc: notesDesc || null,
+        notesNominal: Number(notesNominal) || 0,
         noPromo: noPromo || null,
+        buktiBayarUrl: buktiBayarUrl || undefined,
+        tglBayar: tglBayar ? new Date(tglBayar) : undefined,
         status: status || "final",
       },
       create: {
@@ -233,7 +240,11 @@ export async function POST(request: Request) {
         nominal: Number(nominal) || 0,
         invoices: invoices || [],
         rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
+        notesDesc: notesDesc || null,
+        notesNominal: Number(notesNominal) || 0,
         noPromo: noPromo || null,
+        buktiBayarUrl: buktiBayarUrl || null,
+        tglBayar: tglBayar ? new Date(tglBayar) : null,
         status: status || "final",
       }
     });

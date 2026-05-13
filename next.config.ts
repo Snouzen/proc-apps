@@ -2,15 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  reactCompiler: true,
+  reactCompiler: false,
   images: {
     formats: ['image/webp', 'image/avif'],
   },
   experimental: {
     optimizePackageImports: ['lucide-react'],
-    optimizeCss: true,
+    optimizeCss: false,
   },
   transpilePackages: [],
+  serverExternalPackages: ["pg", "bcryptjs"],
 };
 
 export default nextConfig;

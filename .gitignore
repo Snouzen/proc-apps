@@ -40,3 +40,4 @@ coverage/
 *.local
 
 scratch/
+temp_node/

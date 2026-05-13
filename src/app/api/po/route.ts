@@ -797,8 +797,8 @@ export async function GET(request: Request) {
       }
     }
     
-    // Normal siteAreaParam user filter (only for pusat)
-    if (safeRole === "pusat" && siteAreaParam && siteAreaParam.trim()) {
+    // Normal siteAreaParam user filter (for pusat and rm when selecting specific site)
+    if ((safeRole === "pusat" || safeRole === "rm") && siteAreaParam && siteAreaParam.trim()) {
       const sa = siteAreaParam.trim();
       const saFilter = {
         UnitProduksi: {

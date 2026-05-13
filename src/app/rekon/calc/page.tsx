@@ -104,6 +104,8 @@ function RekonContent() {
   const [selectedRtvs, setSelectedRtvs] = useState<Rtv[]>([]);
   const [selectedPromo, setSelectedPromo] = useState<Promo | null>(null);
   const [adminFee, setAdminFee] = useState<number>(0);
+  const [notesDesc, setNotesDesc] = useState<string>("");
+  const [notesNominal, setNotesNominal] = useState<number>(0);
 
   const [companySearch, setCompanySearch] = useState("");
   const [invSearch, setInvSearch] = useState("");
@@ -140,6 +142,10 @@ function RekonContent() {
             setSelectedRtvs(d.detailedRtvs || []);
             setSelectedPromo(d.detailedPromo || null);
             setRekonNo(d.noRekonsiliasi || null);
+            setNotesDesc(d.notesDesc || "");
+            setNotesNominal(d.notesNominal || 0);
+            setBuktiBayarUrl(d.buktiBayarUrl || null);
+            if (d.tglBayar) setTglBayar(d.tglBayar.split("T")[0]);
           }
         } catch (err) {
           console.error("Load Draft Error:", err);
@@ -279,8 +285,8 @@ function RekonContent() {
     return selectedPromo ? Number(selectedPromo.total || 0) : 0;
   }, [selectedPromo]);
 
-  // FINAL CALCULATION: Rekening Koran - Total Invoice + Total RTV + Tagihan Promo + Biaya Admin
-  const balanceNetDue = Number(bankStatement || 0) - totalInvoices + totalRtv + totalPromo + Number(adminFee || 0);
+  // FINAL CALCULATION: Rekening Koran - (Total Invoice + Total RTV + Tagihan Promo + Biaya Admin + Notes Nominal)
+  const balanceNetDue = Number(bankStatement || 0) - (totalInvoices + totalRtv + totalPromo + Number(adminFee || 0) + Number(notesNominal || 0));
 
   const formatRp = (val: number) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(val);
@@ -309,6 +315,29 @@ function RekonContent() {
 
     setIsSubmitting(true);
     try {
+      // Upload bukti bayar file to Supabase Storage if exists
+      let uploadedBuktiBayarUrl = buktiBayarUrl; // Keep existing URL if editing
+      if (buktiBayarFile) {
+        setIsUploading(true);
+        const uploadForm = new FormData();
+        uploadForm.append("file", buktiBayarFile);
+        uploadForm.append("rekonId", editId || "new");
+
+        const uploadRes = await fetch("/api/rekon/upload", {
+          method: "POST",
+          body: uploadForm,
+        });
+
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json();
+          throw new Error(uploadErr.error || "Gagal upload bukti bayar");
+        }
+
+        const uploadJson = await uploadRes.json();
+        uploadedBuktiBayarUrl = uploadJson.url;
+        setIsUploading(false);
+      }
+
       const payload = {
         ritelId: selectedCompany.id,
         bankStatement: bankStatement,
@@ -323,6 +352,10 @@ function RekonContent() {
           refInvoice: rtv.refInvoice || "" 
         })),
         noPromo: selectedPromo?.nomor || null,
+        notesDesc: notesDesc,
+        notesNominal: notesNominal,
+        buktiBayarUrl: uploadedBuktiBayarUrl || null,
+        tglBayar: tglBayar || null,
         status: status,
         id: editId || undefined
       };
@@ -545,7 +578,7 @@ function RekonContent() {
 
                {selectedCompany ? (
                   <div className="space-y-8 animate-in fade-in duration-500 pt-4">
-                     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] gap-x-12">
+                     <div className="flex flex-col gap-12">
                     
                     {/* LEFT COLUMN: LOOKUP INVOICE */}
                     <div className="space-y-8">
@@ -640,8 +673,8 @@ function RekonContent() {
                  </div>
               </div>
 
-                    {/* VERTICAL SEPARATOR */}
-                    <div className="hidden lg:block w-[1px] bg-slate-100 h-full self-stretch my-4"></div>
+                    {/* HORIZONTAL SEPARATOR */}
+                    <div className="w-full h-[1px] bg-slate-100 my-2"></div>
 
                     {/* RIGHT COLUMN: LOOKUP RTV */}
                     <div className="space-y-8">
@@ -775,6 +808,56 @@ function RekonContent() {
                         </div>
                      </div>
                      </div>
+
+                  {/* NOTES SECTION */}
+                  <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-[32px] p-8 border border-blue-100/50 shadow-[inset_0_1px_1px_rgba(255,255,255,1)] mt-4 mb-2">
+                     <div className="absolute -top-10 -right-10 p-8 text-blue-600/5 transform rotate-12 pointer-events-none">
+                        <FileText size={180} strokeWidth={1} />
+                     </div>
+                     <div className="relative z-10 space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                           <div>
+                              <h4 className="text-[13px] font-black text-blue-900 uppercase tracking-[0.15em]">Inisiasi Manual</h4>
+                              <p className="text-[11px] text-blue-600/70 font-bold mt-1">Tambahkan catatan khusus dan nominal pengganti nilai invoice</p>
+                           </div>
+                           <div className="px-4 py-2 bg-white/80 backdrop-blur-sm text-blue-700 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-sm border border-blue-100 flex items-center gap-2 w-fit">
+                              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                              Manual Entry
+                           </div>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+                           {/* Notes Desc */}
+                           <div className="relative group h-full">
+                              <div className="absolute left-5 top-5 w-10 h-10 rounded-[14px] bg-white shadow-sm border border-slate-100 flex items-center justify-center text-blue-500 group-focus-within:text-blue-600 group-focus-within:scale-110 transition-transform duration-300 pointer-events-none z-10">
+                                 <FileText size={18} strokeWidth={2.5} />
+                              </div>
+                              <textarea
+                                 placeholder="Tuliskan keterangan / catatan inisiasi di sini..."
+                                 value={notesDesc}
+                                 onChange={(e) => setNotesDesc(e.target.value)}
+                                 className="w-full h-full min-h-[96px] pl-[76px] pr-6 py-6 bg-white/70 backdrop-blur-md rounded-[28px] border border-white focus:border-blue-200 outline-none font-bold text-[13px] text-slate-700 placeholder:text-slate-400 focus:bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] focus:shadow-[0_8px_30px_rgba(59,130,246,0.12)] transition-all resize-none"
+                              />
+                           </div>
+                           {/* Notes Nominal */}
+                           <div className="relative group flex items-end">
+                              <div className="relative w-full h-[96px]">
+                                 <div className="absolute left-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-[14px] bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 flex items-center justify-center text-white font-black text-[14px] group-focus-within:scale-110 transition-transform duration-300 pointer-events-none z-10">Rp</div>
+                                 <div className="absolute right-6 top-4 text-[9px] font-black uppercase tracking-widest text-slate-400 z-10">Nominal Penambah</div>
+                                 <input
+                                    type="text"
+                                    placeholder="0"
+                                    value={notesNominal ? notesNominal.toLocaleString('id-ID') : ""}
+                                    onChange={(e) => {
+                                       const raw = e.target.value.replace(/[^0-9]/g, '');
+                                       setNotesNominal(Number(raw) || 0);
+                                    }}
+                                    className="w-full h-full pl-[76px] pr-6 pt-7 pb-3 bg-white/70 backdrop-blur-md rounded-[28px] border border-white focus:border-blue-200 outline-none font-black text-2xl text-slate-800 placeholder:text-slate-300 focus:bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] focus:shadow-[0_8px_30px_rgba(59,130,246,0.12)] transition-all text-right"
+                                 />
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
 
                   {/* HORIZONTAL SEPARATOR */}
                   <div className="py-2">

@@ -137,6 +137,25 @@ export const generateRekonPdf = (
     },
   });
 
+  // ─── Signature Block (below-right of summary table) ───
+  const summaryFinalY = (doc as any).lastAutoTable.finalY;
+  const signX = pageWidth - 14 - 60; // right-aligned, 60mm wide block
+  const signStartY = summaryFinalY + 12;
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 0, 0);
+  doc.text("Mengetahui,", signX + 30, signStartY, { align: "center" });
+
+  // Space for signature (~25mm)
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("Izath Rytami", signX + 30, signStartY + 28, { align: "center" });
+
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.text("Asman Penjualan", signX + 30, signStartY + 33, { align: "center" });
+
   // ═══════════════════════════════════════════════════════
   // DETAIL BREAKDOWN PER RECORD
   // ═══════════════════════════════════════════════════════

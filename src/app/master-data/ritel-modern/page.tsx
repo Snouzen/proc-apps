@@ -845,7 +845,7 @@ export default function RitelModernPage() {
         </div>
       )}
       {addStoreFor && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setAddStoreFor(null)}

@@ -118,7 +118,8 @@ export async function proxy(req: NextRequest) {
       }
 
       // Content-Type enforcement (skip DELETE which typically has no body)
-      if (method !== "DELETE") {
+      // Also skip file upload endpoints that use multipart/form-data
+      if (method !== "DELETE" && !pathname.endsWith("/upload")) {
         const ct = req.headers.get("content-type") || "";
         const isJson = ct.toLowerCase().includes("application/json");
         if (!isJson) {

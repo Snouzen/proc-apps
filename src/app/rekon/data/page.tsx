@@ -22,6 +22,7 @@ import {
   FileText,
   FileDown,
   X,
+  Paperclip,
   Download
 } from "lucide-react";
 import { format } from "date-fns";
@@ -48,6 +49,7 @@ export default function DataRekonPage() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [exportLoading, setExportLoading] = useState(false);
+  const [buktiBayarPreviewUrl, setBuktiBayarPreviewUrl] = useState<string | null>(null);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => {
@@ -364,7 +366,7 @@ export default function DataRekonPage() {
                               className="bg-slate-50/60 px-14 py-8"
                               style={{ animation: 'fadeSlideIn 0.2s ease-out' }}
                             >
-                              <div className="grid grid-cols-2 gap-8 max-w-[1200px]">
+                              <div className="grid grid-cols-3 gap-12 w-full">
                                 
                                 {/* LEFT: Invoice Breakdown */}
                                 <div>
@@ -405,6 +407,40 @@ export default function DataRekonPage() {
                                       <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest mr-3">Total</span>
                                       <span className="text-[11px] font-black text-blue-600 tabular-nums">{formatRp(item.totalInvoices || 0)}</span>
                                     </div>
+                                  </div>
+                                </div>
+
+                                {/* CENTER: Notes Detail */}
+                                <div>
+                                  <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-6 h-6 bg-indigo-500 rounded-lg flex items-center justify-center">
+                                      <FileText size={12} className="text-white" />
+                                    </div>
+                                    <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Notes</h4>
+                                  </div>
+                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden p-5 space-y-4">
+                                    {item.notesDesc || item.notesNominal ? (
+                                      <>
+                                        {/* Notes Description */}
+                                        <div className="space-y-1.5">
+                                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Keterangan</p>
+                                          <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+                                            {item.notesDesc || <span className="italic text-slate-300">Tidak ada keterangan</span>}
+                                          </p>
+                                        </div>
+                                        {/* Notes Nominal */}
+                                        <div className="pt-3 border-t border-slate-50 space-y-1.5">
+                                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Nominal Penambah</p>
+                                          <p className="text-[16px] font-black text-indigo-600 tabular-nums tracking-tight">
+                                            {formatRp(item.notesNominal || 0)}
+                                          </p>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div className="py-6 text-center">
+                                        <p className="text-[9px] text-slate-300 italic">Tidak ada notes</p>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
 
@@ -466,6 +502,28 @@ export default function DataRekonPage() {
                                   </div>
                                 </div>
 
+                              </div>
+
+                              {/* Bukti Bayar Section */}
+                              <div className="mt-6 pt-6 border-t border-slate-100">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-6 h-6 bg-amber-500 rounded-lg flex items-center justify-center">
+                                    <Paperclip size={12} className="text-white" />
+                                  </div>
+                                  <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bukti Bayar</h4>
+                                  <div className="flex-1 h-[1px] bg-slate-100"></div>
+                                  {item.buktiBayarUrl ? (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setBuktiBayarPreviewUrl(item.buktiBayarUrl); }}
+                                      className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/bukti border border-amber-100"
+                                    >
+                                      <Eye size={12} className="group-hover/bukti:scale-110 transition-transform" />
+                                      Lihat Bukti
+                                    </button>
+                                  ) : (
+                                    <span className="text-[9px] font-bold text-slate-300 italic uppercase tracking-widest">Belum ada bukti bayar</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -609,6 +667,61 @@ export default function DataRekonPage() {
               className="w-full h-full border-none"
               title="Rekon PDF Preview"
             />
+          </div>
+        </div>
+      </div>
+    )}
+    {/* ── Bukti Bayar Preview Modal ─── */}
+    {buktiBayarPreviewUrl && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-10 animate-in fade-in duration-200">
+        <div className="bg-slate-100 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+          {/* Modal Header */}
+          <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-amber-50 rounded-xl">
+                <Paperclip className="text-amber-600" size={18} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800">Preview Bukti Bayar</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                  Dokumen Pembayaran
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={buktiBayarPreviewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-10 px-5 bg-[#0f172a] text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95"
+              >
+                <Download size={14} />
+                Download
+              </a>
+              <button
+                onClick={() => setBuktiBayarPreviewUrl(null)}
+                className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Preview Content */}
+          <div className="flex-1 w-full overflow-auto bg-slate-200 flex items-center justify-center p-4">
+            {/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i.test(buktiBayarPreviewUrl) ? (
+              <img
+                src={buktiBayarPreviewUrl}
+                alt="Bukti Bayar"
+                className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+              />
+            ) : (
+              <iframe
+                src={buktiBayarPreviewUrl}
+                className="w-full h-full border-none min-h-[60vh]"
+                title="Bukti Bayar Preview"
+              />
+            )}
           </div>
         </div>
       </div>
