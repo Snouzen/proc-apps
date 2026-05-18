@@ -286,7 +286,7 @@ function RekonContent() {
   }, [selectedPromo]);
 
   // FINAL CALCULATION: Rekening Koran - Total Invoice - Total RTV - Tagihan Promo - Biaya Admin - Notes Nominal
-  const balanceNetDue = Number(bankStatement || 0) - totalInvoices - totalRtv - totalPromo - Number(adminFee || 0) - Number(notesNominal || 0);
+  const balanceNetDue = Number(bankStatement || 0) - totalInvoices + totalRtv + totalPromo + Number(adminFee || 0) + Number(notesNominal || 0);
 
   const formatRp = (val: number) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(val);
