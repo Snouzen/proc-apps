@@ -1,6 +1,7 @@
 "use client";
 
-import { X, Calendar, Package, MapPin, Coins, ClipboardList, TrendingDown, Store, UserCircle, BadgeCheck, FileText, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { X, Calendar, Package, MapPin, Coins, ClipboardList, TrendingDown, Store, UserCircle, BadgeCheck, FileText, ExternalLink, History, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -11,6 +12,8 @@ interface ReturDetailModalProps {
 }
 
 export default function ReturDetailModal({ isOpen, onClose, data }: ReturDetailModalProps) {
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
   if (!isOpen || !data) return null;
 
   const formatDate = (date: any) => {
@@ -162,12 +165,15 @@ export default function ReturDetailModal({ isOpen, onClose, data }: ReturDetailM
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Remarks / Catatan</span>
                     <p className="text-xs font-bold text-slate-600 whitespace-pre-wrap">{data.remarks || "-"}</p>
                  </div>
-                 <div className="flex flex-col gap-2 p-5 bg-white rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group">
+                 <div className="flex flex-col gap-2 p-5 bg-white rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer" onClick={() => setIsHistoryOpen(true)}>
                      <div className={`absolute top-0 right-0 p-4 ${data.invoiceRekon ? "text-emerald-500" : "text-slate-200"}`}>
                        <BadgeCheck size={32} strokeWidth={1} />
                     </div>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Invoice Rekon</span>
-                    <p className={`text-sm font-black ${data.invoiceRekon ? "text-emerald-600" : "text-slate-400"}`}>
+                    <div className="flex justify-between items-center w-full">
+                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Invoice Rekon</span>
+                       <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-indigo-50 px-2 py-1 rounded-full"><History size={10} /> Riwayat</span>
+                    </div>
+                    <p className={`text-sm font-black mt-1 ${data.invoiceRekon ? "text-emerald-600" : "text-slate-400"}`}>
                        {data.invoiceRekon || "TIDAK TERSEDIA"}
                     </p>
                  </div>
@@ -211,6 +217,79 @@ export default function ReturDetailModal({ isOpen, onClose, data }: ReturDetailM
         </div>
 
       </div>
+
+      {/* HISTORY MODAL (SUB-MODAL) */}
+      {isHistoryOpen && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsHistoryOpen(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
+            {/* Header Ribbon */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 to-rose-500" />
+            
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                  <History size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 tracking-tight">Riwayat Invoice Rekon</h3>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{data.rtvCn || "-"}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsHistoryOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-all active:scale-90">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 pt-2 bg-slate-50/50 space-y-6">
+               <div className="relative">
+                  {/* Line connecting nodes */}
+                  <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-slate-200 rounded-full" />
+                  
+                  {/* Before Node */}
+                  <div className="flex gap-4 relative z-10 opacity-60">
+                     <div className="w-12 h-12 bg-white rounded-2xl border-2 border-slate-200 flex items-center justify-center text-slate-400 shadow-sm shrink-0">
+                        <FileText size={18} />
+                     </div>
+                     <div className="pt-1">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Sebelumnya (Before)</p>
+                        <p className={`text-sm font-black ${data.referensiPembayaran ? 'text-slate-500' : 'text-slate-400 italic'}`}>
+                           {data.referensiPembayaran || "Belum ada referensi"}
+                        </p>
+                     </div>
+                  </div>
+
+                  {/* Arrow Indicator */}
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 bg-slate-100 rounded-full border-2 border-white flex items-center justify-center text-slate-300 z-20">
+                     <ArrowRight size={8} />
+                  </div>
+
+                  {/* To-Be Node */}
+                  <div className="flex gap-4 relative z-10 mt-6">
+                     <div className="w-12 h-12 bg-emerald-50 rounded-2xl border-2 border-emerald-100 flex items-center justify-center text-emerald-500 shadow-sm shrink-0">
+                        <BadgeCheck size={20} />
+                     </div>
+                     <div className="pt-1">
+                        <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Diperbarui (To-Be)</p>
+                        <p className="text-sm font-black text-emerald-700">{data.invoiceRekon || "Belum ada invoice"}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                           <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[8px] font-bold uppercase tracking-widest">Sistem</span>
+                           <span className="text-[8px] font-bold text-slate-400">{format(new Date(), "dd MMM yyyy, HH:mm")}</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 text-center">
+               <button onClick={() => setIsHistoryOpen(false)} className="px-6 py-2.5 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all w-full">Tutup Riwayat</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

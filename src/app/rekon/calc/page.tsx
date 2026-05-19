@@ -117,6 +117,7 @@ function RekonContent() {
   const [invSearch, setInvSearch] = useState("");
   const [rtvSearch, setRtvSearch] = useState("");
   const [promoSearch, setPromoSearch] = useState("");
+  const [refInvoiceSearch, setRefInvoiceSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [rekonNo, setRekonNo] = useState<string | null>(null);
 
@@ -124,6 +125,7 @@ function RekonContent() {
   const [isPromoOpen, setIsPromoOpen] = useState(false);
   const [isInvOpen, setIsInvOpen] = useState(false);
   const [isRtvOpen, setIsRtvOpen] = useState(false);
+  const [openRefInvoicePopoverId, setOpenRefInvoicePopoverId] = useState<string | null>(null);
   const [openExcelModal, setOpenExcelModal] = useState(false);
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -778,7 +780,17 @@ function RekonContent() {
                                          <td className="px-4 py-4 text-rose-500 uppercase whitespace-nowrap tracking-tight">{rtv.noRtv}</td>
                                          <td className="px-2 py-4 text-center text-slate-400 tabular-nums whitespace-nowrap">{rtv.qty}</td>
                                          <td className="px-4 py-4">
-                                            <Popover.Root>
+                                            <Popover.Root 
+                                                open={openRefInvoicePopoverId === rtv.id} 
+                                                onOpenChange={(open) => { 
+                                                   if (open) {
+                                                      setOpenRefInvoicePopoverId(rtv.id);
+                                                   } else {
+                                                      setOpenRefInvoicePopoverId(null);
+                                                      setRefInvoiceSearch("");
+                                                   }
+                                                }}
+                                             >
                                                <Popover.Trigger asChild>
                                                   <button className="flex items-center justify-between w-full h-8 px-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-[9px] font-black uppercase tracking-tight transition-all text-slate-600 group">
                                                      <span className="truncate">{rtv.refInvoice || "Pilih Invoice..."}</span>
@@ -787,28 +799,45 @@ function RekonContent() {
                                                </Popover.Trigger>
                                                <Popover.Portal>
                                                   <Popover.Content 
-                                                     className="z-[110] w-[200px] bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 animate-in fade-in zoom-in-95" 
+                                                     className="z-[110] w-[220px] bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 animate-in fade-in zoom-in-95 flex flex-col gap-2" 
                                                      sideOffset={5}
                                                      align="start"
                                                   >
-                                                     <div className="max-h-[200px] overflow-y-auto no-scrollbar space-y-1">
+                                                     <div className="relative">
+                                                        <input 
+                                                           type="text" 
+                                                           placeholder="Cari Invoice..." 
+                                                           className="w-full h-8 pl-8 pr-3 bg-slate-50 rounded-lg border-none outline-none font-bold text-[10px] text-slate-600 placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-rose-100 transition-all uppercase"
+                                                           value={refInvoiceSearch}
+                                                           onChange={(e) => setRefInvoiceSearch(e.target.value)}
+                                                           onClick={(e) => e.stopPropagation()}
+                                                           onKeyDown={(e) => e.stopPropagation()}
+                                                        />
+                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={12} />
+                                                     </div>
+                                                     <div className="max-h-[160px] overflow-y-auto no-scrollbar space-y-1">
                                                         <button 
-                                                           onClick={() => setSelectedRtvs(selectedRtvs.map(x => x.id === rtv.id ? { ...x, refInvoice: "" } : x))}
+                                                           onClick={() => { setSelectedRtvs(selectedRtvs.map(x => x.id === rtv.id ? { ...x, refInvoice: "" } : x)); setRefInvoiceSearch(""); setOpenRefInvoicePopoverId(null); }}
                                                            className="w-full text-left px-4 py-3 hover:bg-rose-50 rounded-xl text-[9px] font-black uppercase tracking-widest text-rose-400 transition-colors"
                                                         >
                                                            • Reset Pilihan
                                                         </button>
-                                                        {selectedInvoices.map(inv => (
+                                                        {selectedInvoices
+                                                           .filter(inv => inv.noInvoice.toLowerCase().includes(refInvoiceSearch.toLowerCase()))
+                                                           .map(inv => (
                                                            <button 
                                                               key={inv.id}
-                                                              onClick={() => setSelectedRtvs(selectedRtvs.map(x => x.id === rtv.id ? { ...x, refInvoice: inv.noInvoice } : x))}
+                                                              onClick={() => { setSelectedRtvs(selectedRtvs.map(x => x.id === rtv.id ? { ...x, refInvoice: inv.noInvoice } : x)); setRefInvoiceSearch(""); setOpenRefInvoicePopoverId(null); }}
                                                               className="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-700 transition-colors"
                                                            >
-                                                              {inv.noInvoice}
+                                                              {highlightMatch(inv.noInvoice, refInvoiceSearch)}
                                                            </button>
                                                         ))}
                                                         {selectedInvoices.length === 0 && (
                                                            <p className="px-4 py-4 text-[8px] font-black text-slate-300 uppercase italic">Belum ada invoice terpilih di kiri</p>
+                                                        )}
+                                                        {selectedInvoices.length > 0 && selectedInvoices.filter(inv => inv.noInvoice.toLowerCase().includes(refInvoiceSearch.toLowerCase())).length === 0 && (
+                                                           <p className="px-4 py-4 text-[8px] font-black text-slate-300 uppercase italic">Invoice tidak ditemukan</p>
                                                         )}
                                                      </div>
                                                   </Popover.Content>

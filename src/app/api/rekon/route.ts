@@ -60,7 +60,7 @@ export async function GET(request: Request) {
           noRtv: rtvNo,
           total: Number(rtvData?.nominal || 0),
           qty: rtvData?.qtyReturn || 0,
-          refInvoice: "",
+          refInvoice: rtvData?.invoiceRekon || rtvData?.referensiPembayaran || "",
           pembebananRetur: rtvData?.PembebananReturn?.siteArea || "-",
           lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
           produk: rtvData?.Product?.name || rtvData?.produk || "-",
@@ -275,15 +275,27 @@ export async function POST(request: Request) {
       }
     });
 
-    // 4. SYNC: Update referensi invoice di tabel DataRetur secara otomatis
+    // 4. SYNC: Update referensi invoice di tabel DataRetur secara otomatis & Tracking History
     if (Array.isArray(rtvs)) {
       for (const r of rtvs) {
         if (typeof r === 'object' && r.noRtv && r.refInvoice) {
+          // Cari data lama untuk tracking history
+          const oldData = await prisma.dataRetur.findFirst({
+            where: { rtvCn: r.noRtv }
+          });
+          
+          const updatePayload: any = { invoiceRekon: r.refInvoice };
+          
+          // Jika invoiceRekon sebelumnya ada dan berbeda dari yang baru, pindahkan ke referensiPembayaran sebagai riwayat
+          if (oldData && oldData.invoiceRekon && oldData.invoiceRekon !== r.refInvoice) {
+             updatePayload.referensiPembayaran = oldData.invoiceRekon;
+          } else if (oldData && !oldData.referensiPembayaran && oldData.invoiceRekon !== r.refInvoice) {
+             // Opsional: Jika invoiceRekon kosong tapi refInvoice diisi pertama kali, biarkan referensiPembayaran apa adanya
+          }
+
           await prisma.dataRetur.updateMany({
             where: { rtvCn: r.noRtv },
-            data: { 
-              invoiceRekon: r.refInvoice // Nomor invoice dipindah ke sini
-            }
+            data: updatePayload
           });
         }
       }
