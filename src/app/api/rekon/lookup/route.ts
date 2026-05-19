@@ -58,6 +58,7 @@ export async function GET(request: Request) {
         where,
         include: {
           RitelModern: true,
+          UnitProduksi: true,
           Items: { include: { Product: true } }
         }
       });
@@ -80,10 +81,13 @@ export async function GET(request: Request) {
         where,
         include: {
           RitelModern: true,
-          Product: true
+          Product: true,
+          LokasiBarang: true,
+          PembebananReturn: true
         }
       });
       return NextResponse.json({ data: returs });
+
     }
 
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 });

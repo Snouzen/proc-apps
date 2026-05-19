@@ -20,35 +20,51 @@ export async function GET(request: Request) {
       // Fetch Full Invoice Details
       const detailedInvoices = await prisma.purchaseOrder.findMany({
         where: { noInvoice: { in: rekon.invoices || [] } },
-        include: { Items: true }
+        include: { UnitProduksi: true, Items: { include: { Product: true } } }
       });
 
-      // Calculate totals for invoices (shared logic)
-      const invoicesWithTotals = detailedInvoices.map(p => {
-        const total = p.Items?.reduce((sum, item: any) => {
+      // Calculate totals for invoices (preserve duplicates — user may have same invoice twice)
+      const invoicesWithTotals = (rekon.invoices || []).map((invNo: string, idx: number) => {
+        const p = detailedInvoices.find(x => x.noInvoice === invNo);
+        const total = p?.Items?.reduce((sum: number, item: any) => {
           return sum + (Number(item.rpTagih) || (Number(item.hargaPcs) * Number(item.pcsKirim)) || 0);
         }, 0) || 0;
+        const produkNames = (p?.Items || []).map((item: any) => item.Product?.name).filter(Boolean).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(", ");
+        
         return { 
-          id: p.id, 
-          noInvoice: p.noInvoice, 
-          noPo: p.noPo, 
-          companyId: p.ritelId, 
-          total: total 
+          id: (p?.id || invNo) + "-inv-" + idx, 
+          noInvoice: invNo, 
+          noPo: p?.noPo || "-", 
+          companyId: p?.ritelId || "", 
+          total: total,
+          unitProduksi: p?.UnitProduksi?.namaRegional || "-",
+          produk: produkNames || "-"
         };
       });
 
       // Fetch Full RTV Details
       const detailedRtvs = await prisma.dataRetur.findMany({
-        where: { rtvCn: { in: rekon.rtvs || [] } }
+        where: { rtvCn: { in: rekon.rtvs || [] } },
+        include: { Product: true, LokasiBarang: true, PembebananReturn: true }
       });
-      const rtvsWithData = (rekon.rtvs || []).map(rtvNo => {
-        const rtvData = detailedRtvs.find(r => r.rtvCn === rtvNo);
+      // Map RTVs (preserve duplicates — user may have same RTV number twice)
+      const rtvCounts: Record<string, number> = {};
+      const rtvsWithData = (rekon.rtvs || []).map((rtvNo: string, idx: number) => {
+        const matches = detailedRtvs.filter(r => r.rtvCn === rtvNo);
+        const count = rtvCounts[rtvNo] || 0;
+        const rtvData = matches[count] || matches[matches.length - 1];
+        rtvCounts[rtvNo] = count + 1;
+
         return {
-          id: rtvData?.id || Math.random().toString(),
+          id: (rtvData?.id || rtvNo) + "-rtv-" + idx,
           noRtv: rtvNo,
           total: Number(rtvData?.nominal || 0),
           qty: rtvData?.qtyReturn || 0,
-          refInvoice: rtvData?.invoiceRekon || rtvData?.referensiPembayaran || "-"
+          refInvoice: "",
+          pembebananRetur: rtvData?.PembebananReturn?.siteArea || "-",
+          lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
+          produk: rtvData?.Product?.name || rtvData?.produk || "-",
+          unitProduksi: rtvData?.PembebananReturn?.namaRegional || "-"
         };
       });
 
@@ -116,28 +132,27 @@ export async function GET(request: Request) {
       const [posData, retursData] = await Promise.all([
         prisma.purchaseOrder.findMany({
           where: { noInvoice: { in: allInvNos } },
-          select: { 
-            noInvoice: true, 
-            Items: {
-              select: { rpTagih: true, hargaPcs: true, pcsKirim: true }
-            }
-          }
+          include: { UnitProduksi: true, Items: { include: { Product: true } } }
         }),
         prisma.dataRetur.findMany({
           where: { rtvCn: { in: allRtvNos } },
-          select: { rtvCn: true, referensiPembayaran: true, invoiceRekon: true, nominal: true }
+          include: { Product: true, LokasiBarang: true, PembebananReturn: true }
         })
       ]);
 
       // Create lookup maps for O(1) speed
-      const poMap = new Map(posData.map(p => {
-        // Hitung total dari Items (sama kayak logika di kalkulator)
-        const total = p.Items?.reduce((sum, item: any) => {
+      const poMap = new Map(posData.map((p: any) => {
+        const total = p.Items?.reduce((sum: number, item: any) => {
           return sum + (Number(item.rpTagih) || (Number(item.hargaPcs) * Number(item.pcsKirim)) || 0);
         }, 0) || 0;
-        return [p.noInvoice, { ...p, calculatedTotal: total }];
+        const produkNames = (p.Items || []).map((item: any) => item.Product?.name).filter(Boolean).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(", ");
+        return [p.noInvoice, { ...p, calculatedTotal: total, produkNames }];
       }));
-      const returMap = new Map(retursData.map(r => [r.rtvCn, r]));
+      const returMap = new Map<string, any[]>();
+      retursData.forEach((r: any) => {
+        if (!returMap.has(r.rtvCn)) returMap.set(r.rtvCn, []);
+        returMap.get(r.rtvCn)!.push(r);
+      });
 
       // 3. Gabungkan Data
       const data = reconciles.map((rekon) => {
@@ -145,16 +160,27 @@ export async function GET(request: Request) {
           const po = poMap.get(invNo);
           return {
             noInvoice: invNo,
-            nominal: po?.calculatedTotal || 0
+            nominal: po?.calculatedTotal || 0,
+            unitProduksi: po?.UnitProduksi?.namaRegional || "-",
+            produk: po?.produkNames || "-",
           };
         });
 
+        const rtvCounts: Record<string, number> = {};
         const rtvsWithData = (rekon.rtvs || []).map(rtvNo => {
-          const retur = returMap.get(rtvNo);
+          const matches = returMap.get(rtvNo) || [];
+          const count = rtvCounts[rtvNo] || 0;
+          const retur = matches[count] || matches[matches.length - 1];
+          rtvCounts[rtvNo] = count + 1;
+          
           return {
             noRtv: rtvNo,
             refInvoice: retur?.invoiceRekon || retur?.referensiPembayaran || "-",
-            nominal: Number(retur?.nominal || 0)
+            nominal: Number(retur?.nominal || 0),
+            pembebananRetur: retur?.PembebananReturn?.siteArea || "-",
+            unitProduksi: retur?.PembebananReturn?.namaRegional || "-",
+            lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
+            produk: retur?.Product?.name || retur?.produk || "-",
           };
         });
 

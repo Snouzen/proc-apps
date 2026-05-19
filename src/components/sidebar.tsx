@@ -21,6 +21,7 @@ import {
   Package,
   Undo2,
   Target,
+  ShieldCheck,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -78,6 +79,7 @@ export default function Sidebar({
   const [poMenuOpen, setPoMenuOpen] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
   const [rekonMenuOpen, setRekonMenuOpen] = useState(false);
+  const [creditLimitMenuOpen, setCreditLimitMenuOpen] = useState(false);
   const [actionPlanOpen, setActionPlanOpen] = useState(false);
   const [role, setRole] = useState<
     "pusat" | "rm" | "sitearea" | "spb_dki" | null
@@ -96,6 +98,9 @@ export default function Sidebar({
     }
     if (pathname.includes("/rekon")) {
       setRekonMenuOpen(true);
+    }
+    if (pathname.includes("/credit-limit")) {
+      setCreditLimitMenuOpen(true);
     }
     if (pathname === "/schedule" || pathname === "/need-assign") {
       setActionPlanOpen(true);
@@ -149,6 +154,15 @@ export default function Sidebar({
       name: "Data Rekonsiliasi",
       icon: <FileText size={16} />,
       path: "/rekon/data",
+    },
+  ];
+
+  const creditLimitSubItems = [
+    { name: "Approval", icon: <ShieldCheck size={16} />, path: "/credit-limit/approval" },
+    {
+      name: "Data Credit Limit",
+      icon: <FileText size={16} />,
+      path: "/credit-limit/data",
     },
   ];
 
@@ -410,7 +424,62 @@ export default function Sidebar({
             </div>
           )}
 
-          {/* 7. Report */}
+          {/* 7. Credit Limit */}
+          {role !== "sitearea" && (
+            <div className="space-y-1">
+              <div
+                onClick={() =>
+                  isOpen ? setCreditLimitMenuOpen(!creditLimitMenuOpen) : setIsOpen(true)
+                }
+                className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+              ${pathname.includes("/credit-limit") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                    <ShieldCheck size={20} />
+                  </div>
+                  {isOpen && (
+                    <span className="text-sm whitespace-nowrap">
+                      Credit Limit
+                    </span>
+                  )}
+                </div>
+                {isOpen && (
+                  <span
+                    className={`transition-transform duration-200 ${creditLimitMenuOpen ? "rotate-90" : ""}`}
+                  >
+                    <ChevronRight size={16} />
+                  </span>
+                )}
+              </div>
+
+              <div className={`grid transition-all duration-300 ease-in-out ${isOpen && creditLimitMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                    {creditLimitSubItems.map((sub) => {
+                      const subActive = pathname === sub.path;
+                      return (
+                        <Link
+                          key={sub.name}
+                          href={sub.path}
+                          prefetch={false}
+                          className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        >
+                          <span className="shrink-0">{sub.icon}</span>
+                          <span className="text-xs whitespace-nowrap">
+                            {sub.name}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 8. Report */}
           <RenderLink item={reportItem} pathname={pathname} isOpen={isOpen} />
 
           {/* 8. Master Data */}

@@ -70,6 +70,8 @@ export const generateRekonPdf = (
   doc.setFont("helvetica", "bold");
   doc.text("RINGKASAN REKONSILIASI", 14, 35);
 
+  const notesHeader = data[0]?.notesDesc || "Notes";
+
   const summaryBody = data.map((item, idx) => [
     String(idx + 1),
     item.noRekonsiliasi || "-",
@@ -79,6 +81,7 @@ export const generateRekonPdf = (
     formatRp(item.totalRtvs || 0),
     formatRp(item.totalPromo || 0),
     formatRp(item.biayaAdmin || 0),
+    formatRp(item.notesNominal || 0),
     formatRp(item.nominal || 0),
     formatDate(item.createdAt),
   ]);
@@ -89,6 +92,7 @@ export const generateRekonPdf = (
   const grandRtv = data.reduce((s, d) => s + (Number(d.totalRtvs) || 0), 0);
   const grandPromo = data.reduce((s, d) => s + (Number(d.totalPromo) || 0), 0);
   const grandAdmin = data.reduce((s, d) => s + (Number(d.biayaAdmin) || 0), 0);
+  const grandNotes = data.reduce((s, d) => s + (Number(d.notesNominal) || 0), 0);
   const grandNet = data.reduce((s, d) => s + (Number(d.nominal) || 0), 0);
 
   summaryBody.push([
@@ -100,13 +104,14 @@ export const generateRekonPdf = (
     formatRp(grandRtv),
     formatRp(grandPromo),
     formatRp(grandAdmin),
+    formatRp(grandNotes),
     formatRp(grandNet),
     "",
   ]);
 
   autoTable(doc, {
     startY: 38,
-    head: [["#", "No. Rekon", "Ritel", "Bank Statement", "Invoice", "RTV", "Promo", "Admin Fee", "Net Due", "Tanggal"]],
+    head: [["#", "No. Rekon", "Ritel", "Bank Statement", "Invoice", "RTV", "Promo", "Admin Fee", notesHeader, "Net Due", "Tanggal"]],
     body: summaryBody,
     theme: "grid",
     styles: { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
@@ -118,15 +123,16 @@ export const generateRekonPdf = (
     },
     columnStyles: {
       0: { halign: "center", cellWidth: 8 },
-      1: { cellWidth: 28 },
-      2: { cellWidth: 40 },
-      3: { halign: "right", cellWidth: 28 },
-      4: { halign: "right", cellWidth: 28 },
-      5: { halign: "right", cellWidth: 28 },
-      6: { halign: "right", cellWidth: 24 },
-      7: { halign: "right", cellWidth: 24 },
-      8: { halign: "right", cellWidth: 28, fontStyle: "bold" },
-      9: { halign: "center", cellWidth: 22 },
+      1: { cellWidth: 26 },
+      2: { cellWidth: 32 },
+      3: { halign: "right", cellWidth: 24 },
+      4: { halign: "right", cellWidth: 24 },
+      5: { halign: "right", cellWidth: 24 },
+      6: { halign: "right", cellWidth: 20 },
+      7: { halign: "right", cellWidth: 20 },
+      8: { halign: "right", cellWidth: 22 },
+      9: { halign: "right", cellWidth: 22, fontStyle: "bold" },
+      10: { halign: "center", cellWidth: 18 },
     },
     didParseCell: (hookData: any) => {
       // Style grand total row
@@ -213,23 +219,27 @@ export const generateRekonPdf = (
     const invBody = (item.invoices || []).map((inv: any, i: number) => [
       String(i + 1),
       inv.noInvoice || "-",
+      inv.unitProduksi || "-",
+      inv.produk || "-",
       formatRp(inv.nominal || 0),
     ]);
 
     if (invBody.length === 0) {
-      invBody.push(["-", "Tidak ada invoice", "-"]);
+      invBody.push(["-", "Tidak ada invoice", "-", "-", "-"]);
     }
 
     // Invoice total row
     invBody.push([
       "",
       "TOTAL INVOICE",
+      "",
+      "",
       formatRp(item.totalInvoices || 0),
     ]);
 
     autoTable(doc, {
       startY: nextY + 3,
-      head: [["#", "No. Invoice", "Nominal"]],
+      head: [["#", "No. Invoice", "Unit Produksi", "Produk", "Nominal"]],
       body: invBody,
       theme: "striped",
       styles: { fontSize: 7, cellPadding: 2 },
@@ -239,11 +249,12 @@ export const generateRekonPdf = (
         textColor: [255, 255, 255],
       },
       columnStyles: {
-        0: { halign: "center", cellWidth: 10 },
-        1: { cellWidth: 80 },
-        2: { halign: "right", cellWidth: 40 },
+        0: { halign: "center", cellWidth: 8 },
+        1: { cellWidth: 55 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 50 },
+        4: { halign: "right", cellWidth: 35 },
       },
-      tableWidth: 140,
       didParseCell: (hookData: any) => {
         if (hookData.row.index === invBody.length - 1) {
           hookData.cell.styles.fontStyle = "bold";
@@ -265,38 +276,49 @@ export const generateRekonPdf = (
       const rtvNo = typeof rtv === "string" ? rtv : rtv.noRtv;
       const refInv = typeof rtv === "object" ? rtv.refInvoice : "-";
       const nominal = typeof rtv === "object" ? rtv.nominal : 0;
-      return [String(i + 1), rtvNo || "-", refInv || "-", formatRp(nominal || 0)];
+      const pembebanan = typeof rtv === "object" ? (rtv.pembebananRetur || "-") : "-";
+      const lokasi = typeof rtv === "object" ? (rtv.lokasiBarang || "-") : "-";
+      const produk = typeof rtv === "object" ? (rtv.produk || "-") : "-";
+      const unitProduksi = typeof rtv === "object" ? (rtv.unitProduksi || "-") : "-";
+      return [String(i + 1), rtvNo || "-", refInv || "-", unitProduksi, pembebanan, lokasi, produk, formatRp(nominal || 0)];
     });
 
     if (rtvBody.length === 0) {
-      rtvBody.push(["-", "Tidak ada RTV", "-", "-"]);
+      rtvBody.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-"]);
     }
 
     rtvBody.push([
       "",
       "TOTAL RTV",
       "",
+      "",
+      "",
+      "",
+      "",
       formatRp(item.totalRtvs || 0),
     ]);
 
     autoTable(doc, {
       startY: nextY + 3,
-      head: [["#", "No. RTV", "Ref. Invoice", "Nominal"]],
+      head: [["#", "No. RTV", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Produk", "Nominal"]],
       body: rtvBody,
       theme: "striped",
-      styles: { fontSize: 7, cellPadding: 2 },
+      styles: { fontSize: 6.5, cellPadding: 1.8, overflow: "linebreak" },
       headStyles: {
         fontStyle: "bold",
         fillColor: [244, 63, 94],
         textColor: [255, 255, 255],
       },
       columnStyles: {
-        0: { halign: "center", cellWidth: 10 },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 60 },
-        3: { halign: "right", cellWidth: 40 },
+        0: { halign: "center", cellWidth: 7 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 30 },
+        5: { cellWidth: 30 },
+        6: { cellWidth: 30 },
+        7: { halign: "right", cellWidth: 32 },
       },
-      tableWidth: 170,
       didParseCell: (hookData: any) => {
         if (hookData.row.index === rtvBody.length - 1) {
           hookData.cell.styles.fontStyle = "bold";
@@ -318,27 +340,17 @@ export const generateRekonPdf = (
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    doc.text(
-      `Bank Statement (${formatRp(item.bankStatement || 0)}) = Invoice (${formatRp(item.totalInvoices || 0)}) - RTV (${formatRp(item.totalRtvs || 0)}) - Promo (${formatRp(item.totalPromo || 0)}) - Admin Fee (${formatRp(item.biayaAdmin || 0)})`,
-      18, calcY + 12,
-    );
+    let formulaText = `Bank Statement (${formatRp(item.bankStatement || 0)}) = Invoice (${formatRp(item.totalInvoices || 0)}) - RTV (${formatRp(item.totalRtvs || 0)}) - Promo (${formatRp(item.totalPromo || 0)}) - Admin Fee (${formatRp(item.biayaAdmin || 0)})`;
+    if (item.notesNominal) {
+      formulaText += ` - ${item.notesDesc || "Notes"} (${formatRp(item.notesNominal)})`;
+    }
+    
+    doc.text(formulaText, 18, calcY + 12);
 
-    const calcResult = (item.totalInvoices || 0) - (item.totalRtvs || 0) - (item.totalPromo || 0) - (item.biayaAdmin || 0);
-    const diff = (item.bankStatement || 0) - calcResult;
+    const calcResult = (item.totalInvoices || 0) - (item.totalRtvs || 0) - (item.totalPromo || 0) - (item.biayaAdmin || 0) - (item.notesNominal || 0);
 
     doc.setFont("helvetica", "bold");
     doc.text(`Kalkulasi: ${formatRp(calcResult)}`, 18, calcY + 18);
-    doc.text(`Selisih: ${formatRp(diff)}`, 18, calcY + 23);
-
-    if (Math.abs(diff) > 0) {
-      doc.setTextColor(220, 38, 38);
-      doc.text("[!] SELISIH TERDETEKSI", 100, calcY + 23);
-      doc.setTextColor(0, 0, 0);
-    } else {
-      doc.setTextColor(22, 163, 74);
-      doc.text("[OK] BALANCE", 100, calcY + 23);
-      doc.setTextColor(0, 0, 0);
-    }
   });
 
   // ─── Footer on all pages ───

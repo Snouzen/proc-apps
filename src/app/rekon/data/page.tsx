@@ -23,8 +23,7 @@ import {
   FileDown,
   X,
   Paperclip,
-  Download
-} from "lucide-react";
+  Download, FileSpreadsheet } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import * as Popover from "@radix-ui/react-popover";
@@ -48,6 +47,7 @@ export default function DataRekonPage() {
   const [total, setTotal] = useState(0);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [previewItem, setPreviewItem] = useState<any>(null);
   const [exportLoading, setExportLoading] = useState(false);
   const [buktiBayarPreviewUrl, setBuktiBayarPreviewUrl] = useState<string | null>(null);
 
@@ -126,6 +126,7 @@ export default function DataRekonPage() {
 
   const handleRowExport = async (item: any) => {
     setExportLoading(true);
+    setPreviewItem(item);
     try {
       const blobUrl = await lazyGenerateRekonPdf(
         [item], // Kirim sebagai array dengan 1 item
@@ -642,16 +643,28 @@ export default function DataRekonPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                   if(previewItem) {
+                      const { generateRekonExcel } = await import("@/lib/generateRekonExcel");
+                      generateRekonExcel([previewItem], {});
+                   }
+                }}
+                className="h-10 px-5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-100 transition-all active:scale-95"
+              >
+                <FileSpreadsheet size={14} />
+                Excel
+              </button>
               <a
                 href={pdfPreviewUrl}
                 download={`Rekon_Report_${new Date().toISOString().slice(0,10)}.pdf`}
                 className="h-10 px-5 bg-[#0f172a] text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95"
               >
                 <Download size={14} />
-                Download
+                PDF
               </a>
               <button
-                onClick={() => setPdfPreviewUrl(null)}
+                onClick={() => { setPdfPreviewUrl(null); setPreviewItem(null); }}
                 suppressHydrationWarning
                 className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
               >
@@ -696,7 +709,7 @@ export default function DataRekonPage() {
                 className="h-10 px-5 bg-[#0f172a] text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95"
               >
                 <Download size={14} />
-                Download
+                PDF
               </a>
               <button
                 onClick={() => setBuktiBayarPreviewUrl(null)}

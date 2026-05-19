@@ -48,6 +48,8 @@ interface Invoice {
   noPo: string;
   companyId: string;
   total: number;
+  unitProduksi?: string;
+  produk?: string;
 }
 
 interface Rtv {
@@ -57,6 +59,10 @@ interface Rtv {
   total: number;
   qty: number;
   refInvoice?: string;
+  unitProduksi?: string;
+  pembebananRetur?: string;
+  lokasiBarang?: string;
+  produk?: string;
 }
 
 interface Promo {
@@ -207,12 +213,20 @@ function RekonContent() {
       const pos = json.data || [];
       if (pos.length > 0) {
         const po = pos[0];
-        const newInv = {
+        // Collect all product names from Items, join with comma
+        const produkNames = (po.Items || [])
+          .map((item: any) => item.Product?.name)
+          .filter(Boolean)
+          .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i) // unique
+          .join(", ");
+        const newInv: Invoice = {
           id: po.id,
           noInvoice: po.noInvoice,
           noPo: po.noPo,
           companyId: po.ritelId || selectedCompany?.id || "",
-          total: po.totalTagihan || po.totalNominal || po.Items?.reduce((s: number, i: any) => s + (i.rpTagih || (i.hargaPcs * i.pcsKirim) || 0), 0) || 0
+          total: po.totalTagihan || po.totalNominal || po.Items?.reduce((s: number, i: any) => s + (i.rpTagih || (i.hargaPcs * i.pcsKirim) || 0), 0) || 0,
+          unitProduksi: po.UnitProduksi?.namaRegional || po.UnitProduksi?.siteArea || "-",
+          produk: produkNames || "-",
         };
         if (!selectedInvoices.find(x => x.id === newInv.id)) {
            setSelectedInvoices([...selectedInvoices, newInv]);
@@ -232,17 +246,19 @@ function RekonContent() {
       const returs = json.data || [];
       
       if (returs.length > 0) {
-        // Map over all records with correct schema field names
-        const mappedRtvs = returs.map((r: any) => ({
+        const mappedRtvs: Rtv[] = returs.map((r: any) => ({
           id: r.id,
           noRtv: r.rtvCn || r.noRtv || rtvNo,
           companyId: r.ritelId || selectedCompany?.id || "",
           qty: r.qtyReturn || r.qty || r.pcs || r.jumlah || 1,
-          total: r.nominal || r.rpTagih || r.total || r.rpNett || r.amount || 0,
-          refInvoice: ""
+          total: Number(r.nominal || r.rpTagih || r.total || r.rpNett || r.amount || 0),
+          refInvoice: "",
+          pembebananRetur: r.PembebananReturn?.siteArea || "-",
+          lokasiBarang: r.LokasiBarang?.siteArea || "-",
+          produk: r.Product?.name || r.produk || "-",
+          unitProduksi: r.PembebananReturn?.namaRegional || "-",
         }));
 
-        // Filter out items that are already selected by ID
         setSelectedRtvs(prev => {
            const existingIds = new Set(prev.map(x => x.id));
            const newItems = mappedRtvs.filter((m: any) => !existingIds.has(m.id));
@@ -641,14 +657,16 @@ function RekonContent() {
 
                        {/* Table Invoice Container */}
                        <div className="bg-[#f8fafc] rounded-[32px] border border-slate-100 shadow-sm w-full relative overflow-hidden">
-                          <div className="max-h-[280px] overflow-auto no-scrollbar scroll-smooth relative">
-                             <table className="w-full text-left border-collapse min-w-[520px] table-auto">
+                          <div className="max-h-[280px] overflow-auto premium-scrollbar scroll-smooth relative">
+                             <table className="w-full text-left border-collapse min-w-[820px] table-auto">
                                 <thead>
                                    <tr className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-white sticky top-0 bg-[#f8fafc] z-10">
                                       <th className="px-6 py-5 min-w-[180px]">Invoice</th>
                                       <th className="px-4 py-5 min-w-[120px] font-black text-center">PO</th>
-                                      <th className="px-6 py-5 min-w-[140px] text-right font-black">Nominal</th>
-                                      <th className="px-4 py-5 w-12 text-center">#</th>
+                                      <th className="px-4 py-5 min-w-[160px] font-black">Unit Produksi</th>
+                                       <th className="px-4 py-5 min-w-[160px] font-black">Produk</th>
+                                       <th className="px-6 py-5 min-w-[140px] text-right font-black">Nominal</th>
+                                       <th className="px-4 py-5 w-12 text-center">#</th>
                                    </tr>
                                 </thead>
                                 <tbody className="text-[11px] font-black">
@@ -656,7 +674,9 @@ function RekonContent() {
                                       <tr key={inv.id} className="group hover:bg-white transition-colors border-b border-indigo-50/20">
                                          <td className="px-6 py-4 text-[#5c56f6] uppercase whitespace-nowrap">{inv.noInvoice}</td>
                                          <td className="px-4 py-4 text-slate-400 uppercase tracking-tighter text-center whitespace-nowrap">{inv.noPo}</td>
-                                         <td className="px-6 py-4 text-right text-slate-800 tabular-nums font-black whitespace-nowrap">{formatRp(inv.total)}</td>
+                                          <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{inv.unitProduksi || "-"}</td>
+                                          <td className="px-4 py-4 text-slate-500 text-[10px] max-w-[160px] truncate" title={inv.produk}>{inv.produk || "-"}</td>
+                                          <td className="px-6 py-4 text-right text-slate-800 tabular-nums font-black whitespace-nowrap">{formatRp(inv.total)}</td>
                                          <td className="px-4 py-4 text-center">
                                             <button onClick={() => setSelectedInvoices(selectedInvoices.filter(x => x.id !== inv.id))} className="w-6 h-6 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center mx-auto opacity-40 group-hover:opacity-100 transition-opacity hover:bg-rose-100"><X size={12} /></button>
                                          </td>
@@ -664,7 +684,7 @@ function RekonContent() {
                                    ))}
                              {selectedInvoices.length === 0 && (
                                 <tr>
-                                   <td colSpan={3} className="px-8 py-16 text-center text-slate-300 italic uppercase italic text-[10px]">Belum ada Invoice terpilih</td>
+                                   <td colSpan={6} className="px-8 py-16 text-center text-slate-300 italic uppercase italic text-[10px]">Belum ada Invoice terpilih</td>
                                 </tr>
                              )}
                           </tbody>
@@ -737,19 +757,23 @@ function RekonContent() {
 
                        {/* Table RTV Container */}
                        <div className="bg-[#f8fafc] rounded-[32px] border border-slate-100 shadow-sm w-full relative overflow-hidden">
-                          <div className="max-h-[250px] overflow-auto no-scrollbar scroll-smooth relative">
-                             <table className="w-full text-left border-collapse min-w-[420px] table-auto">
+                          <div className="max-h-[250px] overflow-auto premium-scrollbar scroll-smooth relative">
+                             <table className="w-full text-left border-collapse min-w-[1000px] table-auto">
                                 <thead>
                                    <tr className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-white sticky top-0 bg-[#f8fafc] z-10 transition-colors">
                                       <th className="px-4 py-5 min-w-[140px]">RTV/CN</th>
-                                      <th className="px-2 py-5 min-w-[50px] text-center font-black">QTY</th>
-                                      <th className="px-4 py-5 min-w-[150px] font-black">Ref Invoice</th>
-                                      <th className="px-4 py-5 min-w-[110px] text-right font-black">NOMINAL</th>
-                                      <th className="px-3 py-5 w-10 text-center">#</th>
+                                      <th className="px-2 py-5 min-w-[50px] text-center font-black">Pcs</th>
+                                       <th className="px-4 py-5 min-w-[150px] font-black">Ref Invoice</th>
+                                       <th className="px-4 py-5 min-w-[140px] font-black">Unit Produksi</th>
+                                       <th className="px-4 py-5 min-w-[140px] font-black">Pembebanan</th>
+                                       <th className="px-4 py-5 min-w-[140px] font-black">Lokasi Barang</th>
+                                       <th className="px-4 py-5 min-w-[120px] font-black">Produk</th>
+                                       <th className="px-4 py-5 min-w-[110px] text-right font-black">Nominal</th>
+                                       <th className="px-3 py-5 w-10 text-center">#</th>
                                    </tr>
                                 </thead>
                                 <tbody className="text-[11px] font-black">
-                                   {selectedRtvs.map(rtv => (
+                                   {selectedRtvs.map(rtv => { const refInv = selectedInvoices.find(inv => inv.noInvoice === rtv.refInvoice); const unitProduksiFromInv = refInv?.unitProduksi || "-"; return (
                                       <tr key={rtv.id} className="group hover:bg-white transition-colors border-b border-rose-50/20">
                                          <td className="px-4 py-4 text-rose-500 uppercase whitespace-nowrap tracking-tight">{rtv.noRtv}</td>
                                          <td className="px-2 py-4 text-center text-slate-400 tabular-nums whitespace-nowrap">{rtv.qty}</td>
@@ -791,15 +815,20 @@ function RekonContent() {
                                                </Popover.Portal>
                                             </Popover.Root>
                                          </td>
-                                         <td className="px-4 py-4 text-right text-slate-800 tabular-nums font-black whitespace-nowrap">{formatRp(rtv.total)}</td>
+                                         <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.unitProduksi || "-"}</td>
+                                          <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.pembebananRetur || "-"}</td>
+                                          <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.lokasiBarang || "-"}</td>
+                                          <td className="px-4 py-4 text-slate-500 text-[10px] max-w-[120px] truncate" title={rtv.produk}>{rtv.produk || "-"}</td>
+                                          <td className="px-4 py-4 text-right text-slate-800 tabular-nums font-black whitespace-nowrap">{formatRp(rtv.total)}</td>
                                          <td className="px-3 py-4 text-center">
                                             <button onClick={() => setSelectedRtvs(selectedRtvs.filter(x => x.id !== rtv.id))} className="w-5 h-5 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center mx-auto opacity-40 group-hover:opacity-100 transition-opacity hover:bg-rose-100 transition-all"><X size={10} /></button>
                                          </td>
                                       </tr>
-                                   ))}
-                                   {selectedRtvs.length === 0 && (
+                                   );
+                                    })}
+                                    {selectedRtvs.length === 0 && (
                                       <tr>
-                                         <td colSpan={4} className="px-8 py-16 text-center text-slate-300 italic uppercase text-[10px]">Belum ada RTV terpilih</td>
+                                         <td colSpan={9} className="px-8 py-16 text-center text-slate-300 italic uppercase text-[10px]">Belum ada RTV terpilih</td>
                                       </tr>
                                    )}
                                 </tbody>
