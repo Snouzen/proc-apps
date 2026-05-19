@@ -56,7 +56,7 @@ export async function GET(request: Request) {
         rtvCounts[rtvNo] = count + 1;
 
         return {
-          id: (rtvData?.id || rtvNo) + "-rtv-" + idx,
+          id: rtvData?.id,
           noRtv: rtvNo,
           total: Number(rtvData?.nominal || 0),
           qty: rtvData?.qtyReturn || 0,
@@ -174,6 +174,7 @@ export async function GET(request: Request) {
           rtvCounts[rtvNo] = count + 1;
           
           return {
+            id: retur?.id,
             noRtv: rtvNo,
             refInvoice: retur?.invoiceRekon || retur?.referensiPembayaran || "-",
             nominal: Number(retur?.nominal || 0),
@@ -226,11 +227,23 @@ export async function POST(request: Request) {
       const year = now.getFullYear();
       const datePattern = `${month}/${year}`;
 
-      // Count ALL reconcile records globally (no monthly reset)
-      const countAll = await prisma.reconcile.count();
+      // Ambil record terakhir untuk memastikan nomor berurutan dan tidak bentrok walau ada data yg dihapus
+      const lastRecord = await prisma.reconcile.findFirst({
+        orderBy: { createdAt: 'desc' }
+      });
+      
+      let nextNumber = 1;
+      if (lastRecord && lastRecord.noRekonsiliasi) {
+        const match = lastRecord.noRekonsiliasi.match(/R-(\d+)\//);
+        if (match && match[1]) {
+           nextNumber = parseInt(match[1], 10) + 1;
+        } else {
+           const countAll = await prisma.reconcile.count();
+           nextNumber = countAll + 1;
+        }
+      }
 
-      const nextNumber = String(countAll + 1).padStart(3, '0');
-      GeneratedNoRekon = `R-${nextNumber}/${datePattern}`;
+      GeneratedNoRekon = `R-${String(nextNumber).padStart(3, '0')}/${datePattern}`;
       finalId = Math.random().toString(36).substring(2, 10).toUpperCase();
     }
 
@@ -279,9 +292,12 @@ export async function POST(request: Request) {
     if (Array.isArray(rtvs)) {
       for (const r of rtvs) {
         if (typeof r === 'object' && r.noRtv && r.refInvoice) {
-          // Cari data lama untuk tracking history
+          // Gunakan ID unik dari row DataRetur jika ada, jika tidak fallback ke rtvCn
+          const whereClause: any = r.id ? { id: r.id } : { rtvCn: r.noRtv };
+          
+          // Cari data lama untuk tracking history berdasarkan row spesifik yang mau diupdate
           const oldData = await prisma.dataRetur.findFirst({
-            where: { rtvCn: r.noRtv }
+            where: whereClause
           });
           
           const updatePayload: any = { invoiceRekon: r.refInvoice };
@@ -293,8 +309,9 @@ export async function POST(request: Request) {
              // Opsional: Jika invoiceRekon kosong tapi refInvoice diisi pertama kali, biarkan referensiPembayaran apa adanya
           }
 
+          // Update specifically that row!
           await prisma.dataRetur.updateMany({
-            where: { rtvCn: r.noRtv },
+            where: whereClause,
             data: updatePayload
           });
         }

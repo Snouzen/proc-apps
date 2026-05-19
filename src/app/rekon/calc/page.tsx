@@ -366,6 +366,7 @@ function RekonContent() {
         nominal: balanceNetDue,
         invoices: selectedInvoices.map(inv => inv.noInvoice),
         rtvs: selectedRtvs.map(rtv => ({ 
+          id: rtv.id, // ID spesifik untuk setiap row/produk DataRetur
           noRtv: rtv.noRtv, 
           refInvoice: rtv.refInvoice || "" 
         })),
