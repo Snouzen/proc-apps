@@ -39,6 +39,7 @@ export async function GET(request: Request) {
           companyId: p?.ritelId || "", 
           total: total,
           unitProduksi: p?.UnitProduksi?.namaRegional || "-",
+          siteArea: p?.UnitProduksi?.siteArea || "-",
           produk: produkNames || "-"
         };
       });
@@ -172,6 +173,7 @@ export async function GET(request: Request) {
             noInvoice: invNo,
             nominal: po?.calculatedTotal || 0,
             unitProduksi: po?.UnitProduksi?.namaRegional || "-",
+            siteArea: po?.UnitProduksi?.siteArea || "-",
             produk: po?.produkNames || "-",
           };
         });

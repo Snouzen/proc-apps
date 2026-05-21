@@ -49,6 +49,7 @@ interface Invoice {
   companyId: string;
   total: number;
   unitProduksi?: string;
+  siteArea?: string;
   produk?: string;
 }
 
@@ -226,6 +227,7 @@ function RekonContent() {
           companyId: po.ritelId || selectedCompany?.id || "",
           total: po.totalTagihan || po.totalNominal || po.Items?.reduce((s: number, i: any) => s + (i.rpTagih || (i.hargaPcs * i.pcsKirim) || 0), 0) || 0,
           unitProduksi: po.UnitProduksi?.namaRegional || po.UnitProduksi?.siteArea || "-",
+          siteArea: po.UnitProduksi?.siteArea || "-",
           produk: produkNames || "-",
         };
         if (!selectedInvoices.find(x => x.id === newInv.id)) {
@@ -256,7 +258,7 @@ function RekonContent() {
           pembebananRetur: r.PembebananReturn?.siteArea || "-",
           lokasiBarang: r.LokasiBarang?.siteArea || "-",
           produk: r.Product?.name || r.produk || "-",
-          unitProduksi: r.LokasiBarang?.namaRegional || r.PembebananReturn?.namaRegional || "-",
+          unitProduksi: "-",
         }));
 
         setSelectedRtvs(prev => {
@@ -777,7 +779,7 @@ function RekonContent() {
                                    </tr>
                                 </thead>
                                 <tbody className="text-[11px] font-black">
-                                   {selectedRtvs.map(rtv => { const refInv = selectedInvoices.find(inv => inv.noInvoice === rtv.refInvoice); const unitProduksiFromInv = refInv?.unitProduksi || "-"; return (
+                                   {selectedRtvs.map(rtv => { const refInv = selectedInvoices.find(inv => inv.noInvoice === rtv.refInvoice); const unitProduksiFromInv = refInv?.siteArea || "-"; return (
                                       <tr key={rtv.id} className="group hover:bg-white transition-colors border-b border-rose-50/20">
                                          <td className="px-4 py-4 text-rose-500 uppercase whitespace-nowrap tracking-tight">{rtv.noRtv}</td>
                                          <td className="px-2 py-4 text-center text-slate-400 tabular-nums whitespace-nowrap">{rtv.qty}</td>
@@ -846,7 +848,7 @@ function RekonContent() {
                                                </Popover.Portal>
                                             </Popover.Root>
                                          </td>
-                                         <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.unitProduksi || "-"}</td>
+                                         <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{unitProduksiFromInv}</td>
                                           <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.pembebananRetur || "-"}</td>
                                           <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.lokasiBarang || "-"}</td>
                                           <td className="px-4 py-4 text-slate-500 text-[10px] max-w-[120px] truncate" title={rtv.produk}>{rtv.produk || "-"}</td>
