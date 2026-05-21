@@ -70,7 +70,7 @@ export const generateRekonPdf = (
   doc.setFont("helvetica", "bold");
   doc.text("RINGKASAN REKONSILIASI", 14, 35);
 
-  const notesHeader = data[0]?.notesDesc || "Notes";
+  const notesHeader = "Notes";
 
   const summaryBody = data.map((item, idx) => [
     String(idx + 1),
@@ -327,6 +327,52 @@ export const generateRekonPdf = (
       },
     });
 
+    // ─── Notes Detail Table (only if notes exist) ───
+    const notesArr: Array<{desc: string, nominal: number}> = Array.isArray(item.notes) && item.notes.length > 0
+      ? item.notes
+      : (item.notesDesc || item.notesNominal ? [{ desc: item.notesDesc || "", nominal: item.notesNominal || 0 }] : []);
+    const totalNotesNominal = notesArr.reduce((s, n) => s + (Number(n.nominal) || 0), 0);
+
+    if (notesArr.length > 0) {
+      nextY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(59, 130, 246); // blue-500
+      doc.text(`DETAIL NOTES (${notesArr.length})`, 14, nextY);
+      doc.setTextColor(0, 0, 0);
+
+      const notesBody = notesArr.map((n: any, i: number) => [
+        String(i + 1),
+        n.desc || "-",
+        formatRp(n.nominal || 0),
+      ]);
+      notesBody.push(["", "TOTAL NOTES", formatRp(totalNotesNominal)]);
+
+      autoTable(doc, {
+        startY: nextY + 3,
+        head: [["#", "Keterangan", "Nominal"]],
+        body: notesBody,
+        theme: "striped",
+        styles: { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
+        headStyles: {
+          fontStyle: "bold",
+          fillColor: [59, 130, 246],
+          textColor: [255, 255, 255],
+        },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 10 },
+          1: { cellWidth: 120 },
+          2: { halign: "right", cellWidth: 40 },
+        },
+        didParseCell: (hookData: any) => {
+          if (hookData.row.index === notesBody.length - 1) {
+            hookData.cell.styles.fontStyle = "bold";
+            hookData.cell.styles.fillColor = [219, 234, 254]; // blue-100
+          }
+        },
+      });
+    }
+
     // Calculation Formula at bottom of page
     const calcY = (doc as any).lastAutoTable.finalY + 12;
 
@@ -341,13 +387,15 @@ export const generateRekonPdf = (
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     let formulaText = `Bank Statement (${formatRp(item.bankStatement || 0)}) = Invoice (${formatRp(item.totalInvoices || 0)}) - RTV (${formatRp(item.totalRtvs || 0)}) - Promo (${formatRp(item.totalPromo || 0)}) - Admin Fee (${formatRp(item.biayaAdmin || 0)})`;
-    if (item.notesNominal) {
-      formulaText += ` - ${item.notesDesc || "Notes"} (${formatRp(item.notesNominal)})`;
+    if (totalNotesNominal > 0) {
+      notesArr.forEach((n: any) => {
+        formulaText += ` - ${n.desc || "Notes"} (${formatRp(n.nominal || 0)})`;
+      });
     }
     
     doc.text(formulaText, 18, calcY + 12);
 
-    const calcResult = (item.totalInvoices || 0) - (item.totalRtvs || 0) - (item.totalPromo || 0) - (item.biayaAdmin || 0) - (item.notesNominal || 0);
+    const calcResult = (item.totalInvoices || 0) - (item.totalRtvs || 0) - (item.totalPromo || 0) - (item.biayaAdmin || 0) - totalNotesNominal;
 
     doc.setFont("helvetica", "bold");
     doc.text(`Kalkulasi: ${formatRp(calcResult)}`, 18, calcY + 18);

@@ -199,6 +199,7 @@ model Reconcile {
   rtvs             String[]     // List nomor rtv/cn
   notesDesc        String?
   notesNominal     Float        @default(0)
+  notes            Json?        // Array of {desc: string, nominal: number}
   noPromo          String?      // Nomor promo (opsional)
   status           String       @default("final")
   tglBayar         DateTime?

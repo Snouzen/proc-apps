@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const user = verifySession(sessionToken);
 
     // Access is now global for all roles as per user request
-    const filters: Prisma.DataReturWhereInput[] = [];
+    const filters: any[] = [];
     
     if (retailerId) {
       const selectedRitel = await prisma.ritelModern.findUnique({ where: { id: retailerId } });
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const where: Prisma.DataReturWhereInput = filters.length > 0 ? { AND: filters } : {};
+    const where: any = filters.length > 0 ? { AND: filters } : {};
 
     // Ambil stats berdasarkan statusBarang
     const [sudah, belum, musnah] = await Promise.all([

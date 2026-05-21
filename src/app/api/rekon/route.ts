@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/auth";
 
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
           pembebananRetur: rtvData?.PembebananReturn?.siteArea || "-",
           lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
           produk: rtvData?.Product?.name || rtvData?.produk || "-",
-          unitProduksi: rtvData?.PembebananReturn?.namaRegional || "-"
+          unitProduksi: rtvData?.LokasiBarang?.namaRegional || rtvData?.PembebananReturn?.namaRegional || "-"
         };
       });
 
@@ -74,9 +75,18 @@ export async function GET(request: Request) {
         promoData = await prisma.promo.findUnique({ where: { nomor: rekon.noPromo } });
       }
 
+      // Normalize notes: support new array format + backward compat with legacy single fields
+      let normalizedNotes: Array<{desc: string, nominal: number}> = [];
+      if (Array.isArray(rekon.notes) && (rekon.notes as any[]).length > 0) {
+        normalizedNotes = rekon.notes as any[];
+      } else if (rekon.notesDesc || rekon.notesNominal) {
+        normalizedNotes = [{ desc: rekon.notesDesc || "", nominal: rekon.notesNominal || 0 }];
+      }
+
       return NextResponse.json({ 
         data: {
           ...rekon,
+          notes: normalizedNotes,
           detailedInvoices: invoicesWithTotals,
           detailedRtvs: rtvsWithData,
           detailedPromo: promoData
@@ -179,13 +189,21 @@ export async function GET(request: Request) {
             refInvoice: retur?.invoiceRekon || retur?.referensiPembayaran || "-",
             nominal: Number(retur?.nominal || 0),
             pembebananRetur: retur?.PembebananReturn?.siteArea || "-",
-            unitProduksi: retur?.PembebananReturn?.namaRegional || "-",
+            unitProduksi: retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
             lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
             produk: retur?.Product?.name || retur?.produk || "-",
           };
         });
 
-      return { ...rekon, invoices: invoicesWithData, rtvs: rtvsWithData };
+      // Normalize notes for this rekon
+      let normalizedNotes: any[] = [];
+      if (Array.isArray(rekon.notes) && (rekon.notes as any[]).length > 0) {
+        normalizedNotes = rekon.notes as any[];
+      } else if (rekon.notesDesc || rekon.notesNominal) {
+        normalizedNotes = [{ desc: rekon.notesDesc || "", nominal: rekon.notesNominal || 0 }];
+      }
+
+      return { ...rekon, notes: normalizedNotes, invoices: invoicesWithData, rtvs: rtvsWithData };
     });
 
     return NextResponse.json({ data, total });
@@ -209,13 +227,17 @@ export async function POST(request: Request) {
       invoices, 
       rtvs, 
       noPromo,
-      notesDesc,
-      notesNominal,
+      notes,
       buktiBayarUrl,
       tglBayar,
       status = "final",
       id // Cek apakah ini edit/update dari draft
     } = body;
+
+    // Compute backward-compat fields from notes array
+    const notesArray: Array<{desc: string, nominal: number}> = Array.isArray(notes) ? notes : [];
+    const computedNotesDesc = notesArray.map((n: any) => n.desc).filter(Boolean).join(' | ') || null;
+    const computedNotesNominal = notesArray.reduce((sum: number, n: any) => sum + (Number(n.nominal) || 0), 0);
 
     let GeneratedNoRekon = "";
     let finalId = id;
@@ -260,8 +282,9 @@ export async function POST(request: Request) {
         nominal: Number(nominal) || 0,
         invoices: invoices || [],
         rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
-        notesDesc: notesDesc || null,
-        notesNominal: Number(notesNominal) || 0,
+        notes: notesArray.length > 0 ? notesArray : undefined,
+        notesDesc: computedNotesDesc,
+        notesNominal: computedNotesNominal,
         noPromo: noPromo || null,
         buktiBayarUrl: buktiBayarUrl || undefined,
         tglBayar: tglBayar ? new Date(tglBayar) : undefined,
@@ -279,8 +302,9 @@ export async function POST(request: Request) {
         nominal: Number(nominal) || 0,
         invoices: invoices || [],
         rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
-        notesDesc: notesDesc || null,
-        notesNominal: Number(notesNominal) || 0,
+        notes: notesArray.length > 0 ? notesArray : undefined,
+        notesDesc: computedNotesDesc,
+        notesNominal: computedNotesNominal,
         noPromo: noPromo || null,
         buktiBayarUrl: buktiBayarUrl || null,
         tglBayar: tglBayar ? new Date(tglBayar) : null,

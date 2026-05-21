@@ -235,7 +235,8 @@ export default function DataRekonPage() {
                   <th className="px-6 py-5 text-center">PROMO</th>
                   <th className="px-6 py-5 text-center">ADMIN FEE</th>
                   <th className="px-6 py-5 text-center bg-indigo-50/5 text-indigo-500">NET DUE</th>
-                  <th className="px-4 py-5 text-center">TANGGAL</th>
+                  <th className="px-4 py-5 text-center">TANGGAL INPUT</th>
+                  <th className="px-4 py-5 text-center">TANGGAL PEMBAYARAN</th>
                   <th className="px-4 py-5 text-right pr-8">AKSI</th>
                 </tr>
               </thead>
@@ -327,9 +328,26 @@ export default function DataRekonPage() {
                            </p>
                         </td>
 
+                        {/* Payment Date */}
+                        <td className="px-4 py-4 text-center whitespace-nowrap opacity-50 group-hover:opacity-100">
+                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
+                              {item.tglBayar ? format(new Date(item.tglBayar), "dd MMM yyyy", { locale: id }) : '-'}
+                           </p>
+                        </td>
+
                         {/* Actions */}
                         <td className="px-4 py-4 text-right pr-8" onClick={(e) => e.stopPropagation()}>
                            <div className="flex items-center justify-end gap-2">
+                              {item.buktiBayarUrl && (
+                                 <button 
+                                    onClick={() => setBuktiBayarPreviewUrl(item.buktiBayarUrl)}
+                                    suppressHydrationWarning
+                                    className="w-8 h-8 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                                    title="Lihat Bukti Bayar"
+                                 >
+                                    <Paperclip size={14} />
+                                 </button>
+                              )}
                               <button 
                                  onClick={() => handleRowExport(item)}
                                  suppressHydrationWarning
@@ -419,22 +437,30 @@ export default function DataRekonPage() {
                                     </div>
                                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Notes</h4>
                                   </div>
-                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden p-5 space-y-4">
-                                    {item.notesDesc || item.notesNominal ? (
+                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                                    {Array.isArray(item.notes) && item.notes.length > 0 ? (
                                       <>
-                                        {/* Notes Description */}
-                                        <div className="space-y-1.5">
-                                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Keterangan</p>
-                                          <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
-                                            {item.notesDesc || <span className="italic text-slate-300">Tidak ada keterangan</span>}
-                                          </p>
-                                        </div>
-                                        {/* Notes Nominal */}
-                                        <div className="pt-3 border-t border-slate-50 space-y-1.5">
-                                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Nominal Penambah</p>
-                                          <p className="text-[16px] font-black text-indigo-600 tabular-nums tracking-tight">
-                                            {formatRp(item.notesNominal || 0)}
-                                          </p>
+                                        <table className="w-full text-left">
+                                          <thead>
+                                            <tr className="text-[8px] font-black text-slate-300 uppercase tracking-widest border-b border-slate-50">
+                                              <th className="px-5 py-3">#</th>
+                                              <th className="px-5 py-3">Keterangan</th>
+                                              <th className="px-5 py-3 text-right">Nominal</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {item.notes.map((note: any, ni: number) => (
+                                              <tr key={ni} className="border-b border-slate-50 last:border-none hover:bg-indigo-50/30 transition-colors">
+                                                <td className="px-5 py-3 text-[9px] text-slate-300 font-bold">{ni + 1}</td>
+                                                <td className="px-5 py-3 text-[10px] font-bold text-slate-600">{note.desc || <span className="italic text-slate-300">-</span>}</td>
+                                                <td className="px-5 py-3 text-right text-[10px] font-black text-indigo-600 tabular-nums">{formatRp(note.nominal || 0)}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                        <div className="px-5 py-3 bg-indigo-50/50 flex justify-end">
+                                          <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mr-3">Total</span>
+                                          <span className="text-[11px] font-black text-indigo-600 tabular-nums">{formatRp(item.notes.reduce((s: number, n: any) => s + (Number(n.nominal) || 0), 0))}</span>
                                         </div>
                                       </>
                                     ) : (
@@ -702,15 +728,6 @@ export default function DataRekonPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <a
-                href={buktiBayarPreviewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="h-10 px-5 bg-[#0f172a] text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95"
-              >
-                <Download size={14} />
-                PDF
-              </a>
               <button
                 onClick={() => setBuktiBayarPreviewUrl(null)}
                 className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"

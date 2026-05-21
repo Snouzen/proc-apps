@@ -110,8 +110,7 @@ function RekonContent() {
   const [selectedRtvs, setSelectedRtvs] = useState<Rtv[]>([]);
   const [selectedPromo, setSelectedPromo] = useState<Promo | null>(null);
   const [adminFee, setAdminFee] = useState<number>(0);
-  const [notesDesc, setNotesDesc] = useState<string>("");
-  const [notesNominal, setNotesNominal] = useState<number>(0);
+  const [notesList, setNotesList] = useState<Array<{desc: string, nominal: number}>>([]);
 
   const [companySearch, setCompanySearch] = useState("");
   const [invSearch, setInvSearch] = useState("");
@@ -150,8 +149,7 @@ function RekonContent() {
             setSelectedRtvs(d.detailedRtvs || []);
             setSelectedPromo(d.detailedPromo || null);
             setRekonNo(d.noRekonsiliasi || null);
-            setNotesDesc(d.notesDesc || "");
-            setNotesNominal(d.notesNominal || 0);
+            setNotesList(Array.isArray(d.notes) ? d.notes : []);
             setBuktiBayarUrl(d.buktiBayarUrl || null);
             if (d.tglBayar) setTglBayar(d.tglBayar.split("T")[0]);
           }
@@ -258,7 +256,7 @@ function RekonContent() {
           pembebananRetur: r.PembebananReturn?.siteArea || "-",
           lokasiBarang: r.LokasiBarang?.siteArea || "-",
           produk: r.Product?.name || r.produk || "-",
-          unitProduksi: r.PembebananReturn?.namaRegional || "-",
+          unitProduksi: r.LokasiBarang?.namaRegional || r.PembebananReturn?.namaRegional || "-",
         }));
 
         setSelectedRtvs(prev => {
@@ -303,8 +301,12 @@ function RekonContent() {
     return selectedPromo ? Number(selectedPromo.total || 0) : 0;
   }, [selectedPromo]);
 
+  const totalNotes = useMemo(() => {
+    return notesList.reduce((sum, n) => sum + (Number(n.nominal) || 0), 0);
+  }, [notesList]);
+
   // FINAL CALCULATION: Rekening Koran - Total Invoice - Total RTV - Tagihan Promo - Biaya Admin - Notes Nominal
-  const balanceNetDue = Number(bankStatement || 0) - totalInvoices + totalRtv + totalPromo + Number(adminFee || 0) + Number(notesNominal || 0);
+  const balanceNetDue = Number(bankStatement || 0) - totalInvoices + totalRtv + totalPromo + Number(adminFee || 0) + totalNotes;
 
   const formatRp = (val: number) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(val);
@@ -371,8 +373,7 @@ function RekonContent() {
           refInvoice: rtv.refInvoice || "" 
         })),
         noPromo: selectedPromo?.nomor || null,
-        notesDesc: notesDesc,
-        notesNominal: notesNominal,
+        notes: notesList.filter(n => n.desc || n.nominal),
         buktiBayarUrl: uploadedBuktiBayarUrl || null,
         tglBayar: tglBayar || null,
         status: status,
@@ -876,45 +877,83 @@ function RekonContent() {
                      <div className="relative z-10 space-y-6">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                            <div>
-                              <h4 className="text-[13px] font-black text-blue-900 uppercase tracking-[0.15em]">Inisiasi Manual</h4>
+                              <h4 className="text-[13px] font-black text-blue-900 uppercase tracking-[0.15em]">Notes</h4>
                               <p className="text-[11px] text-blue-600/70 font-bold mt-1">Tambahkan catatan khusus dan nominal pengganti nilai invoice</p>
                            </div>
-                           <div className="px-4 py-2 bg-white/80 backdrop-blur-sm text-blue-700 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-sm border border-blue-100 flex items-center gap-2 w-fit">
-                              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                              Manual Entry
-                           </div>
+                           <button
+                              type="button"
+                              onClick={() => setNotesList([...notesList, { desc: "", nominal: 0 }])}
+                              className="px-4 py-2 bg-white/80 backdrop-blur-sm text-blue-700 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-sm border border-blue-100 flex items-center gap-2 w-fit hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all cursor-pointer"
+                           >
+                              <Plus size={12} />
+                              Tambah Notes
+                           </button>
                         </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
-                           {/* Notes Desc */}
-                           <div className="relative group h-full">
-                              <div className="absolute left-5 top-5 w-10 h-10 rounded-[14px] bg-white shadow-sm border border-slate-100 flex items-center justify-center text-blue-500 group-focus-within:text-blue-600 group-focus-within:scale-110 transition-transform duration-300 pointer-events-none z-10">
-                                 <FileText size={18} strokeWidth={2.5} />
+                        {notesList.length === 0 ? (
+                           <div className="flex flex-col items-center justify-center py-10 text-center">
+                              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-blue-200 shadow-sm mb-4">
+                                 <FileText size={28} />
                               </div>
-                              <textarea
-                                 placeholder="Tuliskan keterangan / catatan inisiasi di sini..."
-                                 value={notesDesc}
-                                 onChange={(e) => setNotesDesc(e.target.value)}
-                                 className="w-full h-full min-h-[96px] pl-[76px] pr-6 py-6 bg-white/70 backdrop-blur-md rounded-[28px] border border-white focus:border-blue-200 outline-none font-bold text-[13px] text-slate-700 placeholder:text-slate-400 focus:bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] focus:shadow-[0_8px_30px_rgba(59,130,246,0.12)] transition-all resize-none"
-                              />
+                              <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Belum ada notes</p>
+                              <p className="text-[9px] text-blue-300/70 font-bold mt-1">Klik tombol &quot;Tambah Notes&quot; untuk menambahkan</p>
                            </div>
-                           {/* Notes Nominal */}
-                           <div className="relative group flex items-end">
-                              <div className="relative w-full h-[96px]">
-                                 <div className="absolute left-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-[14px] bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 flex items-center justify-center text-white font-black text-[14px] group-focus-within:scale-110 transition-transform duration-300 pointer-events-none z-10">Rp</div>
-                                 <div className="absolute right-6 top-4 text-[9px] font-black uppercase tracking-widest text-slate-400 z-10">Nominal Penambah</div>
-                                 <input
-                                    type="text"
-                                    placeholder="0"
-                                    value={notesNominal ? notesNominal.toLocaleString('id-ID') : ""}
-                                    onChange={(e) => {
-                                       const raw = e.target.value.replace(/[^0-9]/g, '');
-                                       setNotesNominal(Number(raw) || 0);
-                                    }}
-                                    className="w-full h-full pl-[76px] pr-6 pt-7 pb-3 bg-white/70 backdrop-blur-md rounded-[28px] border border-white focus:border-blue-200 outline-none font-black text-2xl text-slate-800 placeholder:text-slate-300 focus:bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] focus:shadow-[0_8px_30px_rgba(59,130,246,0.12)] transition-all text-right"
-                                 />
+                        ) : (
+                           <div className="space-y-3">
+                              {notesList.map((note, idx) => (
+                                 <div key={idx} className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_auto] gap-3 items-stretch animate-in fade-in slide-in-from-top-2 duration-300">
+                                    {/* Notes Desc */}
+                                    <div className="relative group h-full">
+                                       <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-blue-500 group-focus-within:text-blue-600 group-focus-within:scale-110 transition-transform duration-300 pointer-events-none z-10">
+                                          <FileText size={14} strokeWidth={2.5} />
+                                       </div>
+                                       <input
+                                          type="text"
+                                          placeholder="Keterangan notes..."
+                                          value={note.desc}
+                                          onChange={(e) => {
+                                             const updated = [...notesList];
+                                             updated[idx] = { ...updated[idx], desc: e.target.value };
+                                             setNotesList(updated);
+                                          }}
+                                          className="w-full h-full min-h-[56px] pl-[56px] pr-5 py-4 bg-white/70 backdrop-blur-md rounded-2xl border border-white focus:border-blue-200 outline-none font-bold text-[12px] text-slate-700 placeholder:text-slate-400 focus:bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] focus:shadow-[0_4px_20px_rgba(59,130,246,0.1)] transition-all"
+                                       />
+                                    </div>
+                                    {/* Notes Nominal */}
+                                    <div className="relative group">
+                                       <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 flex items-center justify-center text-white font-black text-[11px] group-focus-within:scale-110 transition-transform duration-300 pointer-events-none z-10">Rp</div>
+                                       <input
+                                          type="text"
+                                          placeholder="0"
+                                          value={note.nominal ? note.nominal.toLocaleString('id-ID') : ""}
+                                          onChange={(e) => {
+                                             const raw = e.target.value.replace(/[^0-9]/g, '');
+                                             const updated = [...notesList];
+                                             updated[idx] = { ...updated[idx], nominal: Number(raw) || 0 };
+                                             setNotesList(updated);
+                                          }}
+                                          className="w-full h-full min-h-[56px] pl-[56px] pr-5 py-4 bg-white/70 backdrop-blur-md rounded-2xl border border-white focus:border-blue-200 outline-none font-black text-lg text-slate-800 placeholder:text-slate-300 focus:bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] focus:shadow-[0_4px_20px_rgba(59,130,246,0.1)] transition-all text-right tabular-nums"
+                                       />
+                                    </div>
+                                    {/* Remove Button */}
+                                    <button
+                                       type="button"
+                                       onClick={() => setNotesList(notesList.filter((_, i) => i !== idx))}
+                                       className="w-10 h-10 self-center bg-rose-50 text-rose-400 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm cursor-pointer"
+                                       title="Hapus notes"
+                                    >
+                                       <X size={14} />
+                                    </button>
+                                 </div>
+                              ))}
+                              {/* Total Notes */}
+                              <div className="flex justify-end pt-2">
+                                 <div className="px-5 py-2.5 bg-white/80 backdrop-blur-sm rounded-2xl border border-blue-100 shadow-sm">
+                                    <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest mr-3">Total Notes</span>
+                                    <span className="text-sm font-black text-blue-700 tabular-nums">{formatRp(totalNotes)}</span>
+                                 </div>
                               </div>
                            </div>
-                        </div>
+                        )}
                      </div>
                   </div>
 
@@ -1121,6 +1160,20 @@ function RekonContent() {
                     </div>
                     <p className="text-sm lg:text-base font-black tabular-nums text-[#e11d48] text-right break-all leading-tight max-w-[200px]">({formatRp(adminFee)})</p>
                  </div>
+
+                  {/* Item Row 6: Notes */}
+                  {totalNotes > 0 && (
+                     <div className="flex justify-between items-start group cursor-pointer">
+                        <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-500 group-hover:bg-blue-500 group-hover:text-white transition-all shrink-0"><FileText size={16} /></div>
+                           <div>
+                              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Notes</p>
+                              <p className="text-[10px] font-bold text-slate-400 italic">{notesList.length} catatan</p>
+                           </div>
+                        </div>
+                        <p className="text-sm lg:text-base font-black tabular-nums text-[#e11d48] text-right break-all leading-tight max-w-[200px]">({formatRp(totalNotes)})</p>
+                     </div>
+                  )}
 
                  <div className="pt-10 border-t border-slate-800/50 space-y-4">
                     <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] italic">Balance Net Due</p>

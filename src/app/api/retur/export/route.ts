@@ -35,10 +35,10 @@ export async function GET(request: Request) {
     }
 
     // Build common filter (SAME as in /api/retur/route.ts but without pagination)
-    const drFilter: Prisma.DataReturWhereInput[] = [];
+    const drFilter: any[] = [];
     
     // DETAIL MODE FILTER: By Name if retailerId provided, otherwise all
-    const filtersB: Prisma.DataReturWhereInput[] = [];
+    const filtersB: any[] = [];
     
     if (selectedRitel) {
       filtersB.push({ RitelModern: { namaPt: { equals: selectedRitel.namaPt, mode: 'insensitive' } } });
@@ -86,11 +86,11 @@ export async function GET(request: Request) {
       filtersB.push(...drFilter);
     }
 
-    const where: Prisma.DataReturWhereInput = { AND: filtersB };
+    const where: any = { AND: filtersB };
 
     // Fetch all records matching filters (NO LIMIT)
     const data = await prisma.dataRetur.findMany({
-      where,
+      where: where as any,
       orderBy: { createdAt: "desc" },
       include: {
         RitelModern: true,

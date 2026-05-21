@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     const user = verifySession(sessionToken);
 
     // Construct dynamic where filter
-    const drFilter: Prisma.DataReturWhereInput[] = [];
+    const drFilter: any[] = [];
     // Access is now global for RM and Site Area as per user request
     
     if (inisial) drFilter.push({ inisial: inisial });
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
     if (!retailerId) {
       const allRitelsWithReturs = await prisma.ritelModern.findMany({
         where: {
-          DataRetur: { some: drFilter.length > 0 ? { AND: drFilter } : {} }
+          DataRetur: { some: (drFilter.length > 0 ? { AND: drFilter } : {}) as any }
         },
         include: {
           _count: {
@@ -118,7 +118,7 @@ export async function GET(request: Request) {
     // SCENARIO B: Detail Mode - Kembalikan data retur spesifik untuk ritel tsb
     const selectedRitel = await prisma.ritelModern.findUnique({ where: { id: retailerId } });
     
-    const filtersB: Prisma.DataReturWhereInput[] = selectedRitel 
+    const filtersB: any[] = selectedRitel 
       ? [{ RitelModern: { namaPt: { equals: selectedRitel.namaPt, mode: 'insensitive' } } }]
       : [{ ritelId: retailerId }];
 
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
       filtersB.push(...drFilter);
     }
 
-    const where: Prisma.DataReturWhereInput = {
+    const where: any = {
       AND: filtersB
     };
 
@@ -138,7 +138,7 @@ export async function GET(request: Request) {
           // Kita tidak menyertakan drFilter lokasi agar dropdown tidak menciut saat salah satu dipilih
           ...drFilter.filter(f => !('LokasiBarang' in f || 'OR' in f && JSON.stringify(f).includes('lokasiBarangId'))) 
         ]
-      },
+      } as any,
       select: { LokasiBarang: { select: { siteArea: true } } },
       distinct: ['lokasiBarangId']
     });
