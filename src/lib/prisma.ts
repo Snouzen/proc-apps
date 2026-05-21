@@ -24,7 +24,7 @@ const getPrisma = () => {
   }
 
   const pool = new pg.Pool({
-    connectionString: connectionString,
+    connectionString: connectionString.replace('&sslmode=require', '').replace('?sslmode=require', ''),
     max: isProd ? 10 : 3,
     idleTimeoutMillis: 5000,
     ssl: {
@@ -45,4 +45,5 @@ const getPrisma = () => {
 const prisma = getPrisma();
 
 export default prisma;
+
 
