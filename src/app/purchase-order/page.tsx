@@ -60,6 +60,7 @@ type Retailer = {
   id: string;
   namaPt: string;
   inisial: string | null;
+  tujuan: string | null;
 };
 
 // Ikon tambahan untuk Error State
@@ -89,9 +90,11 @@ export default function PurchaseOrderPage() {
   // [FIX LOGIC] Kita simpan Nama PT-nya, bukan ID pertama-nya
   const [selectedNamaPt, setSelectedNamaPt] = useState<string>("");
   const [selectedInisial, setSelectedInisial] = useState<string>("");
+  const [selectedTujuan, setSelectedTujuan] = useState<string>("");
 
   const [openRitel, setOpenRitel] = useState(false);
   const [openInisial, setOpenInisial] = useState(false);
+  const [openTujuan, setOpenTujuan] = useState(false);
 
   const [loadingData, setLoadingData] = useState(false);
   const [poData, setPoData] = useState<any[] | null>(null);
@@ -109,12 +112,13 @@ export default function PurchaseOrderPage() {
 
   const [activeNamaPt, setActiveNamaPt] = useState<string>("");
   const [activeInisial, setActiveInisial] = useState<string>("");
+  const [activeTujuan, setActiveTujuan] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Reset pagination ke halaman 1 setiap kali filter berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchFilter, tglFrom, tglTo, sortOrder, perPage, statusFilter]);
+  }, [searchFilter, tglFrom, tglTo, sortOrder, perPage, statusFilter, activeTujuan]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editNoPo, setEditNoPo] = useState<string | null>(null);
@@ -211,6 +215,23 @@ export default function PurchaseOrderPage() {
     return Array.from(new Set(inisials)).sort();
   }, [selectedNamaPt, retailers]);
 
+  // Filter tujuan unik dari Nama PT dan Inisial yang dipilih
+  const availableTujuans = useMemo(() => {
+    if (!selectedNamaPt) return [];
+    
+    const validRetailers = retailers.filter((r) => {
+      if (r.namaPt !== selectedNamaPt) return false;
+      if (selectedInisial && r.inisial !== selectedInisial) return false;
+      return true;
+    });
+
+    const tujuans = validRetailers
+      .map((r) => r.tujuan)
+      .filter(Boolean) as string[];
+      
+    return Array.from(new Set(tujuans)).sort();
+  }, [selectedNamaPt, selectedInisial, retailers]);
+
   // Main Fetch Data [PERBAIKAN LOGIC BESAR-BESARAN]
   const handleFetchData = async () => {
     if (!selectedNamaPt) return;
@@ -245,6 +266,7 @@ export default function PurchaseOrderPage() {
       setPoData(combinedList);
       setActiveNamaPt(selectedNamaPt);
       setActiveInisial(selectedInisial);
+      setActiveTujuan(selectedTujuan);
     } catch (e: any) {
       if (e.name !== "AbortError") console.error(e);
     } finally {
@@ -294,6 +316,14 @@ export default function PurchaseOrderPage() {
         (po) =>
           (po.noPo || "").toLowerCase().includes(q) ||
           (po.noInvoice || "").toLowerCase().includes(q),
+      );
+    }
+
+    // Filter by Tujuan Detail
+    const tujuanQ = activeTujuan.toLowerCase().trim();
+    if (tujuanQ) {
+      data = data.filter((po) =>
+        (po.tujuanDetail || "").toLowerCase().includes(tujuanQ),
       );
     }
 
@@ -488,7 +518,7 @@ export default function PurchaseOrderPage() {
         </CardHeader>
         <CardContent className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
           {/* Dropdown 1: Ritel */}
-          <div className="md:col-span-5 space-y-2">
+          <div className="md:col-span-4 space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
               Ritel Modern
             </label>
@@ -532,6 +562,7 @@ export default function PurchaseOrderPage() {
                             onSelect={() => {
                               setSelectedNamaPt(namaPt);
                               setSelectedInisial(""); // Reset inisial saat ritel ganti
+                              setSelectedTujuan("");  // Reset tujuan saat ritel ganti
                               setOpenRitel(false);
                             }}
                           >
@@ -555,7 +586,7 @@ export default function PurchaseOrderPage() {
           </div>
 
           {/* Dropdown 2: Inisial */}
-          <div className="md:col-span-4 space-y-2">
+          <div className="md:col-span-3 space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
               Inisial (Opsional)
             </label>
@@ -592,6 +623,7 @@ export default function PurchaseOrderPage() {
                         <CommandItem
                           onSelect={() => {
                             setSelectedInisial("");
+                            setSelectedTujuan(""); // Reset tujuan jika inisial direset
                             setOpenInisial(false);
                           }}
                           className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
@@ -612,6 +644,7 @@ export default function PurchaseOrderPage() {
                             value={ini}
                             onSelect={() => {
                               setSelectedInisial(ini);
+                              setSelectedTujuan(""); // Reset tujuan karena inisial ganti
                               setOpenInisial(false);
                             }}
                             className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
@@ -635,7 +668,88 @@ export default function PurchaseOrderPage() {
             </Popover>
           </div>
 
-          <div className="md:col-span-3">
+          {/* Input 3: Tujuan Detail */}
+          <div className="md:col-span-3 space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Tujuan Detail (Opsional)
+            </label>
+            <Popover open={openTujuan} onOpenChange={setOpenTujuan}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  disabled={!selectedNamaPt}
+                  aria-expanded={openTujuan}
+                  className="w-full justify-between bg-white border-slate-200 text-slate-800 hover:bg-slate-50 hover:text-slate-900 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
+                >
+                  <span className={!selectedTujuan ? "text-slate-400 font-normal" : "font-bold"}>
+                    {selectedTujuan || "Semua Tujuan..."}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverPrimitive.Portal>
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white"
+                  align="start"
+                >
+                  <Command className="bg-white border-slate-200">
+                    <CommandInput
+                      placeholder="Cari tujuan..."
+                      className="!text-slate-900 placeholder:!text-slate-400 font-medium bg-white"
+                    />
+                    <CommandListUI className="max-h-64 scrollbar-hide">
+                      <CommandEmpty className="text-slate-500 py-4 text-center">
+                        Tujuan tidak ditemukan.
+                      </CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => {
+                            setSelectedTujuan("");
+                            setOpenTujuan(false);
+                          }}
+                          className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedTujuan === ""
+                                ? "opacity-100"
+                                : "opacity-0",
+                            )}
+                          />
+                          Semua Tujuan
+                        </CommandItem>
+                        {availableTujuans.map((tuj) => (
+                          <CommandItem
+                            key={tuj}
+                            value={tuj}
+                            onSelect={() => {
+                              setSelectedTujuan(tuj);
+                              setOpenTujuan(false);
+                            }}
+                            className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedTujuan === tuj
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {tuj}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandListUI>
+                  </Command>
+                </PopoverContent>
+              </PopoverPrimitive.Portal>
+            </Popover>
+          </div>
+
+          <div className="md:col-span-2">
             <Button
               onClick={handleFetchData}
               disabled={!selectedNamaPt || loadingData}
@@ -816,7 +930,7 @@ export default function PurchaseOrderPage() {
                       <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">DUE DATE</TableHead>
                       <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">PRODUK</TableHead>
                       <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 text-right">PCS KIRIM</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">TUJUAN</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">TUJUAN DETAIL</TableHead>
                       <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">UNIT PRODUKSI</TableHead>
                       <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">SITE AREA</TableHead>
                       <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 text-right">KG</TableHead>
