@@ -592,7 +592,9 @@ export async function GET(request: Request) {
     const status = searchParams.get("status") || undefined;
     const monthParam = searchParams.get("month");
     const yearParam = searchParams.get("year");
-    const retailerId = searchParams.get("retailerId") || undefined;
+    const retailerIdRaw = searchParams.get("retailerId") || undefined;
+    // Support comma-separated retailer IDs to reduce N concurrent requests to 1
+    const retailerIds = retailerIdRaw ? retailerIdRaw.split(",").map(s => s.trim()).filter(Boolean) : undefined;
     const inisial = searchParams.get("inisial") || undefined;
 
     let colFilters: Record<string, string> = {};
@@ -667,7 +669,9 @@ export async function GET(request: Request) {
     const sort = (searchParams.get("sort") || "createdAt_desc").trim();
 
     const where: any = {};
-    if (retailerId) where.ritelId = retailerId;
+    if (retailerIds && retailerIds.length > 0) {
+      where.ritelId = retailerIds.length === 1 ? retailerIds[0] : { in: retailerIds };
+    }
     if (inisial) {
       where.RitelModern = {
         is: { inisial: { equals: inisial, mode: "insensitive" } },

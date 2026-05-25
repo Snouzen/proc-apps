@@ -38,7 +38,8 @@ const getPrisma = () => {
     log: isProd ? ["error"] : ["query", "error", "warn"],
   });
 
-  if (!isProd) global.prisma = client;
+  // Always use singleton to prevent connection pool exhaustion (EMAXCONN)
+  global.prisma = client;
   return client;
 };
 

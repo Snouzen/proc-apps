@@ -25,7 +25,7 @@ export default function ClientLayout({
   const isFullWidthPage = pathname === "/po" || pathname.startsWith("/po/");
 
   const [profileRole, setProfileRole] = useState<
-    "pusat" | "rm" | "sitearea" | null
+    "pusat" | "rm" | "sitearea" | "magang" | null
   >(null);
   const [profileRegional, setProfileRegional] = useState<string | null>(null);
   const [profileSiteArea, setProfileSiteArea] = useState<string | null>(null);
@@ -75,6 +75,12 @@ export default function ClientLayout({
       const restricted = ["/master-data"]; // Keep master-data restricted
       if (restricted.some((p) => pathname.startsWith(p))) {
         router.push("/");
+      }
+    }
+    if (profileRole === "magang") {
+      const allowed = ["/purchase-order", "/retur"];
+      if (!allowed.some(p => pathname.startsWith(p))) {
+        router.push("/purchase-order");
       }
     }
   }, [profileRole, pathname, router]);
@@ -129,7 +135,7 @@ export default function ClientLayout({
                   {/* Info Teks */}
                   <div className="text-right hidden sm:block leading-tight">
                     <p className="text-sm font-black text-slate-800 uppercase">
-                      {profileRole === "sitearea"
+                      {profileRole === "magang" ? "Admin Sales 1" : profileRole === "sitearea"
                         ? profileEmail
                           ? profileEmail.split("@")[0]
                           : "ADMIN CABANG"
@@ -138,7 +144,7 @@ export default function ClientLayout({
                           : "ADMIN PUSAT"}
                     </p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      {profileRole === "sitearea"
+                      {profileRole === "magang" ? "Admin Bisnis" : profileRole === "sitearea"
                         ? profileRegional || "-"
                         : profileRole === "rm"
                           ? "Regional Manager"
@@ -156,7 +162,7 @@ export default function ClientLayout({
                   >
                     {profileRole ? (
                       <div className="w-full h-full rounded-full bg-[#004a87] flex items-center justify-center text-white font-bold text-xs">
-                        {profileRole === "sitearea"
+                        {profileRole === "magang" ? "AS" : profileRole === "sitearea"
                           ? "SC"
                           : profileRole === "rm"
                             ? "RM"

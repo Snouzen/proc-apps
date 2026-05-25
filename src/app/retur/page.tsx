@@ -545,7 +545,7 @@ function ReturContent() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | null>(null);
+  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | "magang" | null>(null);
   const [userArea, setUserArea] = useState<string | null>(null);
   const [userRegional, setUserRegional] = useState<string | null>(null);
   

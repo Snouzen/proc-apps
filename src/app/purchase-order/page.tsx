@@ -11,13 +11,20 @@ import {
   Check,
   ChevronsUpDown,
   Loader2,
-  Pencil,
   Trash2,
+  Pencil,
   Calendar,
   PlusCircle,
+  CalendarIcon,
+  ChevronDown,
+  Info,
+  FileSpreadsheet,
+  Plus,
+  MapPin,
   Upload,
   X,
 } from "lucide-react";
+import { getMe } from "@/lib/me";
 import PODetailModal from "@/components/po-detail-modal";
 import POEditModal from "@/components/po-edit-modal";
 import { LoaderThree } from "@/components/ui/loader";
@@ -114,6 +121,7 @@ export default function PurchaseOrderPage() {
   const [activeInisial, setActiveInisial] = useState<string>("");
   const [activeTujuan, setActiveTujuan] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Reset pagination ke halaman 1 setiap kali filter berubah
   useEffect(() => {
@@ -194,6 +202,10 @@ export default function PurchaseOrderPage() {
 
   // Fetch Master Ritel (Hanya 1x saat mount)
   useEffect(() => {
+    getMe().then((data) => {
+      if (data?.authenticated) setUserRole(data.role);
+    });
+
     fetch("/api/ritel")
       .then((res) => res.json())
       .then((json) => {
@@ -250,18 +262,12 @@ export default function PurchaseOrderPage() {
           )
         : retailers.filter((r) => r.namaPt === selectedNamaPt);
 
-      // Fetch semua ID secara bersamaan (Promise.all)
-      const fetchPromises = ritelsToFetch.map((r) => {
-        const url = `/api/po?retailerId=${encodeURIComponent(r.id)}&summary=true`;
-        return fetch(url, { signal: ctrl.signal, cache: 'no-store' }).then((res) => res.json());
-      });
-
-      const results = await Promise.all(fetchPromises);
-
-      // Gabungkan semua data dari berbagai cabang/inisial
-      const combinedList = results.flatMap((json) =>
-        Array.isArray(json) ? json : json?.data || [],
-      );
+      // [FIX EMAXCONN] Kirim semua retailer ID dalam 1 request (comma-separated)
+      const allIds = ritelsToFetch.map((r) => r.id).join(",");
+      const url = `/api/po?retailerId=${encodeURIComponent(allIds)}&summary=true`;
+      const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+      const json = await res.json();
+      const combinedList = Array.isArray(json) ? json : json?.data || [];
 
       setPoData(combinedList);
       setActiveNamaPt(selectedNamaPt);
@@ -1017,9 +1023,11 @@ export default function PurchaseOrderPage() {
                             <button title="Edit" onClick={(e) => { e.stopPropagation(); setEditNoPo(po.noPo); setEditOpen(true); }} className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors">
                               <Pencil size={16} />
                             </button>
-                            <button title="Delete" onClick={(e) => { e.stopPropagation(); setConfirmDelete(po.noPo); }} className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors">
-                              <Trash2 size={16} />
-                            </button>
+                            {userRole !== "magang" && (
+                              <button title="Delete" onClick={(e) => { e.stopPropagation(); setConfirmDelete(po.noPo); }} className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors">
+                                <Trash2 size={16} />
+                              </button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

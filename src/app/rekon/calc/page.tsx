@@ -226,7 +226,7 @@ function RekonContent() {
           noPo: po.noPo,
           companyId: po.ritelId || selectedCompany?.id || "",
           total: po.totalTagihan || po.totalNominal || po.Items?.reduce((s: number, i: any) => s + (i.rpTagih || (i.hargaPcs * i.pcsKirim) || 0), 0) || 0,
-          unitProduksi: po.UnitProduksi?.namaRegional || po.UnitProduksi?.siteArea || "-",
+          unitProduksi: po.UnitProduksi?.siteArea || "-",
           siteArea: po.UnitProduksi?.siteArea || "-",
           produk: produkNames || "-",
         };
@@ -680,7 +680,7 @@ function RekonContent() {
                                       <tr key={inv.id} className="group hover:bg-white transition-colors border-b border-indigo-50/20">
                                          <td className="px-6 py-4 text-[#5c56f6] uppercase whitespace-nowrap">{inv.noInvoice}</td>
                                          <td className="px-4 py-4 text-slate-400 uppercase tracking-tighter text-center whitespace-nowrap">{inv.noPo}</td>
-                                          <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{inv.unitProduksi || "-"}</td>
+                                          <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{inv.siteArea || inv.unitProduksi || "-"}</td>
                                           <td className="px-4 py-4 text-slate-500 text-[10px] max-w-[160px] truncate" title={inv.produk}>{inv.produk || "-"}</td>
                                           <td className="px-6 py-4 text-right text-slate-800 tabular-nums font-black whitespace-nowrap">{formatRp(inv.total)}</td>
                                          <td className="px-4 py-4 text-center">

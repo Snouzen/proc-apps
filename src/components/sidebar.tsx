@@ -82,7 +82,7 @@ export default function Sidebar({
   const [creditLimitMenuOpen, setCreditLimitMenuOpen] = useState(false);
   const [actionPlanOpen, setActionPlanOpen] = useState(false);
   const [role, setRole] = useState<
-    "pusat" | "rm" | "sitearea" | "spb_dki" | null
+    "pusat" | "rm" | "sitearea" | "spb_dki" | "magang" | null
   >(initialRole || null);
   const [regional, setRegional] = useState<string | null>(
     initialRegional ?? null,
@@ -118,7 +118,7 @@ export default function Sidebar({
         const data = await getMe();
         if (data?.authenticated) {
           const r =
-            data.role === "rm" || data.role === "sitearea"
+            data.role === "rm" || data.role === "sitearea" || data.role === "magang"
               ? data.role
               : "pusat";
           setRole(r as any);
@@ -253,12 +253,13 @@ export default function Sidebar({
         >
           {/* Helper to render a single link */}
           {/* 1. Dashboard */}
-          <RenderLink item={dashboardItem} pathname={pathname} isOpen={isOpen} />
+          {role !== "magang" && <RenderLink item={dashboardItem} pathname={pathname} isOpen={isOpen} />}
 
           {/* 2. Purchase Order */}
           {role !== "sitearea" && <RenderLink item={poItem} pathname={pathname} isOpen={isOpen} />}
 
           {/* 3. Action Plan */}
+          {role !== "magang" && (
           <div className="space-y-1">
             <div
               onClick={() =>
@@ -312,8 +313,10 @@ export default function Sidebar({
               </div>
             </div>
           </div>
+          )}
 
           {/* 4. Branch Plan */}
+          {role !== "magang" && (
           <div className="space-y-1">
             <div
               onClick={() =>
@@ -365,12 +368,13 @@ export default function Sidebar({
               </div>
             </div>
           </div>
+          )}
 
           {/* 5. Data Retur */}
           <RenderLink item={returItem} pathname={pathname} isOpen={isOpen} />
 
           {/* 6. Rekonsiliasi */}
-          {role !== "sitearea" && (
+          {role !== "sitearea" && role !== "magang" && (
             <div className="space-y-1">
               <div
                 onClick={() =>
@@ -425,7 +429,7 @@ export default function Sidebar({
           )}
 
           {/* 7. Credit Limit */}
-          {role !== "sitearea" && (
+          {role !== "sitearea" && role !== "magang" && (
             <div className="space-y-1">
               <div
                 onClick={() =>
@@ -480,10 +484,10 @@ export default function Sidebar({
           )}
 
           {/* 8. Report */}
-          <RenderLink item={reportItem} pathname={pathname} isOpen={isOpen} />
+          {role !== "magang" && <RenderLink item={reportItem} pathname={pathname} isOpen={isOpen} />}
 
           {/* 8. Master Data */}
-          {role !== "sitearea" && (
+          {role !== "sitearea" && role !== "magang" && (
             <div className="space-y-1">
               <div
                 onClick={() =>

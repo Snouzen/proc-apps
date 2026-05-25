@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 
 
-export type Role = "pusat" | "rm" | "sitearea";
+export type Role = "pusat" | "rm" | "sitearea" | "magang";
 
 export interface SessionPayload {
   email: string;
