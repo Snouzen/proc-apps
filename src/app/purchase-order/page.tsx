@@ -203,7 +203,7 @@ export default function PurchaseOrderPage() {
   // Fetch Master Ritel (Hanya 1x saat mount)
   useEffect(() => {
     getMe().then((data) => {
-      if (data?.authenticated) setUserRole(data.role);
+      if (data?.authenticated) setUserRole(data.role || null);
     });
 
     fetch("/api/ritel")

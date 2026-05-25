@@ -32,7 +32,7 @@ import { getMe } from "@/lib/me";
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  initialRole?: "pusat" | "rm" | "spb_dki" | "sitearea" | null;
+  initialRole?: "pusat" | "rm" | "spb_dki" | "sitearea" | "magang" | null;
   initialRegional?: string | null;
 }
 
