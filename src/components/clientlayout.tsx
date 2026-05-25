@@ -78,7 +78,7 @@ export default function ClientLayout({
       }
     }
     if (profileRole === "magang") {
-      const allowed = ["/purchase-order", "/retur"];
+      const allowed = ["/purchase-order", "/retur", "/checklist-docs"];
       if (!allowed.some(p => pathname.startsWith(p))) {
         router.push("/purchase-order");
       }

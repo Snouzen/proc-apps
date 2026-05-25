@@ -67,6 +67,8 @@ model PurchaseOrder {
   @@index([unitProduksiId])         // unit produksi joins
   @@index([tglkirim])               // schedule page filter
   @@index([noInvoice, expiredTgl])  // compound: active PO queries
+  @@index([statusTagih])            // checklist docs filter
+  @@index([buktiTagih])             // checklist docs filter
 }
 
 model PurchaseOrderItem {

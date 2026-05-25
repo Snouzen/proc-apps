@@ -62,7 +62,14 @@ export async function GET(request: Request) {
           Items: { include: { Product: true } }
         }
       });
-      return NextResponse.json({ data: pos });
+      
+      const dataWithTotals = pos.map(po => {
+        const totalTagihan = po.Items.reduce((s, it) => s + (typeof it.rpTagih === 'number' ? it.rpTagih : it.hargaPcs * it.pcsKirim), 0);
+        const totalNominal = po.Items.reduce((s, it) => s + (typeof it.nominal === 'number' ? it.nominal : (it.hargaPcs * it.pcs) - it.discount), 0);
+        return { ...po, totalTagihan, totalNominal };
+      });
+
+      return NextResponse.json({ data: dataWithTotals });
     }
 
     // --- CASE C: Lookup RTV Terpilih ---

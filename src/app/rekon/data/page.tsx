@@ -395,7 +395,7 @@ export default function DataRekonPage() {
                                     </div>
                                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Invoice ({invoiceCount})</h4>
                                   </div>
-                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-x-auto overflow-y-hidden">
                                     <table className="w-full text-left">
                                       <thead>
                                         <tr className="text-[8px] font-black text-slate-300 uppercase tracking-widest border-b border-slate-50">
@@ -444,6 +444,7 @@ export default function DataRekonPage() {
                                           <thead>
                                             <tr className="text-[8px] font-black text-slate-300 uppercase tracking-widest border-b border-slate-50">
                                               <th className="px-5 py-3">#</th>
+                                              <th className="px-5 py-3">Tipe</th>
                                               <th className="px-5 py-3">Keterangan</th>
                                               <th className="px-5 py-3 text-right">Nominal</th>
                                             </tr>
@@ -452,6 +453,13 @@ export default function DataRekonPage() {
                                             {item.notes.map((note: any, ni: number) => (
                                               <tr key={ni} className="border-b border-slate-50 last:border-none hover:bg-indigo-50/30 transition-colors">
                                                 <td className="px-5 py-3 text-[9px] text-slate-300 font-bold">{ni + 1}</td>
+                                                <td className="px-5 py-3 text-[10px] font-bold text-slate-600">
+                                                  {note.type === 'rtv' ? (
+                                                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-100 text-[8px] uppercase tracking-widest">RTV</span>
+                                                  ) : (
+                                                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md border border-blue-100 text-[8px] uppercase tracking-widest">Invoice</span>
+                                                  )}
+                                                </td>
                                                 <td className="px-5 py-3 text-[10px] font-bold text-slate-600">{note.desc || <span className="italic text-slate-300">-</span>}</td>
                                                 <td className="px-5 py-3 text-right text-[10px] font-black text-indigo-600 tabular-nums">{formatRp(note.nominal || 0)}</td>
                                               </tr>
@@ -479,7 +487,7 @@ export default function DataRekonPage() {
                                     </div>
                                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail RTV ({rtvCount})</h4>
                                   </div>
-                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-x-auto overflow-y-hidden">
                                     <table className="w-full text-left">
                                       <thead>
                                         <tr className="text-[8px] font-black text-slate-300 uppercase tracking-widest border-b border-slate-50">

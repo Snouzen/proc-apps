@@ -915,7 +915,7 @@ export default function SchedulePage() {
             return (
               <tr className="bg-slate-50/10" onClick={(e) => e.stopPropagation()}>
                 <td colSpan={14} className="px-5 py-6">
-                  <div className="bg-white border-2 border-indigo-100 rounded-[32px] overflow-hidden shadow-2xl shadow-indigo-200/10 mx-4">
+                  <div className="bg-white border-2 border-indigo-100 rounded-[32px] overflow-x-auto overflow-y-hidden shadow-2xl shadow-indigo-200/10 mx-4">
                     <table className="w-full text-left">
                       <thead>
                         <tr className="bg-slate-50/50 border-b border-slate-100">

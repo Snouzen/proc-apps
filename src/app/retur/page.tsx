@@ -1414,7 +1414,7 @@ function ReturContent() {
                 Bulk Upload
               </button>
           )}
-          {(role === "pusat" || role === "sitearea") && (
+          {(role === "pusat" || role === "sitearea" || role === "magang") && (
               <button 
                 suppressHydrationWarning
                 onClick={handleAddReturn}

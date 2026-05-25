@@ -401,7 +401,10 @@ export default function PurchaseOrderDetail() {
                         Discount
                       </th>
                       <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
-                        Nominal
+                        Nominal (PO)
+                      </th>
+                      <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right text-indigo-600">
+                        RpTagih (Invoice)
                       </th>
                       <th className="px-4 py-3 sticky top-0 bg-slate-50 text-right">
                         Aksi
@@ -462,6 +465,9 @@ export default function PurchaseOrderDetail() {
                           </td>
                           <td className="px-4 py-3 text-right text-slate-700 font-semibold">
                             {n(r.nominal)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-indigo-700 font-bold">
+                            {n(r.rpTagih)}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex justify-end">

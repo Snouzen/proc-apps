@@ -111,7 +111,7 @@ function RekonContent() {
   const [selectedRtvs, setSelectedRtvs] = useState<Rtv[]>([]);
   const [selectedPromo, setSelectedPromo] = useState<Promo | null>(null);
   const [adminFee, setAdminFee] = useState<number>(0);
-  const [notesList, setNotesList] = useState<Array<{desc: string, nominal: number}>>([]);
+  const [notesList, setNotesList] = useState<Array<{type?: 'invoice' | 'rtv', desc: string, nominal: number}>>([]);
 
   const [companySearch, setCompanySearch] = useState("");
   const [invSearch, setInvSearch] = useState("");
@@ -126,6 +126,7 @@ function RekonContent() {
   const [isInvOpen, setIsInvOpen] = useState(false);
   const [isRtvOpen, setIsRtvOpen] = useState(false);
   const [openRefInvoicePopoverId, setOpenRefInvoicePopoverId] = useState<string | null>(null);
+  const [openNoteTypeIdx, setOpenNoteTypeIdx] = useState<number | null>(null);
   const [openExcelModal, setOpenExcelModal] = useState(false);
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -150,7 +151,7 @@ function RekonContent() {
             setSelectedRtvs(d.detailedRtvs || []);
             setSelectedPromo(d.detailedPromo || null);
             setRekonNo(d.noRekonsiliasi || null);
-            setNotesList(Array.isArray(d.notes) ? d.notes : []);
+            setNotesList(Array.isArray(d.notes) ? d.notes.map((n: any) => ({ ...n, type: n.type || 'invoice' })) : []);
             setBuktiBayarUrl(d.buktiBayarUrl || null);
             if (d.tglBayar) setTglBayar(d.tglBayar.split("T")[0]);
           }
@@ -303,12 +304,18 @@ function RekonContent() {
     return selectedPromo ? Number(selectedPromo.total || 0) : 0;
   }, [selectedPromo]);
 
-  const totalNotes = useMemo(() => {
-    return notesList.reduce((sum, n) => sum + (Number(n.nominal) || 0), 0);
+  const totalNotesInvoice = useMemo(() => {
+    return notesList.filter(n => n.type === 'invoice' || !n.type).reduce((sum, n) => sum + (Number(n.nominal) || 0), 0);
   }, [notesList]);
 
-  // FINAL CALCULATION: Rekening Koran - Total Invoice - Total RTV - Tagihan Promo - Biaya Admin - Notes Nominal
-  const balanceNetDue = Number(bankStatement || 0) - totalInvoices + totalRtv + totalPromo + Number(adminFee || 0) + totalNotes;
+  const totalNotesRtv = useMemo(() => {
+    return notesList.filter(n => n.type === 'rtv').reduce((sum, n) => sum + (Number(n.nominal) || 0), 0);
+  }, [notesList]);
+
+  const totalNotes = totalNotesInvoice + totalNotesRtv;
+
+  // FINAL CALCULATION: Rekening Koran - (Total Invoice + Notes invoice) + (Total RTV + notes rtv) + Tagihan Promo + Biaya Admin
+  const balanceNetDue = Number(bankStatement || 0) - (totalInvoices + totalNotesInvoice) + (totalRtv + totalNotesRtv) + totalPromo + Number(adminFee || 0);
 
   const formatRp = (val: number) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(val);
@@ -375,7 +382,7 @@ function RekonContent() {
           refInvoice: rtv.refInvoice || "" 
         })),
         noPromo: selectedPromo?.nomor || null,
-        notes: notesList.filter(n => n.desc || n.nominal),
+        notes: notesList.filter(n => n.desc || n.nominal).map(n => ({ type: n.type || 'invoice', desc: n.desc, nominal: n.nominal })),
         buktiBayarUrl: uploadedBuktiBayarUrl || null,
         tglBayar: tglBayar || null,
         status: status,
@@ -884,7 +891,7 @@ function RekonContent() {
                            </div>
                            <button
                               type="button"
-                              onClick={() => setNotesList([...notesList, { desc: "", nominal: 0 }])}
+                              onClick={() => setNotesList([...notesList, { type: "invoice", desc: "", nominal: 0 }])}
                               className="px-4 py-2 bg-white/80 backdrop-blur-sm text-blue-700 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-sm border border-blue-100 flex items-center gap-2 w-fit hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all cursor-pointer"
                            >
                               <Plus size={12} />
@@ -902,7 +909,48 @@ function RekonContent() {
                         ) : (
                            <div className="space-y-3">
                               {notesList.map((note, idx) => (
-                                 <div key={idx} className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_auto] gap-3 items-stretch animate-in fade-in slide-in-from-top-2 duration-300">
+                                 <div key={idx} className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1.5fr_auto] gap-3 items-stretch animate-in fade-in slide-in-from-top-2 duration-300">
+                                    {/* Notes Type */}
+                                    <div className="relative h-full">
+                                       <Popover.Root open={openNoteTypeIdx === idx} onOpenChange={(o) => setOpenNoteTypeIdx(o ? idx : null)}>
+                                          <Popover.Trigger asChild>
+                                             <button className="w-full h-full min-h-[56px] px-5 py-4 bg-white/70 backdrop-blur-md rounded-2xl border border-white focus:border-blue-200 outline-none font-bold text-[12px] text-slate-700 focus:bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] focus:shadow-[0_4px_20px_rgba(59,130,246,0.1)] transition-all flex items-center justify-between text-left group">
+                                                <span>{note.type === 'rtv' ? 'Notes RTV' : 'Notes Invoice'}</span>
+                                                <ChevronDown size={14} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                             </button>
+                                          </Popover.Trigger>
+                                          <Popover.Portal>
+                                             <Popover.Content 
+                                                className="z-[120] w-[var(--radix-popover-trigger-width)] bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-slate-100 p-1.5 animate-in fade-in zoom-in-95 flex flex-col gap-1"
+                                                align="start" 
+                                                sideOffset={8}
+                                             >
+                                                <button 
+                                                   onClick={() => {
+                                                      const updated = [...notesList];
+                                                      updated[idx] = { ...updated[idx], type: 'invoice' };
+                                                      setNotesList(updated);
+                                                      setOpenNoteTypeIdx(null);
+                                                   }}
+                                                   className={`w-full text-left px-4 py-3 rounded-xl text-[12px] font-bold transition-all ${note.type === 'invoice' || !note.type ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-50 text-slate-600'}`}
+                                                >
+                                                   Notes Invoice
+                                                </button>
+                                                <button 
+                                                   onClick={() => {
+                                                      const updated = [...notesList];
+                                                      updated[idx] = { ...updated[idx], type: 'rtv' };
+                                                      setNotesList(updated);
+                                                      setOpenNoteTypeIdx(null);
+                                                   }}
+                                                   className={`w-full text-left px-4 py-3 rounded-xl text-[12px] font-bold transition-all ${note.type === 'rtv' ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-50 text-slate-600'}`}
+                                                >
+                                                   Notes RTV
+                                                </button>
+                                             </Popover.Content>
+                                          </Popover.Portal>
+                                       </Popover.Root>
+                                    </div>
                                     {/* Notes Desc */}
                                     <div className="relative group h-full">
                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-blue-500 group-focus-within:text-blue-600 group-focus-within:scale-110 transition-transform duration-300 pointer-events-none z-10">
@@ -1163,19 +1211,32 @@ function RekonContent() {
                     <p className="text-sm lg:text-base font-black tabular-nums text-[#e11d48] text-right break-all leading-tight max-w-[200px]">({formatRp(adminFee)})</p>
                  </div>
 
-                  {/* Item Row 6: Notes */}
-                  {totalNotes > 0 && (
-                     <div className="flex justify-between items-start group cursor-pointer">
-                        <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-500 group-hover:bg-blue-500 group-hover:text-white transition-all shrink-0"><FileText size={16} /></div>
-                           <div>
-                              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Notes</p>
-                              <p className="text-[10px] font-bold text-slate-400 italic">{notesList.length} catatan</p>
-                           </div>
-                        </div>
-                        <p className="text-sm lg:text-base font-black tabular-nums text-[#e11d48] text-right break-all leading-tight max-w-[200px]">({formatRp(totalNotes)})</p>
-                     </div>
-                  )}
+                 {/* Item Row 6: Notes Invoice */}
+                 {totalNotesInvoice > 0 && (
+                    <div className="flex justify-between items-start group cursor-pointer">
+                       <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-500 group-hover:bg-blue-500 group-hover:text-white transition-all shrink-0"><FileText size={16} /></div>
+                          <div>
+                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Notes Invoices</p>
+                             <p className="text-[10px] font-bold text-slate-400 italic">{notesList.filter(n => n.type === 'invoice' || !n.type).length} catatan</p>
+                          </div>
+                       </div>
+                       <p className="text-sm lg:text-base font-black tabular-nums text-[#e11d48] text-right break-all leading-tight max-w-[200px]">({formatRp(totalNotesInvoice)})</p>
+                    </div>
+                 )}
+                 {/* Item Row 7: Notes RTV */}
+                 {totalNotesRtv > 0 && (
+                    <div className="flex justify-between items-start group cursor-pointer">
+                       <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-500 group-hover:bg-emerald-500 group-hover:text-white transition-all shrink-0"><FileText size={16} /></div>
+                          <div>
+                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Notes RTV</p>
+                             <p className="text-[10px] font-bold text-slate-400 italic">{notesList.filter(n => n.type === 'rtv').length} catatan</p>
+                          </div>
+                       </div>
+                       <p className="text-sm lg:text-base font-black tabular-nums text-emerald-400 text-right break-all leading-tight max-w-[200px]">{formatRp(totalNotesRtv)}</p>
+                    </div>
+                 )}
 
                  <div className="pt-10 border-t border-slate-800/50 space-y-4">
                     <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] italic">Balance Net Due</p>

@@ -136,6 +136,7 @@ export default function Sidebar({
 
   const dashboardItem = { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" };
   const poItem = { name: "Purchase Order", icon: <Package size={20} />, path: "/purchase-order" };
+  const checklistDocsItem = { name: "Checklist Docs", icon: <FileCheck size={20} />, path: "/checklist-docs" };
   const reportItem = { name: "Report", icon: <BarChart3 size={20} />, path: "/report" };
   const returItem = { name: "Data Retur", icon: <Undo2 size={20} />, path: "/retur" };
 
@@ -257,6 +258,9 @@ export default function Sidebar({
 
           {/* 2. Purchase Order */}
           {role !== "sitearea" && <RenderLink item={poItem} pathname={pathname} isOpen={isOpen} />}
+          
+          {/* 2.5 Checklist Docs (Magang) */}
+          {(role === "magang" || role === "pusat") && <RenderLink item={checklistDocsItem} pathname={pathname} isOpen={isOpen} />}
 
           {/* 3. Action Plan */}
           {role !== "magang" && (
