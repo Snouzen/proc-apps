@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 import { randomUUID } from "crypto";
 import {
   canonicalProductName,
@@ -10,6 +11,11 @@ import {
 
 export async function POST(req: Request) {
   try {
+    const session = await getSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const raw = await req.json();
     const payload = Array.isArray(raw)
       ? { data: raw, replaceDuplicates: false }
@@ -152,6 +158,9 @@ export async function POST(req: Request) {
     const keyExpired =
       findKey(sample, ["Tanggal Expired PO", "TGL EXP", "Expired PO"]) ||
       "Tanggal Expired PO";
+    const keyTglKirim =
+      findKey(sample, ["Tanggal Kirim", "TGL KIRIM", "Tgl Kirim", "TanggalKirim"]) ||
+      "Tanggal Kirim";
     const keySiteArea =
       findKey(sample, [
         "Site Area",
@@ -167,14 +176,14 @@ export async function POST(req: Request) {
       findKey(sample, ["Tujuan", "Tujuan Kirim", "TUJUAN KIRIM"]) || "Tujuan";
     const keyNamaProduk =
       findKey(sample, ["Nama Produk", "Produk", "Product"]) || "Nama Produk";
-    const keyKg = findKey(sample, ["kg", "KG"]) || "kg";
-    const keyPcs = findKey(sample, ["pcs", "PCS"]) || "pcs";
+    const keyKg = findKey(sample, ["kg", "KG", "QTY KG", "SATUAN KG", "KILOGRAM"]) || "kg";
+    const keyPcs = findKey(sample, ["pcs", "PCS", "QTY PCS", "QTY", "QUANTITY"]) || "pcs";
     const keyHargaKg =
-      findKey(sample, ["harga per kg", "RP/KG", "RP KG"]) || "harga per kg";
+      findKey(sample, ["harga per kg", "RP/KG", "RP KG", "HARGA KG", "HARGA/KG"]) || "harga per kg";
     const keyHargaPcs =
-      findKey(sample, ["harga per pcs", "RP/PCS", "RP PCS"]) || "harga per pcs";
-    const keyDiscount = findKey(sample, ["discount", "diskon", "potongan"]) || "discount";
-    const keyNominal = findKey(sample, ["nominal", "NOMINAL"]) || "nominal";
+      findKey(sample, ["harga per pcs", "RP/PCS", "RP PCS", "HARGA SATUAN", "HARGA PCS"]) || "harga per pcs";
+    const keyDiscount = findKey(sample, ["discount", "diskon", "potongan", "PROMO", "TOTAL PROMO"]) || "discount";
+    const keyNominal = findKey(sample, ["nominal", "NOMINAL", "TOTAL NOMINAL", "AMOUNT", "TOTAL", "DPP"]) || "nominal";
     const keyKirim = findKey(sample, ["kirim", "KIRIM"]) || "kirim";
     const keyPcsKirim =
       findKey(sample, ["pcs kirim", "PCS KIRIM"]) || "pcs kirim";
@@ -569,6 +578,7 @@ export async function POST(req: Request) {
           const companyName = upperClean(String(firstRow?.[keyCompany] || ""));
           const inisial = upperClean(String(firstRow?.[keyInisial] || ""));
           const tglPoRaw = firstRow?.[keyTglPo];
+          const tglKirimRaw = firstRow?.[keyTglKirim];
           const linkPo = firstRow?.[keyLinkPo]
             ? String(firstRow[keyLinkPo]).trim()
             : null;
@@ -602,6 +612,7 @@ export async function POST(req: Request) {
           if (!tglPo) {
             throw new Error("Missing/invalid required field: Tanggal PO");
           }
+          const tglKirim = parseDate(tglKirimRaw);
           const expiredTgl = parseDate(expiredPoRaw);
           if (!expiredTgl) {
             throw new Error(
@@ -651,6 +662,7 @@ export async function POST(req: Request) {
               "UNKNOWN") as string,
             tglPo,
             expiredTgl,
+            tglkirim: tglKirim || null,
             linkPo,
             noInvoice,
             tujuanDetail: tujuan,
@@ -682,6 +694,7 @@ export async function POST(req: Request) {
               },
               tglPo,
               expiredTgl,
+              tglkirim: tglKirim || null,
               linkPo,
               noInvoice,
               tujuanDetail: tujuan,
@@ -725,14 +738,19 @@ export async function POST(req: Request) {
               hargaPcs = hargaKgRaw * satuan;
             }
             pcs = Math.round(pcs);
-            const pcsKirim = Math.round(Number(row?.[keyPcsKirim]) || 0);
+            const parsedPcsKirim = Number(row?.[keyPcsKirim]);
+            const pcsKirim = Math.round(parsedPcsKirim || pcs || 0);
             const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
             
             // FEATURE: Discount Mapping
             const rawDiscount = Number(row?.[keyDiscount]) || 0;
             const discount = Math.max(0, rawDiscount);
 
-            const nominal = Math.max(0, (hargaPcs * pcs) - discount);
+            let nominal = Number(row?.[keyNominal]) || 0;
+            if (!nominal) {
+              nominal = Math.max(0, (hargaPcs * pcs) - discount);
+            }
+            
             const rpTagih =
               Number(row?.[keyRpTagih]) ||
               Math.max(0, (hargaPcs && pcsKirim ? hargaPcs * pcsKirim : 0) - discount);

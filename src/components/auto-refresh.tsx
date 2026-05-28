@@ -29,7 +29,7 @@ export function AutoRefreshProvider({
       const now = Date.now();
       if (now - lastTickAtRef.current < 30000) return;
       lastTickAtRef.current = now;
-      console.log("Auto-refresh tick triggered");
+
       setTick((t) => t + 1);
     }, safeIntervalMs);
     return () => window.clearInterval(id);
@@ -41,7 +41,7 @@ export function AutoRefreshProvider({
       const now = Date.now();
       if (now - lastTickAtRef.current < 30000) return;
       lastTickAtRef.current = now;
-      console.log("Auto-refresh tick triggered");
+
       setTick((t) => t + 1);
     };
     const onFocus = () => trigger();

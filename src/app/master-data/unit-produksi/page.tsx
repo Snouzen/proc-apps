@@ -22,6 +22,7 @@ import dynamic from "next/dynamic";
 const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 import SmoothSelect from "@/components/ui/smooth-select";
+import { DataTable } from "@/components/data-table";
 
 export default function UnitProduksiPage() {
   const refreshTick = useAutoRefreshTick();
@@ -391,509 +392,163 @@ export default function UnitProduksiPage() {
       </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-auto">
-            <thead>
-              <tr className="bg-gray-50/50 text-gray-500 text-[13px] uppercase tracking-widest border-b border-gray-50">
-                <th className="px-6 py-4 font-semibold w-32">ID</th>
-                <th className="px-6 py-4 font-semibold">Nama Regional</th>
-                <th className="px-6 py-4 font-semibold text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {currentItems.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-6 py-10 text-center text-slate-400"
-                  >
-                    {isLoading ? (
-                      <div className="py-6 flex items-center justify-center">
-                        <div className="scale-75">
-                          {/* Inline loader */}
-                          <div className="relative flex items-center justify-center w-24 h-24 rounded-2xl bg-neutral-900">
-                            <svg
-                              className="absolute w-20 h-20"
-                              viewBox="0 0 100 100"
-                            >
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r="40"
-                                strokeWidth="6"
-                                fill="none"
-                                className="stroke-neutral-700"
-                              />
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r="40"
-                                strokeWidth="6"
-                                fill="none"
-                                strokeLinecap="round"
-                                className="stroke-amber-500 ldr-dash"
-                              />
-                            </svg>
-                            <div className="ldr-flicker text-amber-500">
-                              <MapPin size={24} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      "Data tidak ditemukan."
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                currentItems.map((reg) => (
-                  <React.Fragment key={reg.id}>
-                    <tr className="hover:bg-gray-50/30 transition-colors group">
-                      <td className="px-6 py-5 text-sm font-medium text-slate-400">
-                        {reg.id.substring(0, 10)}
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => toggleRow(reg.id)}
-                            className="text-gray-400 hover:text-blue-600 transition-all"
-                          >
-                            {expandedRows.includes(reg.id) ? (
-                              <ChevronDown
-                                size={20}
-                                className="text-blue-600"
-                              />
-                            ) : (
-                              <ChevronRight size={20} />
-                            )}
-                          </button>
-                          <span
-                            className="text-sm font-bold text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
-                            onClick={() => toggleRow(reg.id)}
-                          >
-                            {reg.nama}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() =>
-                              setViewRegional({
-                                nama: reg.nama,
-                                sites: reg.sites,
-                              })
-                            }
-                            className="p-2 text-gray-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-all"
-                            title="View"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setContextRegional(reg.nama);
-                              setSelectedRegional(reg.nama);
-                              setSiteName("");
-                              setModalMode("addSite");
-                              setIsModalOpen(true);
-                            }}
-                            className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
-                            title="Tambah Site"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteRegional(reg.nama)}
-                            className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
-                            title="Hapus Regional"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {expandedRows.includes(reg.id) && (
-                      <tr className="bg-slate-50/50">
-                        <td colSpan={3} className="px-16 py-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-1">
-                            {reg.sites.map((site: any, index: number) => (
-                              <div
-                                key={index}
-                                className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-3 justify-between shadow-sm group hover:border-indigo-400 transition-all"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                    <MapPin size={16} />
-                                  </div>
-                                  <span className="text-sm font-bold text-slate-700">
-                                    {site.name}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    onClick={() =>
-                                      setViewedSite({
-                                        ...site,
-                                        regional: reg.nama,
-                                      })
-                                    }
-                                    className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
-                                    title="View Detail"
-                                  >
-                                    <Eye size={14} />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditSite({
-                                        regional: reg.nama,
-                                        site: site.name,
-                                        alamat: site.alamat,
-                                      });
-                                      setNewRegionalName(reg.nama);
-                                      setNewSiteName(site.name);
-                                      setNewSiteAlamat(site.alamat);
-                                    }}
-                                    className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
-                                    title="Edit Site"
-                                  >
-                                    <Edit2 size={14} />
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      setDeleteSite({
-                                        regional: reg.nama,
-                                        site: site.name,
-                                      })
-                                    }
-                                    className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
-                                    title="Hapus Site"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {bulkDialog && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setBulkDialog(null)}
-          />
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-blue-50/50">
-              <h3 className="text-lg font-extrabold text-slate-800">
-                Konfirmasi Bulk Upload
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Total {bulkDialog.rows.length} baris. Duplikat terdeteksi:{" "}
-                {bulkDialog.dupeCount}.
-              </p>
-            </div>
-            <div className="p-6 space-y-3">
-              <div className="max-h-40 overflow-y-auto border border-slate-100 rounded-xl bg-white text-xs">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 sticky top-0">
-                    <tr>
-                      <th className="p-2 font-medium text-slate-500">
-                        Regional
-                      </th>
-                      <th className="p-2 font-medium text-slate-500">
-                        Site Area
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {bulkDialog.rows.slice(0, 5).map((row, i) => (
-                      <tr key={i}>
-                        <td className="p-2 text-slate-700">
-                          {normalizeRegional(
-                            getCellValue(row, bulkDialog.regKey),
-                          )}
-                        </td>
-                        <td className="p-2 text-slate-700">
-                          {getCellValue(row, bulkDialog.siteKey)}
-                        </td>
-                      </tr>
-                    ))}
-                    {bulkDialog.rows.length > 5 && (
-                      <tr>
-                        <td
-                          colSpan={2}
-                          className="p-2 text-center text-slate-400 italic"
-                        >
-                          ...dan {bulkDialog.rows.length - 5} data lain
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {bulkDialog.dupeCount > 0 ? (
-                  <>
-                    <button
-                      onClick={() => executeUnitBulk(true)}
-                      className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700"
-                    >
-                      Replace Duplikat
-                    </button>
-                    <button
-                      onClick={() => executeUnitBulk(false)}
-                      className="px-4 py-2 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700"
-                    >
-                      Skip Duplikat
-                    </button>
-                  </>
-                ) : (
+        <DataTable
+          columns={[
+            {
+              key: "id",
+              label: "ID",
+              width: "w-32",
+              render: (_v: any, reg: any) => (
+                <span className="text-sm font-medium text-slate-400">
+                  {reg.id.substring(0, 10)}
+                </span>
+              )
+            },
+            {
+              key: "nama",
+              label: "Nama Regional",
+              render: (_v: any, reg: any) => (
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={() => executeUnitBulk(false)}
-                    className="col-span-2 px-4 py-2 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700"
+                    onClick={(e) => { e.stopPropagation(); toggleRow(reg.id); }}
+                    className="text-gray-400 hover:text-blue-600 transition-all"
                   >
-                    Submit
+                    {expandedRows.includes(reg.id) ? (
+                      <ChevronDown size={20} className="text-blue-600" />
+                    ) : (
+                      <ChevronRight size={20} />
+                    )}
                   </button>
-                )}
-              </div>
-              <button
-                onClick={() => setBulkDialog(null)}
-                className="w-full px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editSite && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setEditSite(null)}
-          />
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-50 bg-indigo-50/50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-indigo-600 text-white rounded-2xl">
-                  <Edit2 size={20} />
+                  <span
+                    className="text-sm font-bold text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); toggleRow(reg.id); }}
+                  >
+                    {reg.nama}
+                  </span>
                 </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-800">
-                    Edit Site Area
-                  </h3>
-                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
-                    Update Informasi Site
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditSite(null)}
-                className="p-2 rounded-xl hover:bg-white text-slate-400 hover:text-rose-500 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Globe2 size={12} /> Regional
-                </label>
-                <SmoothSelect
-                  value={newRegionalName}
-                  onChange={(v) => setNewRegionalName(v)}
-                  options={regionalOptions}
-                  width={400}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <MapPin size={12} /> Nama Site Area
-                </label>
-                <input
-                  type="text"
-                  value={newSiteName}
-                  onChange={(e) => setNewSiteName(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Edit2 size={12} /> Alamat Lengkap
-                </label>
-                <textarea
-                  rows={3}
-                  value={newSiteAlamat}
-                  onChange={(e) => setNewSiteAlamat(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 resize-none"
-                  placeholder="Masukkan alamat lengkap gudang/pabrik..."
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <StatefulButton
-                  variant="cancel"
-                  onClick={() => setEditSite(null)}
-                  className="flex-1"
-                >
-                  Batal
-                </StatefulButton>
-                <StatefulButton
-                  variant="submit"
-                  onClick={async () => {
-                    if (!newRegionalName || !newSiteName) {
-                      showToast("Regional dan Site Area wajib diisi!", "error");
-                      return;
-                    }
-                    try {
-                      await fetch("/api/unit-produksi", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          namaRegional: editSite.regional,
-                          siteArea: editSite.site,
-                          newRegionalName: newRegionalName,
-                          newSiteArea: newSiteName,
-                          alamat: newSiteAlamat,
-                        }),
+              )
+            },
+            {
+              key: "actions",
+              label: "Action",
+              align: "center",
+              width: "w-48",
+              render: (_v: any, reg: any) => (
+                <div className="flex justify-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewRegional({
+                        nama: reg.nama,
+                        sites: reg.sites,
                       });
-                      showToast("Data site berhasil diperbarui! 🚀");
-                      setEditSite(null);
-                      setDataUnit((prev) =>
-                        prev.map((x) =>
-                          String(x?.namaRegional) === editSite.regional &&
-                          String(x?.siteArea) === editSite.site
-                            ? {
-                                ...x,
-                                namaRegional: newRegionalName,
-                                siteArea: newSiteName,
-                                alamat: newSiteAlamat,
-                              }
-                            : x,
-                        ),
-                      );
-                      setTimeout(() => window.location.reload(), 800);
-                    } catch {
-                      showToast("Gagal memperbarui data.", "error");
-                    }
-                  }}
-                  className="flex-1"
-                >
-                  Simpan Perubahan
-                </StatefulButton>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deleteSite && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setDeleteSite(null)}
-          />
-          <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 bg-rose-50/50">
-              <h3 className="text-lg font-extrabold text-slate-800">
-                Hapus Site?
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                {deleteSite.site} di {deleteSite.regional}
-              </p>
-            </div>
-            <div className="p-5 flex items-center justify-end gap-2">
-              <StatefulButton
-                variant="cancel"
-                onClick={() => setDeleteSite(null)}
-              >
-                Batal
-              </StatefulButton>
-              <StatefulButton
-                variant="submit"
-                onClick={async () => {
-                  try {
-                    const delParams = new URLSearchParams({
-                      namaRegional: deleteSite.regional,
-                      siteArea: deleteSite.site,
-                    });
-                    const res = await fetch(
-                      `/api/unit-produksi?${delParams.toString()}`,
-                      {
-                        method: "DELETE",
-                      },
-                    );
-
-                    if (!res.ok) {
-                      const errorData = await res.json().catch(() => ({}));
-                      throw new Error(
-                        errorData.error ||
-                          errorData.message ||
-                          "Gagal menghapus site area.",
-                      );
-                    }
-
-                    showToast("Site area berhasil dihapus!");
-                    await loadData(); // Refresh total agar UI sinkron 100%
-                  } catch (error: any) {
-                    console.error("Delete Site Error:", error);
-                    showToast(
-                      error.message || "Gagal menghapus site area",
-                      "error",
-                    );
-                  } finally {
-                    setDeleteSite(null);
-                  }
-                }}
-                className="bg-rose-600 hover:bg-rose-700"
-              >
-                Hapus
-              </StatefulButton>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pagination UI */}
-      {filteredData.length > itemsPerPage && (
-        <div className="flex items-center justify-between px-2 py-4">
-          <p className="text-sm text-slate-500">
-            Showing {indexOfFirstItem + 1} to{" "}
-            {Math.min(indexOfLastItem, filteredData.length)} of{" "}
-            {filteredData.length} entries
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+                    }}
+                    className="p-2 text-gray-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-all"
+                    title="View"
+                  >
+                    <Eye size={16} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setContextRegional(reg.nama);
+                      setSelectedRegional(reg.nama);
+                      setSiteName("");
+                      setModalMode("addSite");
+                      setIsModalOpen(true);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
+                    title="Tambah Site"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteRegional(reg.nama); }}
+                    className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
+                    title="Hapus Regional"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )
+            }
+          ]}
+          data={currentItems}
+          loading={isLoading}
+          total={filteredData.length}
+          page={currentPage}
+          rowsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          emptyMessage="Data tidak ditemukan."
+          expandedKeys={new Set(expandedRows)}
+          onToggleExpand={(id) => toggleRow(id)}
+          renderExpandedRow={(reg: any) => (
+            <tr className="bg-slate-50/50">
+              <td colSpan={3} className="px-16 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-1">
+                  {reg.sites.map((site: any, index: number) => (
+                    <div
+                      key={index}
+                      className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-3 justify-between shadow-sm group hover:border-indigo-400 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                          <MapPin size={16} />
+                        </div>
+                        <span className="text-sm font-bold text-slate-700">
+                          {site.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() =>
+                            setViewedSite({
+                              ...site,
+                              regional: reg.nama,
+                            })
+                          }
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
+                          title="View Detail"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditSite({
+                              regional: reg.nama,
+                              site: site.name,
+                              alamat: site.alamat,
+                            });
+                            setNewRegionalName(reg.nama);
+                            setNewSiteName(site.name);
+                            setNewSiteAlamat(site.alamat);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
+                          title="Edit Site"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDeleteSite({
+                              regional: reg.nama,
+                              site: site.name,
+                            })
+                          }
+                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
+                          title="Hapus Site"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          )}
+        />
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

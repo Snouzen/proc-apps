@@ -494,6 +494,7 @@ export default function DataRekonPage() {
                                           <th className="px-5 py-3">#</th>
                                           <th className="px-5 py-3">NO. RTV</th>
                                           <th className="px-5 py-3">REF. INVOICE</th>
+                                          <th className="px-5 py-3">TUJUAN</th>
                                           <th className="px-5 py-3 text-right">NOMINAL</th>
                                         </tr>
                                       </thead>
@@ -518,13 +519,18 @@ export default function DataRekonPage() {
                                                   <span className="text-[9px] text-slate-200 italic">belum di-set</span>
                                                 )}
                                               </td>
+                                              <td className="px-5 py-3">
+                                                <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px] inline-block" title={typeof rtv === 'object' ? rtv.tujuan : '-'}>
+                                                  {typeof rtv === 'object' ? (rtv.tujuan || '-') : '-'}
+                                                </span>
+                                              </td>
                                               <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700">
                                                 {formatRp(nominal)}
                                               </td>
                                             </tr>
                                           );
                                         }) : (
-                                          <tr><td colSpan={4} className="px-5 py-6 text-center text-[9px] text-slate-300 italic">Tidak ada RTV</td></tr>
+                                          <tr><td colSpan={5} className="px-5 py-6 text-center text-[9px] text-slate-300 italic">Tidak ada RTV</td></tr>
                                         )}
                                       </tbody>
                                     </table>

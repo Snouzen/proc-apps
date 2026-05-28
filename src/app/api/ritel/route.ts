@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
 import { randomUUID } from "crypto";
 import { RitelCreateSchema, RitelPatchSchema } from "@/lib/schemas/master-data";
 import {
-  cacheClearPrefix,
   cacheGet,
   cacheSet,
+  cacheClearPrefix,
   singleFlight,
 } from "@/lib/ttl-cache";
+import { getErrorMessage } from "@/lib/utils/error";
 
-function getErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object" && err !== null && "message" in err)
-    return String((err as { message: unknown }).message);
-  return "Gagal mengambil data ritel";
-}
+
 
 export async function GET(request: Request) {
   const cacheKey = `ritel:${request.url}`;
@@ -55,6 +52,7 @@ export async function GET(request: Request) {
         : [
             null,
             await prisma.ritelModern.findMany({
+              take: 5000,
               where,
               orderBy: { createdAt: "desc" },
             }),
@@ -82,6 +80,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { default: prisma } = await import("@/lib/db");
     const body = await request.json();
     const parsed = RitelCreateSchema.safeParse(body);
@@ -112,6 +114,10 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { default: prisma } = await import("@/lib/db");
     const body = await request.json();
     const parsed = RitelPatchSchema.safeParse(body);
@@ -161,7 +167,7 @@ export async function PATCH(request: Request) {
         where: whereClause,
         data: updateData,
       });
-      console.log(`PATCH Ritel: Updated ${result.count} rows for inisial ${inisial}`);
+
     }
 
     cacheClearPrefix("ritel:");
@@ -175,6 +181,10 @@ export async function PATCH(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { default: prisma } = await import("@/lib/db");
     const body = await request.json();
     const { id, tujuan } = body as { id?: string; tujuan?: string };
@@ -199,6 +209,10 @@ export async function PUT(request: Request) {
 // [REST] DELETE extracts identifiers from URL searchParams, not request body
 export async function DELETE(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { default: prisma } = await import("@/lib/db");
     const { searchParams } = new URL(request.url);
     const namaPt = searchParams.get("namaPt") || undefined;

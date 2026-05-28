@@ -40,11 +40,11 @@ export default function Modal({ open, onClose, children, className, title }: Pro
       />
       <div 
         className={cn(
-          "relative bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 border border-white/20",
+          "relative bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 border border-white/20 overflow-hidden",
           className
         )}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-slate-100">
+        <div className="flex-none flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-slate-100 z-10">
           <h3 className="text-lg font-bold text-slate-800">{title}</h3>
           <button 
             onClick={onClose}
@@ -53,7 +53,7 @@ export default function Modal({ open, onClose, children, className, title }: Pro
             <X size={18} />
           </button>
         </div>
-        <div className="p-6">
+        <div className="flex-1 p-6 overflow-y-auto">
           {children}
         </div>
       </div>

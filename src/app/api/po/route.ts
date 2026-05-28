@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
-import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { getSessionWithRole } from "@/lib/auth";
 import {
   cacheClearPrefix,
   cacheGet,
@@ -18,71 +17,22 @@ import {
 } from "@/lib/text";
 import { POBodySchema } from "@/lib/schemas/po";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
+import { getRegionalSynonyms } from "@/lib/utils/regional";
 import { ensureInvoiceNumber } from "@/lib/generatePoInvoiceNumber";
 
 
-// [ENV] Timezone offset from env, not hardcoded magic number
-const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
 
-function parseDate(v?: string | null) {
-  if (!v) return null;
-  const s = String(v).trim();
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) {
-    const y = Number(m[1]);
-    const mo = Number(m[2]) - 1;
-    const da = Number(m[3]);
-    if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(da)) {
-      return null;
-    }
-    return new Date(Date.UTC(y, mo, da, 12, 0, 0, 0));
-  }
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return null;
-  const shifted = new Date(d.getTime() + TZ_OFFSET_HOURS * 3600 * 1000);
-  return new Date(
-    Date.UTC(
-      shifted.getUTCFullYear(),
-      shifted.getUTCMonth(),
-      shifted.getUTCDate(),
-      12,
-      0,
-      0,
-      0,
-    ),
-  );
-}
 
 export async function POST(request: Request) {
-  console.log("🚀 [API DEBUG] POST /api/po hit!");
   try {
-    const bag = await cookies();
-    let token = bag.get("session")?.value;
-    if (!token) {
-      const hdr = request.headers.get("cookie") || "";
-      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-      if (m && m[1]) token = decodeURIComponent(m[1]);
-    }
-    const sessionRaw = verifySession(token);
-    const sessionObj = await Promise.resolve(sessionRaw);
-    const email = sessionObj?.email || (sessionObj as any)?.user?.email;
-
-    let dbUser = null;
-    if (email) {
-      dbUser = await prisma.user.findUnique({ where: { email } });
-    }
-
-    const rawRole = dbUser?.role || sessionObj?.role || "";
-    const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
-
-    if (!sessionObj) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
+    const { session, role: safeRole, dbUser } = auth;
     const raw = await request.json();
     const parsed = POBodySchema.safeParse(raw);
     if (!parsed.success) {
-      console.error("Payload validation failed:", parsed.error);
       return NextResponse.json(
         {
           error:
@@ -137,15 +87,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // FEATURE: Role-based Security - Force-Override Pattern for RM users
-    // If user is RM, we use their session regional regardless of what the frontend sent.
-    // This prevents string mismatch errors (caps, spaces) and unauthorized regional data entry.
     let effectiveRegional = regional;
-    if (safeRole === "rm" && (dbUser?.regional || (sessionObj as any).regional)) {
-      effectiveRegional = dbUser?.regional || (sessionObj as any).regional;
+    if (safeRole === "rm" && (dbUser?.regional || (session as any).regional)) {
+      effectiveRegional = dbUser?.regional || (session as any).regional;
     }
 
-    // ── Backend Guard: sanitize junk values to null ──
     const JUNK_STRINGS = ["unknown", "site area belum ada unit produksi", "belum ada", "n/a", "none", "-", ""];
     const sanitizeToNull = (val: string | null | undefined): string | null => {
       if (!val) return null;
@@ -285,8 +231,6 @@ export async function POST(request: Request) {
     const poLinkPo = linkPo || null;
     const poNoInvoice = noInvoice || null;
     const poTujuanDetail = tujuanUpper || null;
-    // Use the effective regional (which might be forced from session for RM users)
-    // sanitizeToNull is defined above and guards against all junk strings
     const poRegional = sanitizeToNull(effectiveRegional) ? (upperCleanOrNull(sanitizeToNull(effectiveRegional)!) || null) : null;
     const poStatusKirim = !!status?.kirim;
     const poStatusSdif = !!status?.sdif;
@@ -415,7 +359,6 @@ export async function POST(request: Request) {
               },
             });
 
-        // Handle Items: Delete existing and recreate
         await tx.purchaseOrderItem.deleteMany({
           where: { purchaseOrderId: po.id },
         });
@@ -494,7 +437,6 @@ export async function POST(request: Request) {
           });
         }
 
-        // Return minimal payload to avoid Prisma Client column mismatches
         return { id: po.id, noPo: po.noPo };
       },
       { timeout: 20000 },
@@ -509,59 +451,27 @@ export async function POST(request: Request) {
   } catch (error) {
     const msg =
       error instanceof Error ? error.message : String(error ?? "Unknown error");
-    console.error("POST /api/po error:", msg);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
 export async function GET(request: Request) {
-  console.log("🚀 [API DEBUG] GET /api/po hit!");
   try {
-    const bag = await cookies();
-    let token = bag.get("session")?.value;
-    if (!token) {
-      const hdr = request.headers.get("cookie") || "";
-      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-      if (m && m[1]) token = decodeURIComponent(m[1]);
-    }
-    const sessionObj = await Promise.resolve(verifySession(token));
-    if (!sessionObj) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    // 1. Ekstrak Email Sekuat Tenaga (Anti-Undefined & Lowercase)
-    const emailRaw = sessionObj?.email || (sessionObj as any)?.user?.email || (sessionObj as any)?.payload?.email || "";
-    const email = String(emailRaw).toLowerCase().trim();
-
-    // 2. Cari di DB (Abaikan Huruf Besar/Kecil dengan findFirst)
-    let dbUser = null;
-    if (email) {
-      dbUser = await prisma.user.findFirst({
-        where: { email: { equals: email, mode: "insensitive" } }
-      });
-    }
-
-    // 3. Ekstrak Role & Hard-Fallback
-    const rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
-
-    let safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
-    if (safeRole === "superadmin" || safeRole === "admin" || safeRole === "adminpusat") {
-      safeRole = "pusat";
-    }
-
-    // 4. Debugger (WAJIB CEK TERMINAL)
-    console.log("🚨 [DEBUG API] EMAIL:", email, "| DB_USER:", dbUser ? "KETEMU" : "KOSONG", "| SAFE_ROLE:", safeRole);
+    const { session, role: safeRole, dbUser, email } = auth;
 
     const { searchParams } = new URL(request.url);
 
-    // 5. Tentukan Wilayah (Dengan Fallback ke Token Metadata jika ada)
     let overrideRegional: string | null = null;
     let overrideSiteArea: string | null = null;
     if (safeRole === 'sitearea') {
-      overrideRegional = dbUser?.regional || (sessionObj as any)?.user_metadata?.regional || null;
-      overrideSiteArea = dbUser?.siteArea || (sessionObj as any)?.user_metadata?.siteArea || null;
+      overrideRegional = dbUser?.regional || (session as any)?.user_metadata?.regional || null;
+      overrideSiteArea = dbUser?.siteArea || (session as any)?.user_metadata?.siteArea || null;
     } else if (safeRole === 'rm') {
-      overrideRegional = dbUser?.regional || (sessionObj as any)?.regional || null;
+      overrideRegional = dbUser?.regional || (session as any)?.regional || null;
     }
 
     const regionalParam = overrideRegional || (searchParams.get("regional") || undefined);
@@ -583,17 +493,16 @@ export async function GET(request: Request) {
     const includeUnknown =
       (searchParams.get("includeUnknown") || "true") === "true";
     const q = (searchParams.get("q") || "").trim();
-    const tglFrom = parseDate(searchParams.get("tglFrom"));
-    const tglTo = parseDate(searchParams.get("tglTo"));
-    const submitFrom = parseDate(searchParams.get("submitFrom"));
-    const submitTo = parseDate(searchParams.get("submitTo"));
+    const tglFrom = parseYmdOrIsoToUtcNoon(searchParams.get("tglFrom"));
+    const tglTo = parseYmdOrIsoToUtcNoon(searchParams.get("tglTo"));
+    const submitFrom = parseYmdOrIsoToUtcNoon(searchParams.get("submitFrom"));
+    const submitTo = parseYmdOrIsoToUtcNoon(searchParams.get("submitTo"));
     const group = (searchParams.get("group") || "all").trim();
     const pcsKirimParam = searchParams.get("pcsKirim") || undefined;
     const status = searchParams.get("status") || undefined;
     const monthParam = searchParams.get("month");
     const yearParam = searchParams.get("year");
     const retailerIdRaw = searchParams.get("retailerId") || undefined;
-    // Support comma-separated retailer IDs to reduce N concurrent requests to 1
     const retailerIds = retailerIdRaw ? retailerIdRaw.split(",").map(s => s.trim()).filter(Boolean) : undefined;
     const inisial = searchParams.get("inisial") || undefined;
 
@@ -603,7 +512,6 @@ export async function GET(request: Request) {
       try {
         colFilters = JSON.parse(colFiltersRaw);
       } catch (e) {
-        console.error("Failed to parse colFilters", e);
       }
     }
     const noPoListRaw = searchParams.get("noPoList") || undefined;
@@ -695,7 +603,7 @@ export async function GET(request: Request) {
     const filterBy = (searchParams.get("filterBy") || "tglkirim").trim();
     if (monthParam && yearParam) {
       const y = parseInt(yearParam);
-      const m = parseInt(monthParam); // 1 - 12
+      const m = parseInt(monthParam);
       if (!isNaN(y) && !isNaN(m)) {
         const startDate = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
         const endDate = new Date(Date.UTC(y, m, 1, 0, 0, 0));
@@ -713,34 +621,7 @@ export async function GET(request: Request) {
         ];
       }
     }
-    function getRegionalSynonyms(input: string): string[] {
-      const rp = input.trim().toLowerCase();
-      if (
-        rp.includes("bandung") ||
-        rp.includes("reg 1") ||
-        rp.includes("regional 1") ||
-        rp.includes(" i")
-      ) {
-        return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
-      }
-      if (
-        rp.includes("surabaya") ||
-        rp.includes("reg 2") ||
-        rp.includes("regional 2") ||
-        rp.includes(" ii")
-      ) {
-        return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
-      }
-      if (
-        rp.includes("makassar") ||
-        rp.includes("reg 3") ||
-        rp.includes("regional 3") ||
-        rp.includes(" iii")
-      ) {
-        return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
-      }
-      return [input.trim()];
-    }
+
 
     if (regionalParam && regionalParam.trim()) {
       const syn = getRegionalSynonyms(regionalParam);
@@ -757,7 +638,6 @@ export async function GET(request: Request) {
         },
       ];
     }
-    // Strict RBAC: force regional scope for RM users with synonym support for robustness
     if (safeRole === "rm" && overrideRegional) {
       const syn = getRegionalSynonyms(overrideRegional);
       where.AND = [
@@ -778,7 +658,6 @@ export async function GET(request: Request) {
         },
       ];
     }
-    // Strict RBAC: force siteArea scope for sitearea users
     if (safeRole === "sitearea" && overrideSiteArea) {
       const sa = overrideSiteArea.trim();
       where.AND = [
@@ -789,7 +668,6 @@ export async function GET(request: Request) {
           },
         },
       ];
-      // Also lock regional if available for sitearea for extra security
       if (overrideRegional) {
         const syn = getRegionalSynonyms(overrideRegional);
         where.AND.push({
@@ -801,7 +679,6 @@ export async function GET(request: Request) {
       }
     }
     
-    // Normal siteAreaParam user filter (for pusat and rm when selecting specific site)
     if ((safeRole === "pusat" || safeRole === "rm") && siteAreaParam && siteAreaParam.trim()) {
       const sa = siteAreaParam.trim();
       const saFilter = {
@@ -912,7 +789,6 @@ export async function GET(request: Request) {
         {
           OR: [{ expiredTgl: null }, { expiredTgl: { gte: startOfToday } }],
         },
-        // [SCHEDULE FIX] Data yang di-reject (kembali ke UNKNOWN) tidak boleh muncul di antrean Schedule (Active)
         { unitProduksiId: { not: "UNKNOWN" } },
         {
           UnitProduksi: {
@@ -1055,7 +931,6 @@ export async function GET(request: Request) {
             AND.push({ [key]: bVal });
           }
         }
-        // Note: filtering by computed columns (totalNominal, totalTagihan) is not supported at DB level via Prisma findMany.
       }
       if (AND.length > 0) {
         where.AND = AND;
@@ -1076,29 +951,33 @@ export async function GET(request: Request) {
                 : ({ createdAt: "desc" } as const);
 
     const attachSummary = async (rows: any[]) => {
-      console.log(`🔍 [API DEBUG] attachSummary started for ${rows.length} rows`);
       const ids = rows.map((r) => r.id).filter(Boolean);
       if (ids.length === 0) return rows;
 
-      console.log(`🔍 [API DEBUG] Fetching items for PO IDs:`, ids.slice(0, 3), "...");
-      const allItems = await prisma.purchaseOrderItem.findMany({
-        where: { purchaseOrderId: { in: ids } },
-        select: {
-          id: true, // Needed for specific updates
-          purchaseOrderId: true,
-          pcs: true,
-          pcsKirim: true,
-          nominal: true,
-          rpTagih: true,
-          hargaPcs: true,
-          discount: true,
-          createdAt: true,
-          Product: { select: { name: true, satuanKg: true } }
-        },
-        orderBy: { createdAt: 'asc' }
-      });
+      const hasItemsIncluded = rows.length > 0 && Array.isArray(rows[0].Items) && rows[0].Items.length > 0 && rows[0].Items[0].Product;
+      
+      let allItems: any[] = [];
+      if (hasItemsIncluded) {
+        allItems = rows.flatMap(r => r.Items.map((it: any) => ({ ...it, purchaseOrderId: r.id })));
+      } else {
+        allItems = await prisma.purchaseOrderItem.findMany({
+          where: { purchaseOrderId: { in: ids } },
+          select: {
+            id: true,
+            purchaseOrderId: true,
+            pcs: true,
+            pcsKirim: true,
+            nominal: true,
+            rpTagih: true,
+            hargaPcs: true,
+            discount: true,
+            createdAt: true,
+            Product: { select: { name: true, satuanKg: true } }
+          },
+          orderBy: { createdAt: 'asc' }
+        });
+      }
 
-      // [OPTIMIZATION 2] Lakukan Kalkulasi di RAM Node.js (Waktu eksekusi cuma 2-3 milidetik)
       const agg = new Map<string, any>();
       for (let i = 0; i < allItems.length; i++) {
         const it = allItems[i];
@@ -1110,7 +989,7 @@ export async function GET(request: Request) {
             pcsTotal: 0, pcsKirimTotal: 0, totalDiscount: 0,
             totalKg: 0, totalKgKirim: 0, 
             firstProductName: it.Product?.name || null,
-            Items: [] // Add items array for transparency
+            Items: []
           });
         }
         
@@ -1126,7 +1005,6 @@ export async function GET(request: Request) {
         s.totalKg += (Number(it.pcs) || 0) * satuan;
         s.totalKgKirim += (Number(it.pcsKirim) || 0) * satuan;
         
-        // Push simplified item data
         s.Items.push({
           id: it.id,
           pcs: it.pcs,
@@ -1140,7 +1018,6 @@ export async function GET(request: Request) {
         });
       }
 
-      // [OPTIMIZATION 3] Tempelkan hasil agregasi ke baris data
       return rows.map((r) => {
         const s = agg.get(String(r.id)) || {
           itemsCount: 0, totalNominal: 0, totalTagihan: 0,
@@ -1154,7 +1031,6 @@ export async function GET(request: Request) {
 
     if (!paged) {
       if (cached) return NextResponse.json(cached);
-      // const data = await singleFlight(cacheKey, () => {
       const data = await prisma.purchaseOrder.findMany(
           summary
             ? ({
@@ -1170,18 +1046,19 @@ export async function GET(request: Request) {
                   noFaktur: true,
                   tujuanDetail: true,
                   regional: true,
+                  statusCreditLimit: true,
+                  remarksCreditLimit: true,
                   remarks: true,
                   buktiTagih: true,
                   buktiBayar: true,
                   buktiKirim: true,
                   buktiFp: true,
-                  // [RESTORE FIELD JADWAL]
                   tglkirim: true,
                   namaSupir: true,
                   platNomor: true,
-                  // ----------------------
                   RitelModern: { select: { namaPt: true, inisial: true } },
-                  UnitProduksi: { select: { siteArea: true, namaRegional: true } }
+                  UnitProduksi: { select: { siteArea: true, namaRegional: true } },
+                  CreditLimitBatch: { select: { batchCode: true, status: true } },
                 },
                 orderBy,
               } as any)
@@ -1207,6 +1084,8 @@ export async function GET(request: Request) {
                   statusInv: true,
                   statusTagih: true,
                   statusBayar: true,
+                  statusCreditLimit: true,
+                  remarksCreditLimit: true,
                   tglkirim: true,
                   remarks: true,
                   buktiTagih: true,
@@ -1215,7 +1094,6 @@ export async function GET(request: Request) {
                   buktiFp: true,
                   namaSupir: true,
                   platNomor: true,
-                  // Prevent over-fetching by using specific selects instead of raw includes
                   ...(includeItems
                     ? {
                         Items: {
@@ -1239,14 +1117,12 @@ export async function GET(request: Request) {
                   UnitProduksi: {
                     select: { idRegional: true, namaRegional: true, siteArea: true, alamat: true },
                   },
+                  CreditLimitBatch: { select: { batchCode: true, status: true } },
                 },
                 orderBy,
               } as any),
         );
-      // });
-      console.log(`🔍 [API DEBUG] Query returned ${data.length} rows`);
       const payload = summary ? await attachSummary(data as any) : data;
-      console.log(`🔍 [API DEBUG] attachSummary finished`);
       cacheSet(cacheKey, payload, 15000);
       return NextResponse.json(payload);
     }
@@ -1256,10 +1132,7 @@ export async function GET(request: Request) {
 
     if (cached) return NextResponse.json(cached);
 
-    // const [total, data] = await singleFlight(cacheKey, async () => {
     const [total, data] = await (async () => {
-      console.log("🔍 [API DEBUG] Executing findMany (Paged)...");
-      console.log("🔍 [API DEBUG] Where Clause:", JSON.stringify(where, null, 2));
       const t =
         cachedTotal ??
         (typeof approxTotal === "number" ? approxTotal : undefined) ??
@@ -1279,6 +1152,8 @@ export async function GET(request: Request) {
                 noFaktur: true,
                 tujuanDetail: true,
                 regional: true,
+                statusCreditLimit: true,
+                remarksCreditLimit: true,
                 remarks: true,
                 buktiTagih: true,
                 buktiBayar: true,
@@ -1290,7 +1165,8 @@ export async function GET(request: Request) {
                 platNomor: true,
                 // ----------------------
                 RitelModern: { select: { namaPt: true, inisial: true } },
-                UnitProduksi: { select: { siteArea: true, namaRegional: true } }
+                UnitProduksi: { select: { siteArea: true, namaRegional: true } },
+                CreditLimitBatch: { select: { batchCode: true, status: true } },
               },
               orderBy,
               take,
@@ -1318,6 +1194,8 @@ export async function GET(request: Request) {
                 statusInv: true,
                 statusTagih: true,
                 statusBayar: true,
+                statusCreditLimit: true,
+                remarksCreditLimit: true,
                 tglkirim: true,
                 remarks: true,
                  buktiTagih: true,
@@ -1349,6 +1227,7 @@ export async function GET(request: Request) {
                 UnitProduksi: {
                   select: { idRegional: true, namaRegional: true, siteArea: true },
                 },
+                CreditLimitBatch: { select: { batchCode: true, status: true } },
               },
               orderBy,
               take,
@@ -1381,28 +1260,11 @@ export async function GET(request: Request) {
 // [REST] DELETE must extract identifiers from URL searchParams, NOT from request body
 export async function DELETE(request: Request) {
   try {
-    const bag = await cookies();
-    let token = bag.get("session")?.value;
-    if (!token) {
-      const hdr = request.headers.get("cookie") || "";
-      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-      if (m && m[1]) token = decodeURIComponent(m[1]);
-    }
-    const sessionRaw = verifySession(token);
-    const sessionObj = await Promise.resolve(sessionRaw);
-    const email = sessionObj?.email || (sessionObj as any)?.user?.email;
-
-    let dbUser = null;
-    if (email) {
-      dbUser = await prisma.user.findUnique({ where: { email } });
-    }
-
-    const rawRole = dbUser?.role || sessionObj?.role || "";
-    const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
-
-    if (!sessionObj) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const { session, role: safeRole, dbUser } = auth;
 
     if (safeRole !== "pusat") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

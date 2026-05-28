@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { getRegionalSynonyms } from "@/lib/utils/regional";
 import prisma from "@/lib/prisma";
 import { cacheGet, cacheSet, singleFlight } from "@/lib/ttl-cache";
+import { unstable_cache } from "next/cache";
+import { getSession } from "@/lib/auth";
 
 // [ENV] Timezone offset from env, not hardcoded magic number
 const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
@@ -22,6 +25,11 @@ export async function GET(request: Request) {
   const cacheKey = `po_trend:${request.url}`;
   const cached = cacheGet<any>(cacheKey);
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const daysRaw = Number(searchParams.get("days") || 90);
     const days =
@@ -42,39 +50,9 @@ export async function GET(request: Request) {
     const end = jakartaDayEndUtc(y, m0, d0);
 
     const emptyText = ["", "-", "Unknown"];
-    const syn = (() => {
-      const rp = String(regionalParam || "")
-        .trim()
-        .toLowerCase();
-      if (!rp) return [];
-      if (
-        rp.includes("bandung") ||
-        rp.includes("reg 1") ||
-        rp.includes("regional 1") ||
-        rp.includes(" i")
-      ) {
-        return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
-      }
-      if (
-        rp.includes("surabaya") ||
-        rp.includes("reg 2") ||
-        rp.includes("regional 2") ||
-        rp.includes(" ii")
-      ) {
-        return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
-      }
-      if (
-        rp.includes("makassar") ||
-        rp.includes("reg 3") ||
-        rp.includes("regional 3") ||
-        rp.includes(" iii")
-      ) {
-        return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
-      }
-      return [String(regionalParam || "").trim()];
-    })();
+    const syn = getRegionalSynonyms(String(regionalParam || ""));
 
-    const data = await singleFlight(cacheKey, async () => {
+    const data = await unstable_cache(async () => {
       const ids = Array.from({ length: days }, (_, idx) => {
         const day = d0 - (days - 1) + idx;
         const utcStart = jakartaDayStartUtc(y, m0, day);
@@ -161,7 +139,7 @@ export async function GET(request: Request) {
         const r = byDate.get(d);
         return { date: d, count: r?.poIds.size || 0, kg: r?.kg || 0 };
       });
-    });
+    }, [cacheKey], { revalidate: 600, tags: [cacheKey] })();
 
     const payload = { days, metric, data };
     cacheSet(cacheKey, payload, 600_000);

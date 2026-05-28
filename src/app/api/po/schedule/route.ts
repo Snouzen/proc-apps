@@ -1,61 +1,17 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { getSessionWithRole } from "@/lib/auth";
 import { verifySession } from "@/lib/auth";
-
-const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
-
-function parseDate(v?: string | null) {
-  if (!v) return null;
-  const s = String(v).trim();
-  
-  // 1. Cek format standar YYYY-MM-DD
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) {
-    const y = Number(m[1]);
-    const mo = Number(m[2]) - 1;
-    const da = Number(m[3]);
-    // Set ke Jam 12 Siang UTC agar aman saat ditarik ke zona waktu manapun
-    return new Date(Date.UTC(y, mo, da, 12, 0, 0, 0));
-  }
-  
-  // 2. Fallback jika menerima format ISO Full (2026-04-13T12:00:00Z)
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return null;
-  
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0, 0)
-  );
-}
+import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
 
 export async function PATCH(request: Request) {
   try {
-    const bag = await cookies();
-    let token = bag.get("session")?.value;
-    if (!token) {
-      const hdr = request.headers.get("cookie") || "";
-      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-      if (m && m[1]) token = decodeURIComponent(m[1]);
-    }
-    const sessionObj = await Promise.resolve(verifySession(token));
-    if (!sessionObj) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    // 1. Ekstrak Email Sekuat Tenaga (Anti-Undefined & Lowercase)
-    const emailRaw = sessionObj?.email || (sessionObj as any)?.user?.email || (sessionObj as any)?.payload?.email || "";
-    const email = String(emailRaw).toLowerCase().trim();
-
-    // 2. Cari di DB (Abaikan Huruf Besar/Kecil dengan findFirst)
-    let dbUser = null;
-    if (email) {
-      dbUser = await prisma.user.findFirst({
-        where: { email: { equals: email, mode: "insensitive" } }
-      });
-    }
-
-    // 3. Ekstrak Role & Hard-Fallback
-    let rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
+    const { session: sessionObj, email, dbUser } = auth;
+    let rawRole = auth.role;
 
     // Gembok paksa picsite jika email mengandung spbdki
     if (email.includes("spbdki") && !dbUser) {
@@ -74,7 +30,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "ID PO wajib diisi" }, { status: 400 });
     }
 
-    const parsedDate = parseDate(tglKirim);
+    const parsedDate = parseYmdOrIsoToUtcNoon(tglKirim);
     
     const updateData: any = {
       tglkirim: parsedDate,

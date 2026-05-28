@@ -64,6 +64,7 @@ interface Rtv {
   pembebananRetur?: string;
   lokasiBarang?: string;
   produk?: string;
+  tujuan?: string;
 }
 
 interface Promo {
@@ -260,6 +261,7 @@ function RekonContent() {
           lokasiBarang: r.LokasiBarang?.siteArea || "-",
           produk: r.Product?.name || r.produk || "-",
           unitProduksi: "-",
+          tujuan: r.RitelModern?.tujuan || "-",
         }));
 
         setSelectedRtvs(prev => {
@@ -780,6 +782,7 @@ function RekonContent() {
                                        <th className="px-4 py-5 min-w-[140px] font-black">Unit Produksi</th>
                                        <th className="px-4 py-5 min-w-[140px] font-black">Pembebanan</th>
                                        <th className="px-4 py-5 min-w-[140px] font-black">Lokasi Barang</th>
+                                       <th className="px-4 py-5 min-w-[140px] font-black">Tujuan</th>
                                        <th className="px-4 py-5 min-w-[120px] font-black">Produk</th>
                                        <th className="px-4 py-5 min-w-[110px] text-right font-black">Nominal</th>
                                        <th className="px-3 py-5 w-10 text-center">#</th>
@@ -858,6 +861,7 @@ function RekonContent() {
                                          <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{unitProduksiFromInv}</td>
                                           <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.pembebananRetur || "-"}</td>
                                           <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.lokasiBarang || "-"}</td>
+                                          <td className="px-4 py-4 text-slate-500 text-[10px] whitespace-nowrap">{rtv.tujuan || "-"}</td>
                                           <td className="px-4 py-4 text-slate-500 text-[10px] max-w-[120px] truncate" title={rtv.produk}>{rtv.produk || "-"}</td>
                                           <td className="px-4 py-4 text-right text-slate-800 tabular-nums font-black whitespace-nowrap">{formatRp(rtv.total)}</td>
                                          <td className="px-3 py-4 text-center">

@@ -62,6 +62,8 @@ type POData = {
     bayar: boolean;
   };
   remarks: string | null;
+  statusCreditLimit?: string | null;
+  remarksCreditLimit?: string | null;
   RitelModern?: {
     namaPt?: string;
     inisial?: string;
@@ -217,6 +219,16 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   {data.tujuanDetail || "-"}
                 </p>
               </div>
+              {data.remarksCreditLimit && (
+                <div className="col-span-2 pt-2 border-t border-slate-100">
+                  <p className="text-[10px] text-amber-500 font-bold uppercase mb-0.5">
+                    Catatan / Remarks Credit Limit
+                  </p>
+                  <p className="font-medium text-slate-700 text-xs italic bg-amber-50 p-2 rounded-lg border border-amber-100/50">
+                    "{data.remarksCreditLimit}"
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 
@@ -392,7 +404,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   // Helper robust parsing untuk diskon (menangani string berformat atau number)
                   const parseVal = (v: any) => {
                     if (typeof v === "number" && !isNaN(v)) return v;
-                    const clean = String(v || "").replace(/[^0-9]/g, "");
+                    const clean = String(v || "").replace(/[^0-9.]/g, "");
                     return Number(clean) || 0;
                   };
 
@@ -508,7 +520,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                         
                         const parseV = (v: any) => {
                           if (typeof v === "number" && !isNaN(v)) return v;
-                          return Number(String(v || "").replace(/[^0-9]/g, "")) || 0;
+                          return Number(String(v || "").replace(/[^0-9.]/g, "")) || 0;
                         };
 
                         const dBase = parseV(curr.discount ?? curr.diskon ?? curr.discountNum ?? 0);

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import crypto from "crypto";
 
 export async function GET(request: Request) {
   try {
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       // Fetch Full RTV Details
       const detailedRtvs = await prisma.dataRetur.findMany({
         where: { rtvCn: { in: rekon.rtvs || [] } },
-        include: { Product: true, LokasiBarang: true, PembebananReturn: true }
+        include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true }
       });
       // Map RTVs (preserve duplicates — user may have same RTV number twice)
       const rtvCounts: Record<string, number> = {};
@@ -66,7 +66,8 @@ export async function GET(request: Request) {
           pembebananRetur: rtvData?.PembebananReturn?.siteArea || "-",
           lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
           produk: rtvData?.Product?.name || rtvData?.produk || "-",
-          unitProduksi: rtvData?.LokasiBarang?.namaRegional || rtvData?.PembebananReturn?.namaRegional || "-"
+          unitProduksi: rtvData?.LokasiBarang?.namaRegional || rtvData?.PembebananReturn?.namaRegional || "-",
+          tujuan: rtvData?.RitelModern?.tujuan || "-"
         };
       });
 
@@ -147,7 +148,7 @@ export async function GET(request: Request) {
         }),
         prisma.dataRetur.findMany({
           where: { rtvCn: { in: allRtvNos } },
-          include: { Product: true, LokasiBarang: true, PembebananReturn: true }
+          include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true }
         })
       ]);
 
@@ -194,6 +195,7 @@ export async function GET(request: Request) {
             unitProduksi: retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
             lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
             produk: retur?.Product?.name || retur?.produk || "-",
+            tujuan: retur?.RitelModern?.tujuan || "-",
           };
         });
 
@@ -217,6 +219,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const { 
       ritelId, 
@@ -246,29 +252,37 @@ export async function POST(request: Request) {
 
     // 1. Generate No. Rekonsiliasi Only for NEW records
     if (!finalId) {
-      const now = new Date();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const year = now.getFullYear();
-      const datePattern = `${month}/${year}`;
+      // Wrap in transaction to prevent race condition on concurrent requests
+      const { generatedNo, generatedId } = await prisma.$transaction(async (tx) => {
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+        const datePattern = `${month}/${year}`;
 
-      // Ambil record terakhir untuk memastikan nomor berurutan dan tidak bentrok walau ada data yg dihapus
-      const lastRecord = await prisma.reconcile.findFirst({
-        orderBy: { createdAt: 'desc' }
-      });
-      
-      let nextNumber = 1;
-      if (lastRecord && lastRecord.noRekonsiliasi) {
-        const match = lastRecord.noRekonsiliasi.match(/R-(\d+)\//);
-        if (match && match[1]) {
-           nextNumber = parseInt(match[1], 10) + 1;
-        } else {
-           const countAll = await prisma.reconcile.count();
-           nextNumber = countAll + 1;
+        // Ambil record terakhir untuk memastikan nomor berurutan
+        const lastRecord = await tx.reconcile.findFirst({
+          orderBy: { createdAt: 'desc' }
+        });
+
+        let nextNumber = 1;
+        if (lastRecord && lastRecord.noRekonsiliasi) {
+          const match = lastRecord.noRekonsiliasi.match(/R-(\d+)\//);
+          if (match && match[1]) {
+            nextNumber = parseInt(match[1], 10) + 1;
+          } else {
+            const countAll = await tx.reconcile.count();
+            nextNumber = countAll + 1;
+          }
         }
-      }
 
-      GeneratedNoRekon = `R-${String(nextNumber).padStart(3, '0')}/${datePattern}`;
-      finalId = Math.random().toString(36).substring(2, 10).toUpperCase();
+        return {
+          generatedNo: `R-${String(nextNumber).padStart(3, '0')}/${datePattern}`,
+          generatedId: crypto.randomUUID().replace(/-/g, "").substring(0, 12).toUpperCase(),
+        };
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+      GeneratedNoRekon = generatedNo;
+      finalId = generatedId;
     }
 
     // 3. Simpan / Update Database
@@ -316,31 +330,28 @@ export async function POST(request: Request) {
 
     // 4. SYNC: Update referensi invoice di tabel DataRetur secara otomatis & Tracking History
     if (Array.isArray(rtvs)) {
-      for (const r of rtvs) {
-        if (typeof r === 'object' && r.noRtv && r.refInvoice) {
-          // Gunakan ID unik dari row DataRetur jika ada, jika tidak fallback ke rtvCn
+      const validRtvs = rtvs.filter((r: any) => typeof r === 'object' && r.noRtv && r.refInvoice);
+      
+      if (validRtvs.length > 0) {
+        const whereOr = validRtvs.map((r: any) => r.id ? { id: r.id } : { rtvCn: r.noRtv });
+        const allOldData = await prisma.dataRetur.findMany({ where: { OR: whereOr } });
+        
+        const updatePromises = validRtvs.map((r: any) => {
           const whereClause: any = r.id ? { id: r.id } : { rtvCn: r.noRtv };
-          
-          // Cari data lama untuk tracking history berdasarkan row spesifik yang mau diupdate
-          const oldData = await prisma.dataRetur.findFirst({
-            where: whereClause
-          });
+          const oldData = allOldData.find((d: any) => r.id ? d.id === r.id : d.rtvCn === r.noRtv);
           
           const updatePayload: any = { invoiceRekon: r.refInvoice };
-          
-          // Jika invoiceRekon sebelumnya ada dan berbeda dari yang baru, pindahkan ke referensiPembayaran sebagai riwayat
           if (oldData && oldData.invoiceRekon && oldData.invoiceRekon !== r.refInvoice) {
              updatePayload.referensiPembayaran = oldData.invoiceRekon;
-          } else if (oldData && !oldData.referensiPembayaran && oldData.invoiceRekon !== r.refInvoice) {
-             // Opsional: Jika invoiceRekon kosong tapi refInvoice diisi pertama kali, biarkan referensiPembayaran apa adanya
           }
-
-          // Update specifically that row!
-          await prisma.dataRetur.updateMany({
+          
+          return prisma.dataRetur.updateMany({
             where: whereClause,
             data: updatePayload
           });
-        }
+        });
+        
+        await prisma.$transaction(updatePromises);
       }
     }
 
@@ -353,6 +364,10 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 

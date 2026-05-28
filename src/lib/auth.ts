@@ -65,7 +65,12 @@ export async function authenticate(
         const isHashed = storedPw.startsWith("$2");
         const match = isHashed
           ? await bcrypt.compare(password, storedPw)
-          : password === storedPw;
+          : (() => {
+              // Constant-time comparison for plaintext passwords
+              const a = Buffer.from(password);
+              const b = Buffer.from(storedPw);
+              return a.length === b.length && timingSafeEqual(a, b);
+            })();
 
         if (match) {
           // Auto-upgrade: hash plaintext password on successful login
@@ -101,7 +106,11 @@ export async function authenticate(
     expected.email &&
     expected.password &&
     lower === expected.email.toLowerCase() &&
-    password === expected.password
+    (() => {
+      const a = Buffer.from(password);
+      const b = Buffer.from(expected.password!);
+      return a.length === b.length && timingSafeEqual(a, b);
+    })()
   ) {
     return {
       ok: true,
@@ -199,4 +208,61 @@ export async function verifySessionEdge(
   } catch {
     return null;
   }
+}
+
+// ────────────────────────────────────────────
+// Shared API Route Helpers
+// ────────────────────────────────────────────
+
+/**
+ * Extract and verify session from request cookies.
+ * Use this in API routes instead of copy-pasting the cookie extraction logic.
+ */
+export async function getSession(request: Request): Promise<SessionPayload | null> {
+  // Try Next.js cookies() first, then fallback to raw header parsing
+  let token: string | undefined;
+  try {
+    const { cookies } = await import("next/headers");
+    const bag = await cookies();
+    token = bag.get("session")?.value;
+  } catch {
+    // cookies() may fail outside of Server Component/Route context
+  }
+
+  // Fallback: parse cookie from raw headers
+  if (!token) {
+    const hdr = request.headers.get("cookie") || "";
+    const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
+    if (m && m[1]) token = decodeURIComponent(m[1]);
+  }
+
+  return verifySession(token);
+}
+
+/**
+ * Get session + resolve user role from database.
+ * Returns { session, role, email, dbUser } or null if unauthorized.
+ */
+export async function getSessionWithRole(request: Request): Promise<{
+  session: SessionPayload;
+  role: string;
+  email: string;
+  dbUser: any;
+} | null> {
+  const session = await getSession(request);
+  if (!session) return null;
+
+  const email = String(
+    session.email || (session as any)?.user?.email || ""
+  ).toLowerCase().trim();
+
+  let dbUser = null;
+  if (email) {
+    dbUser = await prisma.user.findFirst({ where: { email } });
+  }
+
+  const rawRole = dbUser?.role || session.role || "";
+  const role = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+
+  return { session, role, email, dbUser };
 }

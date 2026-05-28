@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cacheClearPrefix } from "@/lib/ttl-cache";
+import { getSession } from "@/lib/auth";
 
 export async function PATCH(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id, itemId, pcsKirim } = await request.json();
 
     if (!id && !itemId) {
@@ -45,7 +51,7 @@ export async function PATCH(request: Request) {
       });
 
       // Update one by one to ensure Rp Tagih recalculated per item price
-      await Promise.all(items.map(it => {
+      await prisma.$transaction(items.map(it => {
         const orderPcs = Number(it.pcs) || 1;
         const actualDiscount = (Number(it.discount || 0) / orderPcs) * value;
         const rpTagih = Math.max(0, (value * it.hargaPcs) - actualDiscount);

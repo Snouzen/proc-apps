@@ -24,51 +24,59 @@ model Product {
 }
 
 model PurchaseOrder {
-  id             String              @id
-  ritelId        String
-  unitProduksiId String
-  noPo           String              @unique
-  tglPo          DateTime
-  expiredTgl     DateTime?
-  linkPo         String?
-  noInvoice      String?
-  noFaktur       String?
-  tujuanDetail   String?
-  regional       String?
-  statusKirim    Boolean             @default(false)
-  statusSdif     Boolean             @default(false)
-  statusPo       Boolean             @default(false)
-  statusFp       Boolean             @default(false)
-  statusKwi      Boolean             @default(false)
-  statusInv      Boolean             @default(false)
-  statusTagih    Boolean             @default(false)
-  statusBayar    Boolean             @default(false)
-  remarks        String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime
-  tglkirim       DateTime?
-  buktiBayar     String?
-  buktiTagih     String?
-  buktiKirim     String?
-  buktiFp        String?
-  namaSupir      String?
-  platNomor      String?
-  RitelModern    RitelModern         @relation(fields: [ritelId], references: [id])
-  UnitProduksi   UnitProduksi        @relation(fields: [unitProduksiId], references: [idRegional])
-  Items          PurchaseOrderItem[]
+  id                 String              @id
+  ritelId            String
+  unitProduksiId     String
+  noPo               String              @unique
+  tglPo              DateTime
+  expiredTgl         DateTime?
+  linkPo             String?
+  noInvoice          String?
+  noFaktur           String?
+  tujuanDetail       String?
+  regional           String?
+  statusKirim        Boolean             @default(false)
+  statusSdif         Boolean             @default(false)
+  statusPo           Boolean             @default(false)
+  statusFp           Boolean             @default(false)
+  statusKwi          Boolean             @default(false)
+  statusInv          Boolean             @default(false)
+  statusTagih        Boolean             @default(false)
+  statusBayar        Boolean             @default(false)
+  statusCreditLimit  String?
+  remarksCreditLimit String?
+  remarks            String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime
+  tglkirim           DateTime?
+  buktiBayar         String?
+  buktiTagih         String?
+  buktiKirim         String?
+  buktiFp            String?
+  namaSupir          String?
+  platNomor          String?
+  creditLimitBatchId String?
+  RitelModern        RitelModern         @relation(fields: [ritelId], references: [id])
+  UnitProduksi       UnitProduksi        @relation(fields: [unitProduksiId], references: [idRegional])
+  CreditLimitBatch   CreditLimitBatch?   @relation(fields: [creditLimitBatchId], references: [id])
+  Items              PurchaseOrderItem[]
 
   // Performance indexes for dashboard/schedule/company queries
-  @@index([noInvoice])              // status filters (active/completed/expired)
-  @@index([expiredTgl])             // expired/almost_expired filters
-  @@index([tglPo])                  // date range + sorting
-  @@index([createdAt])              // sorting by newest
-  @@index([regional])               // regional filter
-  @@index([ritelId])                // company joins
-  @@index([unitProduksiId])         // unit produksi joins
-  @@index([tglkirim])               // schedule page filter
-  @@index([noInvoice, expiredTgl])  // compound: active PO queries
-  @@index([statusTagih])            // checklist docs filter
-  @@index([buktiTagih])             // checklist docs filter
+  @@index([noInvoice]) // status filters (active/completed/expired)
+  @@index([expiredTgl]) // expired/almost_expired filters
+  @@index([tglPo]) // date range + sorting
+  @@index([createdAt]) // sorting by newest
+  @@index([regional]) // regional filter
+  @@index([ritelId]) // company joins
+  @@index([unitProduksiId]) // unit produksi joins
+  @@index([tglkirim]) // schedule page filter
+  @@index([noInvoice, expiredTgl]) // compound: active PO queries
+  @@index([statusPo, createdAt]) // compound: active PO sorting
+  @@index([statusPo, expiredTgl]) // compound: active PO expiring
+  @@index([unitProduksiId, statusPo]) // compound: unit filter
+  @@index([statusTagih]) // checklist docs filter
+  @@index([buktiTagih]) // checklist docs filter
+  @@index([creditLimitBatchId]) // credit limit batch filter
 }
 
 model PurchaseOrderItem {
@@ -87,8 +95,8 @@ model PurchaseOrderItem {
   Product         Product       @relation(fields: [productId], references: [id])
   PurchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
-  @@index([purchaseOrderId])  // aggregation joins (attachSummary)
-  @@index([productId])        // product joins
+  @@index([purchaseOrderId]) // aggregation joins (attachSummary)
+  @@index([productId]) // product joins
 }
 
 model RitelModern {
@@ -96,8 +104,8 @@ model RitelModern {
   namaPt        String
   inisial       String?
   tujuan        String?
-  logoPt        String?  // URL Logo Perusahaan
-  logoInisial   String?  // URL Logo Brand/Inisial
+  logoPt        String? // URL Logo Perusahaan
+  logoInisial   String? // URL Logo Brand/Inisial
   createdAt     DateTime        @default(now())
   updatedAt     DateTime
   PurchaseOrder PurchaseOrder[]
@@ -105,21 +113,21 @@ model RitelModern {
   Reconcile     Reconcile[]
   Promos        Promo[]
 
-  @@index([namaPt])  // company grouping/filtering
+  @@index([namaPt]) // company grouping/filtering
   @@map("ritel_modern")
 }
 
 model UnitProduksi {
-  idRegional    String          @id @default(cuid())
-  namaRegional  String
-  siteArea      String
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime
-  alamat        String?         @default("")
-  kodeRegional  String?
-  PurchaseOrder       PurchaseOrder[]
-  LokasiReturs        DataRetur[]     @relation("LokasiRetur")
-  PembebananReturs    DataRetur[]     @relation("PembebananRetur")
+  idRegional       String          @id @default(cuid())
+  namaRegional     String
+  siteArea         String
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime
+  alamat           String?         @default("")
+  kodeRegional     String?
+  PurchaseOrder    PurchaseOrder[]
+  LokasiReturs     DataRetur[]     @relation("LokasiRetur")
+  PembebananReturs DataRetur[]     @relation("PembebananRetur")
 }
 
 model User {
@@ -132,6 +140,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 model DataRetur {
   id                  String        @id @default(cuid())
   rtvCn               String?
@@ -167,49 +176,63 @@ model DataRetur {
 }
 
 model Promo {
-  id        String   @id @default(cuid())
-  nomor     String   @unique
-  linkDocs  String?
-  kegiatan  String   // Enum: Dc Fee, B2B Fee, Tagihan Promosi, Support Event, Rafaksi, Rebate, Lain-Lain
-  periode   String   // Month
-  tanggal   DateTime
-  dpp       Float
-  ppn       Float
-  pph       Float?   @default(0)
-  total     Float
-  linkFP    String?
-  ritelId   String?  // Made optional for backward compatibility
+  id          String       @id @default(cuid())
+  nomor       String       @unique
+  linkDocs    String?
+  kegiatan    String // Enum: Dc Fee, B2B Fee, Tagihan Promosi, Support Event, Rafaksi, Rebate, Lain-Lain
+  periode     String // Month
+  tanggal     DateTime
+  dpp         Float
+  ppn         Float
+  pph         Float?       @default(0)
+  total       Float
+  linkFP      String?
+  ritelId     String? // Made optional for backward compatibility
   RitelModern RitelModern? @relation(fields: [ritelId], references: [id])
-  remarks   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  remarks     String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@map("promos")
 }
-model Reconcile {
-  id               String       @id
-  noRekonsiliasi   String       @unique // Format: R-001/MM/YYYY
-  ritelId          String
-  RitelModern      RitelModern  @relation(fields: [ritelId], references: [id])
-  bankStatement    Float        @default(0)
-  biayaAdmin       Float        @default(0)
-  totalInvoices    Float        @default(0)
-  totalRtvs        Float        @default(0)
-  totalPromo       Float        @default(0)
-  nominal          Float        // Hasil akhir kalkulasi
-  invoices         String[]     // List nomor invoice
-  rtvs             String[]     // List nomor rtv/cn
-  notesDesc        String?
-  notesNominal     Float        @default(0)
-  notes            Json?        // Array of {desc: string, nominal: number}
-  noPromo          String?      // Nomor promo (opsional)
-  status           String       @default("final")
-  tglBayar         DateTime?
-  buktiBayarUrl    String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
 
-  @@map("reconciliations")
+model Reconcile {
+  id             String      @id
+  noRekonsiliasi String      @unique // Format: R-001/MM/YYYY
+  ritelId        String
+  RitelModern    RitelModern @relation(fields: [ritelId], references: [id])
+  bankStatement  Float       @default(0)
+  biayaAdmin     Float       @default(0)
+  totalInvoices  Float       @default(0)
+  totalRtvs      Float       @default(0)
+  totalPromo     Float       @default(0)
+  nominal        Float // Hasil akhir kalkulasi
+  invoices       String[] // List nomor invoice
+  rtvs           String[] // List nomor rtv/cn
+  notesDesc      String?
+  notesNominal   Float       @default(0)
+  notes          Json? // Array of {desc: string, nominal: number}
+  noPromo        String? // Nomor promo (opsional)
+  status         String      @default("final")
+  tglBayar       DateTime?
+  buktiBayarUrl  String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
   @@index([ritelId])
   @@index([noRekonsiliasi])
+  @@map("reconciliations")
+}
+
+model CreditLimitBatch {
+  id             String          @id @default(cuid())
+  batchCode      String          @unique // CL-001/05/2026
+  seqNumber      Int // 1, 2, 3, ... (never resets)
+  status         String          @default("OPEN") // OPEN | CLOSED
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  PurchaseOrders PurchaseOrder[]
+
+  @@index([status])
+  @@map("credit_limit_batches")
 }

@@ -82,13 +82,14 @@ export async function GET(request: Request) {
     // SCENARIO A: Grouped Mode (Accordion) - Berikan daftar peritel yang punya retur
     if (!retailerId) {
       const allRitelsWithReturs = await prisma.ritelModern.findMany({
+        take: 5000,
         where: {
           DataRetur: { some: (drFilter.length > 0 ? { AND: drFilter } : {}) as any }
         },
         include: {
           _count: {
             select: {
-              DataRetur: { where: {} }
+              DataRetur: { where: (drFilter.length > 0 ? { AND: drFilter } : {}) as any }
             }
           }
         },
@@ -228,14 +229,17 @@ export async function POST(request: Request) {
 
       // 2. Jika REPLACE aktif, hapus data lama yang rtvCn DAN produk-nya bentrok
       if (replaceDuplicates) {
-        // Karena Prisma deleteMany tidak support filter multiple (A AND B) OR (C AND D) secara elegan untuk batch besar,
-        // Kita gunakan loop atau filter IN jika memungkinkan. Untuk keamanan & presisi:
-        for (const item of processedBatch) {
-          if (item.rtv) {
+        const validItems = processedBatch.filter((item: any) => item.rtv);
+        if (validItems.length > 0) {
+          const chunkSize = 500;
+          for (let i = 0; i < validItems.length; i += chunkSize) {
+            const chunk = validItems.slice(i, i + chunkSize);
             await prisma.dataRetur.deleteMany({
               where: {
-                rtvCn: item.rtv,
-                produk: item.prod
+                OR: chunk.map((item: any) => ({
+                  rtvCn: item.rtv,
+                  produk: item.prod
+                }))
               }
             });
           }

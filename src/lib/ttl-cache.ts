@@ -3,6 +3,8 @@ type Entry = {
   value: unknown;
 };
 
+const MAX_CACHE_ENTRIES = 5000;
+
 const store = new Map<string, Entry>();
 const inflight = new Map<string, Promise<unknown>>();
 
@@ -13,10 +15,23 @@ export function cacheGet<T>(key: string): T | null {
     store.delete(key);
     return null;
   }
+  // Move to end to simulate LRU
+  store.delete(key);
+  store.set(key, hit);
   return hit.value as T;
 }
 
 export function cacheSet(key: string, value: unknown, ttlMs: number) {
+  if (store.size >= MAX_CACHE_ENTRIES) {
+    cachePrune();
+    if (store.size >= MAX_CACHE_ENTRIES) {
+      // Evict oldest (first item in Map)
+      const oldestKey = store.keys().next().value;
+      if (oldestKey) store.delete(oldestKey);
+    }
+  }
+  // Remove existing to update insertion order
+  store.delete(key);
   store.set(key, { value, expiresAt: Date.now() + Math.max(1, ttlMs) });
 }
 

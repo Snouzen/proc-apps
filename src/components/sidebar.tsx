@@ -159,7 +159,15 @@ export default function Sidebar({
   ];
 
   const creditLimitSubItems = [
-    { name: "Approval", icon: <ShieldCheck size={16} />, path: "/credit-limit/approval" },
+    ...(role === "pusat"
+      ? [
+          {
+            name: "Approval",
+            icon: <ShieldCheck size={16} />,
+            path: "/credit-limit/approval",
+          },
+        ]
+      : []),
     {
       name: "Data Credit Limit",
       icon: <FileText size={16} />,

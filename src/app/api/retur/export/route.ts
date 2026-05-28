@@ -90,6 +90,7 @@ export async function GET(request: Request) {
 
     // Fetch all records matching filters (NO LIMIT)
     const data = await prisma.dataRetur.findMany({
+      take: 5000,
       where: where as any,
       orderBy: { createdAt: "desc" },
       include: {

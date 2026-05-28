@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 import { canonicalProductName, dedupeKey } from "@/lib/text";
 import { ProductCreateSchema, ProductUpdateSchema } from "@/lib/schemas/master-data";
+import { getErrorMessage } from "@/lib/utils/error";
 
-function getErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object" && err !== null && "message" in err)
-    return String((err as { message: unknown }).message);
-  return "Gagal memproses data produk";
-}
+
 
 export async function GET(request: Request) {
   try {
@@ -30,6 +27,7 @@ export async function GET(request: Request) {
 
     if (!paged) {
       const data = await prisma.product.findMany({
+        take: 5000,
         where,
         select: {
           id: true,
@@ -73,6 +71,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const parsed = ProductCreateSchema.safeParse(body);
     if (!parsed.success) {
@@ -136,6 +138,10 @@ export async function POST(request: Request) {
 }
 export async function PUT(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const id: string | undefined = body?.id;
     const nameRaw: string | undefined = body?.name;
@@ -196,6 +202,10 @@ export async function PUT(request: Request) {
 // [REST] DELETE reads id from URL searchParams, not body
 export async function DELETE(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id") || undefined;
     if (!id) {

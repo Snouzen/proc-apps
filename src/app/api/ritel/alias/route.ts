@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
 import { cacheClearPrefix } from "@/lib/ttl-cache";
 
-function getErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object" && err !== null && "message" in err)
-    return String((err as { message: unknown }).message);
-  return "Gagal memproses alias ritel";
-}
+import { getErrorMessage } from "@/lib/utils/error";
 
 export async function PATCH(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { default: prisma } = await import("@/lib/db");
     const body = await request.json();
     const { namaPt, inisial, newInisial } = body as {

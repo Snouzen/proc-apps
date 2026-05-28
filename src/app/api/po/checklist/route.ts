@@ -1,31 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { getSessionWithRole } from "@/lib/auth";
 import { cacheGet, cacheSet, cacheClearPrefix } from "@/lib/ttl-cache";
 
 export async function GET(req: NextRequest) {
   try {
-    const bag = await cookies();
-    let token = bag.get("session")?.value;
-    if (!token) {
-      const hdr = req.headers.get("cookie") || "";
-      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-      if (m && m[1]) token = decodeURIComponent(m[1]);
+    const auth = await getSessionWithRole(req);
+    if (!auth) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const sessionRaw = verifySession(token);
-    const sessionObj = await Promise.resolve(sessionRaw);
+    const { session, role: safeRole, dbUser } = auth;
     
-    let dbUser = null;
-    const email = sessionObj?.email || (sessionObj as any)?.user?.email;
-    if (email) {
-      dbUser = await prisma.user.findUnique({ where: { email } });
-    }
-    
-    const rawRole = dbUser?.role || sessionObj?.role || "";
-    const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
-
-    if (!sessionObj || (safeRole !== "magang" && safeRole !== "pusat")) {
+    if (safeRole !== "magang" && safeRole !== "pusat") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -131,26 +117,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const bag = await cookies();
-    let token = bag.get("session")?.value;
-    if (!token) {
-      const hdr = req.headers.get("cookie") || "";
-      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-      if (m && m[1]) token = decodeURIComponent(m[1]);
+    const auth = await getSessionWithRole(req);
+    if (!auth) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const sessionRaw = verifySession(token);
-    const sessionObj = await Promise.resolve(sessionRaw);
+    const { session, role: safeRole, dbUser } = auth;
     
-    let dbUser = null;
-    const email = sessionObj?.email || (sessionObj as any)?.user?.email;
-    if (email) {
-      dbUser = await prisma.user.findUnique({ where: { email } });
-    }
-    
-    const rawRole = dbUser?.role || sessionObj?.role || "";
-    const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
-
-    if (!sessionObj || (safeRole !== "magang" && safeRole !== "pusat")) {
+    if (safeRole !== "magang" && safeRole !== "pusat") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

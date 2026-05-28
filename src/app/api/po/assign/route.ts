@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cacheClearPrefix } from "@/lib/ttl-cache";
+import { getSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const noPo: string | undefined = body?.noPo;
     const regionalPayload: string | null | undefined = body?.regional;

@@ -1,5 +1,6 @@
 import db from "@/lib/prisma"; // gunakan prisma singleton
 import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
 import {
   cacheClearPrefix,
   cacheGet,
@@ -45,6 +46,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const session = await getSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await req.json();
     const parsed = UnitProduksiCreateSchema.safeParse(body);
     if (!parsed.success) {
@@ -158,6 +163,10 @@ export async function POST(req: Request) {
 // [REST] DELETE reads identifiers from URL searchParams, not request body
 export async function DELETE(req: Request) {
   try {
+    const session = await getSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const namaRegional = searchParams.get("namaRegional") || undefined;
     const siteArea = searchParams.get("siteArea") || undefined;
@@ -204,6 +213,10 @@ export async function DELETE(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
+    const session = await getSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await req.json().catch(() => ({}));
     const parsed = UnitProduksiPatchSchema.safeParse(body);
     if (!parsed.success) {

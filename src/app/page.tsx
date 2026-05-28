@@ -930,12 +930,12 @@ function TableUnderChart({
           Gagal load data: {poLoadError}
         </div>
       )}
-      <div className="px-5 py-4 border-b border-gray-100 bg-white">
+      <div className="px-5 py-4 border-b border-gray-100 bg-white relative z-30">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2 w-full">
             {!modalOpen && (
               <>
-                <div className="relative w-full md:w-auto z-10">
+                <div className="relative w-full md:w-auto z-40">
                   <SmoothSelect
                     width={172}
                     value={group}
@@ -1004,7 +1004,7 @@ function TableUnderChart({
                     onFilterChange={handleFilterChange}
                   />
                 </div>
-                <div className="relative w-full md:w-auto z-10">
+                <div className="relative w-full md:w-auto z-40">
                   <button
                     className="w-full md:w-auto px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold bg-white hover:bg-gray-50"
                     onClick={() => setColsOpen((o) => !o)}
@@ -1012,7 +1012,7 @@ function TableUnderChart({
                     Customize Columns
                   </button>
                   {colsOpen && !modalOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-20">
+                    <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-50">
                       {columnDefs.map((c) => (
                         <label
                           key={c.key}

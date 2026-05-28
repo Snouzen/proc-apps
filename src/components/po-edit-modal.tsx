@@ -10,6 +10,7 @@ import { LinkIcon, MapPin, Minus, Plus, Copy, Truck, Eye } from "lucide-react";
 import { PO_FORM_LABELS } from "@/lib/po-form-labels";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import Swal from "sweetalert2";
+import { formatCurrency, parseVal as parseRupiah } from "@/lib/format";
 
 type ReturnMode = "full" | "summary";
 
@@ -116,15 +117,7 @@ export default function POEditModal({
     return `${dt.getFullYear()}-${m}-${day}`;
   };
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(val);
 
-  const parseRupiah = (v: any) =>
-    Math.max(0, Number(String(v ?? "").replace(/[^0-9]/g, "")) || 0);
 
   const getSatuanKg = useCallback(
     (namaProduk: string) => {

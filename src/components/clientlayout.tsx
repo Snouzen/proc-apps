@@ -211,7 +211,7 @@ export default function ClientLayout({
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
               Anda yakin ingin logout dari akun{" "}
-              {profileRole === "rm" ? "Regional Manager" : "Admin Pusat"}?
+              {profileRole === "rm" ? "Regional Manager" : profileRole === "sitearea" ? "Admin Cabang" : profileRole === "magang" ? "Admin Bisnis" : "Admin Pusat"}?
             </p>
             <div className="flex gap-2">
               <button

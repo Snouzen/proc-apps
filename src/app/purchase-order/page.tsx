@@ -27,6 +27,7 @@ import {
 import { getMe } from "@/lib/me";
 import PODetailModal from "@/components/po-detail-modal";
 import POEditModal from "@/components/po-edit-modal";
+import BulkUploadModal from "@/components/bulk-upload-modal";
 import { LoaderThree } from "@/components/ui/loader";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -54,14 +55,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/data-table";
 
 type Retailer = {
   id: string;
@@ -109,6 +103,7 @@ export default function PurchaseOrderPage() {
 
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
 
   const [tglFrom, setTglFrom] = useState("");
@@ -507,12 +502,14 @@ export default function PurchaseOrderPage() {
                 )}
               </div>
 
-              <Link href="/po?tab=upload">
-                <Button variant="outline" className="border-slate-200 text-slate-700 bg-white h-11 rounded-xl font-bold">
-                  <Upload className="w-4 h-4 mr-2 text-blue-600" />
-                  Bulk Upload
-                </Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                className="border-slate-200 text-slate-700 bg-white h-11 rounded-xl font-bold"
+                onClick={() => setIsBulkOpen(true)}
+              >
+                <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                Bulk Upload
+              </Button>
               <Link href="/po">
                 <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-none h-11 rounded-xl px-5 font-bold">
                   <PlusCircle className="w-4 h-4 mr-2" />
@@ -927,98 +924,134 @@ export default function PurchaseOrderPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <Table className="min-w-[1200px]">
-                  <TableHeader className="bg-slate-50/80">
-                    <TableRow className="border-slate-100 h-12">
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest pl-6 text-slate-500 text-center w-12">NO</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">NO PO</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">TGL PO</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">DUE DATE</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">PRODUK</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 text-right">PCS KIRIM</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">TUJUAN DETAIL</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">UNIT PRODUKSI</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">SITE AREA</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 text-right">KG</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 text-right">DISCOUNT</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 text-right">NOMINAL</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-right pr-6 text-slate-500">AKSI</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loadingData ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={`skeleton-${i}`} className="h-16 animate-pulse bg-slate-50/50">
-                          <TableCell colSpan={13}>
-                            <div className="h-4 bg-slate-200 rounded w-full"></div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : paginatedPo.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={13} className="h-48 text-center bg-slate-50/30">
-                          <div className="flex flex-col items-center justify-center text-slate-500 space-y-2">
-                            <span className="font-semibold text-lg text-slate-700">
-                              {statusFilter === 'active' && 'Tidak ada data PO Active.'}
-                              {statusFilter === 'almost_expired' && 'Tidak ada data PO Mendekati Expired (Almost Expired).'}
-                              {statusFilter === 'expired' && 'Tidak ada data PO Expired.'}
-                              {statusFilter === 'complete' && 'Tidak ada data PO Complete.'}
-                              {statusFilter === 'all' && 'Tidak ada data PO yang sesuai.'}
-                            </span>
-                            <span className="text-sm font-medium">Bisa coba atur filter tanggal atau pencarian yang lain.</span>
+                  <DataTable
+                    columns={[
+                      {
+                        key: "no",
+                        label: "NO",
+                        align: "center",
+                        width: "w-12",
+                        render: (_v: any, _po: any, index: number) => (
+                          <span className="font-bold text-xs text-slate-500">
+                            {perPage === "all" ? index + 1 : (currentPage - 1) * parseInt(perPage, 10) + index + 1}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "noPo",
+                        label: "NO PO",
+                        render: (_v: any, po: any) => (
+                          <div className="py-2">
+                            <div className="font-bold text-slate-800 text-xs whitespace-nowrap">{po.noPo}</div>
+                            {po.noInvoice && (
+                              <div className="text-[10px] font-semibold text-slate-500 mt-0.5 whitespace-nowrap">
+                                INV: {po.noInvoice}
+                              </div>
+                            )}
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : paginatedPo.map((po, index) => (
-                      <TableRow 
-                        key={po.id} 
-                        className="hover:bg-slate-50/70 transition-colors border-slate-50 h-16 cursor-pointer"
-                        onClick={() => { setSelectedPO(po); setIsModalOpen(true); }}
-                      >
-                        <TableCell className="font-bold text-xs text-slate-500 text-center pl-6">
-                          {perPage === "all" ? index + 1 : (currentPage - 1) * parseInt(perPage, 10) + index + 1}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="font-bold text-slate-800 text-xs whitespace-nowrap">{po.noPo}</div>
-                          {po.noInvoice && (
-                            <div className="text-[10px] font-semibold text-slate-500 mt-0.5 whitespace-nowrap">
-                              INV: {po.noInvoice}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-slate-700 font-semibold text-xs whitespace-nowrap">
-                          {po.tglPo ? new Date(po.tglPo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                        </TableCell>
-                        <TableCell className="text-slate-700 font-semibold text-xs whitespace-nowrap">
-                          {po.expiredTgl ? new Date(po.expiredTgl).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                        </TableCell>
-                        <TableCell className="text-slate-700 font-semibold text-xs whitespace-nowrap">
-                          {Number(po.itemsCount) > 1 
-                            ? `${po.firstProductName || 'Item'} (+${Number(po.itemsCount) - 1} lainnya)` 
-                            : (po.firstProductName || '-')}
-                        </TableCell>
-                        <TableCell className="text-right text-slate-700 font-semibold text-xs tabular-nums">
-                          {(Number(po.pcsKirimTotal) || 0).toLocaleString('id-ID')}
-                        </TableCell>
-                        <TableCell className="text-slate-700 text-xs whitespace-nowrap">
-                          {po.tujuanDetail || '-'}
-                        </TableCell>
-                        <TableCell className="text-slate-700 text-xs whitespace-nowrap">
-                          {po.UnitProduksi?.namaRegional || po.regional || '-'}
-                        </TableCell>
-                        <TableCell className="text-slate-700 text-xs whitespace-nowrap">
-                          {po.UnitProduksi?.siteArea || '-'}
-                        </TableCell>
-                        <TableCell className="text-right text-slate-700 font-semibold text-xs tabular-nums">
-                          {(Number(po.totalKg) || 0).toLocaleString('id-ID')}
-                        </TableCell>
-                        <TableCell className="text-right text-slate-700 font-semibold text-xs tabular-nums">
-                          {(Number(po.totalDiscount) || 0).toLocaleString('id-ID')}
-                        </TableCell>
-                        <TableCell className="text-right text-slate-700 font-semibold text-xs tabular-nums">
-                          {(Number(po.totalNominal) || 0).toLocaleString('id-ID')}
-                        </TableCell>
-                        <TableCell className="text-right pr-6">
+                        )
+                      },
+                      {
+                        key: "tglPo",
+                        label: "TGL PO",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 font-semibold text-xs whitespace-nowrap">
+                            {po.tglPo ? new Date(po.tglPo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "expiredTgl",
+                        label: "DUE DATE",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 font-semibold text-xs whitespace-nowrap">
+                            {po.expiredTgl ? new Date(po.expiredTgl).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "produk",
+                        label: "PRODUK",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 font-semibold text-xs whitespace-nowrap">
+                            {Number(po.itemsCount) > 1 
+                              ? `${po.firstProductName || 'Item'} (+${Number(po.itemsCount) - 1} lainnya)` 
+                              : (po.firstProductName || '-')}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "pcsKirim",
+                        label: "PCS KIRIM",
+                        align: "right",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 font-semibold text-xs tabular-nums">
+                            {(Number(po.pcsKirimTotal) || 0).toLocaleString('id-ID')}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "tujuanDetail",
+                        label: "TUJUAN DETAIL",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 text-xs whitespace-nowrap">
+                            {po.tujuanDetail || '-'}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "unitProduksi",
+                        label: "UNIT PRODUKSI",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 text-xs whitespace-nowrap">
+                            {po.UnitProduksi?.namaRegional || po.regional || '-'}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "siteArea",
+                        label: "SITE AREA",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 text-xs whitespace-nowrap">
+                            {po.UnitProduksi?.siteArea || '-'}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "totalKg",
+                        label: "KG",
+                        align: "right",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 font-semibold text-xs tabular-nums">
+                            {(Number(po.totalKg) || 0).toLocaleString('id-ID')}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "totalDiscount",
+                        label: "DISCOUNT",
+                        align: "right",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 font-semibold text-xs tabular-nums">
+                            {(Number(po.totalDiscount) || 0).toLocaleString('id-ID')}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "totalNominal",
+                        label: "NOMINAL",
+                        align: "right",
+                        render: (_v: any, po: any) => (
+                          <span className="text-slate-700 font-semibold text-xs tabular-nums">
+                            {(Number(po.totalNominal) || 0).toLocaleString('id-ID')}
+                          </span>
+                        )
+                      },
+                      {
+                        key: "aksi",
+                        label: "AKSI",
+                        align: "right",
+                        render: (_v: any, po: any) => (
                           <div className="flex justify-end gap-1">
                             <button title="Edit" onClick={(e) => { e.stopPropagation(); setEditNoPo(po.noPo); setEditOpen(true); }} className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors">
                               <Pencil size={16} />
@@ -1029,37 +1062,26 @@ export default function PurchaseOrderPage() {
                               </button>
                             )}
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        )
+                      }
+                    ]}
+                    data={paginatedPo}
+                    loading={loadingData}
+                    total={filteredPo.length}
+                    page={currentPage}
+                    rowsPerPage={limitData}
+                    onPageChange={setCurrentPage}
+                    onRowClick={(po: any) => { setSelectedPO(po); setIsModalOpen(true); }}
+                    emptyMessage={
+                      statusFilter === 'active' ? 'Tidak ada data PO Active.' :
+                      statusFilter === 'almost_expired' ? 'Tidak ada data PO Mendekati Expired (Almost Expired).' :
+                      statusFilter === 'expired' ? 'Tidak ada data PO Expired.' :
+                      statusFilter === 'complete' ? 'Tidak ada data PO Complete.' :
+                      'Tidak ada data PO yang sesuai.'
+                    }
+                  />
               </div>
             </CardContent>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="bg-slate-50 border-t border-slate-100 p-6 flex items-center justify-end gap-4">
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 h-10 w-28 font-bold disabled:opacity-50"
-                  >
-                    Sebelumnya
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 h-10 w-28 font-bold disabled:opacity-50"
-                  >
-                    Berikutnya
-                  </Button>
-                </div>
-              </div>
-            )}
           </Card>
         </div>
       )}
@@ -1142,6 +1164,12 @@ export default function PurchaseOrderPage() {
           </div>
         </div>
       )}
+
+      <BulkUploadModal
+        open={isBulkOpen}
+        onClose={() => setIsBulkOpen(false)}
+        onSuccess={() => handleFetchData()}
+      />
     </div>
   );
 }

@@ -1,40 +1,14 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
+import { getRegionalSynonyms } from "@/lib/utils/regional";
 import { cacheGet, cacheSet, singleFlight } from "@/lib/ttl-cache";
+import { unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/auth";
 
 // [ENV] Timezone offset from env, not hardcoded
-const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
 
-function parseDate(v?: string | null) {
-  if (!v) return null;
-  const s = String(v).trim();
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) {
-    const y = Number(m[1]);
-    const mo = Number(m[2]) - 1;
-    const da = Number(m[3]);
-    if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(da)) {
-      return null;
-    }
-    return new Date(Date.UTC(y, mo, da, 12, 0, 0, 0));
-  }
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return null;
-  const shifted = new Date(d.getTime() + TZ_OFFSET_HOURS * 3600 * 1000);
-  return new Date(
-    Date.UTC(
-      shifted.getUTCFullYear(),
-      shifted.getUTCMonth(),
-      shifted.getUTCDate(),
-      12,
-      0,
-      0,
-      0,
-    ),
-  );
-}
 
 export async function GET(request: Request) {
   const bag = await cookies();
@@ -71,8 +45,7 @@ export async function GET(request: Request) {
 
   const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
 
-  // 4. Debugger (WAJIB CEK TERMINAL)
-  console.log("🚨 [DEBUG API] EMAIL:", email, "| DB_USER:", dbUser ? "KETEMU" : "KOSONG", "| SAFE_ROLE:", safeRole);
+
 
 
 // 5. Tentukan Wilayah (Dengan Fallback ke Token Metadata jika ada)
@@ -93,8 +66,8 @@ export async function GET(request: Request) {
   const regionalParam = overrideRegional ?? (searchParams.get("regional") || undefined);
   const siteAreaParam = overrideSiteArea ?? (searchParams.get("siteArea") || undefined);
 
-  const tglFrom = parseDate(searchParams.get("tglFrom"));
-  const tglTo = parseDate(searchParams.get("tglTo"));
+  const tglFrom = parseYmdOrIsoToUtcNoon(searchParams.get("tglFrom"));
+  const tglTo = parseYmdOrIsoToUtcNoon(searchParams.get("tglTo"));
 
   const safeSa = overrideSiteArea || searchParams.get("siteArea") || "";
   const hasSiteArea = safeSa.length > 0;
@@ -134,40 +107,10 @@ export async function GET(request: Request) {
       ),
     );
 
-    const syn = (() => {
-      const rp = String(regionalParam || "")
-        .trim()
-        .toLowerCase();
-      if (!rp) return [];
-      if (
-        rp.includes("bandung") ||
-        rp.includes("reg 1") ||
-        rp.includes("regional 1") ||
-        rp.includes(" i")
-      ) {
-        return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
-      }
-      if (
-        rp.includes("surabaya") ||
-        rp.includes("reg 2") ||
-        rp.includes("regional 2") ||
-        rp.includes(" ii")
-      ) {
-        return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
-      }
-      if (
-        rp.includes("makassar") ||
-        rp.includes("reg 3") ||
-        rp.includes("regional 3") ||
-        rp.includes(" iii")
-      ) {
-        return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
-      }
-      return [String(regionalParam || "").trim()];
-    })();
+    const syn = getRegionalSynonyms(String(regionalParam || ""));
     const emptyText = ["", "-", "Unknown", "UNKNOWN"];
 
-    const payload = await singleFlight(cacheKey, async () => {
+    const payload = await unstable_cache(async () => {
       // 1. Susun Base Where (Filter Global)
       const baseWhere: any = {};
       
@@ -279,10 +222,10 @@ export async function GET(request: Request) {
         })
       ]);
 
-      return {
-        cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, cProgress: 0
-      };
-    });
+        return {
+          cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, cProgress: 0
+        };
+    }, [cacheKey], { revalidate: 120, tags: [cacheKey] })();
     cacheSet(cacheKey, payload, 30000);
     cacheSet(
       `po_stats_group:${safeRole}:${keyParams.toString()}:all`,

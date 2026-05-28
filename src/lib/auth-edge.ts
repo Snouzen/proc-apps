@@ -1,8 +1,10 @@
-export type Role = "pusat";
+export type Role = "pusat" | "rm" | "sitearea" | "magang";
 
 export interface SessionPayload {
   email: string;
   role: Role;
+  regional?: string | null;
+  siteArea?: string | null;
   exp: number;
   jti: string;
 }

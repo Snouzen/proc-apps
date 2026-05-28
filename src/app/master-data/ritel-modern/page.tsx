@@ -26,24 +26,8 @@ const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), {
   ssr: false,
 });
 import { useAutoRefreshTick } from "@/components/auto-refresh";
-
-const highlightText = (text: string, query: string) => {
-  if (!query) return text;
-  const parts = String(text).split(new RegExp(`(${query})`, "gi"));
-  return (
-    <span>
-      {parts.map((part, i) =>
-        part.toLowerCase() === query.toLowerCase() ? (
-          <mark key={i} className="bg-yellow-200 text-black rounded-sm px-0.5">
-            {part}
-          </mark>
-        ) : (
-          part
-        ),
-      )}
-    </span>
-  );
-};
+import RitelFormModal from "./components/RitelFormModal";
+import RitelTable from "./components/RitelTable";
 
 export default function RitelModernPage() {
   const me = getMeSync();
@@ -621,152 +605,26 @@ export default function RitelModernPage() {
         variant="ritel"
       />
 
-      {loadError && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <strong>Gagal load data:</strong> {loadError}
-        </div>
-      )}
-
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <div className="relative max-w-md">
-          <input
-            suppressHydrationWarning
-            type="text"
-            placeholder="Cari Nama PT atau Inisial..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:outline-non focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
-          />
-        </div>
-      </div>
-
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
-        {isLoading ? (
-          <div className="px-6 py-10 text-center text-slate-400">
-            <div className="flex items-center justify-center">
-              <div className="relative flex items-center justify-center w-24 h-24 rounded-2xl bg-neutral-900">
-                <svg className="absolute w-20 h-20" viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    strokeWidth="6"
-                    fill="none"
-                    className="stroke-neutral-700"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    strokeWidth="6"
-                    fill="none"
-                    strokeLinecap="round"
-                    className="stroke-amber-500 ldr-dash"
-                  />
-                </svg>
-                <div className="ldr-flicker text-amber-500">
-                  <Zap size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : groupedData.length === 0 ? (
-          <div className="px-6 py-10 text-center text-slate-400">
-            {loadError ? "—" : "Belum ada data di database."}
-          </div>
-        ) : (
-          <div className="p-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-            {currentItems.map((group) => (
-              <div
-                key={group.displayId}
-                className="group relative bg-white rounded-[32px] border border-slate-100 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_45px_100px_-25px_rgba(0,0,0,0.15)] hover:-translate-y-1.5 transition-all duration-500 overflow-hidden"
-              >
-                {/* Logo Area - Large & Clear */}
-                <div className="relative h-[130px] w-full bg-white border-b border-slate-50 flex items-center justify-center p-6 overflow-hidden">
-                  <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
-                  
-                  {group.logoPt ? (
-                    <img
-                      src={group.logoPt}
-                      alt={group.namaPt}
-                      className="max-h-full max-w-full object-contain drop-shadow-xl group-hover:scale-110 transition-transform duration-700"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 opacity-20">
-                      <Building2 size={40} className="text-slate-400" />
-                    </div>
-                  )}
-
-                  {/* Badge Inisial - Top Right */}
-                  <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full border border-slate-100 shadow-sm flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4 duration-500">
-                    <span className="text-[10px] font-black text-slate-800 tabular-nums">
-                      {Object.keys(group.inisials).length}
-                    </span>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Inisial</span>
-                  </div>
-                </div>
-
-                {/* Content Area */}
-                <div className="p-6 space-y-5">
-                  <div className="space-y-1">
-                    <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-tight leading-tight group-hover:text-indigo-600 transition-colors truncate" title={group.namaPt}>
-                      {highlightText(group.namaPt, searchTerm)}
-                    </h3>
-                  </div>
-
-                  {/* Actions Footer */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-50 gap-2">
-                    <button
-                      onClick={() => setViewAliases({ namaPt: group.namaPt })}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 text-white hover:bg-indigo-600 transition-all duration-300 shadow-lg shadow-slate-200 hover:shadow-indigo-100 active:scale-95"
-                    >
-                      <Eye size={14} strokeWidth={2.5} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">View Details</span>
-                    </button>
-
-                    <div className="flex items-center gap-1.5">
-                      {canEdit && (
-                        <button
-                          onClick={() => {
-                            const firstAlias = Object.keys(group.inisials)[0];
-                            const firstData = group.inisials[firstAlias];
-                            setEditCompany({
-                              id: group.displayId,
-                              namaPt: group.namaPt,
-                              originalNamaPt: group.namaPt,
-                              inisial: null,
-                              originalInisial: null,
-                              logoPt: group.logoPt,
-                              ptOnly: true
-                            });
-                          }}
-                          className="p-3 rounded-2xl bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white transition-all duration-300 group/edit"
-                          title="Edit Logo / Nama PT"
-                        >
-                          <Edit2 size={15} strokeWidth={2.5} className="group-hover/edit:rotate-12 transition-transform" />
-                        </button>
-                      )}
-
-                      {!isRm && (
-                        <button
-                          onClick={() => setDeleteCompany(group.namaPt)}
-                          className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white transition-all duration-300 group/del"
-                          title="Hapus Ritel"
-                        >
-                          <Trash2 size={15} strokeWidth={2.5} className="group-hover/del:scale-110 transition-transform" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <RitelTable
+        isLoading={isLoading}
+        loadError={loadError}
+        groupedData={groupedData}
+        currentItems={currentItems}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        setCurrentPage={setCurrentPage}
+        canEdit={canEdit}
+        isRm={isRm}
+        setViewAliases={setViewAliases}
+        setEditCompany={setEditCompany}
+        setDeleteCompany={setDeleteCompany}
+        filteredData={filteredData}
+        indexOfFirstItem={indexOfFirstItem}
+        indexOfLastItem={indexOfLastItem}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        itemsPerPage={itemsPerPage}
+      />
       {editStore && (
         <div className="fixed inset-0 z-[190] flex items-center justify-center p-4">
           <div
@@ -1328,218 +1186,23 @@ export default function RitelModernPage() {
         </div>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setIsModalOpen(false)}
-          ></div>
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-50 flex justify-between item-center bg-gray-50/50">
-              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Building2 size={22} className="text-blue-600" />
-                {modalMode === "addCompany" ? "Tambah Company Baru" : "Tambah Item"}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-white rounded-xl text-gray-400 hover:text-red-500"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-
-            <form
-              onSubmit={(e) => e.preventDefault()}
-              className="p-6 space-y-5"
-            >
-              <div
-                className="relative overflow-hidden transition-all duration-300"
-                style={{
-                  minHeight: modalMode === "addInisial" ? (isRm ? "180px" : "320px") : "120px",
-                }}
-              >
-                <div
-                  className={`transition-all duration-300 transform ${
-                    modalMode === "addInisial"
-                      ? "translate-x-0 opacity-100 relative"
-                      : "-translate-x-full opacity-0 absolute inset-0 pointer-events-none"
-                  } space-y-5`}
-                >
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Building2 size={12} /> Company Name
-                    </label>
-                    <Combobox
-                      options={allCompanyOptions}
-                      value={selectedCompany}
-                      onChange={setSelectedCompany}
-                      placeholder="Cari atau pilih company..."
-                      leftIcon={<Building2 size={16} />}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Store size={12} /> Inisial
-                    </label>
-                    <input
-                      required={modalMode === "addInisial"}
-                      type="text"
-                      placeholder="Contoh: ALFAMART"
-                      value={inisial}
-                      onChange={(e) => setInisial(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-semibold text-slate-700"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {!isRm && (<>
-                      <div>
-                        <label className="block text-[11px] font-bold text-blue-600 mb-1 uppercase tracking-wider">
-                          Suntik Logo PT (URL)
-                        </label>
-                        <input
-                          type="text"
-                          value={logoPt}
-                          onChange={(e) => setLogoPt(e.target.value)}
-                          placeholder="https://..."
-                          className="w-full px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px]"
-                        />
-                        {logoPt && (
-                          <div className="mt-1 flex justify-center p-1 bg-white border border-blue-100 rounded-lg">
-                            <img src={logoPt} alt="preview" className="h-8 object-contain" />
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-amber-600 mb-1 uppercase tracking-wider">
-                          Suntik Logo Inisial (URL)
-                        </label>
-                        <input
-                          type="text"
-                          value={logoInisial}
-                          onChange={(e) => setLogoInisial(e.target.value)}
-                          placeholder="https://..."
-                          className="w-full px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px]"
-                        />
-                        {logoInisial && (
-                          <div className="mt-1 flex justify-center p-1 bg-white border border-amber-100 rounded-lg">
-                            <img src={logoInisial} alt="preview" className="h-8 object-contain" />
-                          </div>
-                        )}
-                      </div>
-                    </>)}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCompany("");
-                      setInisial("");
-                      setModalMode("addCompany");
-                    }}
-                    className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium block text-center w-full mt-2"
-                  >
-                    Add Company Baru
-                  </button>
-                </div>
-
-                <div
-                  className={`transition-all duration-300 transform ${
-                    modalMode === "addCompany"
-                      ? "translate-x-0 opacity-100 relative"
-                      : "translate-x-full opacity-0 absolute inset-0 pointer-events-none"
-                  } space-y-5`}
-                >
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Nama Company
-                    </label>
-                    <input
-                      required={modalMode === "addCompany"}
-                      type="text"
-                      placeholder="Contoh: PT LION SUPER INDO"
-                      value={selectedCompany}
-                      onChange={(e) => setSelectedCompany(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCompany("");
-                      setInisial("");
-                      setModalMode("addInisial");
-                    }}
-                    className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium block text-center w-full mt-2"
-                  >
-                    Back
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <StatefulButton
-                  variant="cancel"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1"
-                >
-                  Batal
-                </StatefulButton>
-                <StatefulButton
-                  variant="submit"
-                  onClick={async () => {
-                    if (modalMode === "addCompany" && !selectedCompany) {
-                      Swal.fire({ icon: "error", text: "Nama Company wajib diisi!" });
-                      return;
-                    }
-                    if (modalMode === "addInisial" && (!selectedCompany || !inisial)) {
-                      Swal.fire({ icon: "error", text: "Company dan Inisial wajib diisi!" });
-                      return;
-                    }
-
-                    try {
-                      const payload = {
-                        namaPt: selectedCompany,
-                        inisial: modalMode === "addCompany" ? null : inisial,
-                        logoPt: logoPt || undefined,
-                        logoInisial: logoInisial || undefined,
-                      };
-                      const result = await saveRitel(payload);
-                      setIsModalOpen(false);
-                      setSelectedCompany("");
-                      setInisial("");
-                      setLogoPt("");
-                      setLogoInisial("");
-                      setDataRitel((prev) => [result, ...prev]);
-
-                      Swal.fire({
-                        icon: "success",
-                        title: "Berhasil",
-                        text: "Data Berhasil disimpan!",
-                        timer: 1500,
-                      });
-                      setTimeout(() => window.location.reload(), 1000);
-                    } catch (error) {
-                      console.error("Error Submit Data:", error);
-                      Swal.fire({
-                        icon: "error",
-                        title: "Gagal",
-                        text: "Gagal konek server backend",
-                      });
-                    }
-                  }}
-                  className="flex-1"
-                >
-                  Simpan {modalMode === "addCompany" ? "Company" : "Data"}
-                </StatefulButton>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <RitelFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        modalMode={modalMode}
+        setModalMode={setModalMode}
+        isRm={isRm}
+        allCompanyOptions={allCompanyOptions}
+        selectedCompany={selectedCompany}
+        setSelectedCompany={setSelectedCompany}
+        inisial={inisial}
+        setInisial={setInisial}
+        logoPt={logoPt}
+        setLogoPt={setLogoPt}
+        logoInisial={logoInisial}
+        setLogoInisial={setLogoInisial}
+        setDataRitel={setDataRitel}
+      />
 
       {/* Edit Inisial Modal */}
       {editCompany && (
@@ -1945,33 +1608,6 @@ export default function RitelModernPage() {
         </div>
       )}
 
-      {filteredData.length > itemsPerPage && (
-        <div className="flex items-center justify-between px-2 py-4">
-          <p className="text-sm text-slate-500">
-            Showing {indexOfFirstItem + 1} to{" "}
-            {Math.min(indexOfLastItem, filteredData.length)} of{" "}
-            {filteredData.length} entries
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -4,38 +4,10 @@ import { cookies } from "next/headers";
 import { verifySession } from "@/lib/auth";
 import ExcelJS from "exceljs";
 import { upperClean } from "@/lib/text";
+import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
+import { getRegionalSynonyms } from "@/lib/utils/regional";
 
-// [ENV] Timezone offset from env, not hardcoded
-const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
 
-function parseDate(v?: string | null) {
-  if (!v) return null;
-  const s = String(v).trim();
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) {
-    const y = Number(m[1]);
-    const mo = Number(m[2]) - 1;
-    const da = Number(m[3]);
-    if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(da)) {
-      return null;
-    }
-    return new Date(Date.UTC(y, mo, da, 12, 0, 0, 0));
-  }
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return null;
-  const shifted = new Date(d.getTime() + TZ_OFFSET_HOURS * 3600 * 1000);
-  return new Date(
-    Date.UTC(
-      shifted.getUTCFullYear(),
-      shifted.getUTCMonth(),
-      shifted.getUTCDate(),
-      12,
-      0,
-      0,
-      0,
-    ),
-  );
-}
 
 const formatDateId = (d: any) => {
   if (!d) return "-";
@@ -74,10 +46,10 @@ export async function GET(request: Request) {
         : searchParams.get("regional") || undefined;
     const siteAreaParam = searchParams.get("siteArea") || undefined;
     const q = (searchParams.get("q") || "").trim();
-    const tglFrom = parseDate(searchParams.get("tglFrom"));
-    const tglTo = parseDate(searchParams.get("tglTo"));
-    const submitFrom = parseDate(searchParams.get("submitFrom"));
-    const submitTo = parseDate(searchParams.get("submitTo"));
+    const tglFrom = parseYmdOrIsoToUtcNoon(searchParams.get("tglFrom"));
+    const tglTo = parseYmdOrIsoToUtcNoon(searchParams.get("tglTo"));
+    const submitFrom = parseYmdOrIsoToUtcNoon(searchParams.get("submitFrom"));
+    const submitTo = parseYmdOrIsoToUtcNoon(searchParams.get("submitTo"));
     const group = (searchParams.get("group") || "all").trim();
     const sort = (searchParams.get("sort") || "createdAt_desc").trim();
 
@@ -108,33 +80,7 @@ export async function GET(request: Request) {
     }
     if (regionalParam && regionalParam.trim()) {
       const rp = regionalParam.trim().toLowerCase();
-      const syn = (() => {
-        if (
-          rp.includes("bandung") ||
-          rp.includes("reg 1") ||
-          rp.includes("regional 1") ||
-          rp.includes(" i")
-        ) {
-          return ["reg 1", "regional 1", "reg i", "regional i", "bandung"];
-        }
-        if (
-          rp.includes("surabaya") ||
-          rp.includes("reg 2") ||
-          rp.includes("regional 2") ||
-          rp.includes(" ii")
-        ) {
-          return ["reg 2", "regional 2", "reg ii", "regional ii", "surabaya"];
-        }
-        if (
-          rp.includes("makassar") ||
-          rp.includes("reg 3") ||
-          rp.includes("regional 3") ||
-          rp.includes(" iii")
-        ) {
-          return ["reg 3", "regional 3", "reg iii", "regional iii", "makassar"];
-        }
-        return [regionalParam.trim()];
-      })();
+      const syn = getRegionalSynonyms(rp);
       where.OR = [
         ...syn.map((s) => ({
           regional: { contains: s, mode: "insensitive" as const },
@@ -362,6 +308,7 @@ export async function GET(request: Request) {
 
     // [PERF] Use select instead of include — only fetch fields used in Excel generation
     const data = await prisma.purchaseOrder.findMany({
+      take: 5000,
       where,
       select: {
         id: true,

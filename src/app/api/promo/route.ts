@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server"; // Re-sync build
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 import { PromoCreateSchema, PromoUpdateSchema, PromoBatchSchema } from "@/lib/schemas/master-data";
 
-// Helper for ultra short unique ID (6 chars)
+import crypto from "crypto";
+
+// Cryptographically secure unique ID
 function generateShortId() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  return crypto.randomUUID().replace(/-/g, "").substring(0, 12).toUpperCase();
 }
 
 export async function GET(request: Request) {
@@ -29,6 +32,7 @@ export async function GET(request: Request) {
     // Flat list mode: Return promos for search (respects filtering)
     if (mode === "list") {
       const promos = await prisma.promo.findMany({
+        take: 5000,
         where: whereCondition,
         include: { RitelModern: true },
         orderBy: { createdAt: "desc" }
@@ -39,6 +43,7 @@ export async function GET(request: Request) {
     // Grouped Mode: Return retailers that have promos, deduplicated by name
     if (!ritelId) {
       const allPromos = await prisma.promo.findMany({
+        take: 5000,
         include: { RitelModern: true }
       });
 
@@ -51,7 +56,7 @@ export async function GET(request: Request) {
           continue;
         }
 
-        const name = p.RitelModern?.namaPt.trim().toUpperCase() || "UNKNOWN";
+        const name = p.RitelModern?.namaPt?.trim().toUpperCase() || "UNKNOWN";
         if (aggregatedMap.has(name)) {
           aggregatedMap.get(name)._count.Promos++;
         } else {
@@ -92,6 +97,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
 
     // Support Batch Upload
@@ -171,6 +180,10 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const parsed = PromoUpdateSchema.safeParse(body);
     if (!parsed.success) {
@@ -208,6 +221,10 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const ritelId = searchParams.get("ritelId");

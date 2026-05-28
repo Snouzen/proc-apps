@@ -5,7 +5,6 @@ import { DataTable } from "@/components/data-table";
 import {
   Search,
   ShieldCheck,
-  Eye,
   CalendarDays,
   MapPin,
   CheckCircle2,
@@ -253,13 +252,15 @@ export default function CreditLimitDataPage() {
       // 1. Sudah dijadwalkan (tglkirim ada)
       // 2. pcsKirimTotal >= pcsTotal (pengiriman lengkap)
       // 3. Due date (expiredTgl) dalam range 14 hari sebelum/sesudah hari ini
+      // 4. Belum diajukan credit limit (statusCreditLimit === null)
       const eligible = list.filter((po: any) => {
         const isScheduled = !!po.tglkirim;
         const pcsKirim = Number(po.pcsKirimTotal || 0);
         const pcsTotal = Number(po.pcsTotal || 0);
         const pcsMatch = pcsTotal > 0 && pcsKirim >= pcsTotal;
         const zone = getDueDateZone(po.expiredTgl);
-        return isScheduled && pcsMatch && zone !== "out_of_range";
+        const notRequested = !po.statusCreditLimit || po.statusCreditLimit === "REJECTED";
+        return isScheduled && pcsMatch && zone !== "out_of_range" && notRequested;
       });
 
       setPoData(eligible);
@@ -325,19 +326,13 @@ export default function CreditLimitDataPage() {
             <div class="flex items-start gap-2 mt-2 px-3 py-2 bg-amber-50 rounded-xl border border-amber-200">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 shrink-0 mt-0.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
               <span class="text-xs text-amber-700 font-medium">${remarksHint}</span>
-            </div>
-            <div class="space-y-1.5 mt-3">
-              <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">${remarksLabel} <span class="text-rose-500">*</span></label>
-              <textarea id="cl-remarks" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all resize-none h-24" placeholder="Jelaskan alasan pengajuan..."></textarea>
-            </div>
-          `
-              : `
-            <div class="flex items-center gap-2 mt-3 px-3 py-2 bg-indigo-50 rounded-xl border border-indigo-100">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
-              <span class="text-xs text-indigo-600 font-semibold">Pengiriman sudah sesuai & siap diproses</span>
-            </div>
-          `
+            </div>`
+              : ''
           }
+          <div class="space-y-1.5 mt-3">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Catatan / Remarks <span class="text-rose-500">*</span></label>
+            <textarea id="cl-remarks" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all resize-none h-24" placeholder="Ketik alasan / catatan pengajuan di sini..."></textarea>
+          </div>
         </div>
       `,
       icon: "question",
@@ -358,17 +353,14 @@ export default function CreditLimitDataPage() {
           "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4 transition-all active:scale-95",
       },
       preConfirm: () => {
-        if (remarksRequired) {
-          const remarks = (
-            document.getElementById("cl-remarks") as HTMLTextAreaElement
-          )?.value;
-          if (!remarks || !remarks.trim()) {
-            Swal.showValidationMessage("Mohon isi alasan pengajuan");
-            return false;
-          }
-          return { remarks: remarks.trim() };
+        const remarks = (
+          document.getElementById("cl-remarks") as HTMLTextAreaElement
+        )?.value;
+        if (!remarks || !remarks.trim()) {
+          Swal.showValidationMessage("Mohon isi catatan / remarks pengajuan");
+          return false;
         }
-        return { remarks: null };
+        return { remarks: remarks.trim() };
       },
     });
 
@@ -376,26 +368,38 @@ export default function CreditLimitDataPage() {
 
     const { remarks } = result.value as { remarks: string | null };
 
-    // TODO: Implement actual credit limit submission API call
-    // Example payload: { poId: po.id, noPo: po.noPo, zone, remarks }
-    console.log("Credit Limit submission:", {
-      poId: po.id,
-      noPo: po.noPo,
-      zone,
-      remarks,
-    });
+    try {
+      const res = await fetch("/api/po/credit-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ poId: po.id, action: "request", remarks }),
+      });
 
-    Swal.fire({
-      icon: "success",
-      title: "Berhasil Diajukan!",
-      text: "PO telah dikirim ke halaman Approval Credit Limit.",
-      timer: 2000,
-      showConfirmButton: false,
-      background: "#ffffff",
-      customClass: {
-        popup: "rounded-[32px] border border-slate-100 shadow-2xl",
-      },
-    });
+      if (!res.ok) {
+        throw new Error("Gagal mengajukan credit limit");
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Berhasil Diajukan!",
+        text: "PO telah dikirim ke halaman Approval Credit Limit.",
+        timer: 2000,
+        showConfirmButton: false,
+        background: "#ffffff",
+        customClass: {
+          popup: "rounded-[32px] border border-slate-100 shadow-2xl",
+        },
+      });
+
+      // Hapus PO yang barusan diajukan dari list state
+      setPoData((prev) => prev.filter((item) => item.id !== po.id));
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "Terjadi kesalahan sistem",
+      });
+    }
   };
 
   const filteredPo = useMemo(() => {
@@ -899,6 +903,18 @@ export default function CreditLimitDataPage() {
               const zone = getDueDateZone(po.expiredTgl);
               const label = getZoneLabel(zone);
 
+              if (po.statusCreditLimit === "REJECTED") {
+                return (
+                  <StandardTooltip content="Pending (Rejected)">
+                    <div className="flex justify-center">
+                      <span className="inline-flex items-center justify-center w-8 h-8 bg-amber-50 text-amber-600 border border-amber-200 rounded-full cursor-pointer hover:bg-amber-100 transition-colors">
+                        <AlertTriangle size={16} strokeWidth={2.5} />
+                      </span>
+                    </div>
+                  </StandardTooltip>
+                );
+              }
+
               if (zone === "normal") {
                 return (
                   <StandardTooltip content={label}>
@@ -942,7 +958,7 @@ export default function CreditLimitDataPage() {
             key: "actions",
             label: "Action",
             align: "center" as const,
-            width: "w-[130px]",
+            width: "w-[80px]",
             render: (_v: any, po: any) => {
               const zone = getDueDateZone(po.expiredTgl);
               return (
@@ -953,7 +969,9 @@ export default function CreditLimitDataPage() {
                   <ActionButton
                     icon={ShieldCheck}
                     tooltip={
-                      needsRemarks(zone)
+                      po.statusCreditLimit === "REJECTED"
+                        ? "Ajukan Ulang Credit Limit"
+                        : needsRemarks(zone)
                         ? "Ajukan Credit Limit (Perlu Remarks)"
                         : "Ajukan Credit Limit"
                     }
@@ -961,17 +979,7 @@ export default function CreditLimitDataPage() {
                       e.stopPropagation();
                       handleAjukanCreditLimit(po);
                     }}
-                    variant={needsRemarks(zone) ? "amber" : "indigo"}
-                  />
-
-                  <ActionButton
-                    icon={Eye}
-                    tooltip="Lihat Detail PO"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewRow(po);
-                    }}
-                    variant="slate"
+                    variant={po.statusCreditLimit === "REJECTED" || needsRemarks(zone) ? "amber" : "indigo"}
                   />
                 </div>
               );

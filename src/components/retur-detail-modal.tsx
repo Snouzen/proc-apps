@@ -276,7 +276,7 @@ export default function ReturDetailModal({ isOpen, onClose, data }: ReturDetailM
                         <p className="text-sm font-black text-emerald-700">{data.invoiceRekon || "Belum ada invoice"}</p>
                         <div className="flex items-center gap-2 mt-2">
                            <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[8px] font-bold uppercase tracking-widest">Sistem</span>
-                           <span className="text-[8px] font-bold text-slate-400">{format(new Date(), "dd MMM yyyy, HH:mm")}</span>
+                           <span className="text-[8px] font-bold text-slate-400">{data.updatedAt ? format(new Date(data.updatedAt), "dd MMM yyyy, HH:mm") : data.createdAt ? format(new Date(data.createdAt), "dd MMM yyyy, HH:mm") : "-"}</span>
                         </div>
                      </div>
                   </div>
