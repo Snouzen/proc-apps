@@ -659,6 +659,21 @@ export default function NeedAssignPage() {
       },
     },
     {
+      header: "Jml Pcs",
+      id: "pcsTotal",
+      cell: ({ row }) => {
+        const total = (Array.isArray(row.original.Items) ? row.original.Items : []).reduce(
+          (acc: number, it: any) => acc + (Number(it?.pcs) || 0),
+          0,
+        );
+        return (
+          <span className="text-slate-700 font-bold text-[12px] tabular-nums whitespace-nowrap inline-block text-right pr-4">
+            {total > 0 ? total.toLocaleString("id-ID") : "-"}
+          </span>
+        );
+      },
+    },
+    {
       header: "Actions",
       cell: ({ row }) => {
         const noPo = row.original.noPo;

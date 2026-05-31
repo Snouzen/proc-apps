@@ -338,6 +338,17 @@ export default function DataRekonPage() {
                         {/* Actions */}
                         <td className="px-4 py-4 text-right pr-8" onClick={(e) => e.stopPropagation()}>
                            <div className="flex items-center justify-end gap-2">
+                              {item.rincianBayarUrl && (
+                                 <a 
+                                    href={item.rincianBayarUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-8 h-8 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                    title="Lihat Rincian Bayar"
+                                 >
+                                    <FileSpreadsheet size={14} />
+                                 </a>
+                              )}
                               {item.buktiBayarUrl && (
                                  <button 
                                     onClick={() => setBuktiBayarPreviewUrl(item.buktiBayarUrl)}
@@ -494,7 +505,10 @@ export default function DataRekonPage() {
                                           <th className="px-5 py-3">#</th>
                                           <th className="px-5 py-3">NO. RTV</th>
                                           <th className="px-5 py-3">REF. INVOICE</th>
+                                          <th className="px-5 py-3">PEMBEBANAN</th>
+                                          <th className="px-5 py-3">LOKASI BARANG</th>
                                           <th className="px-5 py-3">TUJUAN</th>
+                                          <th className="px-5 py-3">PRODUK</th>
                                           <th className="px-5 py-3 text-right">NOMINAL</th>
                                         </tr>
                                       </thead>
@@ -503,6 +517,10 @@ export default function DataRekonPage() {
                                           const rtvNo = typeof rtv === 'string' ? rtv : rtv.noRtv;
                                           const refInv = typeof rtv === 'object' ? rtv.refInvoice : '-';
                                           const nominal = typeof rtv === 'object' ? rtv.nominal : 0;
+                                          const pembebanan = typeof rtv === 'object' ? (rtv.pembebananRetur || '-') : '-';
+                                          const lokasi = typeof rtv === 'object' ? (rtv.lokasiBarang || '-') : '-';
+                                          const tujuan = typeof rtv === 'object' ? (rtv.tujuan || '-') : '-';
+                                          const produk = typeof rtv === 'object' ? (rtv.produk || '-') : '-';
                                           return (
                                             <tr key={i} className="border-b border-slate-50 last:border-none hover:bg-rose-50/30 transition-colors">
                                               <td className="px-5 py-3 text-[9px] text-slate-300 font-bold">{i + 1}</td>
@@ -520,9 +538,16 @@ export default function DataRekonPage() {
                                                 )}
                                               </td>
                                               <td className="px-5 py-3">
-                                                <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px] inline-block" title={typeof rtv === 'object' ? rtv.tujuan : '-'}>
-                                                  {typeof rtv === 'object' ? (rtv.tujuan || '-') : '-'}
-                                                </span>
+                                                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">{pembebanan}</span>
+                                              </td>
+                                              <td className="px-5 py-3">
+                                                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">{lokasi}</span>
+                                              </td>
+                                              <td className="px-5 py-3">
+                                                <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px] inline-block" title={tujuan}>{tujuan}</span>
+                                              </td>
+                                              <td className="px-5 py-3">
+                                                <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px] inline-block" title={produk}>{produk}</span>
                                               </td>
                                               <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700">
                                                 {formatRp(nominal)}
@@ -530,7 +555,7 @@ export default function DataRekonPage() {
                                             </tr>
                                           );
                                         }) : (
-                                          <tr><td colSpan={5} className="px-5 py-6 text-center text-[9px] text-slate-300 italic">Tidak ada RTV</td></tr>
+                                          <tr><td colSpan={8} className="px-5 py-6 text-center text-[9px] text-slate-300 italic">Tidak ada RTV</td></tr>
                                         )}
                                       </tbody>
                                     </table>
@@ -545,25 +570,39 @@ export default function DataRekonPage() {
 
                               </div>
 
-                              {/* Bukti Bayar Section */}
-                              <div className="mt-6 pt-6 border-t border-slate-100">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-6 h-6 bg-amber-500 rounded-lg flex items-center justify-center">
-                                    <Paperclip size={12} className="text-white" />
+                              {/* Bukti & Rincian Bayar Section */}
+                              <div className="mt-4 pt-4 border-t border-slate-100/50">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center">
+                                    <Paperclip size={14} />
                                   </div>
-                                  <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bukti Bayar</h4>
+                                  <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bukti & Rincian Bayar</h4>
                                   <div className="flex-1 h-[1px] bg-slate-100"></div>
-                                  {item.buktiBayarUrl ? (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setBuktiBayarPreviewUrl(item.buktiBayarUrl); }}
-                                      className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/bukti border border-amber-100"
-                                    >
-                                      <Eye size={12} className="group-hover/bukti:scale-110 transition-transform" />
-                                      Lihat Bukti
-                                    </button>
-                                  ) : (
-                                    <span className="text-[9px] font-bold text-slate-300 italic uppercase tracking-widest">Belum ada bukti bayar</span>
-                                  )}
+                                  <div className="flex items-center gap-2">
+                                    {item.rincianBayarUrl && (
+                                      <a
+                                        href={item.rincianBayarUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/rincian border border-blue-100"
+                                      >
+                                        <FileSpreadsheet size={12} className="group-hover/rincian:scale-110 transition-transform" />
+                                        Rincian Bayar
+                                      </a>
+                                    )}
+                                    {item.buktiBayarUrl ? (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setBuktiBayarPreviewUrl(item.buktiBayarUrl); }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/bukti border border-amber-100"
+                                      >
+                                        <Eye size={12} className="group-hover/bukti:scale-110 transition-transform" />
+                                        Lihat Bukti
+                                      </button>
+                                    ) : (
+                                      <span className="text-[9px] font-bold text-slate-300 italic uppercase tracking-widest">Belum ada bukti bayar</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>

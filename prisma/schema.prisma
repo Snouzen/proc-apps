@@ -216,6 +216,7 @@ model Reconcile {
   status         String      @default("final")
   tglBayar       DateTime?
   buktiBayarUrl  String?
+  rincianBayarUrl String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 

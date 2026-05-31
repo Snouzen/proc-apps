@@ -67,7 +67,7 @@ export async function GET(request: Request) {
           lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
           produk: rtvData?.Product?.name || rtvData?.produk || "-",
           unitProduksi: rtvData?.LokasiBarang?.namaRegional || rtvData?.PembebananReturn?.namaRegional || "-",
-          tujuan: rtvData?.RitelModern?.tujuan || "-"
+          tujuan: rtvData?.namaCompany || rtvData?.RitelModern?.tujuan || "-"
         };
       });
 
@@ -195,7 +195,7 @@ export async function GET(request: Request) {
             unitProduksi: retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
             lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
             produk: retur?.Product?.name || retur?.produk || "-",
-            tujuan: retur?.RitelModern?.tujuan || "-",
+            tujuan: retur?.namaCompany || retur?.RitelModern?.tujuan || "-",
           };
         });
 
@@ -237,6 +237,7 @@ export async function POST(request: Request) {
       noPromo,
       notes,
       buktiBayarUrl,
+      rincianBayarUrl,
       tglBayar,
       status = "final",
       id // Cek apakah ini edit/update dari draft
@@ -246,7 +247,6 @@ export async function POST(request: Request) {
     const notesArray: Array<{desc: string, nominal: number}> = Array.isArray(notes) ? notes : [];
     const computedNotesDesc = notesArray.map((n: any) => n.desc).filter(Boolean).join(' | ') || null;
     const computedNotesNominal = notesArray.reduce((sum: number, n: any) => sum + (Number(n.nominal) || 0), 0);
-
     let GeneratedNoRekon = "";
     let finalId = id;
 
@@ -303,6 +303,7 @@ export async function POST(request: Request) {
         notesNominal: computedNotesNominal,
         noPromo: noPromo || null,
         buktiBayarUrl: buktiBayarUrl || undefined,
+        rincianBayarUrl: rincianBayarUrl || undefined,
         tglBayar: tglBayar ? new Date(tglBayar) : undefined,
         status: status || "final",
       },
@@ -323,6 +324,7 @@ export async function POST(request: Request) {
         notesNominal: computedNotesNominal,
         noPromo: noPromo || null,
         buktiBayarUrl: buktiBayarUrl || null,
+        rincianBayarUrl: rincianBayarUrl || null,
         tglBayar: tglBayar ? new Date(tglBayar) : null,
         status: status || "final",
       }

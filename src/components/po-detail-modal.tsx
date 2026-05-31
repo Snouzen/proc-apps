@@ -225,7 +225,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                     Catatan / Remarks Credit Limit
                   </p>
                   <p className="font-medium text-slate-700 text-xs italic bg-amber-50 p-2 rounded-lg border border-amber-100/50">
-                    "{data.remarksCreditLimit}"
+                    &ldquo;{data.remarksCreditLimit}&rdquo;
                   </p>
                 </div>
               )}

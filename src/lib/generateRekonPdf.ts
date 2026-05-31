@@ -219,7 +219,7 @@ export const generateRekonPdf = (
     const invBody = (item.invoices || []).map((inv: any, i: number) => [
       String(i + 1),
       inv.noInvoice || "-",
-      inv.unitProduksi || "-",
+      inv.siteArea || inv.unitProduksi || "-",
       inv.produk || "-",
       formatRp(inv.nominal || 0),
     ]);
@@ -279,12 +279,20 @@ export const generateRekonPdf = (
       const pembebanan = typeof rtv === "object" ? (rtv.pembebananRetur || "-") : "-";
       const lokasi = typeof rtv === "object" ? (rtv.lokasiBarang || "-") : "-";
       const produk = typeof rtv === "object" ? (rtv.produk || "-") : "-";
-      const unitProduksi = typeof rtv === "object" ? (rtv.unitProduksi || "-") : "-";
-      return [String(i + 1), rtvNo || "-", refInv || "-", unitProduksi, pembebanan, lokasi, produk, formatRp(nominal || 0)];
+      const tujuan = typeof rtv === "object" ? (rtv.tujuan || "-") : "-";
+      
+      // Get Unit Produksi from the related invoice's siteArea (to match UI calc/page.tsx)
+      const relatedInv = (item.invoices || []).find((inv: any) => inv.noInvoice === refInv);
+      let unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi;
+      if (!unitProduksi) {
+        unitProduksi = typeof rtv === "object" ? (rtv.siteArea || rtv.unitProduksi || "-") : "-";
+      }
+      
+      return [String(i + 1), rtvNo || "-", refInv || "-", unitProduksi, pembebanan, lokasi, tujuan, produk, formatRp(nominal || 0)];
     });
 
     if (rtvBody.length === 0) {
-      rtvBody.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-"]);
+      rtvBody.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-", "-"]);
     }
 
     rtvBody.push([
@@ -295,12 +303,13 @@ export const generateRekonPdf = (
       "",
       "",
       "",
+      "",
       formatRp(item.totalRtvs || 0),
     ]);
 
     autoTable(doc, {
       startY: nextY + 3,
-      head: [["#", "No. RTV", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Produk", "Nominal"]],
+      head: [["#", "No. RTV", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Tujuan", "Produk", "Nominal"]],
       body: rtvBody,
       theme: "striped",
       styles: { fontSize: 6.5, cellPadding: 1.8, overflow: "linebreak" },
@@ -311,13 +320,14 @@ export const generateRekonPdf = (
       },
       columnStyles: {
         0: { halign: "center", cellWidth: 7 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 30 },
-        5: { cellWidth: 30 },
-        6: { cellWidth: 30 },
-        7: { halign: "right", cellWidth: 32 },
+        1: { cellWidth: 32 },
+        2: { cellWidth: 32 },
+        3: { cellWidth: 26 },
+        4: { cellWidth: 26 },
+        5: { cellWidth: 26 },
+        6: { cellWidth: 26 },
+        7: { cellWidth: 26 },
+        8: { halign: "right", cellWidth: 28 },
       },
       didParseCell: (hookData: any) => {
         if (hookData.row.index === rtvBody.length - 1) {

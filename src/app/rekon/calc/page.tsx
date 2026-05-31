@@ -106,6 +106,7 @@ function RekonContent() {
   const [tglBayar, setTglBayar] = useState<string>("");
   const [buktiBayarFile, setBuktiBayarFile] = useState<File | null>(null);
   const [buktiBayarUrl, setBuktiBayarUrl] = useState<string | null>(null);
+  const [rincianBayarUrl, setRincianBayarUrl] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([]);
@@ -154,6 +155,7 @@ function RekonContent() {
             setRekonNo(d.noRekonsiliasi || null);
             setNotesList(Array.isArray(d.notes) ? d.notes.map((n: any) => ({ ...n, type: n.type || 'invoice' })) : []);
             setBuktiBayarUrl(d.buktiBayarUrl || null);
+            setRincianBayarUrl(d.rincianBayarUrl || "");
             if (d.tglBayar) setTglBayar(d.tglBayar.split("T")[0]);
           }
         } catch (err) {
@@ -261,7 +263,7 @@ function RekonContent() {
           lokasiBarang: r.LokasiBarang?.siteArea || "-",
           produk: r.Product?.name || r.produk || "-",
           unitProduksi: "-",
-          tujuan: r.RitelModern?.tujuan || "-",
+          tujuan: r.namaCompany || r.RitelModern?.tujuan || "-",
         }));
 
         setSelectedRtvs(prev => {
@@ -386,6 +388,7 @@ function RekonContent() {
         noPromo: selectedPromo?.nomor || null,
         notes: notesList.filter(n => n.desc || n.nominal).map(n => ({ type: n.type || 'invoice', desc: n.desc, nominal: n.nominal })),
         buktiBayarUrl: uploadedBuktiBayarUrl || null,
+        rincianBayarUrl: rincianBayarUrl || null,
         tglBayar: tglBayar || null,
         status: status,
         id: editId || undefined
@@ -499,57 +502,71 @@ function RekonContent() {
                     </div>
                  </div>
 
-                 <div className="md:col-span-7 space-y-3">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bukti Bayar (Max 1MB)</label>
-                    <div className="relative group h-16">
-                       <input 
-                          type="file" 
-                          accept="image/*,.pdf"
-                          className="hidden" 
-                          id="bukti-bayar-upload"
-                          onChange={(e) => {
-                             const file = e.target.files?.[0];
-                             if (file) {
-                                if (file.size > 1024 * 1024) {
-                                   Swal.fire({
-                                      icon: 'error',
-                                      title: 'File Terlalu Besar',
-                                      text: 'Maksimal ukuran file adalah 1MB bro!',
-                                      customClass: { popup: "rounded-[32px] font-sans" }
-                                   });
-                                   e.target.value = '';
-                                   return;
+                 <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Link Rincian Bayar (Excel/Spreadsheet)</label>
+                       <div className="relative group h-16">
+                          <input 
+                             type="url" 
+                             placeholder="https://..."
+                             className="w-full h-full px-6 bg-[#f8fafc] rounded-2xl border-none outline-none font-bold text-xs text-slate-600 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-indigo-50/50 transition-all shadow-sm"
+                             value={rincianBayarUrl}
+                             onChange={(e) => setRincianBayarUrl(e.target.value)}
+                          />
+                       </div>
+                    </div>
+                    <div className="space-y-3">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bukti Bayar (Max 1MB)</label>
+                       <div className="relative group h-16">
+                          <input 
+                             type="file" 
+                             accept="image/*,.pdf"
+                             className="hidden" 
+                             id="bukti-bayar-upload"
+                             onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                   if (file.size > 1024 * 1024) {
+                                      Swal.fire({
+                                         icon: 'error',
+                                         title: 'File Terlalu Besar',
+                                         text: 'Maksimal ukuran file adalah 1MB bro!',
+                                         customClass: { popup: "rounded-[32px] font-sans" }
+                                      });
+                                      e.target.value = '';
+                                      return;
+                                   }
+                                   setBuktiBayarFile(file);
                                 }
-                                setBuktiBayarFile(file);
-                             }
-                          }}
-                       />
-                       <label 
-                          htmlFor="bukti-bayar-upload"
-                          className={`w-full h-full rounded-2xl border-2 border-dashed flex items-center px-6 gap-4 cursor-pointer transition-all ${buktiBayarFile ? 'border-amber-400 bg-amber-50/30' : 'border-slate-100 bg-[#f8fafc] hover:border-amber-300 hover:bg-amber-50/20'}`}
-                       >
-                          <div className={`p-2 rounded-xl ${buktiBayarFile ? 'bg-amber-400 text-white shadow-lg shadow-amber-200' : 'bg-white text-slate-300 shadow-sm'}`}>
-                             <Upload size={18} strokeWidth={2.5} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                             <p className={`text-[11px] font-black uppercase tracking-tight truncate ${buktiBayarFile ? 'text-amber-600' : 'text-slate-400'}`}>
-                                {buktiBayarFile ? buktiBayarFile.name : "Upload Bukti Bayar..."}
-                             </p>
-                             {buktiBayarFile && (
-                                <p className="text-[8px] font-bold text-amber-400 uppercase tracking-widest mt-0.5">
-                                   {(buktiBayarFile.size / 1024).toFixed(1)} KB • Klik untuk ganti
+                             }}
+                          />
+                          <label 
+                             htmlFor="bukti-bayar-upload"
+                             className={`w-full h-full rounded-2xl border-2 border-dashed flex items-center px-6 gap-4 cursor-pointer transition-all ${buktiBayarFile ? 'border-amber-400 bg-amber-50/30' : 'border-slate-100 bg-[#f8fafc] hover:border-amber-300 hover:bg-amber-50/20'}`}
+                          >
+                             <div className={`p-2 rounded-xl ${buktiBayarFile ? 'bg-amber-400 text-white shadow-lg shadow-amber-200' : 'bg-white text-slate-300 shadow-sm'}`}>
+                                <Upload size={18} strokeWidth={2.5} />
+                             </div>
+                             <div className="flex-1 min-w-0">
+                                <p className={`text-[11px] font-black uppercase tracking-tight truncate ${buktiBayarFile ? 'text-amber-600' : 'text-slate-400'}`}>
+                                   {buktiBayarFile ? buktiBayarFile.name : "Upload Bukti Bayar..."}
                                 </p>
+                                {buktiBayarFile && (
+                                   <p className="text-[8px] font-bold text-amber-400 uppercase tracking-widest mt-0.5">
+                                      {(buktiBayarFile.size / 1024).toFixed(1)} KB • Klik untuk ganti
+                                   </p>
+                                )}
+                             </div>
+                             {buktiBayarFile && (
+                                <button 
+                                   onClick={(e) => { e.preventDefault(); setBuktiBayarFile(null); }}
+                                   className="p-2 hover:bg-rose-50 text-rose-400 rounded-lg transition-colors"
+                                >
+                                   <X size={14} />
+                                </button>
                              )}
-                          </div>
-                          {buktiBayarFile && (
-                             <button 
-                                onClick={(e) => { e.preventDefault(); setBuktiBayarFile(null); }}
-                                className="p-2 hover:bg-rose-50 text-rose-400 rounded-lg transition-colors"
-                             >
-                                <X size={14} />
-                             </button>
-                          )}
-                       </label>
+                          </label>
+                       </div>
                     </div>
                  </div>
               </div>
