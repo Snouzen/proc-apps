@@ -283,10 +283,7 @@ export const generateRekonPdf = (
       
       // Get Unit Produksi from the related invoice's siteArea (to match UI calc/page.tsx)
       const relatedInv = (item.invoices || []).find((inv: any) => inv.noInvoice === refInv);
-      let unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi;
-      if (!unitProduksi) {
-        unitProduksi = typeof rtv === "object" ? (rtv.siteArea || rtv.unitProduksi || "-") : "-";
-      }
+      const unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
       
       return [String(i + 1), rtvNo || "-", refInv || "-", unitProduksi, pembebanan, lokasi, tujuan, produk, formatRp(nominal || 0)];
     });
