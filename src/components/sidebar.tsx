@@ -441,7 +441,7 @@ export default function Sidebar({
           )}
 
           {/* 7. Credit Limit */}
-          {role !== "sitearea" && role !== "magang" && (
+          {role !== "magang" && (
             <div className="space-y-1">
               <div
                 onClick={() =>

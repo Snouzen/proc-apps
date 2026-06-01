@@ -175,6 +175,18 @@ export default function CreditLimitDataPage() {
   const [poData, setPoData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userSiteArea, setUserSiteArea] = useState<string | null>(null);
+
+  // Detect user role & siteArea
+  useEffect(() => {
+    import("@/lib/me").then(({ getMe }) => {
+      getMe().then((me) => {
+        setUserRole(me?.role || null);
+        setUserSiteArea(me?.siteArea || null);
+      });
+    });
+  }, []);
 
   // -- Filter State (cards) --
   const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "outdate">("all");
@@ -491,12 +503,21 @@ export default function CreditLimitDataPage() {
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Credit Limit — Data PO
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Credit Limit — Data PO
+            </h1>
+            {userRole === "sitearea" && userSiteArea && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50 text-sky-700 border border-sky-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">
+                <MapPin size={12} />
+                {userSiteArea}
+              </span>
+            )}
+          </div>
           <p className="text-slate-400 text-sm mt-0.5">
-            Daftar PO yang sudah dijadwalkan dan pengiriman lengkap, siap untuk
-            pengajuan credit limit.
+            {userRole === "sitearea"
+              ? `Menampilkan data PO untuk site area ${userSiteArea || "Anda"}, siap untuk pengajuan credit limit.`
+              : "Daftar PO yang sudah dijadwalkan dan pengiriman lengkap, siap untuk pengajuan credit limit."}
           </p>
         </div>
 

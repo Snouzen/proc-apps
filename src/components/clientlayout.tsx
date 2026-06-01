@@ -72,7 +72,7 @@ export default function ClientLayout({
   useEffect(() => {
     if (profileRole === "sitearea") {
       // Allow /report, /branch, /po for these roles
-      const restricted = ["/master-data"]; // Keep master-data restricted
+      const restricted = ["/master-data", "/credit-limit/approval"]; // Keep master-data and CL approval restricted
       if (restricted.some((p) => pathname.startsWith(p))) {
         router.push("/");
       }
