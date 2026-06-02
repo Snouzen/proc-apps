@@ -153,27 +153,24 @@ const EXCLUDED_FILTER_COLS = [
   "statusBayar",
 ];
 
-function CustomFilterDropdown({
+function MultiSelectFilterDropdown({
   value,
   onChange,
   options,
   disabled,
   placeholder,
 }: {
-  value: string;
-  onChange: (val: string) => void;
+  value: string[];
+  onChange: (val: string[]) => void;
   options: string[];
   placeholder?: string;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(value);
+  const [inputValue, setInputValue] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setInputValue(value);
-  }, [value]);
-
+  // Close dropdown on click outside
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (
@@ -192,115 +189,128 @@ function CustomFilterDropdown({
   );
 
   return (
-    <div
-      className={`relative w-full ${open ? "z-50" : "z-0"}`}
-      ref={wrapperRef}
-    >
-      <div className="relative flex items-center group">
-        <input
-          type="text"
-          className={`w-full px-3 py-2 pr-8 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-emerald-500 hover:border-gray-300 transition-colors placeholder:text-slate-400 placeholder:font-normal ${disabled ? "opacity-60 cursor-not-allowed bg-slate-50" : ""}`}
-          placeholder={placeholder || "Ketik atau pilih..."}
-          value={inputValue}
-          disabled={disabled}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => !disabled && setOpen(true)}
-        />
-        {!disabled && (
-          <button
-            type="button"
-            tabIndex={-1}
-            className="absolute right-2 text-slate-400 hover:text-slate-600 transition-colors"
-            onClick={() => setOpen(!open)}
-          >
-            <ChevronDown
-              size={16}
-              className={`transition-transform duration-200 ${
-                open ? "rotate-180" : ""
-              }`}
-            />
-          </button>
+    <div className={`relative w-full ${open ? "z-50" : "z-0"}`} ref={wrapperRef}>
+      <div
+        className={`relative flex min-h-[38px] flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-xl border ${open ? "border-emerald-500 bg-white" : "border-gray-200 bg-white"} ${disabled ? "opacity-60 cursor-not-allowed bg-slate-50" : "hover:border-gray-300 cursor-text transition-colors"}`}
+        onClick={() => !disabled && setOpen(true)}
+      >
+        {value.length > 0 && (
+          <div className="flex flex-wrap gap-1 w-full mb-1">
+            {value.map((v) => (
+              <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md max-w-full overflow-hidden">
+                <span className="truncate max-w-[150px]">{v}</span>
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onChange(value.filter((val) => val !== v));
+                    }}
+                    className="hover:text-rose-600 transition-colors shrink-0"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
         )}
+        <div className="flex items-center justify-between w-full">
+          <input
+            type="text"
+            className="flex-1 bg-transparent text-xs font-semibold text-slate-700 outline-none placeholder:text-slate-400 placeholder:font-normal min-w-[50px]"
+            placeholder={value.length === 0 ? (placeholder || "Ketik atau pilih...") : "Tambah lagi..."}
+            value={inputValue}
+            disabled={disabled}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => !disabled && setOpen(true)}
+          />
+          {!disabled && (
+            <button
+              type="button"
+              tabIndex={-1}
+              className="text-slate-400 hover:text-slate-600 transition-colors shrink-0 px-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(!open);
+              }}
+            >
+              <ChevronDown size={16} className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+            </button>
+          )}
+        </div>
       </div>
 
       {open && !disabled && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent scrollbar-thumb-gray-200 rounded-xl border border-gray-100 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-top-1">
           <ul className="flex flex-col gap-0.5">
-            <li
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700 cursor-pointer flex items-center transition-colors"
-              onClick={() => {
-                setInputValue("");
-                onChange("");
-                setOpen(false);
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <X size={14} className="text-slate-400" />
-                Semua (Reset)
-              </div>
-            </li>
+            {value.length > 0 && (
+              <li
+                className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-rose-600 cursor-pointer flex items-center transition-colors border-b border-gray-50 mb-1"
+                onClick={() => {
+                  setInputValue("");
+                  onChange([]);
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <X size={14} />
+                  Hapus Semua Pilihan ({value.length})
+                </div>
+              </li>
+            )}
 
-            {inputValue &&
-              !options.some(
-                (o) => o?.toLowerCase() === inputValue.toLowerCase(),
-              ) && (
-                <li
-                  className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer flex items-center transition-colors mt-1"
-                  onClick={() => {
-                    onChange(inputValue);
-                    setOpen(false);
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Search size={14} />
-                    <span>
-                      Cari <q>{inputValue}</q>
-                    </span>
-                  </div>
-                </li>
-              )}
+            {inputValue && !options.some((o) => o?.toLowerCase() === inputValue.toLowerCase()) && (
+              <li
+                className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer flex items-center transition-colors mt-1"
+                onClick={() => {
+                  if (!value.includes(inputValue)) {
+                    onChange([...value, inputValue]);
+                  }
+                  setInputValue("");
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Search size={14} />
+                  <span>Tambah <q>{inputValue}</q></span>
+                </div>
+              </li>
+            )}
 
             {filteredOptions.length > 0 ? (
               <>
                 <div className="h-px bg-slate-100 my-1"></div>
                 {filteredOptions.map((opt, i) => {
-                  const isSelected = value.toLowerCase() === opt.toLowerCase();
+                  const isSelected = value.includes(opt);
                   return (
                     <li
                       key={i}
                       onClick={() => {
-                        setInputValue(opt);
-                        onChange(opt);
-                        setOpen(false);
+                        if (isSelected) {
+                          onChange(value.filter((v) => v !== opt));
+                        } else {
+                          onChange([...value, opt]);
+                        }
+                        setInputValue("");
                       }}
                       className={`px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-between transition-colors ${
-                        isSelected
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "text-slate-700 hover:bg-slate-50"
+                        isSelected ? "bg-emerald-50 text-emerald-800" : "text-slate-700 hover:bg-slate-50"
                       }`}
                     >
-                      <span className="truncate pr-2">
-                        {opt.length > 50 ? opt.substring(0, 50) + "..." : opt}
-                      </span>
-                      {isSelected && (
-                        <Check
-                          size={14}
-                          className="flex-shrink-0 text-emerald-600"
-                        />
-                      )}
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        <div className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-emerald-600 border-emerald-600 text-white" : "border-slate-300 bg-white"}`}>
+                          {isSelected && <Check size={10} strokeWidth={3} />}
+                        </div>
+                        <span className="truncate">{opt}</span>
+                      </div>
                     </li>
                   );
                 })}
               </>
             ) : (
-              !inputValue && (
-                <li className="px-3 py-4 text-center text-xs text-slate-400">
-                  Tidak ada data yang tersedia
-                </li>
-              )
+              !inputValue && <li className="px-3 py-4 text-center text-xs text-slate-400">Tidak ada data yang tersedia</li>
             )}
           </ul>
         </div>
@@ -323,7 +333,7 @@ export default function ReportPage() {
   const [showColumns, setShowColumns] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [page, setPage] = useState(1);
-  const [colFilters, setColFilters] = useState<Record<string, string>>({});
+  const [colFilters, setColFilters] = useState<Record<string, string[]>>({});
   const [debouncedColFiltersJson, setDebouncedColFiltersJson] =
     useState<string>("{}");
   const [submitFrom, setSubmitFrom] = useState("");
@@ -365,13 +375,13 @@ export default function ReportPage() {
           if (me.role === "sitearea") {
             setColFilters((prev) => ({
               ...prev,
-              regional: me.regional || "",
-              siteArea: finalSiteArea,
+              regional: me.regional ? [me.regional] : [],
+              siteArea: finalSiteArea ? [finalSiteArea] : [],
             }));
           } else if (me.role === "rm") {
             setColFilters((prev) => ({
               ...prev,
-              regional: me.regional || "",
+              regional: me.regional ? [me.regional] : [],
             }));
           }
         }
@@ -671,7 +681,7 @@ export default function ReportPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       const activeFilters = Object.entries(colFilters).filter(
-        ([, v]) => String(v || "").trim() !== "",
+        ([, v]) => Array.isArray(v) && v.length > 0,
       );
       if (activeFilters.length > 0) {
         setDebouncedColFiltersJson(
@@ -889,12 +899,14 @@ export default function ReportPage() {
           .join(" ");
         if (!hay.includes(q)) return false;
       }
-      for (const [k, v] of Object.entries(filters)) {
-        const fv = upperClean(v);
-        if (!fv) continue;
+      for (const [k, vArr] of Object.entries(filters)) {
+        if (!Array.isArray(vArr) || vArr.length === 0) continue;
         const key = String(k);
         const cell = upperClean(String((r as any)[key] ?? ""));
-        if (!cell.includes(fv)) return false;
+        
+        // Multi-select acts as OR logic
+        const match = vArr.some(v => cell.includes(upperClean(v)));
+        if (!match) return false;
       }
       return true;
     });
@@ -903,30 +915,36 @@ export default function ReportPage() {
 
   const getOptionsForColumn = useCallback(
     (colId: string) => {
+      const mappedColId = colId === "namaProduk" ? "products" : colId === "tujuanDetail" ? "tujuan" : colId;
+
       const activeFilters = Object.entries(colFilters).filter(
         ([k, v]) =>
-          String(k) !== String(colId) && String(v || "").trim() !== "",
+          String(k) !== String(colId) && Array.isArray(v) && v.length > 0,
       );
 
       const validCombos = masterCombinations.filter((combo) => {
-        return activeFilters.every(([k, v]) => {
-          const filterValue = upperClean(v);
-          if (!filterValue) return true;
-
-          const comboVal = combo[k];
+        return activeFilters.every(([k, vArr]) => {
+          const comboKey = k === "namaProduk" ? "products" : k === "tujuanDetail" ? "tujuan" : k;
+          const comboVal = combo[comboKey];
+          
           if (Array.isArray(comboVal)) {
-            return comboVal.some((p) =>
-              upperClean(String(p)).includes(filterValue),
-            );
+            // If combo value is array, check if any of its elements match ANY of the selected filter values
+            return vArr.some((fv) => {
+              const filterValue = upperClean(fv);
+              return filterValue ? comboVal.some((p) => upperClean(String(p)).includes(filterValue)) : true;
+            });
           } else {
-            return upperClean(String(comboVal || "")).includes(filterValue);
+            return vArr.some((fv) => {
+              const filterValue = upperClean(fv);
+              return filterValue ? upperClean(String(comboVal || "")).includes(filterValue) : true;
+            });
           }
         });
       });
 
       const uniqueValues = new Set<string>();
       validCombos.forEach((combo) => {
-        const val = combo[colId];
+        const val = combo[mappedColId];
         if (Array.isArray(val)) {
           val.forEach((v) => {
             const str = String(v || "").trim();
@@ -957,12 +975,12 @@ export default function ReportPage() {
     setTglFrom("");
     setTglTo("");
     setColFilters((prev) => {
-      const next: Record<string, string> = {};
+      const next: Record<string, string[]> = {};
       if (role === "sitearea") {
-        next.regional = userRegional || "";
-        next.siteArea = userSiteArea || "";
+        next.regional = userRegional ? [userRegional] : [];
+        next.siteArea = userSiteArea ? [userSiteArea] : [];
       } else if (role === "rm") {
-        next.regional = userRegional || "";
+        next.regional = userRegional ? [userRegional] : [];
       }
       return next;
     });
@@ -989,7 +1007,7 @@ export default function ReportPage() {
       if (submitTo) baseParams.set("submitTo", submitTo);
 
       const activeFilters = Object.entries(colFilters).filter(
-        ([, v]) => String(v || "").trim() !== "",
+        ([, v]) => Array.isArray(v) && v.length > 0,
       );
       if (activeFilters.length > 0) {
         const filterObj = Object.fromEntries(activeFilters);
@@ -1313,8 +1331,8 @@ export default function ReportPage() {
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
                     {c.label}
                   </label>
-                  <CustomFilterDropdown
-                    value={colFilters[colId] || ""}
+                  <MultiSelectFilterDropdown
+                    value={colFilters[colId] || []}
                     onChange={(val) =>
                       setColFilters((prev) => ({
                         ...prev,
@@ -1519,9 +1537,9 @@ export default function ReportPage() {
                               : "-"
                             : String(v ?? "-") || "-";
 
-                      const filterVal = colFilters[String(c.id)] || "";
+                      const filterVal = colFilters[String(c.id)] || [];
                       const highlightTerm =
-                        query && !filterVal && c.kind === "text"
+                        query && filterVal.length === 0 && c.kind === "text"
                           ? query
                           : filterVal;
 
@@ -1601,11 +1619,13 @@ function HighlightText({
   highlight,
 }: {
   text: string;
-  highlight: string;
+  highlight: string | string[];
 }) {
-  const h = String(highlight || "").trim();
-  if (!h) return <>{text}</>;
-  const escaped = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const hArr = Array.isArray(highlight) ? highlight : [highlight];
+  const validH = hArr.map(h => String(h || "").trim()).filter(Boolean);
+  if (validH.length === 0) return <>{text}</>;
+  
+  const escaped = validH.map(h => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
   const regex = new RegExp(`(${escaped})`, "gi");
   const parts = text.split(regex);
   return (

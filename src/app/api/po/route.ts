@@ -796,6 +796,34 @@ export async function GET(request: Request) {
           }
         }
       ];
+    } else if (group === "schedule_page") {
+      const startOfPast14Days = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 14, 0, 0, 0, 0)
+      );
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        { 
+          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
+        },
+        {
+          OR: [
+            { expiredTgl: null },
+            { expiredTgl: { gte: startOfToday } },
+            { 
+              AND: [
+                { expiredTgl: { gte: startOfPast14Days, lt: startOfToday } },
+                { tglkirim: null }
+              ]
+            }
+          ]
+        },
+        { unitProduksiId: { not: "UNKNOWN" } },
+        {
+          UnitProduksi: {
+            isNot: { siteArea: "UNKNOWN" }
+          }
+        }
+      ];
     } else if (group === "almost_expired") {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
@@ -868,8 +896,14 @@ export async function GET(request: Request) {
     if (colFilters && Object.keys(colFilters).length > 0) {
       const AND = Array.isArray(where.AND) ? where.AND : [];
       for (const [key, val] of Object.entries(colFilters)) {
-        const strVal = String(val).trim();
-        if (!strVal) continue;
+        let vals: string[] = [];
+        if (Array.isArray(val)) {
+          vals = val.map(String).map((v) => v.trim()).filter(Boolean);
+        } else {
+          const strVal = String(val).trim();
+          if (strVal) vals.push(strVal);
+        }
+        if (vals.length === 0) continue;
 
         const isBool = (v: string) => {
           const norm = v.toLowerCase();
@@ -880,55 +914,72 @@ export async function GET(request: Request) {
               : null;
         };
 
-        if (
-          key === "noPo" ||
-          key === "tujuan" ||
-          key === "noInvoice" ||
-          key === "linkPo" ||
-          key === "remarks"
-        ) {
-          const dbKey = key === "tujuan" ? "tujuanDetail" : key;
-          AND.push({ [dbKey]: { contains: strVal, mode: "insensitive" } });
-        } else if (key === "company" || key === "inisial") {
-          const dbKey = key === "company" ? "namaPt" : "inisial";
-          AND.push({
-            RitelModern: {
-              is: { [dbKey]: { contains: strVal, mode: "insensitive" } },
-            },
-          });
-        } else if (key === "siteArea") {
-          AND.push({
-            UnitProduksi: {
-              is: { siteArea: { contains: strVal, mode: "insensitive" } },
-            },
-          });
-        } else if (key === "regional") {
-          AND.push({
-            OR: [
-              { regional: { contains: strVal, mode: "insensitive" } },
-              {
-                UnitProduksi: {
-                  is: {
-                    namaRegional: { contains: strVal, mode: "insensitive" },
+        const orConditions = [];
+
+        for (const strVal of vals) {
+          if (
+            key === "noPo" ||
+            key === "tujuan" ||
+            key === "tujuanDetail" ||
+            key === "noInvoice" ||
+            key === "linkPo" ||
+            key === "remarks" ||
+            key === "buktiTagih" ||
+            key === "buktiBayar" ||
+            key === "namaSupir" ||
+            key === "platNomor"
+          ) {
+            const dbKey = key === "tujuan" ? "tujuanDetail" : key;
+            orConditions.push({ [dbKey]: { contains: strVal, mode: "insensitive" } });
+          } else if (key === "company" || key === "inisial") {
+            const dbKey = key === "company" ? "namaPt" : "inisial";
+            orConditions.push({
+              RitelModern: {
+                is: { [dbKey]: { contains: strVal, mode: "insensitive" } },
+              },
+            });
+          } else if (key === "siteArea") {
+            orConditions.push({
+              UnitProduksi: {
+                is: { siteArea: { contains: strVal, mode: "insensitive" } },
+              },
+            });
+          } else if (key === "regional") {
+            orConditions.push({
+              OR: [
+                { regional: { contains: strVal, mode: "insensitive" } },
+                {
+                  UnitProduksi: {
+                    is: {
+                      namaRegional: { contains: strVal, mode: "insensitive" },
+                    },
+                  },
+                },
+              ],
+            });
+          } else if (key === "products" || key === "namaProduk") {
+            orConditions.push({
+              Items: {
+                some: {
+                  Product: {
+                    is: { name: { contains: strVal, mode: "insensitive" } },
                   },
                 },
               },
-            ],
-          });
-        } else if (key === "products") {
-          AND.push({
-            Items: {
-              some: {
-                Product: {
-                  is: { name: { contains: strVal, mode: "insensitive" } },
-                },
-              },
-            },
-          });
-        } else if (key.startsWith("status")) {
-          const bVal = isBool(strVal);
-          if (bVal !== null) {
-            AND.push({ [key]: bVal });
+            });
+          } else if (key.startsWith("status")) {
+            const bVal = isBool(strVal);
+            if (bVal !== null) {
+              orConditions.push({ [key]: bVal });
+            }
+          }
+        }
+
+        if (orConditions.length > 0) {
+          if (orConditions.length === 1) {
+            AND.push(orConditions[0]);
+          } else {
+            AND.push({ OR: orConditions });
           }
         }
       }

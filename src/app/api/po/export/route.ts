@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     const group = (searchParams.get("group") || "all").trim();
     const sort = (searchParams.get("sort") || "createdAt_desc").trim();
 
-    let colFilters: Record<string, string> = {};
+    let colFilters: Record<string, string | string[]> = {};
     const colFiltersRaw = searchParams.get("colFilters");
     if (colFiltersRaw) {
       try {
@@ -214,8 +214,14 @@ export async function GET(request: Request) {
     if (colFilters && Object.keys(colFilters).length > 0) {
       const AND = Array.isArray(where.AND) ? where.AND : [];
       for (const [key, val] of Object.entries(colFilters)) {
-        const strVal = String(val).trim();
-        if (!strVal) continue;
+        let vals: string[] = [];
+        if (Array.isArray(val)) {
+          vals = val.map(String).map((v) => v.trim()).filter(Boolean);
+        } else {
+          const strVal = String(val).trim();
+          if (strVal) vals.push(strVal);
+        }
+        if (vals.length === 0) continue;
 
         const isBool = (v: string) => {
           const norm = v.toLowerCase();
@@ -226,55 +232,72 @@ export async function GET(request: Request) {
               : null;
         };
 
-        if (
-          key === "noPo" ||
-          key === "tujuan" ||
-          key === "noInvoice" ||
-          key === "linkPo" ||
-          key === "remarks"
-        ) {
-          const dbKey = key === "tujuan" ? "tujuanDetail" : key;
-          AND.push({ [dbKey]: { contains: strVal, mode: "insensitive" } });
-        } else if (key === "company" || key === "inisial") {
-          const dbKey = key === "company" ? "namaPt" : "inisial";
-          AND.push({
-            RitelModern: {
-              is: { [dbKey]: { contains: strVal, mode: "insensitive" } },
-            },
-          });
-        } else if (key === "siteArea") {
-          AND.push({
-            UnitProduksi: {
-              is: { siteArea: { contains: strVal, mode: "insensitive" } },
-            },
-          });
-        } else if (key === "regional") {
-          AND.push({
-            OR: [
-              { regional: { contains: strVal, mode: "insensitive" } },
-              {
-                UnitProduksi: {
-                  is: {
-                    namaRegional: { contains: strVal, mode: "insensitive" },
+        const orConditions = [];
+
+        for (const strVal of vals) {
+          if (
+            key === "noPo" ||
+            key === "tujuan" ||
+            key === "tujuanDetail" ||
+            key === "noInvoice" ||
+            key === "linkPo" ||
+            key === "remarks" ||
+            key === "buktiTagih" ||
+            key === "buktiBayar" ||
+            key === "namaSupir" ||
+            key === "platNomor"
+          ) {
+            const dbKey = key === "tujuan" ? "tujuanDetail" : key;
+            orConditions.push({ [dbKey]: { contains: strVal, mode: "insensitive" } });
+          } else if (key === "company" || key === "inisial") {
+            const dbKey = key === "company" ? "namaPt" : "inisial";
+            orConditions.push({
+              RitelModern: {
+                is: { [dbKey]: { contains: strVal, mode: "insensitive" } },
+              },
+            });
+          } else if (key === "siteArea") {
+            orConditions.push({
+              UnitProduksi: {
+                is: { siteArea: { contains: strVal, mode: "insensitive" } },
+              },
+            });
+          } else if (key === "regional") {
+            orConditions.push({
+              OR: [
+                { regional: { contains: strVal, mode: "insensitive" } },
+                {
+                  UnitProduksi: {
+                    is: {
+                      namaRegional: { contains: strVal, mode: "insensitive" },
+                    },
+                  },
+                },
+              ],
+            });
+          } else if (key === "products" || key === "namaProduk") {
+            orConditions.push({
+              Items: {
+                some: {
+                  Product: {
+                    is: { name: { contains: strVal, mode: "insensitive" } },
                   },
                 },
               },
-            ],
-          });
-        } else if (key === "products") {
-          AND.push({
-            Items: {
-              some: {
-                Product: {
-                  is: { name: { contains: strVal, mode: "insensitive" } },
-                },
-              },
-            },
-          });
-        } else if (key.startsWith("status")) {
-          const bVal = isBool(strVal);
-          if (bVal !== null) {
-            AND.push({ [key]: bVal });
+            });
+          } else if (key.startsWith("status")) {
+            const bVal = isBool(strVal);
+            if (bVal !== null) {
+              orConditions.push({ [key]: bVal });
+            }
+          }
+        }
+
+        if (orConditions.length > 0) {
+          if (orConditions.length === 1) {
+            AND.push(orConditions[0]);
+          } else {
+            AND.push({ OR: orConditions });
           }
         }
       }
@@ -319,6 +342,12 @@ export async function GET(request: Request) {
         noInvoice: true,
         tujuanDetail: true,
         regional: true,
+        tglkirim: true,
+        remarks: true,
+        buktiTagih: true,
+        buktiBayar: true,
+        namaSupir: true,
+        platNomor: true,
         statusKirim: true,
         statusSdif: true,
         statusPo: true,
@@ -332,9 +361,13 @@ export async function GET(request: Request) {
         Items: {
           select: {
             pcs: true,
+            pcsKirim: true,
+            hargaPcs: true,
+            hargaKg: true,
             nominal: true,
             rpTagih: true,
-            Product: { select: { name: true } },
+            discount: true,
+            Product: { select: { name: true, satuanKg: true } },
           },
         },
         RitelModern: { select: { namaPt: true, inisial: true } },
@@ -356,76 +389,80 @@ export async function GET(request: Request) {
 
     let rowIndex = 1;
 
+    // Find indices of date columns
+    const dateColIndices: number[] = [];
+    columnsConfig.forEach((c, i) => {
+      if (["tglPo", "tglkirim", "expiredTgl", "updatedAt", "createdAt", "submitDate"].includes(c.id)) {
+        dateColIndices.push(i + 1);
+      }
+    });
+
     for (const po of data) {
-      const items = Array.isArray(po.Items) ? po.Items : [];
-      const productList = items
-        .map((it: any) => upperClean(it.Product?.name || ""))
-        .filter((s: string) => s.trim().length > 0);
+      const items = Array.isArray(po.Items) && po.Items.length > 0 ? po.Items : [null];
 
-      const totalTagihan =
-        Number((po as any).totalTagihan) ||
-        items.reduce(
-          (acc: number, it: any) => acc + (Number(it.rpTagih) || 0),
-          0,
-        );
-      const totalNominal =
-        Number((po as any).totalNominal) ||
-        items.reduce(
-          (acc: number, it: any) => acc + (Number(it.nominal) || 0),
-          0,
-        );
+      for (const it of items) {
+        const pcs = Number(it?.pcs) || 0;
+        const pcsKirim = Number(it?.pcsKirim) || 0;
+        const satuanKg = Number(it?.Product?.satuanKg) || 0;
+        const kg = pcs * satuanKg;
+        const hargaPcs = Number(it?.hargaPcs) || 0;
+        const hargaKg = Number(it?.hargaKg) || 0;
+        const nominal = Number(it?.nominal) || (pcs * hargaPcs);
+        const discount = Number(it?.discount) || 0;
+        const rpTagih = Number(it?.rpTagih) || 0;
 
-      const rowBase = {
-        id: po.id,
-        noPo: upperClean(po.noPo || "-"),
-        company: upperClean(po.RitelModern?.namaPt || "-"),
-        inisial: upperClean(po.RitelModern?.inisial || ""),
-        tujuan: upperClean(po.tujuanDetail || ""),
-        tglPo: po.tglPo ? new Date(po.tglPo) : null,
-        expiredTgl: po.expiredTgl ? new Date(po.expiredTgl) : null,
-        siteArea: upperClean(
-          po.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
-            ? po.UnitProduksi.siteArea
-            : "",
-        ),
-        regional: upperClean(
-          po.regional || po.UnitProduksi?.namaRegional || "",
-        ),
-        noInvoice: upperClean(po.noInvoice || ""),
-        linkPo: po.linkPo || "",
-        totalNominal,
-        totalTagihan,
-        statusKirim: !!po.statusKirim ? "Ya" : "Tidak",
-        statusSdif: !!po.statusSdif ? "Ya" : "Tidak",
-        statusPo: !!po.statusPo ? "Ya" : "Tidak",
-        statusFp: !!po.statusFp ? "Ya" : "Tidak",
-        statusKwi: !!po.statusKwi ? "Ya" : "Tidak",
-        statusInv: !!po.statusInv ? "Ya" : "Tidak",
-        statusTagih: !!po.statusTagih ? "Ya" : "Tidak",
-        statusBayar: !!po.statusBayar ? "Ya" : "Tidak",
-        updatedAt: po.updatedAt ? new Date(po.updatedAt) : null,
-        createdAt: po.createdAt ? new Date(po.createdAt) : null,
-        submitDate: po.createdAt ? new Date(po.createdAt) : null,
-      };
+        const rowMap: Record<string, any> = {
+          no: rowIndex,
+          noPo: upperClean(po.noPo || "-"),
+          company: upperClean(po.RitelModern?.namaPt || "-"),
+          inisial: upperClean(po.RitelModern?.inisial || ""),
+          tglPo: po.tglPo ? new Date(po.tglPo) : null,
+          tglkirim: po.tglkirim ? new Date(po.tglkirim) : null,
+          expiredTgl: po.expiredTgl ? new Date(po.expiredTgl) : null,
+          siteArea: upperClean(
+            po.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
+              ? po.UnitProduksi.siteArea
+              : "",
+          ),
+          regional: upperClean(
+            po.regional || po.UnitProduksi?.namaRegional || "",
+          ),
+          noInvoice: upperClean(po.noInvoice || ""),
+          buktiTagih: po.buktiTagih || "-",
+          buktiBayar: po.buktiBayar || "-",
+          linkPo: po.linkPo || "",
+          namaSupir: po.namaSupir || "-",
+          platNomor: po.platNomor || "-",
+          tujuanDetail: po.tujuanDetail || "-",
+          remarks: po.remarks || "-",
+          statusKirim: !!po.statusKirim ? "Ya" : "Tidak",
+          statusSdif: !!po.statusSdif ? "Ya" : "Tidak",
+          statusPo: !!po.statusPo ? "Ya" : "Tidak",
+          statusFp: !!po.statusFp ? "Ya" : "Tidak",
+          statusKwi: !!po.statusKwi ? "Ya" : "Tidak",
+          statusInv: !!po.statusInv ? "Ya" : "Tidak",
+          statusTagih: !!po.statusTagih ? "Ya" : "Tidak",
+          statusBayar: !!po.statusBayar ? "Ya" : "Tidak",
+          updatedAt: po.updatedAt ? new Date(po.updatedAt) : null,
+          createdAt: po.createdAt ? new Date(po.createdAt) : null,
+          submitDate: po.createdAt ? new Date(po.createdAt) : null,
+          // Item-level fields
+          namaProduk: it?.Product?.name || "-",
+          products: it?.Product?.name || "-",
+          pcs,
+          pcsKirim,
+          satuanKg,
+          kg,
+          hargaPcs,
+          hargaKg,
+          nominal,
+          discount,
+          rpTagih,
+        };
 
-      const products = productList.length > 0 ? productList : [""];
-
-      // Find indices of date columns
-      const dateColIndices: number[] = [];
-      columnsConfig.forEach((c, i) => {
-        if (["tglPo", "expiredTgl", "updatedAt", "createdAt", "submitDate"].includes(c.id)) {
-          dateColIndices.push(i + 1);
-        }
-      });
-
-      for (const p of products) {
-        const rowData = columnsConfig.map((c) => {
-          if (c.id === "no") return rowIndex;
-          if (c.id === "products") return p;
-          return (rowBase as any)[c.id] ?? "";
-        });
+        const rowData = columnsConfig.map((c) => rowMap[c.id] ?? "");
         const addedRow = worksheet.addRow(rowData);
-        
+
         // Apply date format to relevant cells in this row
         dateColIndices.forEach((idx) => {
           const cell = addedRow.getCell(idx);
@@ -433,7 +470,7 @@ export async function GET(request: Request) {
             cell.numFmt = "dd/mm/yyyy";
           }
         });
-        
+
         rowIndex++;
       }
     }

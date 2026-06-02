@@ -152,9 +152,8 @@ export default function SchedulePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Limit to 500 active POs to prevent loading thousands of records
       const res = await fetch(
-        "/api/po?group=active&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
+        "/api/po?group=schedule_page&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
         { cache: "no-store" },
       );
       const data = await res.json();

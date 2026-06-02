@@ -61,15 +61,15 @@ function cleanSiteArea(val?: string | null): string {
 // Determines which zone a PO falls into based on its due date relative to today.
 //
 // Timeline (example due date = 28 May):
-//   14 May ──── 20 May ──── 21 May ──── 28 May ──── 4 Jun ──── 5 Jun ──── 11 Jun
-//   |-- EARLY EXTENDED --|-- NORMAL --------------------------------|-- LATE EXTENDED --|
-//   |  needs remarks     |  no remarks needed                       |  needs remarks    |
+//   28 Apr ──── 20 May ──── 21 May ──── 28 May ──── 4 Jun ──── 5 Jun ──── 11 Jun
+//   |-- EARLY EXTENDED --------------|-- NORMAL --------------------------------|-- LATE EXTENDED --|
+//   |  needs remarks (8-30 days)     |  no remarks needed                       |  needs remarks    |
 //
 // Returns:
 //   "normal"         → within 7 days before to 7 days after due date (no remarks)
-//   "early_extended"  → 8-14 days before due date (needs remarks: terlambat ajukan)
+//   "early_extended"  → 8-30 days before due date (needs remarks: terlambat ajukan)
 //   "late_extended"   → 8-14 days after due date (needs remarks: baru ajukan)
-//   "out_of_range"    → outside the 14-day window (should not be shown)
+//   "out_of_range"    → outside the -30/+14 day window (should not be shown)
 type DueDateZone = "normal" | "early_extended" | "late_extended" | "out_of_range";
 
 function getDueDateZone(expiredTgl: string | null | undefined): DueDateZone {
@@ -87,8 +87,8 @@ function getDueDateZone(expiredTgl: string | null | undefined): DueDateZone {
 
   // Before due date: diffDays is negative
   // After due date: diffDays is positive
-  if (diffDays < -14 || diffDays > 14) return "out_of_range";
-  if (diffDays >= -14 && diffDays <= -8) return "early_extended";
+  if (diffDays < -30 || diffDays > 14) return "out_of_range";
+  if (diffDays >= -30 && diffDays <= -8) return "early_extended";
   if (diffDays >= 8 && diffDays <= 14) return "late_extended";
   return "normal"; // diffDays >= -7 && diffDays <= 7
 }
