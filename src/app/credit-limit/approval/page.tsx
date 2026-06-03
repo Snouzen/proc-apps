@@ -18,7 +18,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Package,
+  Download,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import DateInputHybrid from "@/components/DateInputHybrid";
@@ -170,6 +172,7 @@ function BatchAccordion({
   onAction,
   onViewRow,
   onApproveAll,
+  onExportExcel,
 }: {
   batchCode: string;
   pos: any[];
@@ -178,6 +181,7 @@ function BatchAccordion({
   onAction: (po: any, action: "approve" | "reject") => void;
   onViewRow: (po: any) => void;
   onApproveAll: (batchCode: string, pos: any[]) => void;
+  onExportExcel: (batchCode: string, pos: any[]) => void;
 }) {
   const totalPcs = pos.reduce((sum, po) => sum + Number(po.pcsTotal || 0), 0);
   const totalPcsKirim = pos.reduce((sum, po) => sum + Number(po.pcsKirimTotal || 0), 0);
@@ -231,7 +235,17 @@ function BatchAccordion({
             <span className="text-[10px] text-emerald-400 dark:text-emerald-500 font-medium">Kirim</span>
           </div>
 
-          <div className="pl-2 border-l border-slate-200 dark:border-slate-700/50">
+          <div className="pl-2 border-l border-slate-200 dark:border-slate-700/50 flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onExportExcel(batchCode, pos);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm shadow-emerald-200 dark:shadow-none active:scale-95"
+            >
+              <Download size={14} />
+              Export
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -720,6 +734,45 @@ export default function CreditLimitApprovalPage() {
     });
   };
 
+  const handleExportExcel = (batchCode: string, posToExport: any[]) => {
+    if (!posToExport || posToExport.length === 0) {
+      Swal.fire({
+        title: "Info",
+        text: "Tidak ada data untuk diexport",
+        icon: "info"
+      });
+      return;
+    }
+
+    const dataToExport = posToExport.map((po, index) => {
+      const company = po.RitelModern?.namaPt || po.company || "-";
+      return {
+        "No": index + 1,
+        "Batch": po.CreditLimitBatch?.batchCode || "Tanpa Batch",
+        "No PO": po.noPo || "-",
+        "Company": company,
+        "Inisial": po.RitelModern?.inisial || "-",
+        "Site Area": cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea),
+        "Tujuan": po.tujuanDetail || po.RitelModern?.tujuan || "-",
+        "Tgl PO": po.tglPo ? format(new Date(po.tglPo), "dd/MM/yyyy") : "-",
+        "Due Date": po.expiredTgl ? format(new Date(po.expiredTgl), "dd/MM/yyyy") : "-",
+        "Tgl Kirim": po.tglkirim ? format(new Date(po.tglkirim), "dd/MM/yyyy") : "-",
+        "Pcs Total": Number(po.pcsTotal || 0),
+        "Pcs Kirim": Number(po.pcsKirimTotal || 0),
+        "Kode Vendor": po.kodeVendor || "-",
+        "Remarks": po.remarksCreditLimit || "-",
+        "Status": po.statusCreditLimit || "-",
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Approval PO");
+    
+    const safeBatchCode = batchCode.replace(/[^a-zA-Z0-9-]/g, "_");
+    XLSX.writeFile(workbook, `Export_${safeBatchCode}_${format(new Date(), "dd-MMM-yyyy")}.xlsx`);
+  };
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-7">
       {role !== "pusat" && !loading && (
@@ -991,6 +1044,7 @@ export default function CreditLimitApprovalPage() {
               onAction={handleAction}
               onViewRow={handleViewRow}
               onApproveAll={handleApproveAll}
+              onExportExcel={handleExportExcel}
             />
           ))}
         </div>
