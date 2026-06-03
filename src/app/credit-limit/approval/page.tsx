@@ -168,6 +168,7 @@ function BatchAccordion({
   batchCode,
   pos,
   isExpanded,
+  isArchived,
   onToggle,
   onAction,
   onViewRow,
@@ -177,6 +178,7 @@ function BatchAccordion({
   batchCode: string;
   pos: any[];
   isExpanded: boolean;
+  isArchived: boolean;
   onToggle: () => void;
   onAction: (po: any, action: "approve" | "reject") => void;
   onViewRow: (po: any) => void;
@@ -203,9 +205,14 @@ function BatchAccordion({
       >
         {/* Batch Badge */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-500/20 rounded-xl text-xs font-black uppercase tracking-tight whitespace-nowrap shadow-sm dark:shadow-none">
+          <span className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-tight whitespace-nowrap shadow-sm dark:shadow-none ${
+            isArchived
+              ? "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+              : "bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20"
+          }`}>
             <Layers size={14} className="shrink-0" />
             {batchCode}
+            {isArchived && <span className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">Completed</span>}
           </span>
         </div>
 
@@ -246,16 +253,18 @@ function BatchAccordion({
               <Download size={14} />
               Export
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onApproveAll(batchCode, pos);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 dark:bg-emerald-500/20 hover:bg-emerald-700 dark:hover:bg-emerald-500/30 text-white dark:text-emerald-400 rounded-lg text-xs font-bold transition-all shadow-sm shadow-emerald-200 dark:shadow-none active:scale-95"
-            >
-              <CheckCircle2 size={14} />
-              Approve All
-            </button>
+            {!isArchived && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApproveAll(batchCode, pos);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 dark:bg-emerald-500/20 hover:bg-emerald-700 dark:hover:bg-emerald-500/30 text-white dark:text-emerald-400 rounded-lg text-xs font-bold transition-all shadow-sm shadow-emerald-200 dark:shadow-none active:scale-95"
+              >
+                <CheckCircle2 size={14} />
+                Approve All
+              </button>
+            )}
           </div>
         </div>
 
@@ -405,18 +414,32 @@ function BatchAccordion({
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <ActionButton
-                            icon={CheckCircle2}
-                            onClick={(e) => { e.stopPropagation(); onAction(po, "approve"); }}
-                            tooltip="Setujui Credit Limit"
-                            variant="emerald"
-                          />
-                          <ActionButton
-                            icon={X}
-                            onClick={(e) => { e.stopPropagation(); onAction(po, "reject"); }}
-                            tooltip="Tolak Credit Limit"
-                            variant="rose"
-                          />
+                          {po.statusCreditLimit === "REQUESTED" ? (
+                            <>
+                              <ActionButton
+                                icon={CheckCircle2}
+                                onClick={(e) => { e.stopPropagation(); onAction(po, "approve"); }}
+                                tooltip="Setujui Credit Limit"
+                                variant="emerald"
+                              />
+                              <ActionButton
+                                icon={X}
+                                onClick={(e) => { e.stopPropagation(); onAction(po, "reject"); }}
+                                tooltip="Tolak Credit Limit"
+                                variant="rose"
+                              />
+                            </>
+                          ) : po.statusCreditLimit === "APPROVED" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                              <CheckCircle2 size={12} /> Approved
+                            </span>
+                          ) : po.statusCreditLimit === "REJECTED" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                              <X size={12} /> Rejected
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -558,7 +581,13 @@ export default function CreditLimitApprovalPage() {
         showConfirmButton: false,
       });
 
-      setPoData((prev) => prev.filter((item) => item.id !== po.id));
+      setPoData((prev) =>
+        prev.map((item) =>
+          item.id === po.id
+            ? { ...item, statusCreditLimit: action === "approve" ? "APPROVED" : "REJECTED" }
+            : item
+        )
+      );
     } catch (err) {
       Swal.fire({ icon: "error", title: "Oops...", text: "Terjadi kesalahan sistem" });
     }
@@ -604,7 +633,13 @@ export default function CreditLimitApprovalPage() {
         showConfirmButton: false,
       });
 
-      setPoData((prev) => prev.filter((item) => !poIds.includes(item.id)));
+      setPoData((prev) =>
+        prev.map((item) =>
+          poIds.includes(item.id)
+            ? { ...item, statusCreditLimit: "APPROVED" }
+            : item
+        )
+      );
     } catch (err) {
       Swal.fire({ icon: "error", title: "Oops...", text: "Terjadi kesalahan sistem" });
     }
@@ -699,13 +734,21 @@ export default function CreditLimitApprovalPage() {
 
   // ── Group PO by Batch ──
   const batchGroups = useMemo(() => {
-    const map = new Map<string, { batchCode: string; pos: any[] }>();
+    const map = new Map<string, { batchCode: string; pos: any[]; isArchived: boolean }>();
     filteredPo.forEach((po) => {
       const code = po.CreditLimitBatch?.batchCode || "Tanpa Batch";
-      if (!map.has(code)) map.set(code, { batchCode: code, pos: [] });
-      map.get(code)!.pos.push(po);
+      if (!map.has(code)) map.set(code, { batchCode: code, pos: [], isArchived: true });
+      const group = map.get(code)!;
+      group.pos.push(po);
+      if (po.statusCreditLimit === "REQUESTED") {
+        group.isArchived = false;
+      }
     });
-    return Array.from(map.values()).sort((a, b) => a.batchCode.localeCompare(b.batchCode));
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.isArchived && !b.isArchived) return 1;
+      if (!a.isArchived && b.isArchived) return -1;
+      return b.batchCode.localeCompare(a.batchCode);
+    });
   }, [filteredPo]);
 
   // ── Paginate Batches ──
@@ -1040,6 +1083,7 @@ export default function CreditLimitApprovalPage() {
               batchCode={batch.batchCode}
               pos={batch.pos}
               isExpanded={expandedBatches.has(batch.batchCode)}
+              isArchived={batch.isArchived}
               onToggle={() => toggleBatch(batch.batchCode)}
               onAction={handleAction}
               onViewRow={handleViewRow}
