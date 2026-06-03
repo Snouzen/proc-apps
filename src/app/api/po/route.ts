@@ -865,6 +865,15 @@ export async function GET(request: Request) {
           ],
         },
       ];
+    } else if (group === "credit_approval") {
+      // Credit Limit Approval: only show REQUESTED POs, no expiredTgl filter
+      // so that once a PO is submitted for credit limit, it always appears
+      // on the approval page as a batch archive.
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        { statusCreditLimit: "REQUESTED" },
+        { creditLimitBatchId: { not: null } },
+      ];
     }
     if (!includeUnknown) {
       where.NOT = [

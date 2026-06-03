@@ -484,7 +484,7 @@ export default function CreditLimitApprovalPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        "/api/po?group=active&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
+        "/api/po?group=credit_approval&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
         { cache: "no-store" },
       );
       const data = await res.json();
@@ -494,18 +494,10 @@ export default function CreditLimitApprovalPage() {
           ? data.data
           : [];
 
-      // Filter: Status = REQUESTED
-      const eligible = list.filter((po: any) => {
-        const isScheduled = !!po.tglkirim;
-        const pcsKirim = Number(po.pcsKirimTotal || 0);
-        const pcsTotal = Number(po.pcsTotal || 0);
-        const pcsMatch = pcsTotal > 0 && pcsKirim >= pcsTotal;
-        const zone = getDueDateZone(po.expiredTgl);
-        const isRequested = po.statusCreditLimit === "REQUESTED";
-        return isScheduled && pcsMatch && zone !== "out_of_range" && isRequested;
-      });
-
-      setPoData(eligible);
+      // No client-side filtering needed — API already returns only REQUESTED POs.
+      // This ensures POs always appear on approval page once submitted,
+      // regardless of expiredTgl or other date conditions.
+      setPoData(list);
     } catch (err) {
       console.error("Failed to fetch PO data:", err);
     } finally {
