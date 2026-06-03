@@ -158,18 +158,18 @@ export default function DataRekonPage() {
         to { opacity: 1; transform: translateY(0); }
       }
     `}</style>
-    <div className="max-w-full mx-auto p-6 bg-[#f8fafc] min-h-screen font-sans">
+    <div className="max-w-full mx-auto p-6 bg-[#f8fafc] dark:bg-transparent min-h-screen font-sans">
       {/* Header Area */}
       <div className="flex justify-between items-center mb-6 px-4">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-[#0f172a] rounded-xl flex items-center justify-center text-white shadow-lg">
+          <div className="w-10 h-10 bg-[#0f172a] dark:bg-slate-800 rounded-xl flex items-center justify-center text-white shadow-lg dark:shadow-none">
             <Layers size={22} strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-800 tracking-tighter uppercase leading-none">
+            <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tighter uppercase leading-none">
                Arsip Rekonsiliasi
             </h1>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1 italic">
+            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mt-1 italic">
                Database Storage • v1.0
             </p>
           </div>
@@ -178,35 +178,35 @@ export default function DataRekonPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
           {/* Custom Date Filters */}
-          <div className="flex items-center bg-white rounded-full border border-slate-100 shadow-sm px-4 h-11 gap-3">
+          <div className="flex items-center bg-white dark:bg-slate-900/50 rounded-full border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none px-4 h-11 gap-3">
              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest whitespace-nowrap">From</span>
+                <span className="text-[9px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">From</span>
                 <DateInputHybrid 
                   value={startDate}
                   onChange={(val) => { setStartDate(val); setPage(1); }}
                   placeholder="Mulai"
-                  className="w-32 border-none ring-0 focus:ring-0 [&_input]:bg-slate-50/50 [&_input]:h-8 [&_input]:rounded-full [&_input]:text-[10px] [&_input]:border-none"
+                  className="w-32 border-none ring-0 focus:ring-0 [&_input]:bg-slate-50/50 dark:[&_input]:bg-slate-800/50 [&_input]:h-8 [&_input]:rounded-full [&_input]:text-[10px] [&_input]:border-none dark:[&_input]:text-slate-300"
                 />
              </div>
-             <div className="w-[1px] h-4 bg-slate-100"></div>
+             <div className="w-[1px] h-4 bg-slate-100 dark:bg-slate-700/50"></div>
              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest whitespace-nowrap">To</span>
+                <span className="text-[9px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">To</span>
                 <DateInputHybrid 
                   value={endDate}
                   onChange={(val) => { setEndDate(val); setPage(1); }}
                   placeholder="Sampai"
-                  className="w-32 border-none ring-0 focus:ring-0 [&_input]:bg-slate-50/50 [&_input]:h-8 [&_input]:rounded-full [&_input]:text-[10px] [&_input]:border-none"
+                  className="w-32 border-none ring-0 focus:ring-0 [&_input]:bg-slate-50/50 dark:[&_input]:bg-slate-800/50 [&_input]:h-8 [&_input]:rounded-full [&_input]:text-[10px] [&_input]:border-none dark:[&_input]:text-slate-300"
                 />
              </div>
           </div>
 
           <div className="relative group w-64">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={16} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors" size={16} />
             <input 
               type="text" 
               placeholder="Cari..." 
               suppressHydrationWarning
-              className="w-full h-11 pl-11 pr-6 bg-white rounded-full border border-slate-100 outline-none font-bold text-xs text-slate-700 shadow-sm focus:ring-4 focus:ring-indigo-50 transition-all"
+              className="w-full h-11 pl-11 pr-6 bg-white dark:bg-slate-900/50 rounded-full border border-slate-100 dark:border-slate-800 outline-none font-bold text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-500 shadow-sm dark:shadow-none focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-500/10 transition-all"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
@@ -216,16 +216,16 @@ export default function DataRekonPage() {
       </div>
 
       {/* Table Section */}
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900/40 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
         {loading && !data.length ? (
             <div className="flex flex-col items-center justify-center py-40 space-y-4">
-              <Loader2 className="w-10 h-10 text-indigo-200 animate-spin" strokeWidth={3} />
+              <Loader2 className="w-10 h-10 text-indigo-200 dark:text-indigo-500/50 animate-spin" strokeWidth={3} />
             </div>
         ) : (
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left border-collapse min-w-[1400px]">
               <thead>
-                <tr className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                <tr className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-800/50">
                   <th className="px-4 py-5 w-10"></th>
                   <th className="px-4 py-5">NO. REKON</th>
                   <th className="px-4 py-5">RITEL</th>
@@ -234,13 +234,13 @@ export default function DataRekonPage() {
                   <th className="px-6 py-5 text-center">RTV</th>
                   <th className="px-6 py-5 text-center">PROMO</th>
                   <th className="px-6 py-5 text-center">ADMIN FEE</th>
-                  <th className="px-6 py-5 text-center bg-indigo-50/5 text-indigo-500">NET DUE</th>
+                  <th className="px-6 py-5 text-center bg-indigo-50/5 dark:bg-indigo-500/5 text-indigo-500 dark:text-indigo-400">NET DUE</th>
                   <th className="px-4 py-5 text-center">TANGGAL INPUT</th>
                   <th className="px-4 py-5 text-center">TANGGAL PEMBAYARAN</th>
                   <th className="px-4 py-5 text-right pr-8">AKSI</th>
                 </tr>
               </thead>
-              <tbody className="text-[11px] font-bold text-slate-600">
+              <tbody className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
                 {data.map((item) => {
                   const isExpanded = expandedRows.has(item.id);
                   const invoiceCount = item.invoices?.length || 0;
@@ -250,50 +250,50 @@ export default function DataRekonPage() {
                     <Fragment key={item.id}>
                       {/* MAIN ROW */}
                       <tr 
-                        className={`group hover:bg-slate-50/50 transition-all border-b cursor-pointer ${isExpanded ? 'bg-slate-50/80 border-slate-100' : 'border-slate-50'}`}
+                        className={`group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all border-b cursor-pointer ${isExpanded ? 'bg-slate-50/80 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700/50' : 'border-slate-50 dark:border-slate-800/50'}`}
                         onClick={() => toggleRow(item.id)}
                       >
                         <td className="px-4 py-4 w-10">
                           <ChevronRight 
                             size={14} 
-                            className={`text-slate-950 font-black transition-transform duration-200 ${isExpanded ? 'rotate-90 text-indigo-500' : ''}`} 
+                            className={`text-slate-950 dark:text-slate-300 font-black transition-transform duration-200 ${isExpanded ? 'rotate-90 text-indigo-500 dark:text-indigo-400' : ''}`} 
                           />
                         </td>
 
                         {/* No Rekon */}
                         <td className="px-4 py-4">
-                           <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg font-black tracking-tight text-[10px]">
+                           <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg font-black tracking-tight text-[10px]">
                               {item.noRekonsiliasi}
                            </span>
                         </td>
 
                         {/* Ritel */}
-                        <td className="px-4 py-4 uppercase text-slate-400 font-black text-[10px]">
+                        <td className="px-4 py-4 uppercase text-slate-400 dark:text-slate-500 font-black text-[10px]">
                            {item.RitelModern?.namaPt || 'N/A'}
                         </td>
 
                         {/* Bank Statement */}
-                        <td className="px-6 py-4 text-center tabular-nums text-slate-800 font-black">
+                        <td className="px-6 py-4 text-center tabular-nums text-slate-800 dark:text-slate-200 font-black">
                            {formatRp(item.bankStatement)}
                         </td>
 
                         {/* Invoice Summary - Badge + Total */}
                         <td className="px-6 py-4 text-center">
                            <div className="flex flex-col items-center gap-1">
-                              <span className="px-3 py-0.5 bg-blue-50 text-blue-500 rounded-full text-[9px] font-black uppercase">
+                              <span className="px-3 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-full text-[9px] font-black uppercase">
                                  {invoiceCount} Invoice
                               </span>
-                              <p className="text-[11px] font-black text-slate-800 tabular-nums">{formatRp(item.totalInvoices || 0)}</p>
+                              <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 tabular-nums">{formatRp(item.totalInvoices || 0)}</p>
                            </div>
                         </td>
 
                         {/* RTV Summary - Badge + Total */}
                         <td className="px-6 py-4 text-center">
                            <div className="flex flex-col items-center gap-1">
-                              <span className="px-3 py-0.5 bg-rose-50 text-rose-500 rounded-full text-[9px] font-black uppercase">
+                              <span className="px-3 py-0.5 bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 rounded-full text-[9px] font-black uppercase">
                                  {rtvCount} RTV
                               </span>
-                              <p className="text-[11px] font-black text-rose-600 tabular-nums">{formatRp(item.totalRtvs || 0)}</p>
+                              <p className="text-[11px] font-black text-rose-600 dark:text-rose-400 tabular-nums">{formatRp(item.totalRtvs || 0)}</p>
                            </div>
                         </td>
 
@@ -301,22 +301,22 @@ export default function DataRekonPage() {
                         <td className="px-6 py-4 text-center">
                            {item.noPromo ? (
                               <div className="flex flex-col items-center gap-1">
-                                 <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[9px] font-black uppercase border border-emerald-100/50">
+                                 <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-[9px] font-black uppercase border border-emerald-100/50 dark:border-emerald-500/20">
                                     {item.noPromo}
                                  </span>
-                                 <p className="text-[11px] font-black text-emerald-600 tabular-nums">{formatRp(item.totalPromo || 0)}</p>
+                                 <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatRp(item.totalPromo || 0)}</p>
                               </div>
-                           ) : <span className="text-slate-200">-</span>}
+                           ) : <span className="text-slate-200 dark:text-slate-700">-</span>}
                         </td>
 
                         {/* Admin Fee */}
-                        <td className="px-6 py-4 text-center text-rose-400 tabular-nums font-black">
+                        <td className="px-6 py-4 text-center text-rose-400 dark:text-rose-500 tabular-nums font-black">
                            ({formatRp(item.biayaAdmin)})
                         </td>
 
                         {/* Net Due */}
-                        <td className="px-6 py-4 text-center bg-indigo-50/5">
-                           <p className="text-[13px] font-black text-slate-900 tracking-tighter tabular-nums">
+                        <td className="px-6 py-4 text-center bg-indigo-50/5 dark:bg-indigo-500/5">
+                           <p className="text-[13px] font-black text-slate-900 dark:text-slate-100 tracking-tighter tabular-nums">
                               {formatRp(item.nominal)}
                            </p>
                         </td>
@@ -343,7 +343,7 @@ export default function DataRekonPage() {
                                     href={item.rincianBayarUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="w-8 h-8 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                    className="w-8 h-8 bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500/20 transition-all shadow-sm dark:shadow-none"
                                     title="Lihat Rincian Bayar"
                                  >
                                     <FileSpreadsheet size={14} />
@@ -353,7 +353,7 @@ export default function DataRekonPage() {
                                  <button 
                                     onClick={() => setBuktiBayarPreviewUrl(item.buktiBayarUrl)}
                                     suppressHydrationWarning
-                                    className="w-8 h-8 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                                    className="w-8 h-8 bg-amber-50 dark:bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-full flex items-center justify-center hover:bg-amber-600 hover:text-white dark:hover:bg-amber-500/20 transition-all shadow-sm dark:shadow-none"
                                     title="Lihat Bukti Bayar"
                                  >
                                     <Paperclip size={14} />
@@ -362,7 +362,7 @@ export default function DataRekonPage() {
                               <button 
                                  onClick={() => handleRowExport(item)}
                                  suppressHydrationWarning
-                                 className="w-8 h-8 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                 className="w-8 h-8 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 rounded-full flex items-center justify-center hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500/20 transition-all shadow-sm dark:shadow-none"
                                  title="Preview PDF"
                               >
                                  <Eye size={14} />
@@ -370,7 +370,7 @@ export default function DataRekonPage() {
                               <button 
                                  onClick={() => handleDelete(item)}
                                  suppressHydrationWarning
-                                 className="w-8 h-8 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                 className="w-8 h-8 bg-rose-50 dark:bg-rose-500/10 text-rose-400 rounded-full flex items-center justify-center hover:bg-rose-600 hover:text-white dark:hover:bg-rose-500/20 transition-all shadow-sm dark:shadow-none"
                                  title="Hapus Data"
                               >
                                  <Trash2 size={14} />
@@ -378,7 +378,7 @@ export default function DataRekonPage() {
                               {item.status === "draft" && (
                                 <button 
                                   onClick={() => router.push(`/rekon/calc?edit=${item.id}`)}
-                                  className="w-8 h-8 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shadow-sm hover:bg-amber-600 hover:text-white transition-all cursor-pointer group/draft"
+                                  className="w-8 h-8 bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center shadow-sm dark:shadow-none hover:bg-amber-600 hover:text-white dark:hover:bg-amber-500/30 transition-all cursor-pointer group/draft"
                                   title="Lanjutkan Draft"
                                 >
                                   <FileText size={14} className="group-hover/draft:scale-110 transition-transform" />
@@ -390,10 +390,10 @@ export default function DataRekonPage() {
 
                       {/* EXPANDED DETAIL ROW */}
                       {isExpanded && (
-                        <tr key={`${item.id}-detail`} className="border-b border-slate-100">
+                        <tr key={`${item.id}-detail`} className="border-b border-slate-100 dark:border-slate-800/50">
                           <td colSpan={11} className="px-0 py-0">
                             <div 
-                              className="bg-slate-50/60 px-14 py-8"
+                              className="bg-slate-50/60 dark:bg-slate-900/40 px-14 py-8"
                               style={{ animation: 'fadeSlideIn 0.2s ease-out' }}
                             >
                               <div className="grid grid-cols-3 gap-12 w-full">
@@ -406,10 +406,10 @@ export default function DataRekonPage() {
                                     </div>
                                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Invoice ({invoiceCount})</h4>
                                   </div>
-                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-x-auto overflow-y-hidden">
+                                  <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
                                     <table className="w-full text-left">
                                       <thead>
-                                        <tr className="text-[8px] font-black text-slate-300 uppercase tracking-widest border-b border-slate-50">
+                                        <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
                                           <th className="px-5 py-3">#</th>
                                           <th className="px-5 py-3">NO. INVOICE</th>
                                           <th className="px-5 py-3 text-right">NOMINAL</th>
@@ -417,25 +417,25 @@ export default function DataRekonPage() {
                                       </thead>
                                       <tbody>
                                         {item.invoices?.length > 0 ? item.invoices.map((inv: any, i: number) => (
-                                          <tr key={i} className="border-b border-slate-50 last:border-none hover:bg-blue-50/30 transition-colors">
-                                            <td className="px-5 py-3 text-[9px] text-slate-300 font-bold">{i + 1}</td>
+                                          <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-blue-50/30 dark:hover:bg-blue-500/10 transition-colors">
+                                            <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
                                             <td className="px-5 py-3">
-                                              <span className="text-[10px] font-black text-blue-600 uppercase tracking-tight">{inv.noInvoice}</span>
+                                              <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight">{inv.noInvoice}</span>
                                             </td>
-                                            <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700">
+                                            <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200">
                                               {formatRp(inv.nominal)}
                                             </td>
                                           </tr>
                                         )) : (
-                                          <tr><td colSpan={3} className="px-5 py-6 text-center text-[9px] text-slate-300 italic">Tidak ada invoice</td></tr>
+                                          <tr><td colSpan={3} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada invoice</td></tr>
                                         )}
                                       </tbody>
                                     </table>
                                   </div>
                                   <div className="mt-3 flex justify-end">
-                                    <div className="px-4 py-2 bg-blue-50 rounded-xl">
-                                      <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest mr-3">Total</span>
-                                      <span className="text-[11px] font-black text-blue-600 tabular-nums">{formatRp(item.totalInvoices || 0)}</span>
+                                    <div className="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
+                                      <span className="text-[8px] font-black text-blue-400 dark:text-blue-500 uppercase tracking-widest mr-3">Total</span>
+                                      <span className="text-[11px] font-black text-blue-600 dark:text-blue-400 tabular-nums">{formatRp(item.totalInvoices || 0)}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -448,12 +448,12 @@ export default function DataRekonPage() {
                                     </div>
                                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Notes</h4>
                                   </div>
-                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                                  <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
                                     {Array.isArray(item.notes) && item.notes.length > 0 ? (
                                       <>
                                         <table className="w-full text-left">
                                           <thead>
-                                            <tr className="text-[8px] font-black text-slate-300 uppercase tracking-widest border-b border-slate-50">
+                                            <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
                                               <th className="px-5 py-3">#</th>
                                               <th className="px-5 py-3">Tipe</th>
                                               <th className="px-5 py-3">Keterangan</th>
@@ -462,24 +462,24 @@ export default function DataRekonPage() {
                                           </thead>
                                           <tbody>
                                             {item.notes.map((note: any, ni: number) => (
-                                              <tr key={ni} className="border-b border-slate-50 last:border-none hover:bg-indigo-50/30 transition-colors">
-                                                <td className="px-5 py-3 text-[9px] text-slate-300 font-bold">{ni + 1}</td>
+                                              <tr key={ni} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-indigo-50/30 dark:hover:bg-indigo-500/10 transition-colors">
+                                                <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{ni + 1}</td>
                                                 <td className="px-5 py-3 text-[10px] font-bold text-slate-600">
                                                   {note.type === 'rtv' ? (
-                                                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-100 text-[8px] uppercase tracking-widest">RTV</span>
+                                                    <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-500/20 text-[8px] uppercase tracking-widest">RTV</span>
                                                   ) : (
-                                                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md border border-blue-100 text-[8px] uppercase tracking-widest">Invoice</span>
+                                                    <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-500/20 text-[8px] uppercase tracking-widest">Invoice</span>
                                                   )}
                                                 </td>
-                                                <td className="px-5 py-3 text-[10px] font-bold text-slate-600">{note.desc || <span className="italic text-slate-300">-</span>}</td>
-                                                <td className="px-5 py-3 text-right text-[10px] font-black text-indigo-600 tabular-nums">{formatRp(note.nominal || 0)}</td>
+                                                <td className="px-5 py-3 text-[10px] font-bold text-slate-600 dark:text-slate-300">{note.desc || <span className="italic text-slate-300 dark:text-slate-600">-</span>}</td>
+                                                <td className="px-5 py-3 text-right text-[10px] font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatRp(note.nominal || 0)}</td>
                                               </tr>
                                             ))}
                                           </tbody>
                                         </table>
-                                        <div className="px-5 py-3 bg-indigo-50/50 flex justify-end">
-                                          <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mr-3">Total</span>
-                                          <span className="text-[11px] font-black text-indigo-600 tabular-nums">{formatRp(item.notes.reduce((s: number, n: any) => s + (Number(n.nominal) || 0), 0))}</span>
+                                        <div className="px-5 py-3 bg-indigo-50/50 dark:bg-indigo-500/10 flex justify-end">
+                                          <span className="text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-widest mr-3">Total</span>
+                                          <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatRp(item.notes.reduce((s: number, n: any) => s + (Number(n.nominal) || 0), 0))}</span>
                                         </div>
                                       </>
                                     ) : (
@@ -498,10 +498,10 @@ export default function DataRekonPage() {
                                     </div>
                                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail RTV ({rtvCount})</h4>
                                   </div>
-                                  <div className="bg-white rounded-2xl border border-slate-100 overflow-x-auto overflow-y-hidden">
+                                  <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
                                     <table className="w-full text-left">
                                       <thead>
-                                        <tr className="text-[8px] font-black text-slate-300 uppercase tracking-widest border-b border-slate-50">
+                                        <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
                                           <th className="px-5 py-3">#</th>
                                           <th className="px-5 py-3">NO. RTV</th>
                                           <th className="px-5 py-3">REF. INVOICE</th>
@@ -522,48 +522,48 @@ export default function DataRekonPage() {
                                           const tujuan = typeof rtv === 'object' ? (rtv.tujuan || '-') : '-';
                                           const produk = typeof rtv === 'object' ? (rtv.produk || '-') : '-';
                                           return (
-                                            <tr key={i} className="border-b border-slate-50 last:border-none hover:bg-rose-50/30 transition-colors">
-                                              <td className="px-5 py-3 text-[9px] text-slate-300 font-bold">{i + 1}</td>
+                                            <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-rose-50/30 dark:hover:bg-rose-500/10 transition-colors">
+                                              <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
                                               <td className="px-5 py-3">
-                                                <span className="text-[10px] font-black text-rose-500 uppercase tracking-tight">{rtvNo}</span>
+                                                <span className="text-[10px] font-black text-rose-500 dark:text-rose-400 uppercase tracking-tight">{rtvNo}</span>
                                               </td>
                                               <td className="px-5 py-3">
                                                 {refInv && refInv !== '-' ? (
                                                   <div className="flex items-center gap-1.5">
-                                                    <ArrowRightCircle size={10} className="text-indigo-400 shrink-0" />
-                                                    <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tight">{refInv}</span>
+                                                    <ArrowRightCircle size={10} className="text-indigo-400 dark:text-indigo-500 shrink-0" />
+                                                    <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-tight">{refInv}</span>
                                                   </div>
                                                 ) : (
-                                                  <span className="text-[9px] text-slate-200 italic">belum di-set</span>
+                                                  <span className="text-[9px] text-slate-200 dark:text-slate-600 italic">belum di-set</span>
                                                 )}
                                               </td>
                                               <td className="px-5 py-3">
-                                                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">{pembebanan}</span>
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{pembebanan}</span>
                                               </td>
                                               <td className="px-5 py-3">
-                                                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">{lokasi}</span>
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{lokasi}</span>
                                               </td>
                                               <td className="px-5 py-3">
-                                                <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px] inline-block" title={tujuan}>{tujuan}</span>
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[120px] inline-block" title={tujuan}>{tujuan}</span>
                                               </td>
                                               <td className="px-5 py-3">
-                                                <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px] inline-block" title={produk}>{produk}</span>
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[120px] inline-block" title={produk}>{produk}</span>
                                               </td>
-                                              <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700">
+                                              <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200">
                                                 {formatRp(nominal)}
                                               </td>
                                             </tr>
                                           );
                                         }) : (
-                                          <tr><td colSpan={8} className="px-5 py-6 text-center text-[9px] text-slate-300 italic">Tidak ada RTV</td></tr>
+                                          <tr><td colSpan={8} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada RTV</td></tr>
                                         )}
                                       </tbody>
                                     </table>
                                   </div>
                                   <div className="mt-3 flex justify-end">
-                                    <div className="px-4 py-2 bg-rose-50 rounded-xl">
-                                      <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest mr-3">Total</span>
-                                      <span className="text-[11px] font-black text-rose-600 tabular-nums">{formatRp(item.totalRtvs || 0)}</span>
+                                    <div className="px-4 py-2 bg-rose-50 dark:bg-rose-500/10 rounded-xl">
+                                      <span className="text-[8px] font-black text-rose-400 dark:text-rose-500 uppercase tracking-widest mr-3">Total</span>
+                                      <span className="text-[11px] font-black text-rose-600 dark:text-rose-400 tabular-nums">{formatRp(item.totalRtvs || 0)}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -571,13 +571,13 @@ export default function DataRekonPage() {
                               </div>
 
                               {/* Bukti & Rincian Bayar Section */}
-                              <div className="mt-4 pt-4 border-t border-slate-100/50">
+                              <div className="mt-4 pt-4 border-t border-slate-100/50 dark:border-slate-800/50">
                                 <div className="flex items-center gap-4">
-                                  <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center">
+                                  <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center">
                                     <Paperclip size={14} />
                                   </div>
                                   <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bukti & Rincian Bayar</h4>
-                                  <div className="flex-1 h-[1px] bg-slate-100"></div>
+                                  <div className="flex-1 h-[1px] bg-slate-100 dark:bg-slate-700/50"></div>
                                   <div className="flex items-center gap-2">
                                     {item.rincianBayarUrl && (
                                       <a
@@ -585,7 +585,7 @@ export default function DataRekonPage() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()}
-                                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/rincian border border-blue-100"
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/rincian border border-blue-100 dark:border-blue-500/20"
                                       >
                                         <FileSpreadsheet size={12} className="group-hover/rincian:scale-110 transition-transform" />
                                         Rincian Bayar
@@ -594,13 +594,13 @@ export default function DataRekonPage() {
                                     {item.buktiBayarUrl ? (
                                       <button
                                         onClick={(e) => { e.stopPropagation(); setBuktiBayarPreviewUrl(item.buktiBayarUrl); }}
-                                        className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/bukti border border-amber-100"
+                                        className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/bukti border border-amber-100 dark:border-amber-500/20"
                                       >
                                         <Eye size={12} className="group-hover/bukti:scale-110 transition-transform" />
                                         Lihat Bukti
                                       </button>
                                     ) : (
-                                      <span className="text-[9px] font-bold text-slate-300 italic uppercase tracking-widest">Belum ada bukti bayar</span>
+                                      <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 italic uppercase tracking-widest">Belum ada bukti bayar</span>
                                     )}
                                   </div>
                                 </div>
@@ -627,31 +627,31 @@ export default function DataRekonPage() {
       </div>
 
       {/* Pagination Footer */}
-      <div className="mt-6 flex justify-between items-center px-6 py-4 bg-white rounded-[24px] border border-slate-100 shadow-sm">
+      <div className="mt-6 flex justify-between items-center px-6 py-4 bg-white dark:bg-slate-900/40 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none">
         <div className="flex items-center gap-6">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
+          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">
             Total {total} Data
           </p>
-          <div className="h-4 w-[1px] bg-slate-100"></div>
+          <div className="h-4 w-[1px] bg-slate-100 dark:bg-slate-800/50"></div>
           <div className="flex items-center gap-3">
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Rows per page</span>
+            <span className="text-[9px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest">Rows per page</span>
             <Popover.Root>
               <Popover.Trigger asChild>
                 <button 
                   suppressHydrationWarning
-                  className="h-8 px-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-[10px] font-black text-slate-600 flex items-center gap-2 transition-all outline-none border border-transparent focus:border-indigo-100"
+                  className="h-8 px-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl text-[10px] font-black text-slate-600 dark:text-slate-300 flex items-center gap-2 transition-all outline-none border border-transparent focus:border-indigo-100 dark:focus:border-indigo-500/20"
                 >
                   {limit}
-                  <ChevronDown size={12} className="text-slate-300" />
+                  <ChevronDown size={12} className="text-slate-300 dark:text-slate-500" />
                 </button>
               </Popover.Trigger>
               <Popover.Portal>
-                <Popover.Content className="z-[100] w-24 bg-white rounded-2xl shadow-2xl border border-slate-50 p-2 animate-in fade-in zoom-in-95" align="start" sideOffset={8}>
+                <Popover.Content className="z-[100] w-24 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-50 dark:border-slate-700/50 p-2 animate-in fade-in zoom-in-95" align="start" sideOffset={8}>
                   {[10, 25, 50].map((val) => (
                     <button 
                       key={val}
                       onClick={() => { setLimit(val); setPage(1); }}
-                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black transition-all ${limit === val ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black transition-all ${limit === val ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300'}`}
                     >
                       {val}
                     </button>
@@ -667,7 +667,7 @@ export default function DataRekonPage() {
             disabled={page === 1}
             onClick={() => setPage(1)}
             suppressHydrationWarning
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-slate-50 transition-all"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 disabled:hover:bg-slate-50 dark:disabled:hover:bg-slate-800/50 transition-all"
           >
             <ChevronsLeft size={16} />
           </button>
@@ -675,12 +675,12 @@ export default function DataRekonPage() {
             disabled={page === 1}
             onClick={() => setPage(p => Math.max(1, p - 1))}
             suppressHydrationWarning
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-slate-50 transition-all"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 disabled:hover:bg-slate-50 dark:disabled:hover:bg-slate-800/50 transition-all"
           >
             <ChevronLeft size={16} />
           </button>
           
-          <div className="px-5 h-10 flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 font-black text-xs tracking-tighter">
+          <div className="px-5 h-10 flex items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-black text-xs tracking-tighter">
             {page} / {Math.ceil(total / limit) || 1}
           </div>
 
@@ -688,7 +688,7 @@ export default function DataRekonPage() {
             disabled={page >= Math.ceil(total / limit)}
             onClick={() => setPage(p => p + 1)}
             suppressHydrationWarning
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-slate-50 transition-all"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 disabled:hover:bg-slate-50 dark:disabled:hover:bg-slate-800/50 transition-all"
           >
             <ChevronRight size={16} />
           </button>
@@ -696,7 +696,7 @@ export default function DataRekonPage() {
             disabled={page >= Math.ceil(total / limit)}
             onClick={() => setPage(Math.ceil(total / limit))}
             suppressHydrationWarning
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:hover:bg-slate-50 transition-all"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 disabled:hover:bg-slate-50 dark:disabled:hover:bg-slate-800/50 transition-all"
           >
             <ChevronsRight size={16} />
           </button>
@@ -707,16 +707,16 @@ export default function DataRekonPage() {
     {/* ── PDF Preview Modal ─── */}
     {pdfPreviewUrl && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-10 animate-in fade-in duration-200">
-        <div className="bg-slate-100 w-full max-w-6xl h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="bg-slate-100 dark:bg-slate-900 w-full max-w-6xl h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Modal Header */}
-          <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200">
+          <div className="flex justify-between items-center px-6 py-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-indigo-50 rounded-xl">
-                <Eye className="text-indigo-600" size={18} />
+              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-500/20 rounded-xl">
+                <Eye className="text-indigo-600 dark:text-indigo-400" size={18} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800">Preview Laporan Rekonsiliasi</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Preview Laporan Rekonsiliasi</h3>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                   {total} Data {startDate || endDate ? `• ${startDate || "..."} s/d ${endDate || "..."}` : "• Semua Periode"}
                 </p>
               </div>
@@ -729,7 +729,7 @@ export default function DataRekonPage() {
                       generateRekonExcel([previewItem], {});
                    }
                 }}
-                className="h-10 px-5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-100 transition-all active:scale-95"
+                className="h-10 px-5 bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-all active:scale-95"
               >
                 <FileSpreadsheet size={14} />
                 Excel
@@ -737,7 +737,7 @@ export default function DataRekonPage() {
               <a
                 href={pdfPreviewUrl}
                 download={`Rekon_Report_${new Date().toISOString().slice(0,10)}.pdf`}
-                className="h-10 px-5 bg-[#0f172a] text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95"
+                className="h-10 px-5 bg-[#0f172a] dark:bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all active:scale-95"
               >
                 <Download size={14} />
                 PDF
@@ -745,7 +745,7 @@ export default function DataRekonPage() {
               <button
                 onClick={() => { setPdfPreviewUrl(null); setPreviewItem(null); }}
                 suppressHydrationWarning
-                className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
+                className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl transition-colors"
               >
                 <X size={20} />
               </button>
@@ -753,7 +753,7 @@ export default function DataRekonPage() {
           </div>
 
           {/* PDF Viewer */}
-          <div className="flex-1 w-full h-full bg-slate-200">
+          <div className="flex-1 w-full h-full bg-slate-200 dark:bg-slate-950">
             <iframe
               src={pdfPreviewUrl}
               className="w-full h-full border-none"
@@ -766,16 +766,16 @@ export default function DataRekonPage() {
     {/* ── Bukti Bayar Preview Modal ─── */}
     {buktiBayarPreviewUrl && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-10 animate-in fade-in duration-200">
-        <div className="bg-slate-100 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="bg-slate-100 dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Modal Header */}
-          <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200 shrink-0">
+          <div className="flex justify-between items-center px-6 py-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-amber-50 rounded-xl">
-                <Paperclip className="text-amber-600" size={18} />
+              <div className="p-2.5 bg-amber-50 dark:bg-amber-500/20 rounded-xl">
+                <Paperclip className="text-amber-600 dark:text-amber-400" size={18} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800">Preview Bukti Bayar</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Preview Bukti Bayar</h3>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                   Dokumen Pembayaran
                 </p>
               </div>
@@ -783,7 +783,7 @@ export default function DataRekonPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setBuktiBayarPreviewUrl(null)}
-                className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
+                className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl transition-colors"
               >
                 <X size={20} />
               </button>
@@ -791,7 +791,7 @@ export default function DataRekonPage() {
           </div>
 
           {/* Preview Content */}
-          <div className="flex-1 w-full overflow-auto bg-slate-200 flex items-center justify-center p-4">
+          <div className="flex-1 w-full overflow-auto bg-slate-200 dark:bg-slate-950 flex items-center justify-center p-4">
             {/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i.test(buktiBayarPreviewUrl) ? (
               <img
                 src={buktiBayarPreviewUrl}

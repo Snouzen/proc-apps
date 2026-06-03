@@ -53,8 +53,8 @@ const RenderLink = ({
       className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group
         ${
           isActive
-            ? "bg-amber-50 text-amber-600 font-bold shadow-sm"
-            : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+            ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600 font-bold shadow-sm"
+            : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200"
         }`}
     >
       <div className="w-6 h-6 flex items-center justify-center shrink-0">
@@ -232,7 +232,7 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-100 z-50 transition-all duration-300 ease-in-out flex flex-col
+        className={`fixed left-0 top-0 h-screen bg-white dark:bg-slate-800 border-r border-gray-100 dark:border-slate-700 z-50 transition-all duration-300 ease-in-out flex flex-col
         ${isOpen ? "w-64 translate-x-0" : "w-20 -translate-x-full lg:translate-x-0"}`}
       >
         {/* Header Logo */}
@@ -278,7 +278,7 @@ export default function Sidebar({
                 isOpen ? setActionPlanOpen(!actionPlanOpen) : setIsOpen(true)
               }
               className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-            ${pathname === "/schedule" || pathname === "/need-assign" ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+            ${pathname === "/schedule" || pathname === "/need-assign" ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600 font-bold" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 flex items-center justify-center shrink-0">
@@ -301,7 +301,7 @@ export default function Sidebar({
 
             <div className={`grid transition-all duration-300 ease-in-out ${isOpen && actionPlanOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
               <div className="overflow-hidden">
-                <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                <div className="space-y-1 ml-4 border-l-2 border-slate-100 dark:border-slate-700">
                   {actionPlanSubItems
                     .filter(sub => role !== "sitearea" || sub.path === "/schedule")
                     .map((sub) => {
@@ -312,7 +312,7 @@ export default function Sidebar({
                           href={sub.path}
                           prefetch={false}
                           className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
-                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
                         >
                           <span className="shrink-0">{sub.icon}</span>
                           <span className="text-xs whitespace-nowrap">
@@ -335,7 +335,7 @@ export default function Sidebar({
                 isOpen ? setBranchMenuOpen(!branchMenuOpen) : setIsOpen(true)
               }
               className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-            ${pathname.includes("/branch") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+            ${pathname.includes("/branch") ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600 font-bold" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 flex items-center justify-center shrink-0">
@@ -358,7 +358,7 @@ export default function Sidebar({
 
             <div className={`grid transition-all duration-300 ease-in-out ${isOpen && branchMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
               <div className="overflow-hidden">
-                <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                <div className="space-y-1 ml-4 border-l-2 border-slate-100 dark:border-slate-700">
                   {branchSubItems.map((sub) => {
                     const subActive = pathname === sub.path;
                     return (
@@ -367,7 +367,7 @@ export default function Sidebar({
                         href={sub.path}
                         prefetch={false}
                         className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
-                      ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                      ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
                       >
                         <span className="shrink-0">{sub.icon}</span>
                         <span className="text-xs whitespace-nowrap">
@@ -393,7 +393,7 @@ export default function Sidebar({
                   isOpen ? setRekonMenuOpen(!rekonMenuOpen) : setIsOpen(true)
                 }
                 className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-              ${pathname.includes("/rekon") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+              ${pathname.includes("/rekon") ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600 font-bold" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 flex items-center justify-center shrink-0">
@@ -416,7 +416,7 @@ export default function Sidebar({
 
               <div className={`grid transition-all duration-300 ease-in-out ${isOpen && rekonMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
                 <div className="overflow-hidden">
-                  <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                  <div className="space-y-1 ml-4 border-l-2 border-slate-100 dark:border-slate-700">
                     {rekonSubItems.map((sub) => {
                       const subActive = pathname === sub.path;
                       return (
@@ -425,7 +425,7 @@ export default function Sidebar({
                           href={sub.path}
                           prefetch={false}
                           className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
-                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
                         >
                           <span className="shrink-0">{sub.icon}</span>
                           <span className="text-xs whitespace-nowrap">
@@ -448,7 +448,7 @@ export default function Sidebar({
                   isOpen ? setCreditLimitMenuOpen(!creditLimitMenuOpen) : setIsOpen(true)
                 }
                 className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-              ${pathname.includes("/credit-limit") ? "bg-amber-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+              ${pathname.includes("/credit-limit") ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600 font-bold" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 flex items-center justify-center shrink-0">
@@ -471,7 +471,7 @@ export default function Sidebar({
 
               <div className={`grid transition-all duration-300 ease-in-out ${isOpen && creditLimitMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
                 <div className="overflow-hidden">
-                  <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                  <div className="space-y-1 ml-4 border-l-2 border-slate-100 dark:border-slate-700">
                     {creditLimitSubItems.map((sub) => {
                       const subActive = pathname === sub.path;
                       return (
@@ -480,7 +480,7 @@ export default function Sidebar({
                           href={sub.path}
                           prefetch={false}
                           className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
-                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
                         >
                           <span className="shrink-0">{sub.icon}</span>
                           <span className="text-xs whitespace-nowrap">
@@ -506,7 +506,7 @@ export default function Sidebar({
                   isOpen ? setPoMenuOpen(!poMenuOpen) : setIsOpen(true)
                 }
                 className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-              ${pathname.includes("/master-data") ? "bg-slate-50 text-amber-600 font-bold" : "text-slate-500 hover:bg-slate-50"}`}
+              ${pathname.includes("/master-data") ? "bg-slate-50 dark:bg-slate-700 text-amber-600 font-bold" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 flex items-center justify-center shrink-0">
@@ -529,7 +529,7 @@ export default function Sidebar({
 
               <div className={`grid transition-all duration-300 ease-in-out ${isOpen && poMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
                 <div className="overflow-hidden">
-                  <div className="space-y-1 ml-4 border-l-2 border-slate-100">
+                  <div className="space-y-1 ml-4 border-l-2 border-slate-100 dark:border-slate-700">
                     {subItems.map((sub) => {
                       const subActive = pathname === sub.path;
                       return (
@@ -538,7 +538,7 @@ export default function Sidebar({
                           href={sub.path}
                           prefetch={false}
                           className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
-                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                        ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
                         >
                           <span className="shrink-0">{sub.icon}</span>
                           <span className="text-xs whitespace-nowrap">

@@ -144,7 +144,7 @@ const EliteSearchableInput = memo(
                 value={internalVal}
                 placeholder={placeholder}
                 onKeyDown={handleKeyDown}
-                className="w-full px-5 py-4 text-xs font-bold text-slate-700 bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl transition-all outline-none pr-12 cursor-pointer"
+                className="w-full px-5 py-4 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl transition-all outline-none pr-12 cursor-pointer"
                 onChange={handleChange}
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -169,7 +169,7 @@ const EliteSearchableInput = memo(
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content
-              className="z-[9999] bg-white border border-slate-100 rounded-2xl shadow-2xl py-2 w-[var(--radix-popover-trigger-width)] max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl dark:shadow-slate-900/50 py-2 w-[var(--radix-popover-trigger-width)] max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
               sideOffset={5}
               align="start"
               sticky="always"
@@ -184,7 +184,7 @@ const EliteSearchableInput = memo(
                     onCommit(tj);
                     onOpenChange(false);
                   }}
-                  className={`w-full px-6 py-3 text-left text-xs font-bold transition-colors border-b border-slate-50 last:border-0 cursor-pointer ${idx === activeIndex ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+                  className={`w-full px-6 py-3 text-left text-xs font-bold transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-0 cursor-pointer ${idx === activeIndex ? "bg-indigo-600 text-white" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
                 >
                   {highlightMatch(tj, internalVal)}
                 </button>
@@ -270,7 +270,7 @@ const EliteProductInput = memo(
                 value={internalVal}
                 placeholder={placeholder}
                 onKeyDown={handleKeyDown}
-                className="w-full px-5 py-4 text-xs font-bold text-slate-700 bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl transition-all outline-none pr-12 cursor-pointer"
+                className="w-full px-5 py-4 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl transition-all outline-none pr-12 cursor-pointer"
                 onChange={handleChange}
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -295,7 +295,7 @@ const EliteProductInput = memo(
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content
-              className="z-[9999] bg-white border border-slate-100 rounded-2xl shadow-2xl py-2 w-[var(--radix-popover-trigger-width)] max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl dark:shadow-slate-900/50 py-2 w-[var(--radix-popover-trigger-width)] max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
               sideOffset={5}
               align="start"
               sticky="always"
@@ -310,10 +310,10 @@ const EliteProductInput = memo(
                     onCommit(p.name);
                     onOpenChange(false);
                   }}
-                  className={`w-full px-6 py-4 text-left border-b border-slate-50 last:border-0 transition-all cursor-pointer group ${idx === activeIndex ? "bg-indigo-600" : "hover:bg-indigo-600"}`}
+                  className={`w-full px-6 py-4 text-left border-b border-slate-50 dark:border-slate-700/50 last:border-0 transition-all cursor-pointer group ${idx === activeIndex ? "bg-indigo-600" : "hover:bg-indigo-600"}`}
                 >
                   <span
-                    className={`text-xs font-bold block transition-all ${idx === activeIndex ? "text-white" : "text-slate-700 group-hover:text-white"}`}
+                    className={`text-xs font-bold block transition-all ${idx === activeIndex ? "text-white" : "text-slate-700 dark:text-slate-400 group-hover:text-white dark:group-hover:text-white"}`}
                   >
                     {highlightMatch(p.name, internalVal)}
                   </span>
@@ -350,9 +350,9 @@ function CustomInlineDatePicker({
     return eachDayOfInterval({ start, end });
   }, [currentMonth]);
   const colors = {
-    indigo: "text-indigo-600 bg-indigo-50 border-indigo-100 ring-indigo-500/10",
-    rose: "text-rose-600 bg-rose-50 border-rose-100 ring-rose-500/10",
-    slate: "text-slate-600 bg-slate-50 border-slate-100 ring-slate-500/10",
+    indigo: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800/50 ring-indigo-500/10 dark:ring-indigo-500/20 hover:border-indigo-300 dark:hover:border-indigo-700",
+    rose: "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800/50 ring-rose-500/10 dark:ring-rose-500/20 hover:border-rose-300 dark:hover:border-rose-700",
+    slate: "text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-700 ring-slate-500/10 dark:ring-slate-500/20 hover:border-slate-300 dark:hover:border-slate-600",
   };
 
   return (
@@ -360,10 +360,10 @@ function CustomInlineDatePicker({
       <Popover.Trigger asChild>
         <button
           type="button"
-          className={`flex items-center justify-between w-full px-4 py-3 text-xs font-bold rounded-2xl border-2 focus:outline-none focus:ring-4 transition-all shadow-sm bg-white cursor-pointer ${colors[colorScheme as keyof typeof colors]}`}
+          className={`flex items-center justify-between w-full px-4 py-3 text-xs font-bold rounded-2xl border-2 focus:outline-none focus:ring-4 transition-all shadow-sm bg-white dark:bg-slate-900/50 cursor-pointer ${colors[colorScheme as keyof typeof colors]}`}
         >
           <span
-            className={value ? "text-slate-700" : "text-slate-300 font-medium"}
+            className={value ? "text-slate-700 dark:text-slate-200" : "text-slate-300 dark:text-slate-500 font-medium"}
           >
             {value
               ? format(new Date(value), "dd MMM yyyy", { locale: id })
@@ -379,7 +379,7 @@ function CustomInlineDatePicker({
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
-          className="z-[9999] w-72 bg-white rounded-[24px] shadow-2xl border border-slate-100 p-4 animate-in fade-in zoom-in-95 duration-200"
+          className="z-[9999] w-72 bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 p-4 animate-in fade-in zoom-in-95 duration-200"
           align="start"
           sideOffset={5}
         >
@@ -389,11 +389,11 @@ function CustomInlineDatePicker({
                 e.preventDefault();
                 setCurrentMonth(subMonths(currentMonth, 1));
               }}
-              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 cursor-pointer"
+              className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-slate-400 dark:text-slate-500 cursor-pointer transition-colors"
             >
               <ChevronLeft size={16} />
             </button>
-            <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">
+            <h4 className="text-[11px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
               {format(currentMonth, "MMMM yyyy", { locale: id })}
             </h4>
             <button
@@ -401,7 +401,7 @@ function CustomInlineDatePicker({
                 e.preventDefault();
                 setCurrentMonth(addMonths(currentMonth, 1));
               }}
-              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 cursor-pointer"
+              className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-slate-400 dark:text-slate-500 cursor-pointer transition-colors"
             >
               <ChevronRight size={16} />
             </button>
@@ -410,7 +410,7 @@ function CustomInlineDatePicker({
             {["S", "S", "R", "K", "J", "S", "M"].map((day, i) => (
               <div
                 key={i}
-                className="text-center text-[9px] font-black text-slate-300 uppercase py-1"
+                className="text-center text-[9px] font-black text-slate-300 dark:text-slate-500 uppercase py-1"
               >
                 {day}
               </div>
@@ -428,14 +428,14 @@ function CustomInlineDatePicker({
                     onChange(day.toISOString());
                     setOpen(false);
                   }}
-                  className={`h-8 w-8 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all cursor-pointer ${!isCurrentMonth ? "text-slate-200 pointer-events-none" : isSelected ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "text-slate-600 hover:bg-slate-50"}`}
+                  className={`h-8 w-8 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all cursor-pointer ${!isCurrentMonth ? "text-slate-200 dark:text-slate-700 pointer-events-none" : isSelected ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
                 >
                   {format(day, "d")}
                 </button>
               );
             })}
           </div>
-          <Popover.Arrow className="fill-white" />
+          <Popover.Arrow className="fill-white dark:fill-slate-800" />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
@@ -712,27 +712,27 @@ function NewReturPageContent() {
 
   if (!isMounted)
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin text-indigo-600" size={32} />
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden">
       {/* --- ELITE STICKY HEADER --- */}
-      <div className="sticky top-0 z-[50] bg-white/80 backdrop-blur-3xl border-b border-slate-100 shadow-sm">
+      <div className="sticky top-0 z-[50] bg-white/70 dark:bg-transparent border-b border-slate-100 dark:border-transparent shadow-sm dark:shadow-none transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-5">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all shadow-sm text-slate-500 cursor-pointer active:scale-95"
+                className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm text-slate-500 dark:text-slate-400 cursor-pointer active:scale-95"
               >
                 <ArrowLeft size={20} />
               </button>
               <div className="flex items-center gap-4">
-                <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight uppercase">
+                <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase">
                   Tambah Data Retur
                 </h1>
                 {retailerName && (
@@ -760,16 +760,16 @@ function NewReturPageContent() {
 
       <div className="max-w-7xl mx-auto px-6 md:px-10 py-10 pb-32">
         <form onSubmit={handleSubmit} className="space-y-10 overflow-visible">
-          <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-visible">
-            <div className="px-10 py-8 border-b border-slate-50 bg-slate-50/30 flex items-center gap-4 rounded-t-[40px]">
+          <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
+            <div className="px-10 py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-4 rounded-t-[40px]">
               <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-100">
                 <Package className="text-white" size={24} />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">
+                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
                   Informasi Utama Produk
                 </h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
                   Detail barang dan nilai retur
                 </p>
               </div>
@@ -786,7 +786,7 @@ function NewReturPageContent() {
                     setFormData({ ...formData, rtvCn: e.target.value });
                   }}
                   placeholder="Masukkan nomor RTV/CN"
-                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
               <div className="space-y-2 hidden">
@@ -806,7 +806,7 @@ function NewReturPageContent() {
                     setFormData({ ...formData, kodeToko: cleanVal });
                   }}
                   placeholder="Masukkan kode toko"
-                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
               <EliteSearchableInput
@@ -864,7 +864,7 @@ function NewReturPageContent() {
                     <input
                       type="number"
                       placeholder="0"
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-300 transition-all text-sm font-black text-slate-700 placeholder:text-slate-300 pr-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-300 dark:focus:border-emerald-500 transition-all text-sm font-black text-slate-700 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 pr-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       value={currentItem.qtyReturn === 0 ? "" : currentItem.qtyReturn}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -886,7 +886,7 @@ function NewReturPageContent() {
                       <input
                         type="number"
                         placeholder="0"
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-300 transition-all text-sm font-black text-slate-700 placeholder:text-slate-300 pr-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-right"
+                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-300 dark:focus:border-emerald-500 transition-all text-sm font-black text-slate-700 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 pr-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-right"
                         value={currentItem.nominal === 0 ? "" : currentItem.nominal}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -925,11 +925,11 @@ function NewReturPageContent() {
 
           {/* PREVIEW TABLE */}
           {items.length > 0 && (
-            <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-500">
-              <div className="px-10 py-6 border-b border-slate-50 bg-slate-50/20 flex items-center justify-between">
+            <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-500">
+              <div className="px-10 py-6 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/20 dark:bg-slate-800/50 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-2 h-8 bg-indigo-500 rounded-full" />
-                  <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">
+                  <h2 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
                     Daftar Barang ({items.length})
                   </h2>
                 </div>
@@ -937,7 +937,7 @@ function NewReturPageContent() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="bg-slate-50/50">
+                    <tr className="bg-slate-50/50 dark:bg-slate-800/50">
                       <th className="px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">
                         No
                       </th>
@@ -958,24 +958,24 @@ function NewReturPageContent() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                     {items.map((item, idx) => (
                       <tr
                         key={idx}
-                        className="hover:bg-slate-50/40 transition-colors group"
+                        className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors group"
                       >
                         <td className="px-10 py-5 text-xs font-black text-slate-300">
                           {String(idx + 1).padStart(2, "0")}
                         </td>
                         <td className="px-6 py-5">
-                          <p className="text-xs font-bold text-slate-700 uppercase">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
                             {item.produk}
                           </p>
                         </td>
-                        <td className="px-6 py-5 text-right text-xs font-black text-slate-900">
+                        <td className="px-6 py-5 text-right text-xs font-black text-slate-900 dark:text-slate-100">
                           {item.qtyReturn}
                         </td>
-                        <td className="px-6 py-5 text-right text-xs font-black text-indigo-600">
+                        <td className="px-6 py-5 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">
                           Rp {formatRupiahDisplay(item.nominal)}
                         </td>
                         <td className="px-6 py-5 text-right text-xs font-bold text-slate-400">
@@ -994,7 +994,7 @@ function NewReturPageContent() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-indigo-50/30">
+                    <tr className="bg-indigo-50/30 dark:bg-indigo-900/20">
                       <td
                         colSpan={3}
                         className="px-10 py-5 text-[10px] font-black text-indigo-700 uppercase tracking-widest text-right"
@@ -1015,13 +1015,13 @@ function NewReturPageContent() {
             </div>
           )}
 
-          <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-visible">
-            <div className="px-10 py-8 border-b border-slate-50 bg-slate-50/30 flex items-center gap-4 rounded-t-[40px]">
+          <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
+            <div className="px-10 py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-4 rounded-t-[40px]">
               <div className="p-3 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-100">
                 <Truck className="text-white" size={24} />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">
+                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
                   Logistik & Administrasi
                 </h2>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
@@ -1131,7 +1131,7 @@ function NewReturPageContent() {
                           }
                         }
                       }}
-                      className="w-full flex items-center justify-between px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent hover:border-emerald-200 rounded-2xl outline-none cursor-pointer"
+                      className="w-full flex items-center justify-between px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent hover:border-emerald-200 dark:hover:border-emerald-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                     >
                       <span className="uppercase tracking-widest">
                         {formData.statusBarang}
@@ -1141,7 +1141,7 @@ function NewReturPageContent() {
                   </Popover.Trigger>
                   <Popover.Portal>
                     <Popover.Content
-                      className="z-[9999] bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden w-[var(--radix-popover-trigger-width)]"
+                      className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden w-[var(--radix-popover-trigger-width)]"
                       sideOffset={5}
                       sticky="always"
                       onOpenAutoFocus={(e) => e.preventDefault()}
@@ -1155,7 +1155,7 @@ function NewReturPageContent() {
                               setFormData({ ...formData, statusBarang: st });
                               setIsStatusOpen(false);
                             }}
-                            className={`w-full px-6 py-4 text-left text-xs font-black uppercase tracking-widest flex items-center justify-between rounded-xl transition-all cursor-pointer ${formData.statusBarang === st || idx === activeStatusIndex ? "bg-emerald-600 text-white shadow-lg shadow-emerald-100" : "text-slate-600 hover:bg-slate-50"}`}
+                            className={`w-full px-6 py-4 text-left text-xs font-black uppercase tracking-widest flex items-center justify-between rounded-xl transition-all cursor-pointer ${formData.statusBarang === st || idx === activeStatusIndex ? "bg-emerald-600 text-white shadow-lg shadow-emerald-100 dark:shadow-emerald-900/50" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"}`}
                           >
                             {st}
                             {(formData.statusBarang === st ||
@@ -1179,22 +1179,22 @@ function NewReturPageContent() {
                   onChange={(e) =>
                     setFormData({ ...formData, link: e.target.value })
                   }
-                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-emerald-400 rounded-2xl outline-none cursor-pointer"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-400 dark:focus:border-emerald-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-visible">
-            <div className="px-10 py-8 border-b border-slate-50 bg-slate-50/30 flex items-center gap-4 rounded-t-[40px]">
+          <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
+            <div className="px-10 py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-4 rounded-t-[40px]">
               <div className="p-3 bg-amber-500 rounded-2xl shadow-lg shadow-amber-100">
                 <CreditCard className="text-white" size={24} />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">
+                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
                   Pembayaran
                 </h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
                   Catatan tambahan
                 </p>
               </div>
@@ -1213,7 +1213,7 @@ function NewReturPageContent() {
                       referensiPembayaran: e.target.value,
                     })
                   }
-                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-amber-400 rounded-2xl outline-none cursor-pointer"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-amber-400 dark:focus:border-amber-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
               <div className="space-y-2">
@@ -1238,7 +1238,7 @@ function NewReturPageContent() {
                   onChange={(e) =>
                     setFormData({ ...formData, sdiReturn: e.target.value })
                   }
-                  className="w-full px-5 py-4 text-xs font-black text-amber-600 bg-amber-50/30 border-2 border-transparent rounded-2xl outline-none cursor-pointer"
+                  className="w-full px-5 py-4 text-xs font-black text-amber-600 dark:text-amber-500 bg-amber-50/30 dark:bg-amber-900/20 border-2 border-transparent rounded-2xl outline-none cursor-pointer"
                 />
               </div>
               <div className="space-y-2">
@@ -1252,7 +1252,7 @@ function NewReturPageContent() {
                     setFormData({ ...formData, invoiceRekon: e.target.value })
                   }
                   placeholder="Isi jika sudah direkon"
-                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-2xl outline-none cursor-pointer"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
@@ -1265,7 +1265,7 @@ function NewReturPageContent() {
                   onChange={(e) =>
                     setFormData({ ...formData, remarks: e.target.value })
                   }
-                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-400 rounded-[28px] outline-none resize-none cursor-pointer"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-[28px] outline-none resize-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
             </div>

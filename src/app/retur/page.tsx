@@ -114,11 +114,15 @@ function ReturContent() {
   const comboRef = useRef<HTMLTableCellElement>(null);
   const comboboxInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const addDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
+      }
+      if (addDropdownRef.current && !addDropdownRef.current.contains(event.target as Node)) {
+        setIsAddDropdownOpen(false);
       }
       if (comboRef.current && !comboRef.current.contains(event.target as Node)) {
         setIsListOpen(false);
@@ -824,6 +828,7 @@ function ReturContent() {
       setShowAddModal(true);
       setAddRetailerId("");
       setSearchAddText("");
+      setIsAddDropdownOpen(false);
     } else {
       router.push(`/retur/new?ritelId=${selectedRetailerId}`);
     }
@@ -858,14 +863,14 @@ function ReturContent() {
                 setSelectedRetailerId(null);
                 setIsGroupedMode(true); // Switch instant
               }}
-              className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+              className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 shadow-sm"
               title="Back to List"
             >
-              <ArrowLeft size={20} className="text-slate-600" />
+              <ArrowLeft size={20} className="text-slate-600 dark:text-slate-400" />
             </button>
           )}
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-3">
               <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
                  <LayoutList className="text-white" size={24} />
               </div>
@@ -876,7 +881,7 @@ function ReturContent() {
                   : 'Data Retur Barang'
               }
             </h1>
-            <p className="text-slate-500 text-sm mt-1.5 font-medium">
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1.5 font-medium">
               {role === "sitearea" 
                 ? `Memantau pengembalian barang khusus di lokasi ${userArea}.` 
                 : 'Manajemen master data pengembalian barang cabang & toko.'
@@ -943,16 +948,16 @@ function ReturContent() {
             setSelectedStatus(selectedStatus === "SUDAH DIAMBIL" ? null : "SUDAH DIAMBIL");
             setPage(1);
           }}
-          className={`cursor-pointer bg-white border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "SUDAH DIAMBIL" ? "border-emerald-500 ring-4 ring-emerald-500/10 shadow-emerald-100" : "border-emerald-100 hover:shadow-emerald-500/10"}`}
+          className={`cursor-pointer bg-white dark:bg-slate-800 border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "SUDAH DIAMBIL" ? "border-emerald-500 ring-4 ring-emerald-500/10 shadow-emerald-100 dark:shadow-emerald-900/50" : "border-emerald-100 dark:border-slate-700 hover:shadow-emerald-500/10 dark:hover:border-emerald-500/50"}`}
         >
-          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-emerald-50 opacity-10 group-hover:scale-110 transition-transform duration-700">
+          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-emerald-50 dark:text-emerald-900 opacity-10 group-hover:scale-110 transition-transform duration-700">
              <CheckCircle2 size={120} />
           </div>
           <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Sudah Diambil
           </p>
-          <h4 className="text-3xl font-black text-slate-800 tracking-tight tabular-nums">
+          <h4 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight tabular-nums">
             {stats.sudah_diambil.toLocaleString("id-ID")}
             <span className="text-xs font-bold text-slate-400 ml-2 uppercase tracking-tight">Records</span>
           </h4>
@@ -963,16 +968,16 @@ function ReturContent() {
             setSelectedStatus(selectedStatus === "BELUM DIAMBIL" ? null : "BELUM DIAMBIL");
             setPage(1);
           }}
-          className={`cursor-pointer bg-white border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "BELUM DIAMBIL" ? "border-rose-500 ring-4 ring-rose-500/10 shadow-rose-100" : "border-rose-100 hover:shadow-rose-500/10"}`}
+          className={`cursor-pointer bg-white dark:bg-slate-800 border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "BELUM DIAMBIL" ? "border-rose-500 ring-4 ring-rose-500/10 shadow-rose-100 dark:shadow-rose-900/50" : "border-rose-100 dark:border-slate-700 hover:shadow-rose-500/10 dark:hover:border-rose-500/50"}`}
         >
-          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-rose-50 opacity-10 group-hover:scale-110 transition-transform duration-700">
+          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-rose-50 dark:text-rose-900 opacity-10 group-hover:scale-110 transition-transform duration-700">
              <Calendar size={120} />
           </div>
           <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-rose-500" />
             Belum Diambil
           </p>
-          <h4 className="text-3xl font-black text-slate-800 tracking-tight tabular-nums">
+          <h4 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight tabular-nums">
             {stats.belum_diambil.toLocaleString("id-ID")}
             <span className="text-xs font-bold text-slate-400 ml-2 uppercase tracking-tight">Records</span>
           </h4>
@@ -983,16 +988,16 @@ function ReturContent() {
             setSelectedStatus(selectedStatus === "DIMUSNAHKAN" ? null : "DIMUSNAHKAN");
             setPage(1);
           }}
-          className={`cursor-pointer bg-white border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "DIMUSNAHKAN" ? "border-amber-500 ring-4 ring-amber-500/10 shadow-amber-100" : "border-amber-100 hover:shadow-amber-500/10"}`}
+          className={`cursor-pointer bg-white dark:bg-slate-800 border-2 p-6 rounded-[32px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative ${selectedStatus === "DIMUSNAHKAN" ? "border-amber-500 ring-4 ring-amber-500/10 shadow-amber-100 dark:shadow-amber-900/50" : "border-amber-100 dark:border-slate-700 hover:shadow-amber-500/10 dark:hover:border-amber-500/50"}`}
         >
-          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-amber-50 opacity-10 group-hover:scale-110 transition-transform duration-700">
+          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-amber-50 dark:text-amber-900 opacity-10 group-hover:scale-110 transition-transform duration-700">
              <Trash2 size={120} />
           </div>
           <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-amber-500" />
             Dimusnahkan
           </p>
-          <h4 className="text-3xl font-black text-slate-800 tracking-tight tabular-nums">
+          <h4 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight tabular-nums">
             {stats.dimusnahkan.toLocaleString("id-ID")}
             <span className="text-xs font-bold text-slate-400 ml-2 uppercase tracking-tight">Records</span>
           </h4>
@@ -1107,13 +1112,13 @@ function ReturContent() {
       {showBulkModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowBulkModal(false)} />
-          <div className="relative bg-white w-full max-w-xl rounded-[40px] shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-300 overflow-visible">
-            <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+          <div className="relative bg-white dark:bg-slate-800 w-full max-w-xl rounded-[40px] shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-300 overflow-visible">
+            <div className="p-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between rounded-t-[40px]">
               <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Bulk Upload Retur</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Step {bulkStep} of 2: {bulkStep === 1 ? 'Pilih Ritel' : 'Upload File'}</p>
+                <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Bulk Upload Retur</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Step {bulkStep} of 2: {bulkStep === 1 ? 'Pilih Ritel' : 'Upload File'}</p>
               </div>
-              <button onClick={() => setShowBulkModal(false)} className="p-3 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-rose-500 transition-colors shadow-sm">
+              <button onClick={() => setShowBulkModal(false)} className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer">
                 <ChevronDown size={20} />
               </button>
             </div>
@@ -1121,7 +1126,7 @@ function ReturContent() {
             <div className="p-8 overflow-visible">
               {bulkStep === 1 ? (
                 <div className="space-y-8">
-                  <div className="bg-indigo-50/60 border border-indigo-100 text-indigo-700 p-5 rounded-[24px] text-xs font-bold leading-relaxed shadow-sm">
+                  <div className="bg-indigo-50/60 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300 p-5 rounded-[24px] text-xs font-bold leading-relaxed shadow-sm">
                     Pilih perusahaan peritel (Modern Ritel) terlebih dahulu untuk memandu pemetaan data secara spesifik sebelum mengunggah berkas.
                   </div>
 
@@ -1155,7 +1160,7 @@ function ReturContent() {
                                 e.preventDefault();
                              }
                           }}
-                          className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all text-sm font-black text-slate-700 placeholder:text-slate-300 pr-24"
+                          className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 dark:focus:border-indigo-500 transition-all text-sm font-black text-slate-700 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 pr-24"
                         />
                         
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -1166,7 +1171,7 @@ function ReturContent() {
                                 setBulkRetailerId("");
                                 setIsDropdownOpen(true);
                               }}
-                              className="p-1.5 bg-slate-200 text-slate-500 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors"
+                              className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
                             >
                               <X size={14} />
                             </button>
@@ -1176,7 +1181,7 @@ function ReturContent() {
                       </div>
 
                       {isDropdownOpen && (
-                        <ul className="absolute left-0 right-0 top-full mt-3 bg-white border border-slate-100 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] max-h-[250px] overflow-y-auto z-[999] py-2 animate-in fade-in slide-in-from-top-2 duration-300 scrollbar-hide">
+                        <ul className="absolute left-0 right-0 top-full mt-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-slate-900/50 max-h-[250px] overflow-y-auto z-[999] py-2 animate-in fade-in slide-in-from-top-2 duration-300 scrollbar-hide">
                           {filteredRetailers.length > 0 ? (
                             filteredRetailers.map((r, idx) => (
                               <li 
@@ -1186,7 +1191,7 @@ function ReturContent() {
                                 className={`px-5 py-3.5 cursor-pointer text-xs font-black uppercase tracking-tighter transition-all border-b border-slate-50 last:border-0 ${
                                   bulkRetailerId === r.id || activeIndex === idx 
                                   ? 'bg-indigo-600 text-white' 
-                                  : 'text-slate-600 hover:bg-slate-50'
+                                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                                 }`}
                               >
                                 {highlightMatch(r.namaPt, searchRetailerText)}
@@ -1195,8 +1200,8 @@ function ReturContent() {
                             ))
                           ) : (
                             <li className="px-5 py-10 text-center flex flex-col items-center gap-3">
-                               <div className="p-3 bg-slate-50 rounded-2xl text-slate-200"><Search size={24} /></div>
-                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                               <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl text-slate-200 dark:text-slate-600"><Search size={24} /></div>
+                               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                                   Data &quot;{searchRetailerText}&quot; Tidak Ada
                                </span>
                             </li>
@@ -1208,10 +1213,10 @@ function ReturContent() {
                     <button 
                       disabled={!bulkRetailerId}
                       onClick={() => setBulkStep(2)}
-                      className={`w-full py-4.5 rounded-[22px] font-black text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                      className={`w-full py-5 rounded-[24px] font-black text-xs md:text-sm uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
                         bulkRetailerId 
-                        ? "bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5" 
-                        : "bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
+                        ? "bg-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/50 hover:bg-indigo-700 hover:-translate-y-0.5" 
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50 border border-slate-200 dark:border-slate-700"
                       }`}
                     >
                       LANJUTKAN KE UPLOAD <ChevronRight size={18} />
@@ -1285,24 +1290,24 @@ function ReturContent() {
       {showAddModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-white w-full max-w-xl rounded-[40px] shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-300 overflow-visible">
-            <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+          <div className="relative bg-white dark:bg-slate-800 w-full max-w-xl rounded-[40px] shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-300 overflow-visible">
+            <div className="p-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between rounded-t-[40px]">
               <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Tambah Data Retur</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Pilih Ritel Modern</p>
+                <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Tambah Data Retur</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Pilih Ritel Modern</p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-3 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-rose-500 transition-colors shadow-sm">
+              <button onClick={() => setShowAddModal(false)} className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-8 overflow-visible space-y-8">
-              <div className="bg-indigo-50/60 border border-indigo-100 text-indigo-700 p-5 rounded-[24px] text-xs font-bold leading-relaxed shadow-sm">
+              <div className="bg-indigo-50/60 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300 p-5 rounded-[24px] text-xs font-bold leading-relaxed shadow-sm">
                 Pilih perusahaan peritel (Modern Ritel) terlebih dahulu sebelum mengisi form data retur baru.
               </div>
 
               <div className="flex flex-col items-center max-w-md mx-auto w-full space-y-6 pb-2">
-                <div className="w-full relative">
+                <div className="w-full relative" ref={addDropdownRef}>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">
                     Pilih Ritel Modern
                   </label>
@@ -1318,13 +1323,13 @@ function ReturContent() {
                         if (!e.target.value) setAddRetailerId("");
                       }}
                       onFocus={() => setIsAddDropdownOpen(true)}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all text-sm font-black text-slate-700 placeholder:text-slate-300 pr-24"
+                      className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 dark:focus:border-indigo-500 transition-all text-sm font-black text-slate-700 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 pr-24"
                     />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                       {searchAddText && (
                         <button 
                           onClick={() => { setSearchAddText(""); setAddRetailerId(""); setIsAddDropdownOpen(true); }}
-                          className="p-1.5 bg-slate-200 text-slate-500 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors"
+                          className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
                         >
                           <X size={14} />
                         </button>
@@ -1334,7 +1339,7 @@ function ReturContent() {
                   </div>
 
                   {isAddDropdownOpen && (
-                    <ul className="absolute left-0 right-0 top-full mt-3 bg-white border border-slate-100 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] max-h-[250px] overflow-y-auto z-[999] py-2 animate-in fade-in slide-in-from-top-2 duration-300 scrollbar-hide">
+                    <ul className="absolute left-0 right-0 top-full mt-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-slate-900/50 max-h-[250px] overflow-y-auto z-[999] py-2 animate-in fade-in slide-in-from-top-2 duration-300 scrollbar-hide">
                       {filteredRetailers
                         .filter(r => r.namaPt.toLowerCase().includes(searchAddText.toLowerCase()))
                         .map((r, idx) => (
@@ -1346,7 +1351,7 @@ function ReturContent() {
                             setIsAddDropdownOpen(false);
                           }}
                           className={`px-5 py-3.5 cursor-pointer text-xs font-black uppercase tracking-tighter transition-all border-b border-slate-50 last:border-0 ${
-                            addRetailerId === r.id ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+                            addRetailerId === r.id ? 'bg-indigo-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                           }`}
                         >
                           {r.namaPt}
@@ -1359,10 +1364,10 @@ function ReturContent() {
                 <button 
                   disabled={!addRetailerId}
                   onClick={() => router.push(`/retur/new?ritelId=${addRetailerId}`)}
-                  className={`w-full py-4.5 rounded-[22px] font-black text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                  className={`w-full py-5 rounded-[24px] font-black text-xs md:text-sm uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
                     addRetailerId 
-                    ? "bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5" 
-                    : "bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
+                    ? "bg-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/50 hover:bg-indigo-700 hover:-translate-y-0.5" 
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50 border border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   LANJUTKAN KE FORM INPUT <ChevronRight size={18} />

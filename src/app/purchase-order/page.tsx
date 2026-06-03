@@ -410,7 +410,7 @@ export default function PurchaseOrderPage() {
                   value={globalQuery}
                   onChange={(e) => handleGlobalSearch(e.target.value)}
                   placeholder="Cari No PO / Invoice..."
-                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none transition-all placeholder:text-slate-400 h-11"
+                  className="w-full pl-10 pr-9 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 h-11"
                 />
                 {globalQuery && (
                   <button
@@ -424,7 +424,7 @@ export default function PurchaseOrderPage() {
 
                 {/* Floating Results Dropdown */}
                 {(globalResults !== null || globalLoading) && globalQuery.trim().length >= 2 && (
-                  <div className="absolute left-0 top-full mt-2 w-[380px] bg-white border border-slate-200 rounded-2xl shadow-2xl z-[9999] max-h-[420px] overflow-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="absolute left-0 top-full mt-2 w-[380px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-[9999] max-h-[420px] overflow-auto animate-in fade-in slide-in-from-top-2 duration-200">
                     {globalLoading ? (
                       <div className="flex items-center justify-center gap-2 py-8 text-slate-500">
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -504,14 +504,14 @@ export default function PurchaseOrderPage() {
 
               <Button 
                 variant="outline" 
-                className="border-slate-200 text-slate-700 bg-white h-11 rounded-xl font-bold"
+                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 h-11 rounded-xl font-bold"
                 onClick={() => setIsBulkOpen(true)}
               >
                 <Upload className="w-4 h-4 mr-2 text-blue-600" />
                 Bulk Upload
               </Button>
               <Link href="/po">
-                <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-none h-11 rounded-xl px-5 font-bold">
+                <Button className="bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white dark:text-white shadow-none h-11 rounded-xl px-5 font-bold">
                   <PlusCircle className="w-4 h-4 mr-2" />
                   Add PO
                 </Button>
@@ -531,7 +531,7 @@ export default function PurchaseOrderPage() {
                   variant="outline"
                   role="combobox"
                   aria-expanded={openRitel}
-                  className="w-full justify-between bg-white border-slate-200 text-slate-800 hover:bg-slate-50 hover:text-slate-900 h-12 rounded-xl shadow-sm transition-all"
+                  className="w-full justify-between bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm transition-all"
                 >
                   <span className={!selectedNamaPt ? "text-slate-400 font-normal" : "font-bold"}>
                     {selectedNamaPt || "Pilih Ritel..."}
@@ -541,14 +541,14 @@ export default function PurchaseOrderPage() {
               </PopoverTrigger>
               <PopoverPrimitive.Portal>
                 <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white"
+                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800 dark:border dark:border-slate-700"
                   align="start"
                 >
-                  <Command className="bg-white border-slate-200">
+                  <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     {/* [FIX TEKS PUTIH] Tambahkan text-slate-900 */}
                     <CommandInput
                       placeholder="Cari ritel..."
-                      className="!text-slate-900 placeholder:!text-slate-400 font-medium bg-white"
+                      className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800"
                     />
                     <CommandListUI className="max-h-64 scrollbar-hide">
                       <CommandEmpty className="text-slate-500 py-4 text-center">
@@ -561,7 +561,7 @@ export default function PurchaseOrderPage() {
                           <CommandItem
                             key={namaPt}
                             value={namaPt}
-                            className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                            className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                             onSelect={() => {
                               setSelectedNamaPt(namaPt);
                               setSelectedInisial(""); // Reset inisial saat ritel ganti
@@ -600,7 +600,7 @@ export default function PurchaseOrderPage() {
                   role="combobox"
                   disabled={!selectedNamaPt}
                   aria-expanded={openInisial}
-                  className="w-full justify-between bg-white border-slate-200 text-slate-800 hover:bg-slate-50 hover:text-slate-900 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
+                  className="w-full justify-between bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
                 >
                   <span className={!selectedInisial ? "text-slate-400 font-normal" : "font-bold"}>
                     {selectedInisial || "Semua Inisial..."}
@@ -610,13 +610,13 @@ export default function PurchaseOrderPage() {
               </PopoverTrigger>
               <PopoverPrimitive.Portal>
                 <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white"
+                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800 dark:border dark:border-slate-700"
                   align="start"
                 >
-                  <Command className="bg-white border-slate-200">
+                  <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     <CommandInput
                       placeholder="Cari inisial..."
-                      className="!text-slate-900 placeholder:!text-slate-400 font-medium bg-white"
+                      className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800"
                     />
                     <CommandListUI className="max-h-64 scrollbar-hide">
                       <CommandEmpty className="text-slate-500 py-4 text-center">
@@ -629,7 +629,7 @@ export default function PurchaseOrderPage() {
                             setSelectedTujuan(""); // Reset tujuan jika inisial direset
                             setOpenInisial(false);
                           }}
-                          className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                          className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                         >
                           <Check
                             className={cn(
@@ -650,7 +650,7 @@ export default function PurchaseOrderPage() {
                               setSelectedTujuan(""); // Reset tujuan karena inisial ganti
                               setOpenInisial(false);
                             }}
-                            className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                            className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                           >
                             <Check
                               className={cn(
@@ -683,7 +683,7 @@ export default function PurchaseOrderPage() {
                   role="combobox"
                   disabled={!selectedNamaPt}
                   aria-expanded={openTujuan}
-                  className="w-full justify-between bg-white border-slate-200 text-slate-800 hover:bg-slate-50 hover:text-slate-900 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
+                  className="w-full justify-between bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
                 >
                   <span className={!selectedTujuan ? "text-slate-400 font-normal" : "font-bold"}>
                     {selectedTujuan || "Semua Tujuan..."}
@@ -693,13 +693,13 @@ export default function PurchaseOrderPage() {
               </PopoverTrigger>
               <PopoverPrimitive.Portal>
                 <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white"
+                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800 dark:border dark:border-slate-700"
                   align="start"
                 >
-                  <Command className="bg-white border-slate-200">
+                  <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     <CommandInput
                       placeholder="Cari tujuan..."
-                      className="!text-slate-900 placeholder:!text-slate-400 font-medium bg-white"
+                      className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800"
                     />
                     <CommandListUI className="max-h-64 scrollbar-hide">
                       <CommandEmpty className="text-slate-500 py-4 text-center">
@@ -711,7 +711,7 @@ export default function PurchaseOrderPage() {
                             setSelectedTujuan("");
                             setOpenTujuan(false);
                           }}
-                          className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                          className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                         >
                           <Check
                             className={cn(
@@ -731,7 +731,7 @@ export default function PurchaseOrderPage() {
                               setSelectedTujuan(tuj);
                               setOpenTujuan(false);
                             }}
-                            className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                            className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                           >
                             <Check
                               className={cn(
@@ -756,7 +756,7 @@ export default function PurchaseOrderPage() {
             <Button
               onClick={handleFetchData}
               disabled={!selectedNamaPt || loadingData}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+              className="w-full h-12 bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 text-white dark:text-white font-black rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-slate-100 disabled:dark:bg-slate-800 disabled:text-slate-400 disabled:dark:text-slate-500"
             >
               {loadingData ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -814,30 +814,30 @@ export default function PurchaseOrderPage() {
       ) : (
         <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-700">
           {/* Table Area */}
-          <Card className="border border-slate-100 shadow-2xl rounded-3xl bg-white relative z-10 w-full overflow-visible">
+          <Card className="mb-8 border-none shadow-xl bg-slate-50/30 dark:bg-slate-800/30 rounded-3xl relative z-10 w-full overflow-visible">
             <CardHeader className="bg-slate-50/30 border-b border-slate-100 p-8 space-y-6 relative z-50">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <CardTitle className="text-2xl font-black text-slate-800">
+                    <CardTitle className="text-2xl font-black text-slate-800 dark:text-slate-100">
                       Daftar Purchase Order
                     </CardTitle>
                     {activeNamaPt && (
-                      <span className="text-xs font-semibold px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded-full shadow-sm">
+                      <span className="text-xs font-semibold px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full shadow-sm">
                         Total {filteredPo.length} PO &middot; Hal {currentPage} dari {totalPages}
                       </span>
                     )}
                   </div>
-                  <CardDescription className="text-slate-500">
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
                     Menampilkan data untuk{" "}
-                    <span className="font-bold text-slate-900">
+                    <span className="font-bold text-slate-900 dark:text-slate-100">
                       {activeNamaPt}
                     </span>
                     {activeInisial && (
                       <span>
                         {" "}
                         - Inisial{" "}
-                        <span className="font-bold text-slate-900">
+                        <span className="font-bold text-slate-900 dark:text-slate-100">
                           {activeInisial}
                         </span>
                       </span>
@@ -846,12 +846,12 @@ export default function PurchaseOrderPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="relative w-full md:w-64 shrink-0">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                     <input
                       value={searchFilter}
                       onChange={(e) => setSearchFilter(e.target.value)}
                       placeholder="Cari PO / Invoice..."
-                      className="w-full pl-12 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-50 outline-none transition-all placeholder:italic h-11"
+                      className="w-full pl-12 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 text-sm focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/30 outline-none transition-all placeholder:italic placeholder:text-slate-400 dark:placeholder:text-slate-500 h-11"
                     />
                   </div>
                 </div>
@@ -942,7 +942,7 @@ export default function PurchaseOrderPage() {
                         label: "NO PO",
                         render: (_v: any, po: any) => (
                           <div className="py-2">
-                            <div className="font-bold text-slate-800 text-xs whitespace-nowrap">{po.noPo}</div>
+                            <div className="font-bold text-slate-800 dark:text-slate-100 text-xs whitespace-nowrap">{po.noPo}</div>
                             {po.noInvoice && (
                               <div className="text-[10px] font-semibold text-slate-500 mt-0.5 whitespace-nowrap">
                                 INV: {po.noInvoice}
@@ -955,7 +955,7 @@ export default function PurchaseOrderPage() {
                         key: "tglPo",
                         label: "TGL PO",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 font-semibold text-xs whitespace-nowrap">
+                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
                             {po.tglPo ? new Date(po.tglPo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                           </span>
                         )
@@ -964,7 +964,7 @@ export default function PurchaseOrderPage() {
                         key: "expiredTgl",
                         label: "DUE DATE",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 font-semibold text-xs whitespace-nowrap">
+                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
                             {po.expiredTgl ? new Date(po.expiredTgl).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                           </span>
                         )
@@ -973,7 +973,7 @@ export default function PurchaseOrderPage() {
                         key: "produk",
                         label: "PRODUK",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 font-semibold text-xs whitespace-nowrap">
+                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
                             {Number(po.itemsCount) > 1 
                               ? `${po.firstProductName || 'Item'} (+${Number(po.itemsCount) - 1} lainnya)` 
                               : (po.firstProductName || '-')}
@@ -985,7 +985,7 @@ export default function PurchaseOrderPage() {
                         label: "PCS KIRIM",
                         align: "right",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 font-semibold text-xs tabular-nums">
+                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
                             {(Number(po.pcsKirimTotal) || 0).toLocaleString('id-ID')}
                           </span>
                         )
@@ -994,7 +994,7 @@ export default function PurchaseOrderPage() {
                         key: "tujuanDetail",
                         label: "TUJUAN DETAIL",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 text-xs whitespace-nowrap">
+                          <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
                             {po.tujuanDetail || '-'}
                           </span>
                         )
@@ -1003,7 +1003,7 @@ export default function PurchaseOrderPage() {
                         key: "unitProduksi",
                         label: "UNIT PRODUKSI",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 text-xs whitespace-nowrap">
+                          <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
                             {po.UnitProduksi?.namaRegional || po.regional || '-'}
                           </span>
                         )
@@ -1012,7 +1012,7 @@ export default function PurchaseOrderPage() {
                         key: "siteArea",
                         label: "SITE AREA",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 text-xs whitespace-nowrap">
+                          <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
                             {po.UnitProduksi?.siteArea || '-'}
                           </span>
                         )
@@ -1022,7 +1022,7 @@ export default function PurchaseOrderPage() {
                         label: "KG",
                         align: "right",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 font-semibold text-xs tabular-nums">
+                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
                             {(Number(po.totalKg) || 0).toLocaleString('id-ID')}
                           </span>
                         )
@@ -1032,7 +1032,7 @@ export default function PurchaseOrderPage() {
                         label: "DISCOUNT",
                         align: "right",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 font-semibold text-xs tabular-nums">
+                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
                             {(Number(po.totalDiscount) || 0).toLocaleString('id-ID')}
                           </span>
                         )
@@ -1042,7 +1042,7 @@ export default function PurchaseOrderPage() {
                         label: "NOMINAL",
                         align: "right",
                         render: (_v: any, po: any) => (
-                          <span className="text-slate-700 font-semibold text-xs tabular-nums">
+                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
                             {(Number(po.totalNominal) || 0).toLocaleString('id-ID')}
                           </span>
                         )

@@ -106,14 +106,14 @@ export default function Combobox({
         }}
         placeholder={placeholder}
         className={cn(
-          "w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 outline-none transition-all",
+          "w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-2xl text-sm font-semibold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all",
           leftIcon ? "pl-11 pr-4" : "px-4",
           inputClassName,
         )}
       />
       {open && (
         <div
-          className="absolute z-20 left-0 right-0 top-full mt-2 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden
+          className="absolute z-20 left-0 right-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 shadow-xl overflow-hidden
                      origin-top transition-all duration-150 ease-out animate-in fade-in zoom-in"
         >
           {filtered.length > 0 ? (
@@ -130,8 +130,8 @@ export default function Combobox({
                   className={cn(
                     "px-4 py-2 text-sm cursor-pointer",
                     idx === highlightedIndex
-                      ? "bg-slate-100 text-slate-900 font-medium"
-                      : "hover:bg-slate-50",
+                      ? "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-700",
                   )}
                 >
                   {opt}

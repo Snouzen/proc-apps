@@ -544,8 +544,8 @@ export default function RitelModernPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Ritel Modern</h1>
-          <p className="text-sm text-slate-500 mt-1">Ritel Modern</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Ritel Modern</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Ritel Modern</p>
         </div>
 
         <div className="flex gap-2">
@@ -569,7 +569,7 @@ export default function RitelModernPage() {
               setModalMode("addInisial");
               setIsModalOpen(true);
             }}
-            className="flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-sm"
+            className="flex items-center justify-center gap-2 bg-slate-900 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-sm active:scale-95 text-sm"
           >
             <Plus size={18} />
             Add New Data
@@ -631,27 +631,27 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setEditStore(null)}
           />
-          <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Ubah Nama Store
               </h3>
               <button
                 onClick={() => setEditStore(null)}
-                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
+                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
               >
                 <X size={18} />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500">
-                Company: <span className="font-bold">{editStore.namaPt}</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Company: <span className="font-bold text-slate-800 dark:text-slate-200">{editStore.namaPt}</span>
               </p>
               <input
                 type="text"
                 value={newStoreName}
                 onChange={(e) => setNewStoreName(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
               />
               <div className="flex gap-2">
                 <StatefulButton
@@ -708,33 +708,33 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setAddStoreFor(null)}
           />
-          <div className="relative bg-white w-full max-w-6xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setAddStoreFor(null);
                   }}
-                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-slate-700 hover:bg-gray-50"
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50"
                 >
                   <ChevronLeft size={16} />
                   <span className="text-xs font-bold">Back</span>
                 </button>
-                <h3 className="text-lg font-extrabold text-slate-800">
+                <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                   Tambah Toko/DC
                 </h3>
               </div>
               <button
                 onClick={() => setAddStoreFor(null)}
-                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
+                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
               >
                 <X size={18} />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500">
-                {addStoreFor.namaPt}{" "}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-bold text-slate-800 dark:text-slate-200">{addStoreFor.namaPt}</span>{" "}
                 {addStoreFor.inisial ? `(${addStoreFor.inisial})` : ""}
               </p>
               <input
@@ -742,7 +742,7 @@ export default function RitelModernPage() {
                 placeholder="Nama Toko/DC"
                 value={newStoreForName}
                 onChange={(e) => setNewStoreForName(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
               />
               <div className="flex gap-2 justify-end">
                 <StatefulButton
@@ -796,12 +796,12 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setDeleteStore(null)}
           />
-          <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 bg-rose-50/50">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-rose-50/50 dark:bg-rose-900/10">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Hapus Store?
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {deleteStore.tujuan} di {deleteStore.namaPt}
               </p>
             </div>
@@ -851,14 +851,14 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setViewAliases(null)}
           />
-          <div className="relative bg-white w-full max-w-6xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Inisial - {viewAliases.namaPt}
               </h3>
               <button
                 onClick={() => setViewAliases(null)}
-                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
+                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
               >
                 <X size={18} />
               </button>
@@ -889,10 +889,10 @@ export default function RitelModernPage() {
                         pageAliases.map(([alias, data]: [string, any]) => (
                           <div
                           key={alias}
-                          className="flex items-center justify-between rounded-xl border border-slate-100 p-4"
+                          className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-700 p-4 bg-white dark:bg-slate-800/50"
                         >
                           <div className="flex items-center gap-4">
-                            <div className="w-24 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+                            <div className="w-24 h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
                               {data.logoInisial ? (
                                 <img
                                   src={data.logoInisial}
@@ -900,14 +900,14 @@ export default function RitelModernPage() {
                                   className="w-full h-full object-contain"
                                 />
                               ) : (
-                                <Store size={20} className="text-slate-200" />
+                                <Store size={20} className="text-slate-200 dark:text-slate-700" />
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-black tracking-widest uppercase inline-block mb-1 border border-slate-200/50">
+                              <div className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black tracking-widest uppercase inline-block mb-1 border border-slate-200/50 dark:border-slate-600/50">
                                 {alias || "—"}
                               </div>
-                              <div className="text-xs text-slate-400 font-medium">
+                              <div className="text-xs text-slate-400 dark:text-slate-500 font-medium">
                                 {data.stores.length} Distribusi Toko
                               </div>
                             </div>
@@ -984,7 +984,7 @@ export default function RitelModernPage() {
                       )))}
                     </div>
                     <div className="flex items-center justify-between pt-3">
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         Menampilkan {start + 1}-
                         {Math.min(start + aliasItemsPerPage, aliases.length)}{" "}
                         dari {aliases.length}
@@ -995,7 +995,7 @@ export default function RitelModernPage() {
                             setAliasPage((p) => Math.max(p - 1, 1))
                           }
                           disabled={aliasPage === 1}
-                          className="px-3 py-1.5 rounded-xl border border-gray-200 text-xs bg-white disabled:opacity-50 hover:bg-gray-50"
+                          className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50"
                         >
                           Previous
                         </button>
@@ -1004,7 +1004,7 @@ export default function RitelModernPage() {
                             setAliasPage((p) => Math.min(p + 1, totalPages))
                           }
                           disabled={aliasPage === totalPages}
-                          className="px-3 py-1.5 rounded-xl border border-gray-200 text-xs bg-white disabled:opacity-50 hover:bg-gray-50"
+                          className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50"
                         >
                           Next
                         </button>
@@ -1023,31 +1023,31 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setBulkDialog(null)}
           />
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-blue-50/50">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-blue-50/50 dark:bg-indigo-500/10">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Konfirmasi Bulk Upload
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Total {bulkDialog.rows.length} baris. Duplikat terdeteksi:{" "}
                 {bulkDialog.dupeCount}.
               </p>
             </div>
             <div className="p-6 space-y-3">
-              <div className="max-h-40 overflow-y-auto border border-slate-100 rounded-xl bg-white text-xs">
+              <div className="max-h-40 overflow-y-auto border border-slate-100 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-xs">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 sticky top-0">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0">
                     <tr>
-                      <th className="p-2 font-medium text-slate-500">
+                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">
                         Nama PT
                       </th>
-                      <th className="p-2 font-medium text-slate-500">
+                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">
                         Inisial
                       </th>
-                      <th className="p-2 font-medium text-slate-500">Tujuan</th>
+                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">Tujuan</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                     {bulkDialog.rows.slice(0, 5).map((row, i) => {
                       const namaPt = getCellValue(row, bulkDialog.namaPtKey);
                       const tujuan = getCellValue(row, bulkDialog.tujuanKey);
@@ -1060,11 +1060,11 @@ export default function RitelModernPage() {
                         companyMapping[namaPt] ?? (excelInisial || "");
                       return (
                         <tr key={i}>
-                          <td className="p-2 text-slate-700">{namaPt}</td>
-                          <td className="p-2 text-slate-700">
+                          <td className="p-2 text-slate-700 dark:text-slate-300">{namaPt}</td>
+                          <td className="p-2 text-slate-700 dark:text-slate-300">
                             {inisial || "—"}
                           </td>
-                          <td className="p-2 text-slate-700">{tujuan}</td>
+                          <td className="p-2 text-slate-700 dark:text-slate-300">{tujuan}</td>
                         </tr>
                       );
                     })}
@@ -1072,7 +1072,7 @@ export default function RitelModernPage() {
                       <tr>
                         <td
                           colSpan={3}
-                          className="p-2 text-center text-slate-400 italic"
+                          className="p-2 text-center text-slate-400 dark:text-slate-500 italic"
                         >
                           ...dan {bulkDialog.rows.length - 5} data lain
                         </td>
@@ -1122,27 +1122,27 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setEditAlias(null)}
           />
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Ubah Inisial
               </h3>
               <button
                 onClick={() => setEditAlias(null)}
-                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
+                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
               >
                 <X size={18} />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500">
-                Company: <span className="font-bold">{editAlias.namaPt}</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Company: <span className="font-bold text-slate-800 dark:text-slate-200">{editAlias.namaPt}</span>
               </p>
               <input
                 type="text"
                 value={newAlias}
                 onChange={(e) => setNewAlias(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
               />
               <div className="flex gap-2">
                 <StatefulButton
@@ -1211,16 +1211,16 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setEditCompany(null)}
           />
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 {editCompany.ptOnly 
                   ? "Edit Profil Perusahaan" 
                   : `Edit Inisial - ${editCompany.namaPt}`}
               </h3>
               <button
                 onClick={() => setEditCompany(null)}
-                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
+                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
               >
                 <X size={18} />
               </button>
@@ -1228,7 +1228,7 @@ export default function RitelModernPage() {
             <div className="p-6 space-y-4">
               {editCompany.ptOnly && (
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                     Nama PT (Perusahaan)
                   </label>
                   <input
@@ -1237,14 +1237,14 @@ export default function RitelModernPage() {
                     onChange={(e) =>
                       setEditCompany({ ...editCompany, namaPt: e.target.value })
                     }
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-bold text-slate-800 shadow-sm"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-bold text-slate-800 dark:text-slate-200 shadow-sm"
                   />
                 </div>
               )}
 
               {!editCompany.ptOnly && (
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                     Inisial
                   </label>
                   <input
@@ -1253,7 +1253,7 @@ export default function RitelModernPage() {
                     onChange={(e) =>
                       setEditCompany({ ...editCompany, inisial: e.target.value })
                     }
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
                   />
                 </div>
               )}
@@ -1384,27 +1384,27 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setViewCompany(null)}
           />
-          <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <button
                   type="button"
                   onClick={() => {
                     setViewCompany(null);
                   }}
-                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-slate-700 hover:bg-gray-50"
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50"
                 >
                   <ChevronLeft size={16} />
                   <span className="text-xs font-bold">Back</span>
                 </button>
-                <h3 className="text-lg font-extrabold text-slate-800 truncate">
+                <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 truncate">
                   {viewCompany.namaPt}{" "}
                   {viewCompany.inisial ? `(${viewCompany.inisial})` : ""}
                 </h3>
               </div>
               <button
                 onClick={() => setViewCompany(null)}
-                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
+                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
               >
                 <X size={18} />
               </button>
@@ -1423,11 +1423,11 @@ export default function RitelModernPage() {
                       {pageStores.map((s) => (
                         <li
                           key={s.id}
-                          className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-2 group/store-item hover:border-amber-200 transition-all shadow-sm"
+                          className="px-4 py-2.5 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-2 group/store-item hover:border-amber-200 dark:hover:border-indigo-500/50 transition-all shadow-sm"
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <Store size={14} className="text-amber-600 flex-shrink-0" />
-                            <span className="text-sm font-bold text-slate-700 truncate">
+                            <Store size={14} className="text-amber-600 dark:text-indigo-400 flex-shrink-0" />
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">
                               {s.tujuan}
                             </span>
                           </div>
@@ -1460,14 +1460,14 @@ export default function RitelModernPage() {
                       ))}
                     </ul>
                     <div className="flex items-center justify-between mt-4">
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         Showing {total ? start + 1 : 0}–{end} of {total}
                       </p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setViewPage((p) => Math.max(p - 1, 1))}
                           disabled={viewPage === 1}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 disabled:opacity-50 hover:bg-gray-50"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50"
                         >
                           Previous
                         </button>
@@ -1476,7 +1476,7 @@ export default function RitelModernPage() {
                             setViewPage((p) => Math.min(p + 1, totalPages))
                           }
                           disabled={viewPage === totalPages}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 disabled:opacity-50 hover:bg-gray-50"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50"
                         >
                           Next
                         </button>
@@ -1497,12 +1497,12 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setDeleteCompany(null)}
           />
-          <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 bg-rose-50/50">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-rose-50/50 dark:bg-rose-900/10">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Hapus semua store untuk {deleteCompany}?
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Tindakan ini tidak bisa dibatalkan.
               </p>
             </div>
@@ -1556,12 +1556,12 @@ export default function RitelModernPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setDeleteInisial(null)}
           />
-          <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 bg-rose-50/50">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-rose-50/50 dark:bg-rose-900/10">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Hapus Inisial {deleteInisial.inisial}?
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Tindakan ini akan menghapus secara permanen semua data toko/DC yang bernaung di bawah inisial ini.
               </p>
             </div>

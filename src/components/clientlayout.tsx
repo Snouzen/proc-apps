@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, Sun, Moon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { getMe, getMeSync, clearMeCache } from "@/lib/me";
 import { AutoRefreshProvider } from "@/components/auto-refresh";
@@ -30,6 +30,28 @@ export default function ClientLayout({
   const [profileRegional, setProfileRegional] = useState<string | null>(null);
   const [profileSiteArea, setProfileSiteArea] = useState<string | null>(null);
   const [profileEmail, setProfileEmail] = useState<string | null>(null);
+
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (theme === "light") {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      setTheme("light");
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -91,7 +113,7 @@ export default function ClientLayout({
 
   return (
     <AutoRefreshProvider intervalMs={60000}>
-      <div className="min-h-screen bg-[#F8FAFC] flex">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 flex transition-colors duration-300">
         {/* 1. SIDEBAR */}
         <Sidebar
           isOpen={sidebarOpen}
@@ -107,18 +129,18 @@ export default function ClientLayout({
         >
           {/* HEADER PINDAH KE SINI */}
           <div className="p-4 md:p-8">
-            <header className="flex justify-between items-center mb-8 bg-white/50 p-4 rounded-3xl backdrop-blur-md border border-white sticky top-4 z-30">
+            <header className="flex justify-between items-center mb-8 bg-white/50 dark:bg-slate-800/60 p-4 rounded-3xl backdrop-blur-md border border-white dark:border-slate-700/50 sticky top-4 z-30 transition-colors duration-300">
               <div className="flex items-center gap-4">
                 {/* SEKARANG TOGGLE INI PASTI FUNGSI */}
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
                   suppressHydrationWarning
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-500"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-colors text-gray-500 dark:text-slate-400"
                 >
                   <Menu size={22} />
                 </button>
 
-                <div className="hidden lg:block h-6 w-[1px] bg-slate-200 mx-1"></div>
+                <div className="hidden lg:block h-6 w-[1px] bg-slate-200 dark:bg-slate-600 mx-1"></div>
 
                 {/* BREADCRUMBS */}
                 <div className="hidden md:block">
@@ -127,14 +149,27 @@ export default function ClientLayout({
               </div>
 
               <div className="flex items-center gap-3">
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={toggleTheme}
+                  suppressHydrationWarning
+                  className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-all group relative"
+                >
+                  {theme === "light" ? <Sun size={20} /> : <Moon size={20} className="text-blue-500" />}
+                  {/* Tooltip */}
+                  <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
+                    {theme === "light" ? "Light Mode" : "Dark Mode"}
+                  </span>
+                </button>
+
                 {/* Garis Pembatas Utama */}
-                <div className="h-8 w-[1px] bg-slate-200 mx-2 hidden sm:block"></div>
+                <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-600 mx-2 hidden sm:block"></div>
 
                 {/* Profile & Logout Section */}
                 <div className="flex items-center gap-4">
                   {/* Info Teks */}
                   <div className="text-right hidden sm:block leading-tight">
-                    <p className="text-sm font-black text-slate-800 uppercase">
+                    <p className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase">
                       {profileRole === "magang" ? "Admin Sales 1" : profileRole === "sitearea"
                         ? profileEmail
                           ? profileEmail.split("@")[0]
@@ -143,7 +178,7 @@ export default function ClientLayout({
                           ? profileRegional || "Regional Manager"
                           : "ADMIN PUSAT"}
                     </p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
                       {profileRole === "magang" ? "Admin Bisnis" : profileRole === "sitearea"
                         ? profileRegional || "-"
                         : profileRole === "rm"
@@ -174,7 +209,7 @@ export default function ClientLayout({
                   </div>
 
                   {/* Garis Pembatas Kecil */}
-                  <div className="h-6 w-[1px] bg-slate-200"></div>
+                  <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-600"></div>
 
                   {/* Tombol Logout Langsung */}
                   <button
@@ -182,7 +217,7 @@ export default function ClientLayout({
                       setLogoutOpen(true);
                     }}
                     suppressHydrationWarning
-                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all group relative"
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all group relative"
                   >
                     <LogOut size={20} />
                     {/* Tooltip */}
@@ -209,13 +244,13 @@ export default function ClientLayout({
           className="max-w-md"
         >
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               Anda yakin ingin logout dari akun{" "}
               {profileRole === "rm" ? "Regional Manager" : profileRole === "sitearea" ? "Admin Cabang" : profileRole === "magang" ? "Admin Bisnis" : "Admin Pusat"}?
             </p>
             <div className="flex gap-2">
               <button
-                className="flex-1 rounded-lg border border-gray-300 text-sm px-3 py-2 hover:bg-gray-50"
+                className="flex-1 rounded-lg border border-gray-300 dark:border-slate-600 text-sm px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-slate-200"
                 onClick={() => setLogoutOpen(false)}
               >
                 Batal

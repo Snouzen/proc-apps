@@ -191,13 +191,13 @@ function MultiSelectFilterDropdown({
   return (
     <div className={`relative w-full ${open ? "z-50" : "z-0"}`} ref={wrapperRef}>
       <div
-        className={`relative flex min-h-[38px] flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-xl border ${open ? "border-emerald-500 bg-white" : "border-gray-200 bg-white"} ${disabled ? "opacity-60 cursor-not-allowed bg-slate-50" : "hover:border-gray-300 cursor-text transition-colors"}`}
+        className={`relative flex min-h-[38px] flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-xl border ${open ? "border-emerald-500 bg-white dark:bg-slate-800" : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900/40"} ${disabled ? "opacity-60 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50" : "hover:border-gray-300 dark:hover:border-slate-700 cursor-text transition-colors"}`}
         onClick={() => !disabled && setOpen(true)}
       >
         {value.length > 0 && (
           <div className="flex flex-wrap gap-1 w-full mb-1">
             {value.map((v) => (
-              <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md max-w-full overflow-hidden">
+              <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold rounded-md max-w-full overflow-hidden">
                 <span className="truncate max-w-[150px]">{v}</span>
                 {!disabled && (
                   <button
@@ -206,7 +206,7 @@ function MultiSelectFilterDropdown({
                       e.stopPropagation();
                       onChange(value.filter((val) => val !== v));
                     }}
-                    className="hover:text-rose-600 transition-colors shrink-0"
+                    className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors shrink-0"
                   >
                     <X size={12} />
                   </button>
@@ -218,7 +218,7 @@ function MultiSelectFilterDropdown({
         <div className="flex items-center justify-between w-full">
           <input
             type="text"
-            className="flex-1 bg-transparent text-xs font-semibold text-slate-700 outline-none placeholder:text-slate-400 placeholder:font-normal min-w-[50px]"
+            className="flex-1 bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal min-w-[50px]"
             placeholder={value.length === 0 ? (placeholder || "Ketik atau pilih...") : "Tambah lagi..."}
             value={inputValue}
             disabled={disabled}
@@ -232,7 +232,7 @@ function MultiSelectFilterDropdown({
             <button
               type="button"
               tabIndex={-1}
-              className="text-slate-400 hover:text-slate-600 transition-colors shrink-0 px-1"
+              className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors shrink-0 px-1"
               onClick={(e) => {
                 e.stopPropagation();
                 setOpen(!open);
@@ -245,11 +245,11 @@ function MultiSelectFilterDropdown({
       </div>
 
       {open && !disabled && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent scrollbar-thumb-gray-200 rounded-xl border border-gray-100 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-top-1">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent scrollbar-thumb-gray-200 dark:scrollbar-thumb-slate-700 rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl animate-in fade-in slide-in-from-top-1">
           <ul className="flex flex-col gap-0.5">
             {value.length > 0 && (
               <li
-                className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-rose-600 cursor-pointer flex items-center transition-colors border-b border-gray-50 mb-1"
+                className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer flex items-center transition-colors border-b border-gray-50 dark:border-slate-700 mb-1"
                 onClick={() => {
                   setInputValue("");
                   onChange([]);
@@ -264,7 +264,7 @@ function MultiSelectFilterDropdown({
 
             {inputValue && !options.some((o) => o?.toLowerCase() === inputValue.toLowerCase()) && (
               <li
-                className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer flex items-center transition-colors mt-1"
+                className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 cursor-pointer flex items-center transition-colors mt-1"
                 onClick={() => {
                   if (!value.includes(inputValue)) {
                     onChange([...value, inputValue]);
@@ -281,7 +281,7 @@ function MultiSelectFilterDropdown({
 
             {filteredOptions.length > 0 ? (
               <>
-                <div className="h-px bg-slate-100 my-1"></div>
+                <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
                 {filteredOptions.map((opt, i) => {
                   const isSelected = value.includes(opt);
                   return (
@@ -296,11 +296,11 @@ function MultiSelectFilterDropdown({
                         setInputValue("");
                       }}
                       className={`px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-between transition-colors ${
-                        isSelected ? "bg-emerald-50 text-emerald-800" : "text-slate-700 hover:bg-slate-50"
+                        isSelected ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                       }`}
                     >
                       <div className="flex items-center gap-2 truncate pr-2">
-                        <div className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-emerald-600 border-emerald-600 text-white" : "border-slate-300 bg-white"}`}>
+                        <div className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-emerald-600 border-emerald-600 text-white dark:bg-emerald-500 dark:border-emerald-500" : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"}`}>
                           {isSelected && <Check size={10} strokeWidth={3} />}
                         </div>
                         <span className="truncate">{opt}</span>
@@ -310,7 +310,7 @@ function MultiSelectFilterDropdown({
                 })}
               </>
             ) : (
-              !inputValue && <li className="px-3 py-4 text-center text-xs text-slate-400">Tidak ada data yang tersedia</li>
+              !inputValue && <li className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">Tidak ada data yang tersedia</li>
             )}
           </ul>
         </div>
@@ -1177,11 +1177,11 @@ export default function ReportPage() {
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-6">
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-900/40 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none p-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-xl font-black text-slate-800">Report PO</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="text-xl font-black text-slate-800 dark:text-slate-100">Report PO</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Filter per kolom, pilih kolom, lalu export sesuai tampilan.
             </p>
           </div>
@@ -1189,7 +1189,7 @@ export default function ReportPage() {
             <button
               type="button"
               onClick={fetchData}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-slate-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/50"
               disabled={loading}
             >
               <RefreshCw size={16} />
@@ -1198,7 +1198,7 @@ export default function ReportPage() {
             <button
               type="button"
               onClick={() => setShowFilters((v) => !v)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-slate-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/50"
             >
               <Filter size={16} />
               Filter
@@ -1206,7 +1206,7 @@ export default function ReportPage() {
             <button
               type="button"
               onClick={() => setShowColumns((v) => !v)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-slate-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/50"
             >
               <Settings2 size={16} />
               Kolom
@@ -1220,22 +1220,22 @@ export default function ReportPage() {
               <Download size={16} />
               {exporting ? "Exporting..." : "Export"}
             </button>
-            <div className="text-xs font-bold text-slate-600 px-3 py-2 rounded-xl border border-gray-200 bg-white">
+            <div className="text-xs font-bold text-slate-600 dark:text-slate-300 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
               Terfilter: {formatNumber(serverTotal || 0)}
             </div>
           </div>
         </div>
 
         {showFilters && (
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-5 bg-slate-50 border border-slate-100 rounded-3xl shadow-sm mb-6">
-            <div className="col-span-full flex items-center justify-between mb-2 border-b border-gray-200 pb-3">
-              <h3 className="text-sm font-black text-slate-800">
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-5 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm dark:shadow-none mb-6">
+            <div className="col-span-full flex items-center justify-between mb-2 border-b border-gray-200 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">
                 Filter Data Dinamis
               </h3>
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-500/20 transition-colors"
               >
                 <X size={14} />
                 Clear All
@@ -1243,19 +1243,19 @@ export default function ReportPage() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
                 Pencarian Umum
               </label>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cari PO, company, invoice..."
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none text-sm text-slate-700 focus:border-emerald-500 font-semibold"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900/40 border border-gray-200 dark:border-slate-800 rounded-xl outline-none text-sm text-slate-700 dark:text-slate-100 focus:border-emerald-500 dark:focus:border-emerald-500 font-semibold"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 block">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1 block">
                 Tgl PO From
               </label>
               <DateInputHybrid
@@ -1267,7 +1267,7 @@ export default function ReportPage() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 block">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1 block">
                 Tgl PO To
               </label>
               <DateInputHybrid
@@ -1279,7 +1279,7 @@ export default function ReportPage() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 block">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1 block">
                 Tanggal Submit
               </label>
               <div className="flex items-center gap-2">
@@ -1290,7 +1290,7 @@ export default function ReportPage() {
                   className="w-full"
                   maxDate={submitTo}
                 />
-                <span className="text-[10px] text-slate-400">to</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">to</span>
                 <DateInputHybrid
                   value={submitTo}
                   onChange={setSubmitTo}
@@ -1302,7 +1302,7 @@ export default function ReportPage() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
                 PCS Kirim
               </label>
               <input
@@ -1310,7 +1310,7 @@ export default function ReportPage() {
                 value={pcsKirim}
                 onChange={(e) => setPcsKirim(e.target.value)}
                 placeholder="Filter PCS..."
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none text-sm text-slate-700 focus:border-emerald-500 font-semibold"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900/40 border border-gray-200 dark:border-slate-800 rounded-xl outline-none text-sm text-slate-700 dark:text-slate-100 focus:border-emerald-500 dark:focus:border-emerald-500 font-semibold"
               />
             </div>
 
@@ -1328,7 +1328,7 @@ export default function ReportPage() {
 
               return (
                 <div key={colId} className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
                     {c.label}
                   </label>
                   <MultiSelectFilterDropdown
@@ -1350,9 +1350,9 @@ export default function ReportPage() {
         )}
 
         {showColumns && (
-          <div className="mt-5 border border-gray-100 rounded-2xl p-4 bg-slate-50/60">
+          <div className="mt-5 border border-gray-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/60 dark:bg-slate-900/40">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-black text-slate-700">Pilih Kolom</p>
+              <p className="text-sm font-black text-slate-700 dark:text-slate-200">Pilih Kolom</p>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1363,7 +1363,7 @@ export default function ReportPage() {
                     });
                     setVisibleCols(next);
                   }}
-                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-gray-200 bg-white hover:bg-gray-50"
+                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   Show all
                 </button>
@@ -1376,7 +1376,7 @@ export default function ReportPage() {
                     });
                     setVisibleCols(next);
                   }}
-                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-gray-200 bg-white hover:bg-gray-50"
+                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   Reset
                 </button>
@@ -1391,8 +1391,8 @@ export default function ReportPage() {
                   onClick={() => toggleCol(String(c.id))}
                   className={`px-3 py-2 rounded-xl text-xs font-black text-left border transition-colors ${
                     visibleCols[String(c.id)]
-                      ? "bg-emerald-600 border-emerald-600 text-white"
-                      : "bg-white border-gray-200 text-slate-600 hover:bg-gray-50"
+                      ? "bg-emerald-600 border-emerald-600 text-white dark:bg-emerald-500 dark:border-emerald-500"
+                      : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                   }`}
                 >
                   {c.label}
@@ -1403,9 +1403,9 @@ export default function ReportPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between border-b border-gray-100">
-          <div className="text-sm text-slate-600">
+      <div className="bg-white dark:bg-slate-900/40 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
+        <div className="px-6 py-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between border-b border-gray-100 dark:border-slate-800">
+          <div className="text-sm text-slate-600 dark:text-slate-400">
             {loading
               ? "Loading..."
               : error
@@ -1413,11 +1413,11 @@ export default function ReportPage() {
                 : `Menampilkan ${pageRows.length} dari ${serverTotal} baris`}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-600">Rows</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Rows</span>
             <select
               value={rowsPerPage}
               onChange={(e) => setRowsPerPage(Number(e.target.value))}
-              className="px-2 py-1.5 rounded-xl border border-gray-200 text-sm"
+              className="px-2 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm outline-none"
             >
               {[25, 50, 100, 250].map((n) => (
                 <option key={n} value={n}>
@@ -1425,12 +1425,12 @@ export default function ReportPage() {
                 </option>
               ))}
             </select>
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-slate-600 dark:text-slate-400">
               Page {page} / {totalPages}
             </span>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-xl border border-gray-200 text-sm font-bold hover:bg-gray-50 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
             >
@@ -1438,7 +1438,7 @@ export default function ReportPage() {
             </button>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-xl border border-gray-200 text-sm font-bold hover:bg-gray-50 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
             >
@@ -1449,7 +1449,7 @@ export default function ReportPage() {
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm text-left">
-            <thead className="sticky top-0 z-20 bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-wider">
+            <thead className="sticky top-0 z-20 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-black uppercase text-[10px] tracking-wider border-b border-gray-100 dark:border-slate-800">
               <tr>
                 {visibleColumns.map((c) => {
                   const isItemField = [
@@ -1467,7 +1467,7 @@ export default function ReportPage() {
                   return (
                     <th
                       key={String(c.id)}
-                      className={`px-4 py-3 whitespace-nowrap bg-slate-50 ${isItemField ? "text-indigo-600" : ""}`}
+                      className={`px-4 py-3 whitespace-nowrap bg-slate-50 dark:bg-slate-800/50 ${isItemField ? "text-indigo-600 dark:text-indigo-400" : ""}`}
                     >
                       {c.label}
                     </th>
@@ -1475,7 +1475,7 @@ export default function ReportPage() {
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 uppercase">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 uppercase">
               {loading ? (
                 Array.from({ length: 10 }).map((_, i) => (
                   <tr key={`sk-${i}`} className="animate-pulse">
@@ -1484,7 +1484,7 @@ export default function ReportPage() {
                         key={`${i}-${String(c.id)}`}
                         className="px-4 py-3 whitespace-nowrap"
                       >
-                        <div className="h-4 w-full min-w-[60px] bg-slate-100 rounded" />
+                        <div className="h-4 w-full min-w-[60px] bg-slate-100 dark:bg-slate-800 rounded" />
                       </td>
                     ))}
                   </tr>
@@ -1492,7 +1492,7 @@ export default function ReportPage() {
               ) : pageRows.length === 0 ? (
                 <tr>
                   <td
-                    className="px-6 py-8 text-slate-500"
+                    className="px-6 py-8 text-slate-500 dark:text-slate-400"
                     colSpan={Math.max(1, visibleColumns.length)}
                   >
                     Tidak ada data.
@@ -1502,7 +1502,7 @@ export default function ReportPage() {
                 pageRows.map((r) => (
                   <tr
                     key={r.id}
-                    className="hover:bg-slate-50/60 text-[12px] border-b border-slate-50"
+                    className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 text-[12px] border-b border-slate-50 dark:border-slate-800/50"
                   >
                     {visibleColumns.map((c) => {
                       const v = c.value(r);
@@ -1547,16 +1547,16 @@ export default function ReportPage() {
                         <td
                           key={String(c.id)}
                           className={`px-4 py-3 whitespace-nowrap ${
-                            isItemField ? "bg-indigo-50/30" : ""
+                            isItemField ? "bg-indigo-50/30 dark:bg-indigo-500/5" : ""
                           } ${
                             c.kind === "number" && c.id !== "no"
                               ? "text-right"
                               : ""
-                          } ${c.id === "no" ? "text-center font-semibold text-slate-500" : ""} ${
+                          } ${c.id === "no" ? "text-center font-semibold text-slate-500 dark:text-slate-400" : ""} ${
                             c.id === "expiredTgl"
-                              ? "text-rose-600 font-bold"
+                              ? "text-rose-600 dark:text-rose-400 font-bold"
                               : c.id !== "no"
-                                ? "text-slate-800"
+                                ? "text-slate-800 dark:text-slate-200"
                                 : ""
                           }`}
                         >
@@ -1566,7 +1566,7 @@ export default function ReportPage() {
                                 href={String(v)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                                className="inline-flex items-center justify-center p-2 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
                               >
                                 <ExternalLink size={16} />
                               </a>
@@ -1605,8 +1605,8 @@ function StatusBadge({ label, checked }: { label: string; checked: boolean }) {
     <span
       className={`px-2 py-0.5 rounded-lg font-black text-[9px] border ${
         checked
-          ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-          : "bg-slate-50 text-slate-300 border-slate-100"
+          ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+          : "bg-slate-50 dark:bg-slate-800/50 text-slate-300 dark:text-slate-600 border-slate-100 dark:border-slate-800"
       }`}
     >
       {label}
@@ -1634,7 +1634,7 @@ function HighlightText({
         regex.test(part) ? (
           <span
             key={i}
-            className="bg-yellow-200 text-yellow-900 px-0.5 rounded"
+            className="bg-yellow-200 dark:bg-yellow-500/20 text-yellow-900 dark:text-yellow-200 px-0.5 rounded"
           >
             {part}
           </span>

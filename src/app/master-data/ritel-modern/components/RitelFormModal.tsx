@@ -50,15 +50,15 @@ export default function RitelFormModal({
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
         onClick={onClose}
       ></div>
-      <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-50 flex justify-between item-center bg-gray-50/50">
-          <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <Building2 size={22} className="text-blue-600" />
+      <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between item-center bg-gray-50/50 dark:bg-slate-800/50">
+          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Building2 size={22} className="text-blue-600 dark:text-blue-400" />
             {modalMode === "addCompany" ? "Tambah Company Baru" : "Tambah Item"}
           </h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white rounded-xl text-gray-400 hover:text-red-500"
+            className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl text-gray-400 hover:text-red-500"
           >
             <X size={20} />
           </button>
@@ -95,7 +95,7 @@ export default function RitelFormModal({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                   <Store size={12} /> Inisial
                 </label>
                 <input
@@ -104,14 +104,14 @@ export default function RitelFormModal({
                   placeholder="Contoh: ALFAMART"
                   value={inisial}
                   onChange={(e) => setInisial(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-semibold text-slate-700"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {!isRm && (<>
                   <div>
-                    <label className="block text-[11px] font-bold text-blue-600 mb-1 uppercase tracking-wider">
+                    <label className="block text-[11px] font-bold text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-wider">
                       Suntik Logo PT (URL)
                     </label>
                     <input
@@ -119,16 +119,16 @@ export default function RitelFormModal({
                       value={logoPt}
                       onChange={(e) => setLogoPt(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px]"
+                      className="w-full px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px] dark:text-blue-100"
                     />
                     {logoPt && (
-                      <div className="mt-1 flex justify-center p-1 bg-white border border-blue-100 rounded-lg">
+                      <div className="mt-1 flex justify-center p-1 bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-lg">
                         <img src={logoPt} alt="preview" className="h-8 object-contain" />
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-amber-600 mb-1 uppercase tracking-wider">
+                    <label className="block text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-1 uppercase tracking-wider">
                       Suntik Logo Inisial (URL)
                     </label>
                     <input
@@ -136,10 +136,10 @@ export default function RitelFormModal({
                       value={logoInisial}
                       onChange={(e) => setLogoInisial(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px]"
+                      className="w-full px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px] dark:text-amber-100"
                     />
                     {logoInisial && (
-                      <div className="mt-1 flex justify-center p-1 bg-white border border-amber-100 rounded-lg">
+                      <div className="mt-1 flex justify-center p-1 bg-white dark:bg-slate-800 border border-amber-100 dark:border-amber-800 rounded-lg">
                         <img src={logoInisial} alt="preview" className="h-8 object-contain" />
                       </div>
                     )}
@@ -168,7 +168,7 @@ export default function RitelFormModal({
               } space-y-5`}
             >
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                   Nama Company
                 </label>
                 <input
@@ -177,7 +177,7 @@ export default function RitelFormModal({
                   placeholder="Contoh: PT LION SUPER INDO"
                   value={selectedCompany}
                   onChange={(e) => setSelectedCompany(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
                 />
               </div>
 

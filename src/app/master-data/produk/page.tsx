@@ -356,8 +356,8 @@ export default function ProdukPage() {
       )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Master Produk</h1>
-          <p className="text-sm text-slate-500 mt-1">Daftar SKU Produk</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Master Produk</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Daftar SKU Produk</p>
         </div>
 
         <div className="flex gap-2">
@@ -372,7 +372,7 @@ export default function ProdukPage() {
           <button
             suppressHydrationWarning
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-sm"
+            className="flex items-center justify-center gap-2 bg-slate-900 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-sm active:scale-95 text-sm"
           >
             <Plus size={18} />
             New product
@@ -398,10 +398,10 @@ export default function ProdukPage() {
         variant="produk"
       />
 
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white dark:bg-slate-900/40 p-4 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none">
         <div className="relative max-w-md">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
             size={18}
           />
           <input
@@ -413,7 +413,7 @@ export default function ProdukPage() {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:outline-non focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm dark:text-slate-200"
           />
         </div>
       </div>
@@ -423,28 +423,28 @@ export default function ProdukPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setBulkDialog(null)}
           />
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 bg-blue-50/50">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-blue-50/50 dark:bg-indigo-500/10">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Konfirmasi Bulk Upload
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Total {bulkDialog.rows.length} baris. Duplikat terdeteksi:{" "}
                 {bulkDialog.dupeCount}.
               </p>
             </div>
             <div className="p-6 space-y-3">
-              <div className="max-h-40 overflow-y-auto border border-slate-100 rounded-xl bg-white text-xs">
+              <div className="max-h-40 overflow-y-auto border border-slate-100 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-xs">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 sticky top-0">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0">
                     <tr>
-                      <th className="p-2 font-medium text-slate-500">Produk</th>
-                      <th className="p-2 font-medium text-slate-500">
+                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">Produk</th>
+                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">
                         Satuan (Kg)
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                     {bulkDialog.rows.slice(0, 5).map((row, i) => {
                       const name = String(
                         row[bulkDialog.productKey] ?? "",
@@ -456,8 +456,8 @@ export default function ProdukPage() {
                         isFinite(satuanRaw) && satuanRaw > 0 ? satuanRaw : 1;
                       return (
                         <tr key={i}>
-                          <td className="p-2 text-slate-700">{name}</td>
-                          <td className="p-2 text-slate-700">{satuan}</td>
+                          <td className="p-2 text-slate-700 dark:text-slate-300">{name}</td>
+                          <td className="p-2 text-slate-700 dark:text-slate-300">{satuan}</td>
                         </tr>
                       );
                     })}
@@ -465,7 +465,7 @@ export default function ProdukPage() {
                       <tr>
                         <td
                           colSpan={2}
-                          className="p-2 text-center text-slate-400 italic"
+                          className="p-2 text-center text-slate-400 dark:text-slate-500 italic"
                         >
                           ...dan {bulkDialog.rows.length - 5} data lain
                         </td>
@@ -518,12 +518,12 @@ export default function ProdukPage() {
             width: "w-48",
             render: (_v: any, product: any) => (
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-slate-400 tracking-tight" title={product.id}>
+                <span className="font-mono text-xs font-bold text-slate-400 dark:text-slate-500 tracking-tight" title={product.id}>
                   {shortId(product.id)}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleCopyId(product.id); }}
-                  className="p-1 rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
                   title="Salin ID"
                 >
                   <Copy size={12} />
@@ -536,10 +536,10 @@ export default function ProdukPage() {
             label: "Nama Produk",
             render: (_v: any, product: any) => (
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-all">
+                <div className="p-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-all">
                   <Package size={16} />
                 </div>
-                <span className="text-sm font-bold text-slate-800">{product.name}</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{product.name}</span>
               </div>
             ),
           },
@@ -548,7 +548,7 @@ export default function ProdukPage() {
             label: "Satuan (Kg/pcs)",
             align: "center",
             render: (_v: any, product: any) => (
-              <span className="text-sm font-bold text-slate-800 tabular-nums">
+              <span className="text-sm font-bold text-slate-800 dark:text-slate-200 tabular-nums">
                 {typeof product.satuanKg === "number" ? product.satuanKg : ""} Kg
               </span>
             ),
@@ -562,7 +562,7 @@ export default function ProdukPage() {
               <div className="inline-flex gap-2">
                 <button
                   onClick={(e) => { e.stopPropagation(); setViewProduct(product); }}
-                  className="px-3 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                 >
                   <Eye size={16} />
                 </button>
@@ -573,13 +573,13 @@ export default function ProdukPage() {
                     setEditName(product.name);
                     setEditSatuan(String(product.satuanKg ?? 1));
                   }}
-                  className="px-3 py-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100"
+                  className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20"
                 >
                   <Pencil size={16} />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
-                  className="px-3 py-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100"
+                  className="px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -604,19 +604,19 @@ export default function ProdukPage() {
             onClick={() => setIsModalOpen(false)}
           ></div>
 
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-900 text-white rounded-xl">
+                <div className="p-2 bg-slate-900 dark:bg-indigo-500/20 text-white dark:text-indigo-400 rounded-xl">
                   <Archive size={18} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                   Tambah Product
                 </h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-white rounded-xl transition-colors text-gray-400 hover:text-red-500"
+                className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-400 hover:text-red-500"
               >
                 <X size={20} />
               </button>
@@ -624,7 +624,7 @@ export default function ProdukPage() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                   Nama Produk
                 </label>
                 <input
@@ -634,7 +634,7 @@ export default function ProdukPage() {
                   placeholder="Contoh: PUNOKAWAN 5 KG"
                   value={newProductName}
                   onChange={(e) => setNewProductName(e.target.value)}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all text-sm font-semibold shadow-sm"
+                  className="w-full px-4 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm font-semibold shadow-sm dark:text-slate-200"
                 />
                 <p className="mt-2 text-[11px] text-gray-400 italic font-medium">
                   * Gunakan nama SKU resmi (satu kolom &apos;Produk&apos; untuk
@@ -642,7 +642,7 @@ export default function ProdukPage() {
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                   Satuan KG (Kg per pcs)
                 </label>
                 <input
@@ -652,7 +652,7 @@ export default function ProdukPage() {
                   placeholder="Misal: 5"
                   value={newProductSatuanKg}
                   onChange={(e) => setNewProductSatuanKg(e.target.value)}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all text-sm font-semibold shadow-sm"
+                  className="w-full px-4 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm font-semibold shadow-sm dark:text-slate-200"
                 />
               </div>
 
@@ -660,13 +660,13 @@ export default function ProdukPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-4 border border-gray-200 text-gray-500 rounded-2xl font-bold hover:bg-gray-50 transition-all text-sm"
+                  className="flex-1 px-4 py-4 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 rounded-2xl font-bold hover:bg-gray-50 dark:hover:bg-slate-800 transition-all text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95 text-sm"
+                  className="flex-1 px-4 py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-lg shadow-slate-200 dark:shadow-none active:scale-95 text-sm"
                 >
                   Save Product
                 </button>
@@ -682,19 +682,19 @@ export default function ProdukPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setViewProduct(null)}
           ></div>
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-900 text-white rounded-xl">
+                <div className="p-2 bg-slate-900 dark:bg-indigo-500/20 text-white dark:text-indigo-400 rounded-xl">
                   <Archive size={18} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                   Detail Produk
                 </h3>
               </div>
               <button
                 onClick={() => setViewProduct(null)}
-                className="p-2 hover:bg-white rounded-xl transition-colors text-gray-400 hover:text-red-500"
+                className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-400 hover:text-red-500"
               >
                 <X size={20} />
               </button>
@@ -703,19 +703,19 @@ export default function ProdukPage() {
               <div className="text-xs text-slate-400 font-bold uppercase">
                 ID
               </div>
-              <div className="text-sm font-mono text-slate-700">
+              <div className="text-sm font-mono text-slate-700 dark:text-slate-300">
                 {viewProduct.id}
               </div>
               <div className="text-xs text-slate-400 font-bold uppercase">
                 Nama Produk
               </div>
-              <div className="text-sm font-bold text-slate-800">
+              <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
                 {viewProduct.name}
               </div>
               <div className="text-xs text-slate-400 font-bold uppercase">
                 Satuan (Kg/pcs)
               </div>
-              <div className="text-sm font-bold text-slate-800">
+              <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
                 {viewProduct.satuanKg ?? ""}
               </div>
             </div>
@@ -729,26 +729,26 @@ export default function ProdukPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setEditProduct(null)}
           ></div>
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-900 text-white rounded-xl">
+                <div className="p-2 bg-slate-900 dark:bg-indigo-500/20 text-white dark:text-indigo-400 rounded-xl">
                   <Archive size={18} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                   Edit Produk
                 </h3>
               </div>
               <button
                 onClick={() => setEditProduct(null)}
-                className="p-2 hover:bg-white rounded-xl transition-colors text-gray-400 hover:text-red-500"
+                className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-400 hover:text-red-500"
               >
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleUpdate} className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                   Nama Produk
                 </label>
                 <input
@@ -756,11 +756,11 @@ export default function ProdukPage() {
                   required
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all text-sm font-semibold shadow-sm"
+                  className="w-full px-4 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm font-semibold shadow-sm dark:text-slate-200"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                   Satuan KG (Kg per pcs)
                 </label>
                 <input
@@ -769,7 +769,7 @@ export default function ProdukPage() {
                   min="0"
                   value={editSatuan}
                   onChange={(e) => setEditSatuan(e.target.value)}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all text-sm font-semibold shadow-sm"
+                  className="w-full px-4 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm font-semibold shadow-sm dark:text-slate-200"
                 />
               </div>
               <div className="flex gap-3">

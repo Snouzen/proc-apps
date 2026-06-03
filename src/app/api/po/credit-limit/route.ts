@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "poId(s) and action are required" }, { status: 400 });
     }
 
-    const validActions = ["request", "approve", "reject", "approveAll"];
+    const validActions = ["request", "approve", "reject", "approveAll", "updateKodeVendor"];
     if (!validActions.includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
@@ -142,6 +142,15 @@ export async function POST(req: Request) {
           statusCreditLimit: "REJECTED",
           creditLimitBatchId: null, // Remove from batch so it goes back to data page
         },
+      });
+      return NextResponse.json({ success: true, data: po });
+    }
+
+    // ── UPDATE KODE VENDOR ─────────────────────────────────────────────
+    if (action === "updateKodeVendor") {
+      const po = await prisma.purchaseOrder.update({
+        where: { id: poId },
+        data: { kodeVendor: body.kodeVendor || null },
       });
       return NextResponse.json({ success: true, data: po });
     }

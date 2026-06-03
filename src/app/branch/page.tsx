@@ -467,23 +467,23 @@ export default function BranchPage() {
             <div className="p-2.5 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl shadow-lg shadow-violet-500/20">
               <Calendar size={22} className="text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
               Delivery Calendar
             </h1>
           </div>
-          <p className="text-slate-500 text-sm ml-[52px]">
+          <p className="text-slate-500 dark:text-slate-400 text-sm ml-[52px]">
             Visualisasi jadwal pengiriman PO berdasarkan wilayah dan periode.
           </p>
         </div>
       </div>
 
       {/* ─── Filter Section ─── */}
-      <div className="relative bg-white rounded-2xl border border-slate-100 shadow-sm">
+      <div className="relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500 rounded-t-2xl" />
         <div className="p-6">
           <div className="flex items-center gap-2 mb-5">
-            <Filter size={14} className="text-slate-500" />
-            <h2 className="text-sm font-bold text-slate-700">
+            <Filter size={14} className="text-slate-500 dark:text-slate-400" />
+            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">
               Filter Wilayah & Periode
             </h2>
           </div>
@@ -559,35 +559,35 @@ export default function BranchPage() {
               value: poData.length,
               icon: <Package size={18} />,
               color: "text-blue-600",
-              bg: "bg-blue-50",
+              bg: "bg-blue-50 dark:bg-blue-900/30",
             },
             {
               label: "Sudah Dijadwalkan",
               value: totalScheduled,
               icon: <Truck size={18} />,
-              color: "text-emerald-600",
-              bg: "bg-emerald-50",
+              color: "text-emerald-600 dark:text-emerald-400",
+              bg: "bg-emerald-50 dark:bg-emerald-900/30",
             },
             {
               label: "Belum Dijadwalkan",
               value: totalUnscheduled,
               icon: <Clock size={18} />,
-              color: "text-amber-600",
-              bg: "bg-amber-50",
+              color: "text-amber-600 dark:text-amber-400",
+              bg: "bg-amber-50 dark:bg-amber-900/30",
             },
           ].map((s, i) => (
             <div
               key={i}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-all duration-200"
+              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-all duration-200"
             >
               <div className={`p-2.5 rounded-xl ${s.bg}`}>
                 <span className={s.color}>{s.icon}</span>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400">
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
                   {s.label}
                 </p>
-                <p className="text-2xl font-bold text-slate-900">
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {poLoading ? "..." : s.value}
                 </p>
               </div>
@@ -597,39 +597,39 @@ export default function BranchPage() {
       )}
 
       {/* ─── Calendar Section ─── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
         {/* Calendar Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
           <button
             onClick={handlePrevMonth}
-            className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
           >
             <ChevronLeft size={20} />
           </button>
           <div className="text-center">
-            <h3 className="text-lg font-bold text-slate-800">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
               {MONTH_NAMES[month - 1]} {year}
             </h3>
             {selectedSiteArea && (
-              <p className="text-xs text-slate-400 font-medium mt-0.5">
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
                 {selectedSiteArea} · {selectedRegional}
               </p>
             )}
           </div>
           <button
             onClick={handleNextMonth}
-            className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
           >
             <ChevronRight size={20} />
           </button>
         </div>
 
         {/* Day Labels */}
-        <div className="grid grid-cols-7 border-b border-slate-100">
+        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700/50">
           {DAY_LABELS.map((d) => (
             <div
               key={d}
-              className="text-center py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider"
+              className="text-center py-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider"
             >
               {d}
             </div>
@@ -658,13 +658,13 @@ export default function BranchPage() {
             </span>
           </div>
         ) : (
-          <div className="border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden mb-6">
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm overflow-hidden mb-6">
             {/* HEADER HARI */}
-            <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200">
+            <div className="grid grid-cols-7 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
               {DAY_LABELS.map((day, i) => (
                 <div
                   key={i}
-                  className="py-2 text-center text-[10px] font-black text-slate-500 uppercase tracking-wider"
+                  className="py-2 text-center text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                 >
                   {day}
                 </div>
@@ -672,13 +672,13 @@ export default function BranchPage() {
             </div>
 
             {/* BODY TANGGAL */}
-            <div className="grid grid-cols-7 gap-px bg-slate-200">
+            <div className="grid grid-cols-7 gap-px bg-slate-200 dark:bg-slate-700">
               {calendarCells.map((day, idx) => {
                 if (day === null) {
                   return (
                     <div
                       key={`empty-${idx}`}
-                      className="bg-slate-50/50 min-h-[50px] sm:min-h-[60px]"
+                      className="bg-slate-50/50 dark:bg-slate-800/50 min-h-[50px] sm:min-h-[60px]"
                     />
                   );
                 }
@@ -706,15 +706,15 @@ export default function BranchPage() {
                   <div
                     key={dateKey}
                     onClick={() => setSelectedDateKey(dateKey)}
-                    className={`relative group bg-white min-h-[50px] sm:min-h-[60px] p-2 cursor-pointer transition-all hover:bg-slate-50
-                      ${hasPOs ? "bg-amber-50/60 hover:bg-amber-100/60" : ""}
+                    className={`relative group bg-white dark:bg-slate-800 min-h-[50px] sm:min-h-[60px] p-2 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-700/50
+                      ${hasPOs ? "bg-amber-50/60 dark:bg-indigo-900/20 hover:bg-amber-100/60 dark:hover:bg-indigo-900/40" : ""}
                       ${isSelected ? "ring-2 ring-inset ring-indigo-500 z-10" : ""}
                     `}
                   >
                     <div className="flex justify-between items-start relative z-10">
                       <span
                         className={`text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full
-                        ${today ? "bg-indigo-600 text-white shadow-sm" : hasPOs ? "text-amber-900" : "text-slate-500"}
+                        ${today ? "bg-indigo-600 text-white shadow-sm" : hasPOs ? "text-amber-900 dark:text-indigo-300" : "text-slate-500 dark:text-slate-300"}
                       `}
                       >
                         {day}
@@ -723,7 +723,7 @@ export default function BranchPage() {
                       {/* Tiny Badge Indicator if has POs */}
                       {hasPOs && (
                         <span 
-                          className="text-[9px] font-black text-amber-700 bg-amber-200/80 px-1.5 py-0.5 rounded-md leading-none"
+                          className="text-[9px] font-black text-amber-700 dark:text-indigo-200 bg-amber-200/80 dark:bg-indigo-500/30 px-1.5 py-0.5 rounded-md leading-none"
                           title={`${pos.length} PO Terjadwal`}
                         >
                           {pos.length}
@@ -734,8 +734,8 @@ export default function BranchPage() {
                     {/* Embedded Total Kg Data */}
                     {hasPOs && (
                       <div className="mt-0.5 relative z-10">
-                        <span className="text-[10px] sm:text-[11px] font-black text-amber-800 tracking-tight leading-none block">
-                          {totalKg.toLocaleString("id-ID")} <span className="text-[8px] font-bold text-amber-700/70">KG</span>
+                        <span className="text-[10px] sm:text-[11px] font-black text-amber-800 dark:text-indigo-300 tracking-tight leading-none block">
+                          {totalKg.toLocaleString("id-ID")} <span className="text-[8px] font-bold text-amber-700/70 dark:text-indigo-400/80">KG</span>
                         </span>
                       </div>
                     )}
@@ -753,15 +753,15 @@ export default function BranchPage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div
-                className={`p-2.5 rounded-xl ${groupedPOs[selectedDateKey]?.length > 0 ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-400"}`}
+                className={`p-2.5 rounded-xl ${groupedPOs[selectedDateKey]?.length > 0 ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" : "bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500"}`}
               >
                 <Truck size={20} />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-800">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                   Jadwal Pengiriman: {selectedDateLabel}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
                   {filteredDetailPOs.length} /{" "}
                   {groupedPOs[selectedDateKey]?.length || 0} Purchase Orders
                   Terjadwal
@@ -771,14 +771,14 @@ export default function BranchPage() {
             </div>
             <button
               onClick={() => setSelectedDateKey(null)}
-              className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
             >
               <X size={20} />
             </button>
           </div>
 
           {/* TOOLBAR TABEL */}
-          <div className="flex flex-col lg:flex-row gap-3 mb-4 items-center justify-between bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
+          <div className="flex flex-col lg:flex-row gap-3 mb-4 items-center justify-between bg-slate-50/80 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <div className="relative w-full sm:w-64">
                 <Search
@@ -790,7 +790,7 @@ export default function BranchPage() {
                   value={inlineSearch}
                   onChange={(e) => setInlineSearch(e.target.value)}
                   placeholder="Cari No PO, Inv, Company, Inisial..."
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -800,7 +800,7 @@ export default function BranchPage() {
                   placeholder="Date From"
                   className="w-36"
                 />
-                <span className="text-slate-300 font-bold">to</span>
+                <span className="text-slate-300 dark:text-slate-600 font-bold">to</span>
                 <DateInputHybrid
                   value={inlineDateTo}
                   onChange={setInlineDateTo}
@@ -812,7 +812,7 @@ export default function BranchPage() {
             <div className="relative w-full sm:w-auto">
               <button
                 onClick={() => setColsOpen(!colsOpen)}
-                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-between gap-2"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2"
               >
                 Customize Columns <ChevronDown size={14} />
               </button>
@@ -822,21 +822,21 @@ export default function BranchPage() {
                     className="fixed inset-0 z-[40]"
                     onClick={() => setColsOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-[600px] max-w-[90vw] bg-white border border-slate-100 rounded-2xl shadow-2xl p-4 z-50">
-                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-                      <span className="text-sm font-black text-slate-800">
+                  <div className="absolute right-0 mt-2 w-[600px] max-w-[90vw] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl p-4 z-50">
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-700/50">
+                      <span className="text-sm font-black text-slate-800 dark:text-slate-200">
                         Pilih Kolom
                       </span>
                       <div className="flex gap-2">
                         <button
                           onClick={() => toggleAllCols(true)}
-                          className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg hover:bg-indigo-100"
+                          className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
                         >
                           Show All
                         </button>
                         <button
                           onClick={() => toggleAllCols(false)}
-                          className="px-3 py-1 bg-rose-50 text-rose-700 text-xs font-bold rounded-lg hover:bg-rose-100"
+                          className="px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-xs font-bold rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50"
                         >
                           Hide All
                         </button>
@@ -846,7 +846,7 @@ export default function BranchPage() {
                       {Object.keys(visibleCols).map((key) => (
                         <label
                           key={key}
-                          className="flex items-center gap-2 text-[11px] font-bold text-slate-600 cursor-pointer capitalize"
+                          className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 cursor-pointer capitalize"
                         >
                           <input
                             type="checkbox"
@@ -876,7 +876,7 @@ export default function BranchPage() {
                   label: "No PO",
                   hidden: !visibleCols.noPo,
                   render: (_v: any, po: any) => (
-                    <span className="font-bold text-slate-700 whitespace-nowrap">{po.noPo || "-"}</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{po.noPo || "-"}</span>
                   ),
                 },
                 {
@@ -1023,7 +1023,7 @@ export default function BranchPage() {
                 });
               }}
               variant="rounded"
-              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden"
               emptyMessage="Tidak ada pengiriman"
             />
         </div>

@@ -653,15 +653,15 @@ export default function POEditModal({
           Loading...
         </div>
       ) : !po ? (
-        <div className="py-10 text-sm text-slate-600">
+        <div className="py-10 text-sm text-slate-600 dark:text-slate-300">
           Data PO tidak ditemukan.
         </div>
       ) : (
         <div className="space-y-6">
-          <section className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-5">
+          <section className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.company}
                 </label>
                 {/* FEATURE: Role-based Form Logic - Company Master Data Mapping */}
@@ -679,7 +679,7 @@ export default function POEditModal({
 
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.inisial}
                 </label>
                 <Combobox
@@ -692,7 +692,7 @@ export default function POEditModal({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.tujuan}
                 </label>
                 <Combobox
@@ -705,7 +705,7 @@ export default function POEditModal({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.tglPo}
                 </label>
                 <DateInputHybrid
@@ -714,27 +714,27 @@ export default function POEditModal({
                     setTglPo(v);
                     if (expiredTgl && v && expiredTgl < v) setExpiredTgl(v);
                   }}
-                  className={`w-full bg-slate-50 rounded-2xl ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}
+                  className={`w-full bg-slate-50 dark:bg-slate-800/50 rounded-2xl ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}
                   placeholder="YYYY-MM-DD"
                   maxDate={expiredTgl}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.expiredTgl}
                 </label>
                 <DateInputHybrid
                   value={expiredTgl}
                   onChange={setExpiredTgl}
-                  className={`w-full bg-slate-50 rounded-2xl ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}
+                  className={`w-full bg-slate-50 dark:bg-slate-800/50 rounded-2xl ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}
                   placeholder="YYYY-MM-DD"
                   minDate={tglPo}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.tglKirim}
                 </label>
                 <DateInputHybrid
@@ -748,20 +748,20 @@ export default function POEditModal({
               {/* Nama Supir & Plat Nomor dipindah ke bawah Remarks */}
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.regional}
                 </label>
                 {getMeSync()?.role === "rm" ? (
                   <div className="relative">
                     <MapPin
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
                       size={16}
                     />
                     <input
                       type="text"
                       disabled
                       value={regional}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-100 rounded-2xl text-sm font-semibold cursor-not-allowed text-slate-500 border border-slate-200"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-semibold cursor-not-allowed text-slate-500 border border-slate-200 dark:border-slate-700"
                       placeholder="Loading..."
                     />
                   </div>
@@ -783,7 +783,7 @@ export default function POEditModal({
 
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.siteArea}
                 </label>
                 <Combobox
@@ -798,12 +798,12 @@ export default function POEditModal({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.linkPo}
                 </label>
                 <div className="relative">
                   <LinkIcon
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
                     size={16}
                   />
                   <input
@@ -811,14 +811,14 @@ export default function POEditModal({
                     placeholder="https://..."
                     value={linkPo}
                     disabled={isSiteArea}
-                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all disabled:opacity-60 disabled:bg-slate-50"
+                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all disabled:opacity-60 disabled:bg-slate-50"
                     onChange={(e) => setLinkPo(e.target.value)}
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.noPo}
                 </label>
                 <input
@@ -826,19 +826,19 @@ export default function POEditModal({
                   onChange={(e) => setNoPoValue(e.target.value)}
                   placeholder="Masukkan Nomor PO..."
                   disabled={isSiteArea}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all disabled:opacity-60 disabled:bg-slate-50"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all disabled:opacity-60 disabled:bg-slate-50"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.noInvoice}
                 </label>
                 <input
                   type="text"
                   placeholder="Nomor Invoice..."
                   value={noInvoice}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                   onChange={(e) => {
                     const v = e.target.value;
                     setNoInvoice(v);
@@ -851,15 +851,15 @@ export default function POEditModal({
             </div>
           </section>
 
-          <div className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <h4 className="font-bold text-slate-800">
+          <div className="rounded-3xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+              <h4 className="font-bold text-slate-800 dark:text-slate-100">
                 {PO_FORM_LABELS.tambahItem}
               </h4>
             </div>
             <div className={`p-6 grid grid-cols-2 md:grid-cols-4 gap-4 ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
               <div className="md:col-span-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.namaProduk}
                 </label>
                 <Combobox
@@ -882,7 +882,7 @@ export default function POEditModal({
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.pcs}
                 </label>
                 <input
@@ -892,11 +892,11 @@ export default function POEditModal({
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, pcs: e.target.value }))
                   }
-                  className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
+                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100 ${numberNoSpinner}`}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.hargaPcs}
                 </label>
                 <input
@@ -906,11 +906,11 @@ export default function POEditModal({
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, hargaPcs: e.target.value }))
                   }
-                  className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
+                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100 ${numberNoSpinner}`}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.pcsKirim}
                 </label>
                 <input
@@ -920,11 +920,11 @@ export default function POEditModal({
                   onChange={(e) =>
                     setCurrentItem((p) => ({ ...p, pcsKirim: e.target.value }))
                   }
-                  className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
+                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100 ${numberNoSpinner}`}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                   {PO_FORM_LABELS.discount}
                 </label>
                 <input
@@ -943,7 +943,7 @@ export default function POEditModal({
                       };
                     })
                   }
-                  className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-semibold dark:text-slate-100"
                 />
               </div>
               <div className="col-span-full">
@@ -959,9 +959,9 @@ export default function POEditModal({
             </div>
           </div>
 
-          <div className={`rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h4 className="font-bold text-slate-800">
+          <div className={`rounded-3xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <h4 className="font-bold text-slate-800 dark:text-slate-100">
                 {PO_FORM_LABELS.preview}
               </h4>
               <div className="text-sm font-bold text-indigo-700">
@@ -970,7 +970,7 @@ export default function POEditModal({
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left min-w-[1000px]">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                   <tr>
                     <th className="px-4 py-3">{PO_FORM_LABELS.namaProduk}</th>
                     <th className="px-4 py-3 text-right">
@@ -993,12 +993,12 @@ export default function POEditModal({
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {items.map((it) => {
                     const d = computeDerived(it);
                     return (
                       <tr key={it.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-medium text-slate-700 uppercase">
+                        <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-200 uppercase">
                           {it.namaProduk || "-"}
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -1015,7 +1015,7 @@ export default function POEditModal({
                                 ),
                               )
                             }
-                            className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                            className={`w-24 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100 ${numberNoSpinner}`}
                           />
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -1032,7 +1032,7 @@ export default function POEditModal({
                                 ),
                               )
                             }
-                            className={`w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                            className={`w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100 ${numberNoSpinner}`}
                           />
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -1050,7 +1050,7 @@ export default function POEditModal({
                                   ),
                                 )
                               }
-                              className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                              className={`w-24 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100 ${numberNoSpinner}`}
                             />
                             <button
                               type="button"
@@ -1063,7 +1063,7 @@ export default function POEditModal({
                                   ),
                                 )
                               }
-                              className="p-1.5 text-slate-400 opacity-50 group-hover/pckirim:opacity-100 hover:text-blue-600 hover:bg-blue-50 focus:opacity-100 focus:text-blue-600 focus:bg-blue-50 rounded-lg transition-all border border-transparent hover:border-blue-100"
+                              className="p-1.5 text-slate-400 dark:text-slate-500 opacity-50 group-hover/pckirim:opacity-100 hover:text-blue-600 hover:bg-blue-50 focus:opacity-100 focus:text-blue-600 focus:bg-blue-50 rounded-lg transition-all border border-transparent hover:border-blue-100"
                               title="Salin nilai dari PCS"
                             >
                               <Copy size={16} />
@@ -1095,7 +1095,7 @@ export default function POEditModal({
                                   ),
                                 );
                               }}
-                              className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                              className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100"
                             />
                             {parseRupiah(it.discount) > 0 && (
                               <button
@@ -1120,19 +1120,19 @@ export default function POEditModal({
                                     }
                                   });
                                 }}
-                                className="p-1 hover:bg-slate-100 rounded-md transition-all group/eye"
+                                className="p-1 hover:bg-slate-100 dark:bg-slate-800 rounded-md transition-all group/eye"
                                 title="Lihat diskon awal"
                                 style={{ pointerEvents: 'auto' }}
                               >
                                 <Eye 
                                   size={14} 
-                                  className="text-slate-300 group-hover/eye:text-slate-600 transition-colors"
+                                  className="text-slate-300 dark:text-slate-500 group-hover/eye:text-slate-600 dark:text-slate-300 transition-colors"
                                 />
                               </button>
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-800 tabular-nums">
+                        <td className="px-4 py-3 text-right font-bold text-slate-800 dark:text-slate-100 tabular-nums">
                           {formatCurrency(d.nominal)}
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -1168,15 +1168,15 @@ export default function POEditModal({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <section className={`bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
+            <section className={`bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
               <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="font-bold text-slate-800 text-lg">
+                <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
                   {PO_FORM_LABELS.checklistDokumen}
                 </h2>
                 <button
                   type="button"
                   onClick={toggleAllChecklist}
-                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
                 >
                   {allChecklistChecked ? "Uncheck All" : "Check All"}
                 </button>
@@ -1189,7 +1189,7 @@ export default function POEditModal({
                   
                   if (key === 'kirim') {
                     return (
-                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white">
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg gap-4 bg-white dark:bg-slate-800">
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input 
                             type="checkbox" 
@@ -1197,7 +1197,7 @@ export default function POEditModal({
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">KIRIM</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200">KIRIM</span>
                         </label>
                         <div className="flex-1">
                           <input 
@@ -1209,7 +1209,7 @@ export default function POEditModal({
                               setBuktiKirim(v);
                               if (v.trim() && !checked) setStatus(prev => ({ ...prev, kirim: true }));
                             }}
-                            className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            className="w-full px-3 py-1.5 text-sm bg-transparent dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                           />
                         </div>
                       </div>
@@ -1218,7 +1218,7 @@ export default function POEditModal({
 
                   if (key === 'fp') {
                     return (
-                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white">
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg gap-4 bg-white dark:bg-slate-800">
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input 
                             type="checkbox" 
@@ -1226,7 +1226,7 @@ export default function POEditModal({
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">FP</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200">FP</span>
                         </label>
                         <div className="flex-1">
                           <input 
@@ -1238,7 +1238,7 @@ export default function POEditModal({
                               setBuktiFp(v);
                               if (v.trim() && !checked) setStatus(prev => ({ ...prev, fp: true }));
                             }}
-                            className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            className="w-full px-3 py-1.5 text-sm bg-transparent dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                           />
                         </div>
                       </div>
@@ -1247,7 +1247,7 @@ export default function POEditModal({
                   
                   if (key === 'tagih') {
                     return (
-                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white">
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg gap-4 bg-white dark:bg-slate-800">
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input 
                             type="checkbox" 
@@ -1255,7 +1255,7 @@ export default function POEditModal({
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">TAGIH</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200">TAGIH</span>
                         </label>
                         <div className="flex-1">
                           <input 
@@ -1267,7 +1267,7 @@ export default function POEditModal({
                               setBuktiTagih(v);
                               if (v.trim() && !checked) setStatus(prev => ({ ...prev, tagih: true }));
                             }}
-                            className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            className="w-full px-3 py-1.5 text-sm bg-transparent dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                           />
                         </div>
                       </div>
@@ -1276,7 +1276,7 @@ export default function POEditModal({
 
                   if (key === 'bayar') {
                     return (
-                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white">
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg gap-4 bg-white dark:bg-slate-800">
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input 
                             type="checkbox" 
@@ -1284,7 +1284,7 @@ export default function POEditModal({
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">BAYAR</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200">BAYAR</span>
                         </label>
                         <div className="flex-1">
                           <input 
@@ -1296,7 +1296,7 @@ export default function POEditModal({
                               setBuktiBayar(v);
                               if (v.trim() && !checked) setStatus(prev => ({ ...prev, bayar: true }));
                             }}
-                            className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            className="w-full px-3 py-1.5 text-sm bg-transparent dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                           />
                         </div>
                       </div>
@@ -1306,7 +1306,7 @@ export default function POEditModal({
                   return (
                     <label
                       key={key}
-                      className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors"
                     >
                       <input
                         type="checkbox"
@@ -1314,7 +1314,7 @@ export default function POEditModal({
                         onChange={() => handleChecklist(key)}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm font-bold text-slate-700">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                         {label}
                       </span>
                     </label>
@@ -1323,9 +1323,9 @@ export default function POEditModal({
               </div>
             </section>
 
-            <section className={`bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
+            <section className={`bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm ${isSiteArea ? "opacity-60 pointer-events-none" : ""}`}>
               <div className="flex items-center gap-3 mb-4">
-                <h2 className="font-bold text-slate-800 text-lg">
+                <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
                   {PO_FORM_LABELS.remarks}
                 </h2>
               </div>
@@ -1333,14 +1333,14 @@ export default function POEditModal({
                 rows={4}
                 value={remarks}
                 placeholder="Tambahkan Jika Ada Keterangan..."
-                className="w-full px-6 py-4 bg-slate-50 rounded-[24px] focus:ring-2 focus:ring-slate-200 outline-none text-sm font-medium transition-all"
+                className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-[24px] focus:ring-2 focus:ring-slate-200 outline-none text-sm font-medium dark:text-slate-100 transition-all"
                 onChange={(e) => setRemarks(e.target.value)}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl">
                 <div className="col-span-1 md:col-span-2 flex items-center gap-2 mb-2">
                   <Truck size={16} className="text-sky-600" />
-                  <h3 className="font-bold text-slate-700 text-sm">Logistik & Ekspedisi</h3>
+                  <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">Logistik & Ekspedisi</h3>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Supir</label>
@@ -1349,7 +1349,7 @@ export default function POEditModal({
                     placeholder="Identitas Supir..." 
                     value={namaSupir || ""} 
                     onChange={(e) => setNamaSupir(e.target.value)} 
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
                   />
                 </div>
                 <div>
@@ -1359,7 +1359,7 @@ export default function POEditModal({
                     placeholder="Plat Kendaraan..." 
                     value={platNomor || ""} 
                     onChange={(e) => setPlatNomor(e.target.value)} 
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 uppercase" 
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 uppercase" 
                   />
                 </div>
               </div>
@@ -1370,7 +1370,7 @@ export default function POEditModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold"
+              className="px-5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-sm font-bold"
               disabled={saving}
             >
               Batal

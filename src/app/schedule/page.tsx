@@ -96,10 +96,10 @@ function ActionButton({
   loading?: boolean;
 }) {
   const bgColors = {
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-600 hover:text-white",
-    rose: "bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-600 hover:text-white",
-    slate: "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-600 hover:text-white",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white",
+    indigo: "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white",
+    rose: "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800 hover:bg-rose-600 hover:text-white",
+    slate: "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-600 hover:text-white",
+    emerald: "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white",
   };
 
   return (
@@ -604,7 +604,7 @@ export default function SchedulePage() {
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             Delivery Scheduling
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">
@@ -621,7 +621,7 @@ export default function SchedulePage() {
           <input
             type="text"
             placeholder="Search No PO, Site, Company..."
-            className="pl-9 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all w-full md:w-72 shadow-sm text-slate-700"
+            className="pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all w-full md:w-72 shadow-sm text-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -636,36 +636,36 @@ export default function SchedulePage() {
             label: "Total PO",
             value: stats.total,
             icon: <Truck size={18} className="text-blue-500" />,
-            bg: "bg-blue-50",
-            text: "text-blue-600",
-            ring: "ring-blue-500",
+            bg: "bg-blue-50 dark:bg-blue-900/30",
+            text: "text-blue-600 dark:text-blue-400",
+            ring: "ring-blue-500 dark:ring-blue-400",
           },
           {
             id: "scheduled",
             label: "Sudah Dijadwalkan",
             value: stats.scheduled,
             icon: <CalendarCheck size={18} className="text-emerald-500" />,
-            bg: "bg-emerald-50",
-            text: "text-emerald-600",
-            ring: "ring-emerald-500",
+            bg: "bg-emerald-50 dark:bg-emerald-900/30",
+            text: "text-emerald-600 dark:text-emerald-400",
+            ring: "ring-emerald-500 dark:ring-emerald-400",
           },
           {
             id: "unscheduled",
             label: "Belum Dijadwalkan",
             value: stats.pending,
             icon: <Clock size={18} className="text-amber-500" />,
-            bg: "bg-amber-50",
-            text: "text-amber-600",
-            ring: "ring-amber-500",
+            bg: "bg-amber-50 dark:bg-amber-900/30",
+            text: "text-amber-600 dark:text-amber-500",
+            ring: "ring-amber-500 dark:ring-amber-500",
           },
         ].map((stat) => (
           <div
             key={stat.id}
             onClick={() => setActiveFilter(stat.id as any)}
-            className={`cursor-pointer bg-white px-5 py-4 rounded-2xl border border-slate-100 flex items-center gap-4 transition-all duration-200 ${
+            className={`cursor-pointer bg-white dark:bg-slate-800 px-5 py-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center gap-4 transition-all duration-200 ${
               activeFilter === stat.id
                 ? `ring-2 ${stat.ring} shadow-md scale-[1.02]`
-                : "hover:bg-slate-50 shadow-sm"
+                : "hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm"
             }`}
           >
             <div className={`p-2.5 rounded-xl ${stat.bg} shrink-0`}>
@@ -690,8 +690,8 @@ export default function SchedulePage() {
               width: "w-[260px]",
               render: (_v: any, po: any) => (
                 <div>
-                  <p className="font-bold text-slate-800 text-sm leading-tight">{po.noPo}</p>
-                  <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[230px]">{po.RitelModern?.namaPt || "-"}</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">{po.noPo}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate max-w-[230px]">{po.RitelModern?.namaPt || "-"}</p>
                 </div>
               ),
             },
@@ -702,7 +702,7 @@ export default function SchedulePage() {
               render: (_v: any, po: any) => (
                 <StandardTooltip content={po.RitelModern?.inisial || "-"}>
                   <span 
-                    className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[80px] shadow-sm cursor-pointer"
+                    className="inline-block px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[80px] shadow-sm cursor-pointer"
                   >
                     {po.RitelModern?.inisial || "-"}
                   </span>
@@ -717,8 +717,8 @@ export default function SchedulePage() {
                 const site = cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea);
                 return (
                   <div className="flex items-center gap-1.5">
-                    {site !== "-" && <MapPin size={11} className="text-slate-300 shrink-0" />}
-                    <span className={`text-xs font-medium ${site === "-" ? "text-slate-300" : "text-slate-600"}`}>{site}</span>
+                    {site !== "-" && <MapPin size={11} className="text-slate-300 dark:text-slate-500 shrink-0" />}
+                    <span className={`text-xs font-medium ${site === "-" ? "text-slate-300 dark:text-slate-600" : "text-slate-600 dark:text-slate-300"}`}>{site}</span>
                   </div>
                 );
               },
@@ -728,7 +728,7 @@ export default function SchedulePage() {
               label: "Tujuan",
               width: "w-[200px]",
               render: (_v: any, po: any) => (
-                <p className="text-xs text-slate-600 font-medium truncate max-w-[200px]" title={po.tujuanDetail || "-"}>{po.tujuanDetail || "-"}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate max-w-[200px]" title={po.tujuanDetail || "-"}>{po.tujuanDetail || "-"}</p>
               ),
             },
             {
@@ -736,7 +736,7 @@ export default function SchedulePage() {
               label: "Tgl PO",
               width: "w-[120px]",
               render: (_v: any, po: any) => (
-                <span className="text-xs text-slate-500 tabular-nums whitespace-nowrap">{po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">{po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}</span>
               ),
             },
             {
@@ -746,7 +746,7 @@ export default function SchedulePage() {
               render: (_v: any, po: any) => (
                 <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${
                   po.expiredTgl && new Date(po.expiredTgl).getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000
-                    ? "text-rose-600" : "text-slate-600"
+                    ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"
                 }`}>
                   {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
                 </span>
@@ -760,12 +760,12 @@ export default function SchedulePage() {
               render: (_v: any, po: any) => {
                 const isScheduled = !!po.tglkirim;
                 return isScheduled ? (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-md text-[10px] font-black uppercase tracking-tight">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 rounded-md text-[10px] font-black uppercase tracking-tight">
                     <CalendarDays size={11} className="shrink-0" />
                     {format(new Date(po.tglkirim), "dd MMM yy")}
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-50 text-slate-400 border border-slate-100 rounded-md text-[10px] font-bold uppercase tracking-tight italic">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-700 rounded-md text-[10px] font-bold uppercase tracking-tight italic">
                     <Clock size={11} className="shrink-0" />
                     Belum Ada
                   </div>
@@ -778,7 +778,7 @@ export default function SchedulePage() {
               align: "center" as const,
               width: "w-[60px]",
               render: (_v: any, po: any) => (
-                <span className="font-bold text-slate-600 text-xs">{Number(po.pcsTotal || 0).toLocaleString("id-ID")}</span>
+                <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">{Number(po.pcsTotal || 0).toLocaleString("id-ID")}</span>
               ),
             },
             {
@@ -794,7 +794,7 @@ export default function SchedulePage() {
                   <div onClick={(e) => e.stopPropagation()}>
                     {isMulti ? (
                       <div className="flex items-center gap-2 justify-center">
-                        <span className="flex items-center justify-center w-24 h-9 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-black tabular-nums shadow-sm">
+                        <span className="flex items-center justify-center w-24 h-9 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black tabular-nums shadow-sm">
                           {Number(po.pcsKirimTotal || 0).toLocaleString("id-ID")}
                         </span>
                         <button 
@@ -802,7 +802,7 @@ export default function SchedulePage() {
                           className={`p-1.5 rounded-lg transition-all active:scale-95 shadow-sm border ${
                             isExpanded 
                             ? "bg-rose-500 text-white border-rose-600 shadow-rose-100" 
-                            : "bg-white text-indigo-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-600 shadow-slate-100"
+                            : "bg-white dark:bg-slate-800 text-indigo-500 border-slate-200 dark:border-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-slate-100"
                           }`}
                           title={isExpanded ? "Tutup" : "Breakdown PO"}
                         >
@@ -826,12 +826,12 @@ export default function SchedulePage() {
                             if (e.key === "Enter") e.currentTarget.blur();
                           }}
                           disabled={savingPcsId === po.id}
-                          className={`w-24 h-9 px-2 text-xs font-black text-center bg-slate-50 border rounded-xl outline-none transition-all tabular-nums shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                          className={`w-24 h-9 px-2 text-xs font-black text-center bg-slate-50 dark:bg-slate-800 border rounded-xl outline-none transition-all tabular-nums shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                             Number(po.pcsKirimTotal) > Number(po.pcsTotal)
-                              ? "border-rose-500 text-rose-600 bg-rose-50 shadow-[0_0_8px_rgba(225,29,72,0.2)]"
+                              ? "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-900/20 shadow-[0_0_8px_rgba(225,29,72,0.2)]"
                               : savingPcsId === po.id
-                              ? "border-amber-400 bg-amber-50 text-amber-700 animate-pulse"
-                              : "border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white text-slate-700 font-black"
+                              ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 animate-pulse"
+                              : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white dark:focus:bg-slate-900 text-slate-700 dark:text-slate-200 font-black"
                           }`}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -912,23 +912,23 @@ export default function SchedulePage() {
           renderExpandedRow={(po: any) => {
             if (!po.Items) return null;
             return (
-              <tr className="bg-slate-50/10" onClick={(e) => e.stopPropagation()}>
+              <tr className="bg-slate-50/10 dark:bg-slate-900/10" onClick={(e) => e.stopPropagation()}>
                 <td colSpan={14} className="px-5 py-6">
-                  <div className="bg-white border-2 border-indigo-100 rounded-[32px] overflow-x-auto overflow-y-hidden shadow-2xl shadow-indigo-200/10 mx-4">
+                  <div className="bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-[32px] overflow-x-auto overflow-y-hidden shadow-2xl shadow-indigo-200/10 dark:shadow-none mx-4">
                     <table className="w-full text-left">
                       <thead>
-                        <tr className="bg-slate-50/50 border-b border-slate-100">
-                          <th className="px-8 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-12">Product Breakdown</th>
-                          <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Order</th>
-                          <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">Kirim</th>
-                          <th className="px-12 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                        <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
+                          <th className="px-8 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-12">Product Breakdown</th>
+                          <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Order</th>
+                          <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Kirim</th>
+                          <th className="px-12 py-4 text-right text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {po.Items.map((item: any, idx: number) => (
-                          <tr key={item.id} className={idx !== po.Items.length - 1 ? "border-b border-slate-50" : ""}>
-                            <td className="px-8 py-4 text-xs font-bold text-slate-700 pl-12">{item.namaProduk}</td>
-                            <td className="px-6 py-4 text-center text-xs font-black text-slate-300">{item.pcs}</td>
+                          <tr key={item.id} className={idx !== po.Items.length - 1 ? "border-b border-slate-50 dark:border-slate-700" : ""}>
+                            <td className="px-8 py-4 text-xs font-bold text-slate-700 dark:text-slate-300 pl-12">{item.namaProduk}</td>
+                            <td className="px-6 py-4 text-center text-xs font-black text-slate-300 dark:text-slate-500">{item.pcs}</td>
                             <td className="px-6 py-4 text-center">
                               <div className="relative inline-block">
                                 <input
@@ -948,12 +948,12 @@ export default function SchedulePage() {
                                     ));
                                   }}
                                   onBlur={(e) => handleUpdateItemPcsKirim(po.id, item.id, e.target.value)}
-                                  className="w-24 px-3 py-1.5 text-center text-xs font-black bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-400 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className="w-24 px-3 py-1.5 text-center text-xs font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-400 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                               </div>
                             </td>
                             <td className="px-12 py-4 text-right">
-                              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${item.pcsKirim >= item.pcs ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${item.pcsKirim >= item.pcs ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-500"}`}>
                                 {item.pcsKirim >= item.pcs ? "Full" : "Partial"}
                               </span>
                             </td>
@@ -977,26 +977,26 @@ export default function SchedulePage() {
               </div>
             </div>
           }
-          className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden"
         />
 
       {/* ── Modal ─────────────────────────────────────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-[28px] w-full max-w-md shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-[28px] w-full max-w-md shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-slate-50">
+            <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-slate-50 dark:border-slate-700/50">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-indigo-50 rounded-xl">
+                <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl">
                   <Calendar className="text-indigo-600" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                     Set Delivery Schedule
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                     PO{" "}
-                    <span className="font-semibold text-slate-600">
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">
                       #{selectedPo?.noPo}
                     </span>
                   </p>
@@ -1004,7 +1004,7 @@ export default function SchedulePage() {
               </div>
               <button
                 onClick={() => setModalOpen(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
                 <X size={18} />
               </button>
@@ -1013,7 +1013,7 @@ export default function SchedulePage() {
             {/* Modal Body */}
             <div className="px-7 py-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
                   Tanggal Kirim
                 </label>
                 <DateInputHybrid
@@ -1025,16 +1025,16 @@ export default function SchedulePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
                   Nama Supir{" "}
-                  <span className="text-[10px] text-slate-300 normal-case font-normal">
+                  <span className="text-[10px] text-slate-300 dark:text-slate-500 normal-case font-normal">
                     (Opsional)
                   </span>
                 </label>
                 <input
                   type="text"
                   placeholder="Masukkan nama supir..."
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all text-slate-800 placeholder:text-slate-300"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all text-slate-800 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-600"
                   value={namaSupir}
                   onChange={(e) => setNamaSupir(e.target.value)}
                 />
@@ -1043,14 +1043,14 @@ export default function SchedulePage() {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
                   Plat Nomor{" "}
-                  <span className="text-[10px] text-slate-300 normal-case font-normal">
+                  <span className="text-[10px] text-slate-300 dark:text-slate-500 normal-case font-normal">
                     (Opsional)
                   </span>
                 </label>
                 <input
                   type="text"
                   placeholder="Contoh: B 1234 ABC"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all text-slate-800 placeholder:text-slate-300"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all text-slate-800 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-600"
                   value={platNomor}
                   onChange={(e) => setPlatNomor(e.target.value)}
                 />
@@ -1061,7 +1061,7 @@ export default function SchedulePage() {
             <div className="flex gap-3 px-7 pb-7">
               <button
                 onClick={() => setModalOpen(false)}
-                className="flex-1 px-5 py-2.5 text-sm font-semibold text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all active:scale-95"
+                className="flex-1 px-5 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95"
               >
                 Batal
               </button>

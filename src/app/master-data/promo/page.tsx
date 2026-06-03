@@ -484,20 +484,20 @@ export default function PromoPage() {
     );
 
   return (
-    <main className="p-8 pb-32 max-w-[1600px] mx-auto min-h-screen bg-[#fcfdfe] animate-in fade-in duration-700">
+    <main className="p-8 pb-32 max-w-[1600px] mx-auto min-h-screen bg-[#fcfdfe] dark:bg-slate-950 animate-in fade-in duration-700">
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div className="flex items-center gap-5">
           {selectedRetailerId && (
             <button
               onClick={() => setSelectedRetailerId(null)}
-              className="p-4 bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 rounded-[24px] shadow-sm hover:shadow-indigo-500/10 transition-all active:scale-95 group"
+              className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-100 dark:hover:border-indigo-500/30 rounded-[24px] shadow-sm hover:shadow-indigo-500/10 transition-all active:scale-95 group"
             >
               <ArrowLeft size={22} className="group-hover:-translate-x-1 transition-transform" />
             </button>
           )}
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase flex items-center gap-3">
+            <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase flex items-center gap-3">
               {selectedRetailerId 
                 ? `PROMO: ${retailers.find(r => r.id === selectedRetailerId)?.namaPt || 'Detail'}` 
                 : "Master Promo"
@@ -505,7 +505,7 @@ export default function PromoPage() {
             </h1>
             <div className="flex items-center gap-2 mt-1">
                 <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
                   Daftar Spesifikasi Data Promo
                 </p>
             </div>
@@ -515,7 +515,7 @@ export default function PromoPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setOpenExcelBulk(true)}
-            className="flex items-center justify-center gap-3 bg-white border border-slate-100 text-slate-400 px-8 py-5 rounded-[40px] font-black hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm active:scale-95 text-xs uppercase tracking-widest"
+            className="flex items-center justify-center gap-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 px-8 py-5 rounded-[40px] font-black hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all shadow-sm active:scale-95 text-xs uppercase tracking-widest"
           >
             <Layers size={16} />
             Bulk Upload
@@ -544,7 +544,7 @@ export default function PromoPage() {
                 setIsModalOpen(true);
               }
             }}
-            className="flex items-center justify-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-[40px] font-black hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 text-xs uppercase tracking-widest border-4 border-white/10"
+            className="flex items-center justify-center gap-3 bg-slate-900 dark:bg-indigo-600 text-white px-10 py-5 rounded-[40px] font-black hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 text-xs uppercase tracking-widest border-4 border-white/10 dark:border-white/5"
           >
             <div className="p-1 bg-white/20 rounded-full">
               <Plus size={16} strokeWidth={3} />
@@ -554,10 +554,10 @@ export default function PromoPage() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-[40px] border border-slate-100 shadow-sm mb-8">
+      <div className="bg-white dark:bg-slate-900/50 p-6 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm mb-8">
         <div className="relative max-w-md group">
           <Search
-            className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors"
+            className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-500 transition-colors"
             size={20}
           />
           <input
@@ -568,7 +568,7 @@ export default function PromoPage() {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-14 pr-6 py-4 bg-slate-50 border-none rounded-3xl focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all text-sm font-black text-slate-700 outline-none"
+            className="w-full pl-14 pr-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-3xl focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white dark:focus:bg-slate-800 transition-all text-sm font-black text-slate-700 dark:text-slate-200 outline-none"
           />
         </div>
       </div>
@@ -577,14 +577,14 @@ export default function PromoPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-8 duration-1000">
           {isLoading ? (
             Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="bg-white border border-slate-100 rounded-[40px] p-8 animate-pulse h-40 shadow-sm" />
+              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[40px] p-8 animate-pulse h-40 shadow-sm" />
             ))
           ) : filtered.length === 0 ? (
             <div className="col-span-full py-32 text-center">
-              <div className="w-24 h-24 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto mb-6 text-slate-200">
+              <div className="w-24 h-24 bg-slate-50 dark:bg-slate-900/50 rounded-[40px] flex items-center justify-center mx-auto mb-6 text-slate-200 dark:text-slate-700">
                 <Layers size={40} />
               </div>
-              <p className="text-[11px] font-black text-slate-300 uppercase tracking-[0.3em]">
+              <p className="text-[11px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-[0.3em]">
                 Belum ada data promo yang terasosiasi dengan peritel.
               </p>
             </div>
@@ -596,24 +596,24 @@ export default function PromoPage() {
                   setSelectedRetailerId(ritel.id);
                   setSearchTerm("");
                 }}
-                className="group relative bg-white border border-slate-100 p-8 rounded-[40px] shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-100 transition-all duration-500 cursor-pointer active:scale-[0.98] overflow-hidden"
+                className="group relative bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-8 rounded-[40px] shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/20 hover:border-indigo-100 dark:hover:border-indigo-500/50 transition-all duration-500 cursor-pointer active:scale-[0.98] overflow-hidden"
               >
                 <div className="absolute top-6 right-6 flex items-center gap-2">
-                   <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity">
+                   <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity">
                     <ChevronRight size={20} />
                    </div>
                 </div>
 
                 <div className="flex flex-col gap-6 relative z-10">
-                  <div className="p-5 bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white rounded-[32px] transition-all duration-700 w-fit shadow-inner">
+                  <div className="p-5 bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-500 group-hover:bg-indigo-600 group-hover:text-white rounded-[32px] transition-all duration-700 w-fit shadow-inner">
                     <Building2 size={28} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-800 uppercase leading-tight group-hover:text-indigo-700 transition-colors mb-2">
+                    <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 uppercase leading-tight group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors mb-2">
                       {ritel.namaPt}
                     </h3>
                     <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full uppercase tracking-widest border border-indigo-100">
+                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1.5 rounded-full uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/30">
                           {ritel?._count?.Promos || 0} PROMOS
                         </span>
                     </div>
@@ -626,14 +626,14 @@ export default function PromoPage() {
                       e.stopPropagation();
                       handleDeleteGroup(ritel.id, ritel.namaPt);
                     }}
-                    className="p-4 bg-white text-rose-400 hover:bg-rose-600 hover:text-white rounded-[24px] shadow-sm hover:shadow-rose-500/20 transition-all active:scale-90 border border-slate-50 hover:border-rose-600"
+                    className="p-4 bg-white dark:bg-slate-900 text-rose-400 hover:bg-rose-600 hover:text-white rounded-[24px] shadow-sm hover:shadow-rose-500/20 transition-all active:scale-90 border border-slate-50 dark:border-slate-800 hover:border-rose-600 dark:hover:border-rose-600"
                     title="Hapus Seluruh Data Promo Peritel"
                   >
                     <Trash2 size={20} />
                   </button>
                 </div>
                 
-                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-50/50 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors" />
+                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-50/50 dark:bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 dark:group-hover:bg-indigo-500/20 transition-colors" />
               </div>
             ))
           )}
@@ -662,28 +662,28 @@ export default function PromoPage() {
               key: "nomor",
               label: "Nomor",
               render: (_v: any, promo: any) => (
-                <span className="text-slate-900 uppercase font-bold text-[13px]">{promo.nomor}</span>
+                <span className="text-slate-900 dark:text-slate-200 uppercase font-bold text-[13px]">{promo.nomor}</span>
               ),
             },
             {
               key: "kegiatan",
               label: "Kegiatan",
               render: (_v: any, promo: any) => (
-                <span className="uppercase font-black text-slate-600 text-[11px]">{promo.kegiatan}</span>
+                <span className="uppercase font-black text-slate-600 dark:text-slate-400 text-[11px]">{promo.kegiatan}</span>
               ),
             },
             {
               key: "periode",
               label: "Periode",
               render: (_v: any, promo: any) => (
-                <span className="font-bold text-[13px] text-slate-700">{promo.periode}</span>
+                <span className="font-bold text-[13px] text-slate-700 dark:text-slate-300">{promo.periode}</span>
               ),
             },
             {
               key: "tanggal",
               label: "Tanggal",
               render: (_v: any, promo: any) => (
-                <span className="text-slate-400 font-bold text-[13px]">
+                <span className="text-slate-400 dark:text-slate-500 font-bold text-[13px]">
                   {new Date(promo.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" })}
                 </span>
               ),
@@ -693,7 +693,7 @@ export default function PromoPage() {
               label: "DPP",
               align: "right" as const,
               render: (_v: any, promo: any) => (
-                <span className="tabular-nums font-bold text-[13px] text-slate-700">{formatRp(promo.dpp)}</span>
+                <span className="tabular-nums font-bold text-[13px] text-slate-700 dark:text-slate-300">{formatRp(promo.dpp)}</span>
               ),
             },
             {
@@ -701,7 +701,7 @@ export default function PromoPage() {
               label: "PPN",
               align: "right" as const,
               render: (_v: any, promo: any) => (
-                <span className="tabular-nums font-bold text-[13px] text-slate-700">{formatRp(promo.ppn)}</span>
+                <span className="tabular-nums font-bold text-[13px] text-slate-700 dark:text-slate-300">{formatRp(promo.ppn)}</span>
               ),
             },
             {
@@ -709,7 +709,7 @@ export default function PromoPage() {
               label: "PPH",
               align: "right" as const,
               render: (_v: any, promo: any) => (
-                <span className="tabular-nums text-rose-500 italic font-bold text-[13px]">
+                <span className="tabular-nums text-rose-500 dark:text-rose-400 italic font-bold text-[13px]">
                   {promo.pph ? `-${formatNumber(promo.pph)}` : "-"}
                 </span>
               ),
@@ -719,7 +719,7 @@ export default function PromoPage() {
               label: "Total",
               align: "right" as const,
               render: (_v: any, promo: any) => (
-                <span className="text-indigo-600 font-black tabular-nums text-[13px]">{formatRp(promo.total)}</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-black tabular-nums text-[13px]">{formatRp(promo.total)}</span>
               ),
             },
             {
@@ -727,11 +727,11 @@ export default function PromoPage() {
               label: "Link Docs",
               align: "center" as const,
               render: (_v: any, promo: any) => promo.linkDocs ? (
-                <a href={promo.linkDocs} target="_blank" rel="noopener noreferrer" className="inline-flex p-2.5 bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all shadow-sm" title="Buka Dokumentasi" onClick={(e) => e.stopPropagation()}>
+                <a href={promo.linkDocs} target="_blank" rel="noopener noreferrer" className="inline-flex p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-400 hover:bg-slate-900 dark:hover:bg-slate-700 hover:text-white rounded-xl transition-all shadow-sm" title="Buka Dokumentasi" onClick={(e) => e.stopPropagation()}>
                   <Link2 size={16} />
                 </a>
               ) : (
-                <span className="text-[10px] font-black text-slate-200 uppercase tracking-tighter italic">No Docs</span>
+                <span className="text-[10px] font-black text-slate-200 dark:text-slate-600 uppercase tracking-tighter italic">No Docs</span>
               ),
             },
             {
@@ -739,18 +739,18 @@ export default function PromoPage() {
               label: "Faktur Pajak",
               align: "center" as const,
               render: (_v: any, promo: any) => promo.linkFP ? (
-                <a href={promo.linkFP} target="_blank" rel="noopener noreferrer" className="inline-flex p-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm" title="Buka Faktur Pajak" onClick={(e) => e.stopPropagation()}>
+                <a href={promo.linkFP} target="_blank" rel="noopener noreferrer" className="inline-flex p-2.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white rounded-xl transition-all shadow-sm" title="Buka Faktur Pajak" onClick={(e) => e.stopPropagation()}>
                   <Layers size={16} />
                 </a>
               ) : (
-                <span className="text-[10px] font-black text-slate-200 uppercase tracking-tighter italic">No FP</span>
+                <span className="text-[10px] font-black text-slate-200 dark:text-slate-600 uppercase tracking-tighter italic">No FP</span>
               ),
             },
             {
               key: "remarks",
               label: "Remarks",
               render: (_v: any, promo: any) => (
-                <span className="text-slate-400 italic font-medium text-[11px] max-w-[200px] truncate inline-block">{promo.remarks || "-"}</span>
+                <span className="text-slate-400 dark:text-slate-500 italic font-medium text-[11px] max-w-[200px] truncate inline-block">{promo.remarks || "-"}</span>
               ),
             },
             {
@@ -761,13 +761,13 @@ export default function PromoPage() {
                 <div className="inline-flex gap-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleEdit(promo); }}
-                    className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                    className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-400 dark:text-slate-400 hover:bg-slate-900 dark:hover:bg-slate-700 hover:text-white transition-all shadow-sm"
                   >
                     <Pencil size={16} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(promo.id); }}
-                    className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                    className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-500/10 text-rose-400 dark:text-rose-400 hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white transition-all shadow-sm"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -785,7 +785,7 @@ export default function PromoPage() {
           onPageChange={setCurrentPage}
           onRowsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
           variant="rounded"
-          className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"
+          className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"
           emptyMessage="Data promo tidak ditemukan."
         />
       )}
@@ -797,13 +797,13 @@ export default function PromoPage() {
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             onClick={() => setShowRitelSelector(false)}
           ></div>
-          <div className="relative bg-white w-full max-w-md rounded-[48px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-[48px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
             <div className="px-10 pt-10 pb-6 text-center">
-              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[32px] flex items-center justify-center mx-auto mb-6 transform -rotate-6">
+              <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-[32px] flex items-center justify-center mx-auto mb-6 transform -rotate-6">
                 <Building2 size={36} className="transform rotate-6" />
               </div>
-              <h3 className="text-2xl font-black text-slate-800 tracking-tight">Pilih Peritel</h3>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2 px-4 leading-relaxed">
+              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Pilih Peritel</h3>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-2 px-4 leading-relaxed">
                 Tentukan ritel modern tujuan
               </p>
             </div>
@@ -814,7 +814,7 @@ export default function PromoPage() {
                   <div className="relative mt-2">
                     <input 
                       type="text"
-                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none text-center cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl font-bold text-slate-700 dark:text-slate-200 outline-none text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                       placeholder="Cari Ritel Modern..."
                       value={searchRitelText}
                       onChange={(e) => {
@@ -822,19 +822,19 @@ export default function PromoPage() {
                         if (!isRitelDropdownOpen) setIsRitelDropdownOpen(true);
                       }}
                     />
-                    <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
                   </div>
                 </Popover.Trigger>
                 <Popover.Portal>
                   <Popover.Content
-                    className="z-[110] w-[350px] bg-white rounded-3xl border shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
+                    className="z-[110] w-[350px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
                     align="center"
                     sideOffset={8}
                     onOpenAutoFocus={(e) => e.preventDefault()}
                   >
-                    <div className="space-y-1 max-h-60 overflow-y-auto custom-scrollbar text-slate-700 font-bold uppercase">
+                    <div className="space-y-1 max-h-60 overflow-y-auto custom-scrollbar text-slate-700 dark:text-slate-300 font-bold uppercase">
                       {retailers.filter(r => r.namaPt.toLowerCase().includes(searchRitelText.toLowerCase())).length === 0 ? (
-                        <div className="p-4 text-center text-[10px] font-bold text-slate-300">TIDAK ADA HASIL</div>
+                        <div className="p-4 text-center text-[10px] font-bold text-slate-300 dark:text-slate-500">TIDAK ADA HASIL</div>
                       ) : (
                         retailers
                           .filter(r => r.namaPt.toLowerCase().includes(searchRitelText.toLowerCase()))
@@ -851,7 +851,7 @@ export default function PromoPage() {
                                 setEditId(null);
                                 setIsModalOpen(true);
                               }}
-                              className="w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all hover:bg-slate-50 text-slate-500"
+                              className="w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
                             >
                               {opt.namaPt}
                             </button>
@@ -864,7 +864,7 @@ export default function PromoPage() {
 
               <button
                 onClick={() => setShowRitelSelector(false)}
-                className="w-full mt-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
+                className="w-full mt-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 transition-all"
               >
                 Batal
               </button>
@@ -880,42 +880,42 @@ export default function PromoPage() {
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             onClick={() => setIsModalOpen(false)}
           ></div>
-          <div className="relative bg-white w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="p-10 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 border border-slate-100 dark:border-slate-800">
+            <div className="p-10 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/30">
               <div className="flex items-center gap-4">
-                <div className="p-4 bg-slate-900 text-white rounded-[24px]">
+                <div className="p-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-[24px]">
                   <Percent size={24} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-slate-800">
+                  <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">
                     {editId ? "Update Promo" : "Add Promo"}
                   </h3>
-                  <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-widest">
                     Master Data Setting
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-4 hover:bg-white rounded-[24px] text-slate-300 hover:text-rose-500 transition-all focus:outline-none"
+                className="p-4 hover:bg-white dark:hover:bg-slate-800 rounded-[24px] text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 transition-all focus:outline-none"
               >
                 <X size={24} />
               </button>
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="p-10 space-y-8 max-h-[65vh] overflow-y-auto custom-scrollbar shadow-inner">
+              <div className="p-10 space-y-8 max-h-[65vh] overflow-y-auto custom-scrollbar shadow-inner dark:shadow-none">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Nomor Dokumen */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
                       Nomor Dokumen
                     </label>
                     <input
                       type="text"
                       required
                       placeholder="Contoh: 1672/Apr/24"
-                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 transition-all font-bold text-slate-700 dark:text-slate-200 outline-none"
                       value={formData.nomor}
                       onChange={(e) =>
                         setFormData({ ...formData, nomor: e.target.value })
@@ -925,7 +925,7 @@ export default function PromoPage() {
 
                   {/* Jenis Kegiatan (Searchable / Combobox) */}
                   <div className="space-y-2 relative">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
                       Jenis Kegiatan
                     </label>
                     <Popover.Root
@@ -940,7 +940,7 @@ export default function PromoPage() {
                           <input
                             type="text"
                             placeholder={formData.kegiatan || "Pilih Kegiatan..."}
-                            className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all pr-12"
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl font-bold text-slate-700 dark:text-slate-200 focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 outline-none transition-all pr-12"
                             value={kegiatanSearch}
                             onChange={(e) => {
                               setKegiatanSearch(e.target.value);
@@ -952,19 +952,19 @@ export default function PromoPage() {
                           />
                           <ChevronDown
                             size={18}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 pointer-events-none"
                           />
                         </div>
                       </Popover.Trigger>
                       <Popover.Portal>
                         <Popover.Content
-                          className="z-[110] w-[300px] bg-white rounded-3xl border shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
+                          className="z-[110] w-[300px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
                           align="start"
                           onOpenAutoFocus={(e) => e.preventDefault()}
                         >
-                          <div className="space-y-1 max-h-60 overflow-y-auto custom-scrollbar text-slate-700 font-bold uppercase">
+                          <div className="space-y-1 max-h-60 overflow-y-auto custom-scrollbar text-slate-700 dark:text-slate-300 font-bold uppercase">
                             {filteredKegiatans.length === 0 ? (
-                              <div className="p-4 text-center text-[10px] font-bold text-slate-300">
+                              <div className="p-4 text-center text-[10px] font-bold text-slate-300 dark:text-slate-500">
                                 TIDAK ADA HASIL
                               </div>
                             ) : (
@@ -977,7 +977,7 @@ export default function PromoPage() {
                                     setKegiatanSearch("");
                                     setIsKegiatanOpen(false);
                                   }}
-                                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${formData.kegiatan === opt || activeKegiatanIdx === i ? "bg-slate-900 text-white shadow-lg" : "hover:bg-slate-50 text-slate-500"}`}
+                                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${formData.kegiatan === opt || activeKegiatanIdx === i ? "bg-slate-900 dark:bg-indigo-600 text-white shadow-lg" : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"}`}
                                 >
                                   {opt}
                                 </button>
@@ -991,7 +991,7 @@ export default function PromoPage() {
 
                   {/* Periode Bulan (Searchable / Combobox) */}
                   <div className="space-y-2 relative">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
                       Periode Bulan
                     </label>
                     <Popover.Root
@@ -1006,7 +1006,7 @@ export default function PromoPage() {
                           <input
                             type="text"
                             placeholder={formData.periode || "Pilih Periode..."}
-                            className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all pr-12"
+                            className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl font-bold text-slate-700 dark:text-slate-200 focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 outline-none transition-all pr-12"
                             value={periodeSearch}
                             onChange={(e) => {
                               setPeriodeSearch(e.target.value);
@@ -1018,19 +1018,19 @@ export default function PromoPage() {
                           />
                           <ChevronDown
                             size={18}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 pointer-events-none"
                           />
                         </div>
                       </Popover.Trigger>
                       <Popover.Portal>
                         <Popover.Content
-                          className="z-[110] w-[200px] bg-white rounded-3xl border shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
+                          className="z-[110] w-[200px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl p-2 outline-none animate-in fade-in zoom-in-95 duration-200"
                           align="start"
                           onOpenAutoFocus={(e) => e.preventDefault()}
                         >
-                          <div className="space-y-1 max-h-60 overflow-y-auto no-scrollbar text-slate-700 font-bold uppercase">
+                          <div className="space-y-1 max-h-60 overflow-y-auto no-scrollbar text-slate-700 dark:text-slate-300 font-bold uppercase">
                             {filteredPeriodes.length === 0 ? (
-                              <div className="p-4 text-center text-[10px] font-bold text-slate-300">
+                              <div className="p-4 text-center text-[10px] font-bold text-slate-300 dark:text-slate-500">
                                 TIDAK ADA HASIL
                               </div>
                             ) : (
@@ -1043,7 +1043,7 @@ export default function PromoPage() {
                                     setPeriodeSearch("");
                                     setIsPeriodeOpen(false);
                                   }}
-                                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${formData.periode === opt || activePeriodeIdx === i ? "bg-slate-900 text-white shadow-lg" : "hover:bg-slate-50 text-slate-500"}`}
+                                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${formData.periode === opt || activePeriodeIdx === i ? "bg-slate-900 dark:bg-indigo-600 text-white shadow-lg" : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"}`}
                                 >
                                   {opt}
                                 </button>
@@ -1057,14 +1057,14 @@ export default function PromoPage() {
 
                   {/* Tanggal Entry (Custom Date Picker) */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
                       Tanggal Record
                     </label>
                     <Popover.Root open={isDateOpen} onOpenChange={setIsDateOpen}>
                       <Popover.Trigger asChild>
                         <button
                           type="button"
-                          className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl flex items-center justify-between font-bold text-slate-700 group focus:ring-4 focus:ring-slate-900/5 focus:bg-white outline-none transition-all shadow-sm"
+                          className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl flex items-center justify-between font-bold text-slate-700 dark:text-slate-200 group focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 outline-none transition-all shadow-sm"
                         >
                           <span>
                             {formData.tanggal
@@ -1080,13 +1080,13 @@ export default function PromoPage() {
                           </span>
                           <Calendar
                             size={18}
-                            className="text-slate-300 group-hover:text-slate-900"
+                            className="text-slate-300 dark:text-slate-500 group-hover:text-slate-900 dark:group-hover:text-slate-100"
                           />
                         </button>
                       </Popover.Trigger>
                       <Popover.Portal>
                         <Popover.Content
-                          className="z-[110] bg-white rounded-[40px] border shadow-2xl outline-none animate-in fade-in zoom-in-95 duration-200"
+                          className="z-[110] bg-white dark:bg-slate-900 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-2xl outline-none animate-in fade-in zoom-in-95 duration-200"
                           align="start"
                         >
                           <DatePickerContent />
@@ -1096,13 +1096,13 @@ export default function PromoPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
                       Link Docs (Cloud)
                     </label>
                     <input
                       type="text"
                       placeholder="https://drive.google.com/..."
-                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 transition-all font-bold text-slate-700 dark:text-slate-200 outline-none"
                       value={formData.linkDocs}
                       onChange={(e) =>
                         setFormData({ ...formData, linkDocs: e.target.value })
@@ -1111,13 +1111,13 @@ export default function PromoPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
                       Link Faktur Pajak (Cloud)
                     </label>
                     <input
                       type="text"
                       placeholder="https://drive.google.com/..."
-                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 transition-all font-bold text-slate-700 dark:text-slate-200 outline-none"
                       value={formData.linkFP || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, linkFP: e.target.value })
@@ -1126,12 +1126,12 @@ export default function PromoPage() {
                   </div>
 
                   <div className="md:col-span-2 space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
                       Remarks / Catatan
                     </label>
                     <textarea
                       placeholder="Contoh: Potongan tagihan bulan April..."
-                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all font-bold text-slate-700 outline-none resize-none h-24"
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 transition-all font-bold text-slate-700 dark:text-slate-200 outline-none resize-none h-24"
                       value={formData.remarks || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, remarks: e.target.value })
@@ -1141,15 +1141,15 @@ export default function PromoPage() {
                 </div>
 
                 {/* Calculator Section */}
-                <div className="p-8 bg-white border-2 border-slate-100 rounded-[32px] grid grid-cols-1 md:grid-cols-3 gap-8 shadow-sm">
+                <div className="p-8 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[32px] grid grid-cols-1 md:grid-cols-3 gap-8 shadow-sm">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                       DPP (IDR)
                     </label>
                     <input
                       type="text"
                       required
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none font-black text-lg text-slate-700 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-none font-black text-lg text-slate-700 dark:text-slate-200 focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-200 dark:placeholder:text-slate-600 tabular-nums"
                       placeholder="0"
                       value={formData.dpp ? formatNumber(formData.dpp) : ""}
                       onChange={(e) => {
@@ -1159,13 +1159,13 @@ export default function PromoPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center justify-between">
                       <span>PPN (IDR)</span>
-                      <span className="text-[9px] text-slate-300 normal-case font-bold italic">(Optional)</span>
+                      <span className="text-[9px] text-slate-300 dark:text-slate-600 normal-case font-bold italic">(Optional)</span>
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none font-black text-lg text-slate-400 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-none font-black text-lg text-slate-400 dark:text-slate-300 focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-200 dark:placeholder:text-slate-600 tabular-nums"
                       placeholder="0"
                       value={formData.ppn ? formatNumber(formData.ppn) : ""}
                       onChange={(e) => {
@@ -1176,13 +1176,13 @@ export default function PromoPage() {
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center justify-between">
                       <span>PPH (IDR)</span>
-                      <span className="text-[9px] text-slate-300 normal-case font-bold italic">(Optional)</span>
+                      <span className="text-[9px] text-slate-300 dark:text-slate-600 normal-case font-bold italic">(Optional)</span>
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl border-none font-black text-lg text-rose-400 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all placeholder:text-slate-200 tabular-nums"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-none font-black text-lg text-rose-400 dark:text-rose-400 focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-rose-500/20 outline-none transition-all placeholder:text-slate-200 dark:placeholder:text-slate-600 tabular-nums"
                       placeholder="0"
                       value={formData.pph ? formatNumber(formData.pph) : ""}
                       onChange={(e) => {
@@ -1191,7 +1191,7 @@ export default function PromoPage() {
                       }}
                     />
                   </div>
-                  <div className="md:col-span-3 space-y-2 text-center pt-4 border-t border-slate-50">
+                  <div className="md:col-span-3 space-y-2 text-center pt-4 border-t border-slate-50 dark:border-slate-800">
                     <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest italic">
                       Net Settlement
                     </label>
@@ -1202,18 +1202,18 @@ export default function PromoPage() {
                 </div>
               </div>
 
-              <div className="p-10 bg-slate-50/50 border-t border-slate-100 flex gap-4">
+              <div className="p-10 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex gap-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-5 bg-white border border-slate-200 text-slate-500 rounded-3xl font-black hover:bg-slate-50 transition-all text-[11px] uppercase tracking-widest"
+                  className="flex-1 px-4 py-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-3xl font-black hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-[11px] uppercase tracking-widest"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-[2] px-12 py-5 bg-slate-900 text-white rounded-[32px] font-black hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 text-[11px] uppercase tracking-widest disabled:opacity-50"
+                  className="flex-[2] px-12 py-5 bg-slate-900 dark:bg-indigo-600 text-white rounded-[32px] font-black hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 text-[11px] uppercase tracking-widest disabled:opacity-50"
                 >
                   {saving
                     ? "Deploying..."
@@ -1234,14 +1234,14 @@ export default function PromoPage() {
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
             onClick={() => setDeleteConfirmId(null)}
           ></div>
-          <div className="relative bg-white w-full max-w-sm rounded-[40px] shadow-2xl overflow-hidden p-10 text-center animate-in zoom-in-95 duration-300 text-slate-900">
-            <div className="mx-auto w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] shadow-2xl overflow-hidden p-10 text-center animate-in zoom-in-95 duration-300 border border-slate-100 dark:border-slate-800">
+            <div className="mx-auto w-20 h-20 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
               <AlertCircle size={40} />
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2">
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">
               Are you sure?
             </h3>
-            <p className="text-xs text-slate-400 font-bold mb-10">
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mb-10">
               You are about to permanently delete this record. This action
               cannot be undone.
             </p>
@@ -1249,14 +1249,14 @@ export default function PromoPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-3xl text-[10px] uppercase hover:bg-slate-200 transition-all"
+                className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black rounded-3xl text-[10px] uppercase hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
               >
                 No, Keep it
               </button>
               <button
                 onClick={handleDelete}
                 disabled={saving}
-                className="flex-1 py-4 bg-rose-600 text-white font-black rounded-3xl text-[10px] uppercase hover:bg-rose-700 shadow-xl shadow-rose-200 transition-all disabled:opacity-50"
+                className="flex-1 py-4 bg-rose-600 text-white font-black rounded-3xl text-[10px] uppercase hover:bg-rose-700 shadow-xl shadow-rose-200 dark:shadow-none transition-all disabled:opacity-50"
               >
                 {saving ? "Deleting..." : "Yes, Delete"}
               </button>

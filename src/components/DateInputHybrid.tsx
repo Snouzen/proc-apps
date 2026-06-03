@@ -168,10 +168,10 @@ export default function DateInputHybrid({
             onBlur={handleBlur}
             placeholder={placeholder}
             suppressHydrationWarning
-            className={`w-full pl-3 pr-10 py-2 border rounded-lg text-sm outline-none transition-all bg-white text-slate-700 placeholder-slate-400
+            className={`w-full pl-3 pr-10 py-2 border rounded-lg text-sm outline-none transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400
               ${isError 
                 ? "border-rose-500 focus:ring-2 focus:ring-rose-500/20" 
-                : "border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                : "border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               }`}
           />
           <div className="absolute right-2 flex items-center gap-1">
@@ -179,7 +179,7 @@ export default function DateInputHybrid({
               <button
                 type="button"
                 onClick={clearDate}
-                className="p-1 text-slate-400 hover:text-rose-500 rounded-full hover:bg-slate-100 transition-colors"
+                className="p-1 text-slate-400 hover:text-rose-500 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               >
                 <X size={14} />
               </button>
@@ -188,7 +188,7 @@ export default function DateInputHybrid({
               <button
                 type="button"
                 suppressHydrationWarning
-                className="p-1 text-slate-400 hover:text-blue-600 rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
+                className="p-1 text-slate-400 hover:text-blue-600 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus:outline-none"
               >
                 <Calendar size={16} />
               </button>
@@ -198,7 +198,7 @@ export default function DateInputHybrid({
 
         <Popover.Portal>
           <Popover.Content
-            className="z-[9999] w-64 p-4 bg-white border border-gray-100 rounded-xl shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
+            className="z-[9999] w-64 p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-600 rounded-xl shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
             sideOffset={4}
             align="end"
           >
@@ -206,17 +206,17 @@ export default function DateInputHybrid({
               <button
                 type="button"
                 onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 {format(currentMonth, "MMMM yyyy", { locale: id })}
               </span>
               <button
                 type="button"
                 onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"
               >
                 <ChevronRight size={16} />
               </button>
@@ -259,12 +259,12 @@ export default function DateInputHybrid({
                     className={`
                       h-8 w-full rounded-lg text-xs font-medium flex items-center justify-center transition-all
                       ${isDisabled
-                        ? "text-slate-300 cursor-not-allowed"
+                        ? "text-slate-300 dark:text-slate-600 cursor-not-allowed"
                         : isSelected
                         ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                         : isToday
-                        ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                        : "text-slate-700 hover:bg-slate-100"
+                        ? "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                       }
                     `}
                   >

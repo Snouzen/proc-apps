@@ -43,13 +43,13 @@ import { getUnits } from "@/lib/units";
 
 function StatCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 animate-pulse">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-5 animate-pulse">
       <div className="flex items-start gap-3">
-        <div className="h-8 w-8 bg-slate-200 rounded-lg" />
+        <div className="h-8 w-8 bg-slate-200 dark:bg-slate-700 rounded-lg" />
         <div className="flex-1">
-          <div className="h-3 w-24 bg-slate-200 rounded mb-3" />
-          <div className="h-7 w-20 bg-slate-200 rounded mb-2" />
-          <div className="h-3 w-28 bg-slate-200 rounded" />
+          <div className="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded mb-3" />
+          <div className="h-7 w-20 bg-slate-200 dark:bg-slate-700 rounded mb-2" />
+          <div className="h-3 w-28 bg-slate-200 dark:bg-slate-700 rounded" />
         </div>
       </div>
     </div>
@@ -62,7 +62,7 @@ function TableRowSkeleton({ colCount }: { colCount: number }) {
       {Array.from({ length: colCount }).map((_, i) => (
         <td key={i} className="px-6 py-4">
           <div
-            className={`h-4 bg-slate-200 rounded ${i === 0 ? "w-8" : i % 3 === 0 ? "w-28" : i % 3 === 1 ? "w-44" : "w-20"}`}
+            className={`h-4 bg-slate-200 dark:bg-slate-700 rounded ${i === 0 ? "w-8" : i % 3 === 0 ? "w-28" : i % 3 === 1 ? "w-44" : "w-20"}`}
           />
         </td>
       ))}
@@ -348,7 +348,7 @@ export default function Home() {
       {/* Table bawah chart - full width */}
       <div
         id="po-table"
-        className="mt-8 bg-white text-black rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+        className="mt-8 bg-white dark:bg-slate-800 text-black dark:text-slate-100 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden transition-colors"
       >
         <Suspense
           fallback={
@@ -893,10 +893,10 @@ function TableUnderChart({
 
   if (!role) {
     return (
-      <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
-          <div className="h-6 w-40 bg-slate-200 rounded animate-pulse" />
-          <div className="h-6 w-24 bg-slate-200 rounded animate-pulse" />
+      <div className="mt-6 bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+          <div className="h-6 w-40 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
         </div>
         <div className="overflow-auto max-h-[70vh]">
           <table className="w-full text-left border-collapse table-auto text-sm min-w-[1200px]">
@@ -930,7 +930,7 @@ function TableUnderChart({
           Gagal load data: {poLoadError}
         </div>
       )}
-      <div className="px-5 py-4 border-b border-gray-100 bg-white relative z-30">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 relative z-30 transition-colors">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2 w-full">
             {!modalOpen && (
@@ -955,7 +955,7 @@ function TableUnderChart({
                   />
                 </div>
                 <button
-                  className={`w-full md:w-auto px-3 py-1.5 rounded-full text-sm font-semibold border ${sortDesc ? "bg-black text-white border-black" : "bg-white text-black border-gray-300 hover:bg-gray-50"}`}
+                  className={`w-full md:w-auto px-3 py-1.5 rounded-full text-sm font-semibold border ${sortDesc ? "bg-black text-white border-black" : "bg-white dark:bg-slate-700 text-black dark:text-slate-100 border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"}`}
                   onClick={() => {
                     setPage(1);
                     setSortDesc((v) => !v);
@@ -968,7 +968,7 @@ function TableUnderChart({
                   className={`w-full md:w-auto px-3 py-1.5 rounded-full text-sm font-semibold border ${
                     alphaSort !== "none"
                       ? "bg-black text-white border-black"
-                      : "bg-white text-black border-gray-300 hover:bg-gray-50"
+                      : "bg-white dark:bg-slate-700 text-black dark:text-slate-100 border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
                   }`}
                   onClick={() => {
                     setPage(1);
@@ -1006,17 +1006,17 @@ function TableUnderChart({
                 </div>
                 <div className="relative w-full md:w-auto z-40">
                   <button
-                    className="w-full md:w-auto px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold bg-white hover:bg-gray-50"
+                    className="w-full md:w-auto px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-sm font-semibold bg-white dark:bg-slate-700 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-600"
                     onClick={() => setColsOpen((o) => !o)}
                   >
                     Customize Columns
                   </button>
                   {colsOpen && !modalOpen && (
-                    <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-2 space-y-1 z-50">
+                    <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-xl p-2 space-y-1 z-50">
                       {columnDefs.map((c) => (
                         <label
                           key={c.key}
-                          className="flex items-center gap-2 text-xs px-2 py-1 rounded hover:bg-gray-50 cursor-pointer text-black"
+                          className="flex items-center gap-2 text-xs px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer text-black dark:text-slate-200"
                           onClick={() => toggleCol(c.key as any)}
                         >
                           <input
@@ -1044,7 +1044,7 @@ function TableUnderChart({
             hidden: !visibleCols.company,
             render: (_val: any, po: any) => (
               <div
-                className="text-base font-semibold text-slate-800 tracking-tight max-w-[14rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                className="text-base font-semibold text-slate-800 dark:text-slate-100 tracking-tight max-w-[14rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
                 title={getCompanyName(po)}
               >
                 {getCompanyName(po)}
@@ -1058,7 +1058,7 @@ function TableUnderChart({
             hidden: !visibleCols.nopo,
             render: (_val: any, po: any) => (
               <div
-                className="text-base font-mono font-bold text-slate-800 max-w-[12rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                className="text-base font-mono font-bold text-slate-800 dark:text-slate-100 max-w-[12rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
                 title={po.noPo || po.nopo || po.poNumber || "-"}
               >
                 {po.noPo || po.nopo || po.poNumber || "-"}
@@ -1080,7 +1080,7 @@ function TableUnderChart({
                       0,
                     );
               return (
-                <span className="text-base font-bold text-slate-700 tabular-nums whitespace-nowrap">
+                <span className="text-base font-bold text-slate-700 dark:text-slate-200 tabular-nums whitespace-nowrap">
                   {Number(total || 0).toLocaleString("id-ID")}
                 </span>
               );
@@ -1103,7 +1103,7 @@ function TableUnderChart({
                     );
               return (
                 <div
-                  className="text-base font-bold text-slate-700 tabular-nums max-w-[9rem] ml-auto overflow-x-auto whitespace-nowrap scrollbar-hide"
+                  className="text-base font-bold text-slate-700 dark:text-slate-200 tabular-nums max-w-[9rem] ml-auto overflow-x-auto whitespace-nowrap scrollbar-hide"
                   title={`Rp ${Number(total || 0).toLocaleString("id-ID")}`}
                 >
                   {`Rp ${Number(total || 0).toLocaleString("id-ID")}`}
@@ -1126,7 +1126,7 @@ function TableUnderChart({
                   <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
                     Submitted
                   </span>
-                  <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                  <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap mt-0.5">
                     {dt ? dt.toLocaleDateString("id-ID") : "-"}
                   </span>
                 </>
@@ -1143,7 +1143,7 @@ function TableUnderChart({
                 <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
                   Tgl PO
                 </span>
-                <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap mt-0.5">
                   {toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}
                 </span>
               </>
@@ -1159,7 +1159,7 @@ function TableUnderChart({
                 <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">
                   Tgl Kirim
                 </span>
-                <span className="block text-sm font-bold text-slate-700 leading-tight whitespace-nowrap mt-0.5">
+                <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap mt-0.5">
                   {toDate(
                     (po as any).tglkirim || (po as any).tglKirim,
                   )?.toLocaleDateString("id-ID") || "-"}
@@ -1190,7 +1190,7 @@ function TableUnderChart({
             hidden: !visibleCols.regional,
             render: (_val: any, po: any) => (
               <div
-                className="text-sm font-semibold text-slate-700 max-w-[10rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-200 max-w-[10rem] overflow-x-auto whitespace-nowrap scrollbar-hide"
                 title={
                   po?.regional || po?.UnitProduksi?.namaRegional || "-"
                 }
@@ -1261,7 +1261,7 @@ function TableUnderChart({
                   <>
                     {(role === "pusat" || role === "rm" || role === "sitearea") && (
                       <button
-                        className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                        className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
                         title="Edit"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1289,7 +1289,7 @@ function TableUnderChart({
                     {role === "pusat" && (
                       <>
                         <button
-                          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                          className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
                           title="Update"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1299,7 +1299,7 @@ function TableUnderChart({
                           <RefreshCw size={14} className="text-blue-600" />
                         </button>
                         <button
-                          className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
+                          className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
                           title="Extend"
                           onClick={(e) => {
                             e.stopPropagation();

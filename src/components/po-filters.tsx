@@ -112,7 +112,7 @@ export default function POFilters({
         disabled={siteAreaLocked}
       />
       <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600">Date</span>
+        <span className="text-sm text-gray-600 dark:text-slate-400">Date</span>
         <DateInputHybrid
           value={dateFrom}
           onChange={(v) => onFilterChange({ dateFrom: v })}
@@ -120,7 +120,7 @@ export default function POFilters({
           maxDate={dateTo}
           className="w-[140px]"
         />
-        <span className="text-sm text-gray-600">to</span>
+        <span className="text-sm text-gray-600 dark:text-slate-400">to</span>
         <DateInputHybrid
           value={dateTo}
           onChange={(v) => onFilterChange({ dateTo: v })}
@@ -139,7 +139,7 @@ export default function POFilters({
           value={draftSearch}
           onChange={(e) => setDraftSearch(e.target.value)}
           placeholder="Search No PO / No Invoice / Company / Tujuan..."
-          className="w-64 pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-slate-200"
+          className="w-64 pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-black dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-600"
         />
       </div>
     </div>

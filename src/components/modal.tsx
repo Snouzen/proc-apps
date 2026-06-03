@@ -40,15 +40,15 @@ export default function Modal({ open, onClose, children, className, title }: Pro
       />
       <div 
         className={cn(
-          "relative bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 border border-white/20 overflow-hidden",
+          "relative bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 border border-white/20 dark:border-slate-700/50 overflow-hidden transition-colors",
           className
         )}
       >
-        <div className="flex-none flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-slate-100 z-10">
-          <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+        <div className="flex-none flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-700 z-10">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h3>
           <button 
             onClick={onClose}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors"
+            className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-400 rounded-full transition-colors"
           >
             <X size={18} />
           </button>

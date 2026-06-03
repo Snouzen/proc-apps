@@ -117,7 +117,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
 
   const renderStatus = (label: string, isChecked: boolean) => (
     <div
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-bold ${isChecked ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}`}
+      className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-bold ${isChecked ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500"}`}
     >
       <CheckCircle2
         size={14}
@@ -136,12 +136,12 @@ export default function PODetailModal({ open, onClose, data }: Props) {
     >
       <div className="space-y-6">
         {/* Header Info */}
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
               Company / Ritel
             </p>
-            <h2 className="text-lg font-black text-slate-800 uppercase flex items-center gap-2">
+            <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 uppercase flex items-center gap-2">
               {data.company || data.RitelModern?.namaPt || "-"}
               {(data.RitelModern?.inisial || data.inisial) && (
                 <span className="text-indigo-500 text-sm font-bold bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
@@ -166,21 +166,21 @@ export default function PODetailModal({ open, onClose, data }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Kolom 1: Referensi & Area */}
           <section className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-700/50">
               <FileText size={16} className="text-indigo-600" />
-              <h3 className="font-bold text-slate-700 text-sm">
+              <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
                 Referensi & Lokasi
               </h3>
             </div>
             <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm">
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   No PO
                 </p>
-                <p className="font-bold text-slate-800 text-xs">{data.noPo}</p>
+                <p className="font-bold text-slate-800 dark:text-slate-100 text-xs">{data.noPo}</p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   No Invoice
                 </p>
                 <p className="font-bold text-indigo-700 text-xs">
@@ -188,7 +188,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   No Faktur Penjualan
                 </p>
                 <p className="font-bold text-teal-600 text-xs text-wrap">
@@ -196,35 +196,35 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Regional
                 </p>
-                <p className="font-semibold text-slate-800 text-xs text-wrap">
+                <p className="font-semibold text-slate-800 dark:text-slate-100 text-xs text-wrap">
                   {formatLocation(data.regional || data.UnitProduksi?.namaRegional)}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Site Area
                 </p>
-                <p className="font-semibold text-slate-800 text-xs">
+                <p className="font-semibold text-slate-800 dark:text-slate-100 text-xs">
                   {formatLocation(data.siteArea || data.UnitProduksi?.siteArea)}
                 </p>
               </div>
               <div className="col-span-2">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Tujuan Detail
                 </p>
-                <p className="font-semibold text-slate-800 text-xs">
+                <p className="font-semibold text-slate-800 dark:text-slate-100 text-xs">
                   {data.tujuanDetail || "-"}
                 </p>
               </div>
               {data.remarksCreditLimit && (
-                <div className="col-span-2 pt-2 border-t border-slate-100">
+                <div className="col-span-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
                   <p className="text-[10px] text-amber-500 font-bold uppercase mb-0.5">
                     Catatan / Remarks Credit Limit
                   </p>
-                  <p className="font-medium text-slate-700 text-xs italic bg-amber-50 p-2 rounded-lg border border-amber-100/50">
+                  <p className="font-medium text-slate-700 dark:text-slate-200 text-xs italic bg-amber-50 p-2 rounded-lg border border-amber-100/50">
                     &ldquo;{data.remarksCreditLimit}&rdquo;
                   </p>
                 </div>
@@ -234,23 +234,23 @@ export default function PODetailModal({ open, onClose, data }: Props) {
 
           {/* Kolom 2: Timeline & Status */}
           <section className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-700/50">
               <CheckCircle2 size={16} className="text-amber-600" />
-              <h3 className="font-bold text-slate-700 text-sm">
+              <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
                 Timeline & Dokumen
               </h3>
             </div>
             <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm">
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Tgl PO
                 </p>
-                <p className="font-semibold text-slate-800 text-xs">
+                <p className="font-semibold text-slate-800 dark:text-slate-100 text-xs">
                   {formatDate(data.tglPo)}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Tgl Kirim
                 </p>
                 <p className="font-bold text-amber-600 text-xs">
@@ -258,7 +258,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Due Date
                 </p>
                 <p className="font-bold text-rose-600 text-xs">
@@ -266,7 +266,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   File PO
                 </p>
                 {data.linkPo ? (
@@ -282,44 +282,44 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                 )}
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Bukti Tagih
                 </p>
                 <p
-                  className="font-semibold text-slate-800 text-xs truncate"
+                  className="font-semibold text-slate-800 dark:text-slate-100 text-xs truncate"
                   title={data.buktiTagih || ""}
                 >
                   {data.buktiTagih || "-"}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Bukti Bayar
                 </p>
                 <p
-                  className="font-semibold text-slate-800 text-xs truncate"
+                  className="font-semibold text-slate-800 dark:text-slate-100 text-xs truncate"
                   title={data.buktiBayar || ""}
                 >
                   {data.buktiBayar || "-"}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Bukti Kirim
                 </p>
                 <p
-                  className="font-semibold text-slate-800 text-xs truncate"
+                  className="font-semibold text-slate-800 dark:text-slate-100 text-xs truncate"
                   title={data.buktiKirim || ""}
                 >
                   {data.buktiKirim || "-"}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Bukti FP
                 </p>
                 <p
-                  className="font-semibold text-slate-800 text-xs truncate"
+                  className="font-semibold text-slate-800 dark:text-slate-100 text-xs truncate"
                   title={data.buktiFp || ""}
                 >
                   {data.buktiFp || "-"}
@@ -330,31 +330,31 @@ export default function PODetailModal({ open, onClose, data }: Props) {
 
           {/* Kolom 3: Logistik & Ekspedisi */}
           <section className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-700/50">
               <Truck size={16} className="text-sky-600" />
-              <h3 className="font-bold text-slate-700 text-sm">
+              <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
                 Logistik Ekspedisi
               </h3>
             </div>
             <div className="grid grid-cols-1 gap-y-3 text-sm">
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Nama Supir
                 </p>
-                <p className="font-bold text-slate-800 text-xs">
+                <p className="font-bold text-slate-800 dark:text-slate-100 text-xs">
                   {data.namaSupir || "-"}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">
                   Plat Nomor
                 </p>
-                <p className="font-bold text-slate-800 text-xs uppercase">
+                <p className="font-bold text-slate-800 dark:text-slate-100 text-xs uppercase">
                   {data.platNomor || "-"}
                 </p>
               </div>
               <div className="pt-2">
-                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase mb-1">
                   Checklist Progress
                 </p>
                 <div className="grid grid-cols-2 gap-2 mt-2">
@@ -373,16 +373,16 @@ export default function PODetailModal({ open, onClose, data }: Props) {
         </div>
 
         {/* Tabel Items Full */}
-        <section className="space-y-3 pt-4 border-t border-slate-200">
+        <section className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2">
             <Package size={16} className="text-emerald-600" />
-            <h3 className="font-bold text-slate-700 text-sm">
+            <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
               Rincian Items ({data.Items?.length || 0})
             </h3>
           </div>
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
             <table className="w-full text-xs text-left whitespace-nowrap">
-              <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+              <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="px-4 py-3">Nama Produk</th>
                   <th className="px-4 py-3 text-right">PCS</th>
@@ -395,7 +395,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {data.Items?.map((item, idx) => {
                   const orderPcs = Math.max(1, Number(item.pcs) || 0);
                   const shipped = Number(item.pcsKirim || item.pcsKirimNum || 0);
@@ -439,17 +439,17 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                       className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
                     >
                       <td className="px-4 py-2.5">
-                        <p className="font-bold text-slate-800 text-xs">
+                        <p className="font-bold text-slate-800 dark:text-slate-100 text-xs">
                           {item.Product?.name || item.namaProduk}
                         </p>
                       </td>
-                      <td className="px-4 py-2.5 text-slate-600 text-xs text-center font-medium">
+                      <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300 text-xs text-center font-medium">
                         {orderPcs}
                       </td>
                       <td className="px-4 py-2.5 text-amber-600 text-xs text-center font-bold">
                         {shipped}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-slate-600 text-xs font-medium">
+                      <td className="px-4 py-2.5 text-right text-slate-600 dark:text-slate-300 text-xs font-medium">
                         {formatCurrency(hargaPcs)}
                       </td>
                       <td className="px-4 py-2.5 text-right text-rose-500 font-bold">
@@ -499,7 +499,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   );
                 })}
               </tbody>
-              <tfoot className="bg-slate-50 border-t border-slate-200">
+              <tfoot className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
                 <tr>
                   <td
                     colSpan={5}
@@ -509,7 +509,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                   </td>
                   <td
                     colSpan={2}
-                    className="px-4 py-3 text-right font-black text-slate-900 text-sm"
+                    className="px-4 py-3 text-right font-black text-slate-900 dark:text-slate-100 text-sm"
                   >
                     {formatCurrency(
                       data.Items?.reduce((acc, curr) => {

@@ -24,19 +24,19 @@ export default function POFormSection({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                   <div className="lg:col-span-8 space-y-6">
-              <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-5">
+              <section className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm space-y-5">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
                     1
                   </div>
-                  <h2 className="font-bold text-slate-800 text-lg">
+                  <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
                     Data Referensi PO
                   </h2>
                 </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.company}
                   </label>
                   <Combobox
@@ -70,7 +70,7 @@ export default function POFormSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.inisial}
                   </label>
                   <Combobox
@@ -99,7 +99,7 @@ export default function POFormSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.tujuan}
                   </label>
                   <Combobox
@@ -114,7 +114,7 @@ export default function POFormSection({
                     }
                   />
                   {isKnownCompany && !isKnownInisial && (
-                    <p className="text-[11px] text-slate-400 mt-1">
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                       Pilih inisial dulu untuk melihat tujuan
                     </p>
                   )}
@@ -127,7 +127,7 @@ export default function POFormSection({
 
                 {/* Row 2: Dates */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.tglPo}
                   </label>
                   <DateInputHybrid
@@ -141,14 +141,14 @@ export default function POFormSection({
                         return next;
                       });
                     }}
-                    className="w-full bg-white rounded-2xl"
+                    className="w-full bg-white dark:bg-slate-800 rounded-2xl"
                     placeholder="YYYY-MM-DD"
                     maxDate={formData.expiredTgl}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.expiredTgl}
                   </label>
                   <div className="relative">
@@ -157,7 +157,7 @@ export default function POFormSection({
                       onChange={(v) =>
                         setFormData({ ...formData, expiredTgl: v })
                       }
-                      className="w-full bg-white rounded-2xl"
+                      className="w-full bg-white dark:bg-slate-800 rounded-2xl"
                       placeholder="YYYY-MM-DD"
                       minDate={formData.tglPo}
                     />
@@ -165,33 +165,33 @@ export default function POFormSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.tglKirim}
                   </label>
                   <DateInputHybrid
                     value={formData.tglKirim}
                     onChange={(v) => setFormData({ ...formData, tglKirim: v })}
-                    className="w-full bg-white rounded-2xl"
+                    className="w-full bg-white dark:bg-slate-800 rounded-2xl"
                     placeholder="YYYY-MM-DD (opsional)"
                   />
                 </div>
 
                 {/* Row 3: Regional, Site Area, No Invoice */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.regional}
                   </label>
                   {me?.role === "rm" ? (
                     <div className="relative">
                       <MapPin
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
                         size={16}
                       />
                       <input
                         type="text"
                         disabled
                         value={formData.regional}
-                        className="w-full pl-11 pr-4 py-3 bg-slate-100 rounded-2xl text-sm font-semibold cursor-not-allowed text-slate-500 border border-slate-200"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-semibold cursor-not-allowed text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                         placeholder="Loading..."
                       />
                     </div>
@@ -209,7 +209,7 @@ export default function POFormSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.siteArea}
                   </label>
                   <Combobox
@@ -228,13 +228,13 @@ export default function POFormSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.noInvoice}
                   </label>
                   <input
                     type="text"
                     placeholder="Nomor Invoice..."
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                     value={formData.noInvoice}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -249,18 +249,18 @@ export default function POFormSection({
 
                 {/* Row 4: Link PO */}
                 <div className="md:col-span-3 space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     {PO_FORM_LABELS.linkPo}
                   </label>
                   <div className="relative">
                     <LinkIcon
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
                       size={16}
                     />
                     <input
                       type="url"
                       placeholder="https://..."
-                      className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                      className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                       onChange={(e) =>
                         setFormData({ ...formData, linkPo: e.target.value })
                       }
@@ -270,23 +270,23 @@ export default function POFormSection({
                 </div>
               </div>
             </section>
-            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-5">
+            <section className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm space-y-5">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
                   2
                 </div>
-                <h2 className="font-bold text-slate-800 text-lg">PO Detail</h2>
+                <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">PO Detail</h2>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="md:col-span-4 space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     Nomor PO
                   </label>
                   <input
                     type="text"
                     placeholder="Masukkan Nomor PO..."
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-semibold"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-semibold dark:text-slate-100"
                     value={formData.noPo}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -299,7 +299,7 @@ export default function POFormSection({
                   />
                 </div>
                 <div className="md:col-span-4 space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     Nama Produk
                   </label>
                   <Combobox
@@ -326,7 +326,7 @@ export default function POFormSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     PCS
                   </label>
                   <input
@@ -334,7 +334,7 @@ export default function POFormSection({
                     onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     value={currentItem.pcs}
                     placeholder="Input Pcs"
-                    className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
+                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100 ${numberNoSpinner}`}
                     onChange={
                       (e) =>
                         setCurrentItem((prev: any) => ({
@@ -345,7 +345,7 @@ export default function POFormSection({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     Harga /Pcs
                   </label>
                   <input
@@ -353,7 +353,7 @@ export default function POFormSection({
                     onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     value={currentItem.hargaPcs}
                     placeholder="Input Harga"
-                    className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
+                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100 ${numberNoSpinner}`}
                     onChange={(e) =>
                       setCurrentItem((prev: any) => ({
                         ...prev,
@@ -363,7 +363,7 @@ export default function POFormSection({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     PCS Kirim
                   </label>
                   <input
@@ -371,7 +371,7 @@ export default function POFormSection({
                     onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     value={currentItem.pcsKirim}
                     placeholder="Input Pcs Kirim"
-                    className={`w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold ${numberNoSpinner}`}
+                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100 ${numberNoSpinner}`}
                     onChange={
                       (e) =>
                         setCurrentItem((prev: any) => ({
@@ -382,7 +382,7 @@ export default function POFormSection({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
                     Discount
                   </label>
                   <input
@@ -390,7 +390,7 @@ export default function POFormSection({
                     inputMode="numeric"
                     value={currentItem.discount}
                     placeholder="0"
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100"
                     onChange={(e) =>
                       setCurrentItem((prev: any) => ({
                         ...prev,
@@ -410,13 +410,13 @@ export default function POFormSection({
                 </div>
                 <div className="space-y-1">
                   <label
-                    className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                    className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1"
                     title="Rumus: Harga/Kg = Harga/Pcs ÷ (kg/pcs produk)"
                   >
                     Harga /Kg
                   </label>
                   <div
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold text-slate-500 dark:text-slate-400"
                     title="Harga/Kg = Harga/Pcs ÷ kg/pcs"
                   >
                     {formatCurrency(currentHargaKg)}
@@ -424,13 +424,13 @@ export default function POFormSection({
                 </div>
                 <div className="space-y-1">
                   <label
-                    className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                    className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1"
                     title="Rumus: KG = PCS × (kg/pcs produk)"
                   >
                     KG (pcs × satuan)
                   </label>
                   <div
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold text-slate-500 dark:text-slate-400"
                     title="KG = PCS × kg/pcs"
                   >
                     {formatNumber(currentKg)}
@@ -438,13 +438,13 @@ export default function POFormSection({
                 </div>
                 <div className="space-y-1">
                   <label
-                    className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                    className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1"
                     title="Rumus: KG Kirim = PCS Kirim × (kg/pcs produk)"
                   >
                     KG Kirim (pcs × satuan)
                   </label>
                   <div
-                    className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold text-slate-500 dark:text-slate-400"
                     title="KG Kirim = PCS Kirim × kg/pcs"
                   >
                     {formatNumber(currentKgKirim)}
@@ -453,13 +453,13 @@ export default function POFormSection({
                 <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label
-                      className="text-[10px] font-black text-slate-400 uppercase ml-1"
+                      className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1"
                       title="Rumus: Nominal = (Harga/Pcs × PCS) - Discount"
                     >
                       Nominal Original
                     </label>
                     <div
-                      className="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold text-slate-500 dark:text-slate-400"
                       title="Nominal = (Harga/Pcs × PCS) - Discount"
                     >
                       {formatCurrency(currentNominal)}
@@ -492,18 +492,18 @@ export default function POFormSection({
                 </div>
               </div>
             </section>
-            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+            <section className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
                   5
                 </div>
-                <h2 className="font-bold text-slate-800 text-lg">Preview</h2>
+                <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Preview</h2>
               </div>
 
               {items.length > 0 ? (
-                <div className="border border-slate-100 rounded-2xl overflow-x-auto">
+                <div className="border border-slate-100 dark:border-slate-700 rounded-2xl overflow-x-auto">
                   <table className="w-full text-sm text-left min-w-[900px]">
-                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
                       <tr>
                         <th className="px-4 py-3">Produk</th>
                         <th className="px-4 py-3 text-right" title="Input PCS">
@@ -545,7 +545,7 @@ export default function POFormSection({
                         <th className="px-4 py-3 text-center">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                       {items.map((item: any) => {
                         const isEditing = editingItemId === item.id;
                         const isPreview =
@@ -568,7 +568,7 @@ export default function POFormSection({
                         return (
                           <Fragment key={item.id}>
                             <tr className="group hover:bg-slate-50/50">
-                              <td className="px-4 py-3 font-medium text-slate-700">
+                              <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-200">
                                 <div
                                   className="max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
                                   title={String(item.namaProduk || "-")}
@@ -576,7 +576,7 @@ export default function POFormSection({
                                   {String(item.namaProduk || "-")}
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-right text-slate-600">
+                              <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
                                 {isEditing ? (
                                   <input
                                     type="number"
@@ -588,7 +588,7 @@ export default function POFormSection({
                                         pcs: e.target.value,
                                       }))
                                     }
-                                    className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                                    className={`w-24 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100 ${numberNoSpinner}`}
                                   />
                                 ) : (
                                   formatNumber(Number(item.pcs || 0))
@@ -606,16 +606,16 @@ export default function POFormSection({
                                         pcsKirim: e.target.value,
                                       }))
                                     }
-                                    className={`w-24 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                                    className={`w-24 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100 ${numberNoSpinner}`}
                                   />
                                 ) : (
                                   formatNumber(Number(item.pcsKirim || 0))
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-right text-slate-600">
+                              <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
                                 {formatNumber(Number(derived.kg || 0))}
                               </td>
-                              <td className="px-4 py-3 text-right text-slate-600">
+                              <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
                                 {isEditing ? (
                                   <input
                                     type="number"
@@ -627,13 +627,13 @@ export default function POFormSection({
                                         hargaPcs: e.target.value,
                                       }))
                                     }
-                                    className={`w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                                    className={`w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100 ${numberNoSpinner}`}
                                   />
                                 ) : (
                                   formatNumber(Number(item.hargaPcs || 0))
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-right text-slate-600">
+                              <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
                                 {isEditing ? (
                                   <input
                                     type="text"
@@ -656,13 +656,13 @@ export default function POFormSection({
                                         };
                                       })
                                     }
-                                    className="w-32 px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold"
+                                    className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100"
                                   />
                                 ) : (
                                   formatCurrency(Number(item.discount || 0))
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-right font-medium text-slate-500 tabular-nums">
+                              <td className="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400 tabular-nums">
                                 {formatCurrency(Number(derived.nominal || 0))}
                               </td>
                               <td className="px-4 py-3 text-right font-bold text-indigo-700 tabular-nums">
@@ -674,7 +674,7 @@ export default function POFormSection({
                                     <button
                                       type="button"
                                       onClick={() => handleSaveEditItem(item)}
-                                      className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                      className="p-2 text-slate-400 dark:text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                                       title="Simpan"
                                     >
                                       <Check size={16} />
@@ -682,7 +682,7 @@ export default function POFormSection({
                                     <button
                                       type="button"
                                       onClick={handleCancelEditItem}
-                                      className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                      className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors"
                                       title="Batal"
                                     >
                                       <X size={16} />
@@ -695,7 +695,7 @@ export default function POFormSection({
                                       onClick={() =>
                                         handleTogglePreviewItem(item.id)
                                       }
-                                      className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                      className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors"
                                       title="Preview"
                                     >
                                       <Eye size={16} />
@@ -703,7 +703,7 @@ export default function POFormSection({
                                     <button
                                       type="button"
                                       onClick={() => handleStartEditItem(item)}
-                                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                      className="p-2 text-slate-400 dark:text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                       title="Edit"
                                     >
                                       <Pencil size={16} />
@@ -714,7 +714,7 @@ export default function POFormSection({
                                         onClick={() =>
                                           handleDeleteItem(item.id)
                                         }
-                                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                        className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                                         title="Hapus"
                                       >
                                         <Trash2 size={16} />
@@ -729,7 +729,7 @@ export default function POFormSection({
                                 <td colSpan={7} className="px-4 py-3">
                                   <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
                                     <div>
-                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                      <div className="text-slate-400 dark:text-slate-500 font-black uppercase text-[10px]">
                                         PCS Kirim
                                       </div>
                                       {isEditing ? (
@@ -744,10 +744,10 @@ export default function POFormSection({
                                               pcsKirim: val,
                                             }));
                                           }}
-                                          className={`mt-1 w-full px-2 py-1 rounded-lg border border-slate-200 bg-white text-right font-bold ${numberNoSpinner}`}
+                                          className={`mt-1 w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100 ${numberNoSpinner}`}
                                         />
                                       ) : (
-                                        <div className="mt-1 font-bold text-slate-700 text-right">
+                                        <div className="mt-1 font-bold text-slate-700 dark:text-slate-200 text-right">
                                           {formatNumber(
                                             Number(item.pcsKirim || 0),
                                           )}
@@ -755,30 +755,30 @@ export default function POFormSection({
                                       )}
                                     </div>
                                     <div>
-                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                      <div className="text-slate-400 dark:text-slate-500 font-black uppercase text-[10px]">
                                         KG Kirim
                                       </div>
-                                      <div className="mt-1 font-bold text-slate-700 text-right">
+                                      <div className="mt-1 font-bold text-slate-700 dark:text-slate-200 text-right">
                                         {formatNumber(
                                           Number(derived.kgKirim || 0),
                                         )}
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                      <div className="text-slate-400 dark:text-slate-500 font-black uppercase text-[10px]">
                                         Harga/KG
                                       </div>
-                                      <div className="mt-1 font-bold text-slate-700 text-right">
+                                      <div className="mt-1 font-bold text-slate-700 dark:text-slate-200 text-right">
                                         {formatCurrency(
                                           Number(derived.hargaKg || 0),
                                         )}
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="text-slate-400 font-black uppercase text-[10px]">
+                                      <div className="text-slate-400 dark:text-slate-500 font-black uppercase text-[10px]">
                                         Nominal Original
                                       </div>
-                                      <div className="mt-1 font-bold text-slate-700 text-right">
+                                      <div className="mt-1 font-bold text-slate-700 dark:text-slate-200 text-right">
                                         {formatCurrency(
                                           Number(derived.nominal || 0),
                                         )}
@@ -799,7 +799,7 @@ export default function POFormSection({
                                         <button
                                           type="button"
                                           onClick={() => setPreviewItemId(null)}
-                                          className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50"
+                                          className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50"
                                         >
                                           Tutup
                                         </button>
@@ -813,16 +813,16 @@ export default function POFormSection({
                         );
                       })}
                     </tbody>
-                    <tfoot className="bg-slate-50 border-t border-slate-200">
+                    <tfoot className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
                       <tr>
                         <td
                           colSpan={6}
-                          className="px-4 py-3 text-right font-black text-slate-500 uppercase tracking-wider text-xs"
+                          className="px-4 py-3 text-right font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs"
                         >
                           Total (Original / Tagihan)
                         </td>
                         <td className="px-4 py-3 text-right text-sm">
-                          <div className="font-medium text-slate-400 line-through decoration-slate-300">
+                          <div className="font-medium text-slate-400 dark:text-slate-500 line-through decoration-slate-300">
                             {formatCurrency(totalsAll.nominal)}
                           </div>
                           <div className="font-black text-indigo-700 text-base">
@@ -833,7 +833,7 @@ export default function POFormSection({
                       </tr>
                     </tfoot>
                   </table>
-                  <div className="flex items-center justify-end p-4 border-t border-slate-100 bg-white">
+                  <div className="flex items-center justify-end p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
                     <button
                       type="submit"
                       disabled={submitting}
@@ -845,25 +845,25 @@ export default function POFormSection({
                   </div>
                 </div>
               ) : (
-                <div className="p-6 rounded-2xl bg-slate-50 text-slate-500 text-sm font-semibold">
+                <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-sm font-semibold">
                   Belum ada produk. Tambahkan produk dari Section 2.
                 </div>
               )}
             </section>
           </div>
           <div className="lg:col-span-4 space-y-6">
-            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+            <section className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
                   3
                 </div>
-                <h2 className="font-bold text-slate-800 text-lg">
+                <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
                   Checklist Dokumen
                 </h2>
                 <button
                   type="button"
                   onClick={toggleAllChecklist}
-                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  className="px-3 py-1.5 rounded-xl text-xs font-black border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
                 >
                   {Object.values(formData.status).every(Boolean)
                     ? "Uncheck All"
@@ -882,7 +882,7 @@ export default function POFormSection({
                     return (
                       <div
                         key={key}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg gap-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors"
                       >
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input
@@ -891,7 +891,7 @@ export default function POFormSection({
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">
                             {label}
                           </span>
                         </label>
@@ -907,7 +907,7 @@ export default function POFormSection({
                                 buktiKirim: v,
                               }));
                             }}
-                            className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
+                            className="w-full px-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white dark:bg-slate-800 placeholder:text-slate-400 dark:text-slate-500 font-semibold transition-all"
                           />
                         </div>
                       </div>
@@ -918,7 +918,7 @@ export default function POFormSection({
                     return (
                       <div
                         key={key}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg gap-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors"
                       >
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input
@@ -927,7 +927,7 @@ export default function POFormSection({
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">
                             {label}
                           </span>
                         </label>
@@ -944,7 +944,7 @@ export default function POFormSection({
                                 status: { ...prev.status, fp: !!v.trim() },
                               }));
                             }}
-                            className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
+                            className="w-full px-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white dark:bg-slate-800 placeholder:text-slate-400 dark:text-slate-500 font-semibold transition-all"
                           />
                         </div>
                       </div>
@@ -955,7 +955,7 @@ export default function POFormSection({
                     return (
                       <div
                         key={key}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg gap-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors"
                       >
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input
@@ -964,7 +964,7 @@ export default function POFormSection({
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">
                             {label}
                           </span>
                         </label>
@@ -981,7 +981,7 @@ export default function POFormSection({
                                 status: { ...prev.status, tagih: !!v.trim() },
                               }));
                             }}
-                            className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
+                            className="w-full px-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white dark:bg-slate-800 placeholder:text-slate-400 dark:text-slate-500 font-semibold transition-all"
                           />
                         </div>
                       </div>
@@ -992,7 +992,7 @@ export default function POFormSection({
                     return (
                       <div
                         key={key}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 rounded-lg gap-4 bg-white hover:bg-slate-50 transition-colors"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg gap-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors"
                       >
                         <label className="flex items-center gap-3 cursor-pointer min-w-[120px]">
                           <input
@@ -1001,7 +1001,7 @@ export default function POFormSection({
                             onChange={() => handleChecklist(key)}
                             className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-bold text-slate-700">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">
                             {label}
                           </span>
                         </label>
@@ -1018,7 +1018,7 @@ export default function POFormSection({
                                 status: { ...prev.status, bayar: !!v.trim() },
                               }));
                             }}
-                            className="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white placeholder:text-slate-400 font-semibold transition-all"
+                            className="w-full px-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white dark:bg-slate-800 placeholder:text-slate-400 dark:text-slate-500 font-semibold transition-all"
                           />
                         </div>
                       </div>
@@ -1029,7 +1029,7 @@ export default function POFormSection({
                   return (
                     <label
                       key={key}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors cursor-pointer"
                     >
                       <input
                         type="checkbox"
@@ -1037,7 +1037,7 @@ export default function POFormSection({
                         onChange={() => handleChecklist(key)}
                         className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                       />
-                      <span className="text-sm font-bold text-slate-700">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                         {label}
                       </span>
                     </label>
@@ -1046,17 +1046,17 @@ export default function POFormSection({
               </div>
             </section>
 
-            <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+            <section className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-black text-sm">
                   4
                 </div>
-                <h2 className="font-bold text-slate-800 text-lg">Remarks</h2>
+                <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Remarks</h2>
               </div>
               <textarea
                 rows={4}
                 placeholder="Tambahkan Jika Ada Keterangan..."
-                className="w-full px-6 py-4 bg-slate-50 rounded-[24px] focus:ring-2 focus:ring-slate-200 outline-none text-sm font-medium transition-all"
+                className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-[24px] focus:ring-2 focus:ring-slate-200 outline-none text-sm font-medium transition-all"
                 onChange={(e) =>
                   setFormData({ ...formData, remarks: e.target.value })
                 }

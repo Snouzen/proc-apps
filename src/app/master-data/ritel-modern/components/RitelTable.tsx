@@ -68,7 +68,7 @@ export default function RitelTable({
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
         <div className="relative max-w-md">
           <input
             suppressHydrationWarning
@@ -79,12 +79,12 @@ export default function RitelTable({
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:outline-non focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm dark:text-slate-200"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
+      <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm">
         {isLoading ? (
           <div className="px-6 py-10 text-center text-slate-400">
             <div className="flex items-center justify-center">
@@ -123,10 +123,10 @@ export default function RitelTable({
             {currentItems.map((group) => (
               <div
                 key={group.displayId}
-                className="group relative bg-white rounded-[32px] border border-slate-100 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_45px_100px_-25px_rgba(0,0,0,0.15)] hover:-translate-y-1.5 transition-all duration-500 overflow-hidden"
+                className="group relative bg-white dark:bg-slate-800 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.08)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] hover:shadow-[0_45px_100px_-25px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_45px_100px_-25px_rgba(0,0,0,0.6)] hover:-translate-y-1.5 transition-all duration-500 overflow-hidden"
               >
                 {/* Logo Area - Large & Clear */}
-                <div className="relative h-[130px] w-full bg-white border-b border-slate-50 flex items-center justify-center p-6 overflow-hidden">
+                <div className="relative h-[130px] w-full bg-white dark:bg-slate-900 border-b border-slate-50 dark:border-slate-700/50 flex items-center justify-center p-6 overflow-hidden">
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
                   
                   {group.logoPt ? (
@@ -142,27 +142,27 @@ export default function RitelTable({
                   )}
 
                   {/* Badge Inisial - Top Right */}
-                  <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full border border-slate-100 shadow-sm flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4 duration-500">
-                    <span className="text-[10px] font-black text-slate-800 tabular-nums">
+                  <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-full border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4 duration-500">
+                    <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 tabular-nums">
                       {Object.keys(group.inisials).length}
                     </span>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Inisial</span>
+                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Inisial</span>
                   </div>
                 </div>
 
                 {/* Content Area */}
                 <div className="p-6 space-y-5">
                   <div className="space-y-1">
-                    <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-tight leading-tight group-hover:text-indigo-600 transition-colors truncate" title={group.namaPt}>
+                    <h3 className="text-[12px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate" title={group.namaPt}>
                       {highlightText(group.namaPt, searchTerm)}
                     </h3>
                   </div>
 
                   {/* Actions Footer */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-50 gap-2">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-700/50 gap-2">
                     <button
                       onClick={() => setViewAliases({ namaPt: group.namaPt })}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 text-white hover:bg-indigo-600 transition-all duration-300 shadow-lg shadow-slate-200 hover:shadow-indigo-100 active:scale-95"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 dark:bg-indigo-600 text-white hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all duration-300 shadow-lg shadow-slate-200 dark:shadow-indigo-900/20 hover:shadow-indigo-100 dark:hover:shadow-indigo-500/30 active:scale-95"
                     >
                       <Eye size={14} strokeWidth={2.5} />
                       <span className="text-[10px] font-black uppercase tracking-widest">View Details</span>
@@ -184,7 +184,7 @@ export default function RitelTable({
                               ptOnly: true
                             });
                           }}
-                          className="p-3 rounded-2xl bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white transition-all duration-300 group/edit"
+                          className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 hover:bg-amber-500 hover:text-white transition-all duration-300 group/edit"
                           title="Edit Logo / Nama PT"
                         >
                           <Edit2 size={15} strokeWidth={2.5} className="group-hover/edit:rotate-12 transition-transform" />
@@ -194,7 +194,7 @@ export default function RitelTable({
                       {!isRm && (
                         <button
                           onClick={() => setDeleteCompany(group.namaPt)}
-                          className="p-3 rounded-2xl bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white transition-all duration-300 group/del"
+                          className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-900/30 text-rose-400 hover:bg-rose-500 hover:text-white transition-all duration-300 group/del"
                           title="Hapus Ritel"
                         >
                           <Trash2 size={15} strokeWidth={2.5} className="group-hover/del:scale-110 transition-transform" />
@@ -211,7 +211,7 @@ export default function RitelTable({
 
       {filteredData.length > itemsPerPage && (
         <div className="flex items-center justify-between px-2 py-4">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Showing {indexOfFirstItem + 1} to{" "}
             {Math.min(indexOfLastItem, filteredData.length)} of{" "}
             {filteredData.length} entries
@@ -220,7 +220,7 @@ export default function RitelTable({
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
+              className="px-4 py-2 text-sm font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all"
             >
               Previous
             </button>
@@ -229,7 +229,7 @@ export default function RitelTable({
                 setCurrentPage((prev) => Math.min(prev + 1, totalPages))
               }
               disabled={currentPage === totalPages}
-              className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
+              className="px-4 py-2 text-sm font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all"
             >
               Next
             </button>

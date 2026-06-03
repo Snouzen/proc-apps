@@ -18,7 +18,7 @@ function SkeletonRow({ colCount }: { colCount: number }) {
       {Array.from({ length: colCount }).map((_, i) => (
         <td key={i} className="px-6 py-4">
           <div
-            className={`h-3.5 bg-slate-100 rounded-md ${
+            className={`h-3.5 bg-slate-100 dark:bg-slate-700 rounded-md ${
               i === 0
                 ? "w-8"
                 : i % 3 === 0
@@ -38,9 +38,9 @@ function SkeletonRow({ colCount }: { colCount: number }) {
 function DefaultEmptyState({ message }: { message?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4">
-      <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+      <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
         <svg
-          className="w-8 h-8 text-slate-300"
+          className="w-8 h-8 text-slate-300 dark:text-slate-600"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -86,19 +86,19 @@ function TablePagination({
   if (variant === "rounded") {
     // Retur-style pagination (round, minimal, centered chevrons)
     return (
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {onRowsPerPageChange && rowsPerPageOptions && (
             <Popover.Root>
               <Popover.Trigger asChild>
-                <button className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-[10px] font-black text-slate-600 uppercase tracking-widest shadow-sm hover:border-indigo-100 hover:text-indigo-600 transition-all outline-none">
+                <button className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest shadow-sm hover:border-indigo-100 hover:text-indigo-600 transition-all outline-none">
                   <span>{rowsPerPage} / PAGE</span>
                   <ChevronDown size={12} className="text-slate-300" />
                 </button>
               </Popover.Trigger>
               <Popover.Portal>
                 <Popover.Content 
-                  className="z-[110] w-[120px] bg-white rounded-2xl border border-slate-100 shadow-2xl p-1.5 outline-none animate-in fade-in zoom-in-95 duration-200"
+                  className="z-[110] w-[120px] bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xl p-1.5 outline-none animate-in fade-in zoom-in-95 duration-200"
                   align="start"
                   sideOffset={5}
                 >
@@ -113,7 +113,7 @@ function TablePagination({
                         className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                           rowsPerPage === n 
                             ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
-                            : "text-slate-500 hover:bg-slate-50 hover:text-indigo-600"
+                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600"
                         }`}
                       >
                         {n} / PAGE
@@ -124,11 +124,11 @@ function TablePagination({
               </Popover.Portal>
             </Popover.Root>
           )}
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+          <div className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
             Menampilkan{" "}
             <span className="text-indigo-600">{from}</span> -{" "}
             <span className="text-indigo-600">{to}</span> dari{" "}
-            <span className="text-slate-800 font-black">{total}</span> data
+            <span className="text-slate-800 dark:text-slate-100 font-black">{total}</span> data
           </div>
         </div>
 
@@ -136,20 +136,20 @@ function TablePagination({
           <button
             onClick={() => onPageChange(1)}
             disabled={page === 1}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
           >
             <ChevronsLeft size={16} />
           </button>
           <button
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
           >
             <ChevronLeft size={16} />
           </button>
 
-          <div className="px-4 py-1.5 bg-white border border-slate-200 rounded-xl shadow-sm">
-            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter tabular-nums">
+          <div className="px-4 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-sm">
+            <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-tighter tabular-nums">
               Page {page} of {totalPages}
             </span>
           </div>
@@ -157,14 +157,14 @@ function TablePagination({
           <button
             onClick={() => onPageChange(Math.min(totalPages, page + 1))}
             disabled={page >= totalPages || totalPages === 0}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
           >
             <ChevronRight size={16} />
           </button>
           <button
             onClick={() => onPageChange(totalPages)}
             disabled={page >= totalPages || totalPages === 0}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all active:scale-90 shadow-sm"
           >
             <ChevronsRight size={16} />
           </button>
@@ -175,20 +175,20 @@ function TablePagination({
 
   // Default variant — Dashboard style
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white text-sm">
-      <div className="text-sm text-gray-700 flex items-center gap-2">
+    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+      <div className="text-sm text-gray-700 dark:text-slate-300 flex items-center gap-2">
         Rows per page
         {onRowsPerPageChange && rowsPerPageOptions ? (
           <Popover.Root>
             <Popover.Trigger asChild>
-              <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-all outline-none">
+              <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all outline-none">
                 <span>{rowsPerPage}</span>
                 <ChevronDown size={14} className="text-gray-400" />
               </button>
             </Popover.Trigger>
             <Popover.Portal>
               <Popover.Content 
-                className="z-[110] w-[80px] bg-white rounded-xl border border-gray-100 shadow-xl p-1 outline-none animate-in fade-in zoom-in-95 duration-200"
+                className="z-[110] w-[80px] bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-xl p-1 outline-none animate-in fade-in zoom-in-95 duration-200"
                 align="center"
                 sideOffset={5}
               >
@@ -202,8 +202,8 @@ function TablePagination({
                       }}
                       className={`w-full text-center px-2 py-1.5 rounded-md text-xs font-bold transition-all ${
                         rowsPerPage === n 
-                          ? "bg-gray-900 text-white" 
-                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                          ? "bg-gray-900 dark:bg-slate-100 text-white dark:text-slate-900" 
+                          : "text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100"
                       }`}
                     >
                       {n}
@@ -217,14 +217,14 @@ function TablePagination({
           <span className="font-bold">{rowsPerPage}</span>
         )}
       </div>
-      <div className="flex items-center gap-3 text-sm text-black">
+      <div className="flex items-center gap-3 text-sm text-black dark:text-slate-100">
         <span>
           Page <span className="font-bold">{page}</span> of{" "}
           <span className="font-bold">{totalPages}</span>
         </span>
         <div className="flex items-center gap-1">
           <button
-            className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             onClick={() => onPageChange(1)}
             disabled={page === 1}
             title="Halaman Pertama"
@@ -232,7 +232,7 @@ function TablePagination({
             «
           </button>
           <button
-            className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page === 1}
             title="Sebelumnya"
@@ -240,7 +240,7 @@ function TablePagination({
             ‹
           </button>
           <button
-            className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             onClick={() => onPageChange(Math.min(totalPages, page + 1))}
             disabled={page >= totalPages}
             title="Selanjutnya"
@@ -248,7 +248,7 @@ function TablePagination({
             ›
           </button>
           <button
-            className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             onClick={() => onPageChange(totalPages)}
             disabled={page >= totalPages}
             title="Halaman Terakhir"
@@ -309,43 +309,43 @@ export default function DataTable<T = any>({
   const isRounded = variant === "rounded";
 
   const wrapperCls = isRounded
-    ? "bg-white rounded-[32px] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden relative animate-in zoom-in-95 duration-500"
-    : "bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden";
+    ? "bg-white dark:bg-slate-800 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/40 overflow-hidden relative animate-in zoom-in-95 duration-500"
+    : "bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden";
 
   const headerRowCls = isRounded
-    ? "bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest"
-    : "text-gray-700 text-sm uppercase tracking-wider border-b border-gray-100";
+    ? "bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+    : "text-gray-700 dark:text-slate-300 text-sm uppercase tracking-wider border-b border-gray-100 dark:border-slate-700";
 
   const headerCellCls = isRounded
     ? "px-6 py-5 whitespace-nowrap"
-    : "px-6 py-3 font-semibold sticky top-0 z-10 bg-white";
+    : "px-6 py-3 font-semibold sticky top-0 z-10 bg-white dark:bg-slate-800";
 
   const bodyCls = isRounded
-    ? `divide-y divide-slate-50 transition-all duration-300 ${isFetchingPage ? "opacity-50 pointer-events-none scale-[0.998]" : "opacity-100"}`
-    : `divide-y divide-gray-100 text-[0.95rem] transition-opacity duration-200 ${isFetchingPage ? "opacity-50 pointer-events-none" : "opacity-100"}`;
+    ? `divide-y divide-slate-50 dark:divide-slate-700 transition-all duration-300 ${isFetchingPage ? "opacity-50 pointer-events-none scale-[0.998]" : "opacity-100"}`
+    : `divide-y divide-gray-100 dark:divide-slate-700 text-[0.95rem] transition-opacity duration-200 ${isFetchingPage ? "opacity-50 pointer-events-none" : "opacity-100"}`;
 
   const rowCls = isRounded
-    ? "hover:bg-slate-50/80 transition-colors group cursor-pointer"
-    : "hover:bg-gray-50 transition-colors cursor-pointer group";
+    ? "hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors group cursor-pointer"
+    : "hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer group";
 
   const cellCls = isRounded ? "px-6 py-4" : "px-6 py-4 align-top";
 
   // Sticky column styles
   const stickyFirstThCls = isRounded
-    ? "sticky left-0 z-20 bg-slate-50/95 backdrop-blur px-6 py-5 w-20 text-center border-r border-slate-100"
-    : "px-6 py-3 font-semibold sticky top-0 left-0 z-20 bg-white w-16 border-r border-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]";
+    ? "sticky left-0 z-20 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur px-6 py-5 w-20 text-center border-r border-slate-100 dark:border-slate-700"
+    : "px-6 py-3 font-semibold sticky top-0 left-0 z-20 bg-white dark:bg-slate-800 w-16 border-r border-gray-50 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]";
 
   const stickyFirstTdCls = isRounded
-    ? "sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 text-xs font-black text-slate-400 text-center tabular-nums border-r border-slate-100 transition-colors"
-    : "px-6 py-4 align-top text-slate-600 font-semibold tabular-nums sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-r border-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]";
+    ? "sticky left-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-slate-50/95 dark:group-hover:bg-slate-700/95 backdrop-blur px-6 py-4 text-xs font-black text-slate-400 text-center tabular-nums border-r border-slate-100 dark:border-slate-700 transition-colors"
+    : "px-6 py-4 align-top text-slate-600 dark:text-slate-300 font-semibold tabular-nums sticky left-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-gray-50 dark:group-hover:bg-slate-700 border-r border-gray-50 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]";
 
   const stickyLastThCls = isRounded
-    ? "sticky right-0 z-20 bg-slate-50/95 backdrop-blur px-6 py-5 text-right border-l border-slate-100"
-    : "px-6 py-3 font-semibold text-center sticky top-0 z-10 bg-white";
+    ? "sticky right-0 z-20 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur px-6 py-5 text-right border-l border-slate-100 dark:border-slate-700"
+    : "px-6 py-3 font-semibold text-center sticky top-0 z-10 bg-white dark:bg-slate-800";
 
   const stickyLastTdCls = isRounded
-    ? "sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 backdrop-blur px-6 py-4 text-right border-l border-slate-100 transition-colors"
-    : "px-6 py-4 align-top sticky right-0 z-10 bg-white group-hover:bg-gray-50";
+    ? "sticky right-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-slate-50/95 dark:group-hover:bg-slate-700/95 backdrop-blur px-6 py-4 text-right border-l border-slate-100 dark:border-slate-700 transition-colors"
+    : "px-6 py-4 align-top sticky right-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-gray-50 dark:group-hover:bg-slate-700";
 
   // Alignment helper
   const alignCls = (align?: string) =>
@@ -422,7 +422,7 @@ export default function DataTable<T = any>({
                 return (
                   <Fragment key={key}>
                     <tr
-                      className={`${rowCls} ${extraCls} ${isExpanded && renderExpandedRow ? (isRounded ? "bg-indigo-50/30" : "bg-gray-50/50") : ""}`}
+                      className={`${rowCls} ${extraCls} ${isExpanded && renderExpandedRow ? (isRounded ? "bg-indigo-50/30 dark:bg-indigo-500/10" : "bg-gray-50/50 dark:bg-slate-700/50") : ""}`}
                       onClick={() => onRowClick?.(row, idx)}
                     >
                       {/* Row number cell */}

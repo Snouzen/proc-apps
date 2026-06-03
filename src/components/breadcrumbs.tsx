@@ -20,9 +20,9 @@ export default function Breadcrumbs() {
 
   if (pathname === "/") {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
         <Home size={18} className="text-slate-400" />
-        <span className="font-semibold text-slate-700">Dashboard</span>
+        <span className="font-semibold text-slate-700 dark:text-slate-200">Dashboard</span>
       </div>
     );
   }
@@ -31,18 +31,18 @@ export default function Breadcrumbs() {
   const useCompanyRoot = pathname === "/po" || pathname.startsWith("/po/");
 
   return (
-    <div className="flex items-center gap-2 text-sm text-slate-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
+    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 overflow-x-auto whitespace-nowrap scrollbar-hide">
       {useCompanyRoot ? (
         <Link
           href="/purchase-order"
-          className="hover:text-slate-800 transition-colors truncate max-w-[150px]"
+          className="hover:text-slate-800 dark:hover:text-slate-200 transition-colors truncate max-w-[150px]"
         >
           Purchase Order
         </Link>
       ) : (
         <Link
           href="/"
-          className="flex items-center gap-1 hover:text-slate-800 transition-colors"
+          className="flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
         >
           <Home size={18} className="text-slate-400" />
         </Link>
@@ -67,15 +67,15 @@ export default function Breadcrumbs() {
 
         return (
           <Fragment key={href}>
-            <ChevronRight size={16} className="text-slate-300 flex-shrink-0" />
+            <ChevronRight size={16} className="text-slate-300 dark:text-slate-600 flex-shrink-0" />
             {isLast ? (
-              <span className="font-bold text-slate-800 truncate max-w-[200px]">
+              <span className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">
                 {label}
               </span>
             ) : (
               <Link
                 href={href}
-                className="hover:text-slate-800 transition-colors truncate max-w-[150px]"
+                className="hover:text-slate-800 dark:hover:text-slate-200 transition-colors truncate max-w-[150px]"
               >
                 {label}
               </Link>

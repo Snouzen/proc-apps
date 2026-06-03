@@ -27,11 +27,11 @@ export default function StatCard({
 }: StatCardProps) {
   const variants = {
     amber:
-      "bg-gradient-to-br from-amber-50/80 via-white to-white border-amber-100/50",
-    blue: "bg-gradient-to-br from-blue-50/80 via-white to-white border-blue-100/50",
+      "bg-gradient-to-br from-amber-50/80 via-white to-white border-amber-100/50 dark:from-amber-500/10 dark:via-slate-800 dark:to-slate-800 dark:border-amber-500/20",
+    blue: "bg-gradient-to-br from-blue-50/80 via-white to-white border-blue-100/50 dark:from-blue-500/10 dark:via-slate-800 dark:to-slate-800 dark:border-blue-500/20",
     emerald:
-      "bg-gradient-to-br from-emerald-50/80 via-white to-white border-emerald-100/50",
-    rose: "bg-gradient-to-br from-rose-50/80 via-white to-white border-rose-100/50",
+      "bg-gradient-to-br from-emerald-50/80 via-white to-white border-emerald-100/50 dark:from-emerald-500/10 dark:via-slate-800 dark:to-slate-800 dark:border-emerald-500/20",
+    rose: "bg-gradient-to-br from-rose-50/80 via-white to-white border-rose-100/50 dark:from-rose-500/10 dark:via-slate-800 dark:to-slate-800 dark:border-rose-500/20",
   };
 
   const iconColors = {
@@ -59,7 +59,7 @@ export default function StatCard({
       <div className="flex justify-between items-start mb-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5 relative group/tooltip">
-            <h3 className="text-sm font-bold text-slate-600 tracking-tight">
+            <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight">
               {title}
             </h3>
             {tooltip && (
@@ -68,12 +68,12 @@ export default function StatCard({
                   <Info size={14} className="text-slate-400 hover:text-slate-600 transition-colors" />
                 </div>
                 {/* Custom Premium Tooltip */}
-                <div className="absolute bottom-full left-0 mb-2 w-48 p-2.5 bg-white/90 backdrop-blur-md border border-slate-200 rounded-xl shadow-xl opacity-0 group-hover/tooltip:opacity-100 group-hover/tooltip:translate-y-0 translate-y-2 pointer-events-none transition-all duration-200 z-[100]">
-                  <p className="text-[11px] font-medium leading-relaxed text-slate-600">
+                <div className="absolute bottom-full left-0 mb-2 w-48 p-2.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl opacity-0 group-hover/tooltip:opacity-100 group-hover/tooltip:translate-y-0 translate-y-2 pointer-events-none transition-all duration-200 z-[100]">
+                  <p className="text-[11px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
                     {tooltip}
                   </p>
                   {/* Tooltip Arrow */}
-                  <div className="absolute -bottom-1 left-3 w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45" />
+                  <div className="absolute -bottom-1 left-3 w-2 h-2 bg-white dark:bg-slate-800 border-r border-b border-slate-200 dark:border-slate-600 rotate-45" />
                 </div>
               </>
             )}
@@ -83,7 +83,7 @@ export default function StatCard({
       </div>
 
       <div className="mt-2">
-        <p className="text-4xl font-bold text-slate-800 tracking-tighter leading-none">
+        <p className="text-4xl font-bold text-slate-800 dark:text-slate-100 tracking-tighter leading-none">
           {value}
         </p>
         <p

@@ -55,23 +55,23 @@ export default function SmoothSelect({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}
-        className={`w-full h-10 rounded-xl border border-gray-300 bg-white/90 text-sm font-semibold px-3 pr-9 text-slate-800 transition-all duration-200 ease-out flex items-center justify-between ${
+        className={`w-full h-10 rounded-xl border border-gray-300 dark:border-slate-600 bg-white/90 dark:bg-slate-800/60 text-sm font-semibold px-3 pr-9 text-slate-800 dark:text-slate-100 transition-all duration-200 ease-out flex items-center justify-between ${
           disabled
-            ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed shadow-none"
-            : "hover:bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-sm hover:shadow"
+            ? "bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 cursor-not-allowed shadow-none"
+            : "hover:bg-white dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-600 shadow-sm hover:shadow"
         }`}
       >
         <span className="truncate">{current?.label || "-"}</span>
         <ChevronDown
           size={16}
-          className={`text-gray-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`text-gray-500 dark:text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
       <div
         className={`absolute left-0 mt-2 w-full z-50 ${open ? "pointer-events-auto" : "pointer-events-none"}`}
       >
         <div
-          className={`rounded-xl border border-gray-200 bg-white shadow-xl transition-all duration-200 origin-top ${
+          className={`rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xl transition-all duration-200 origin-top ${
             open ? "opacity-100 scale-100" : "opacity-0 scale-95"
           }`}
         >
@@ -86,8 +86,8 @@ export default function SmoothSelect({
                   }}
                   className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors duration-150 ${
                     o.value === value
-                      ? "bg-gray-100 text-slate-900"
-                      : "text-slate-800 hover:bg-gray-50"
+                      ? "bg-gray-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                      : "text-slate-800 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-700"
                   }`}
                 >
                   {o.label}

@@ -134,14 +134,14 @@ function ActionButton({
 }) {
   const bgColors = {
     indigo:
-      "bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-600 hover:text-white",
-    rose: "bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-600 hover:text-white",
+      "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-500/20 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white dark:hover:text-white",
+    rose: "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-500/20 hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white dark:hover:text-white",
     slate:
-      "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-600 hover:text-white",
+      "bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700/50 hover:bg-slate-600 dark:hover:bg-slate-700 hover:text-white dark:hover:text-white",
     emerald:
-      "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white",
+      "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20 hover:bg-emerald-600 dark:hover:bg-emerald-500 hover:text-white dark:hover:text-white",
     amber:
-      "bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-600 hover:text-white",
+      "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-500/20 hover:bg-amber-600 dark:hover:bg-amber-500 hover:text-white dark:hover:text-white",
   };
 
   return (
@@ -183,7 +183,7 @@ function BatchAccordion({
   const totalPcsKirim = pos.reduce((sum, po) => sum + Number(po.pcsKirimTotal || 0), 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
+    <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden transition-all duration-300">
       {/* Accordion Header */}
       <div
         role="button"
@@ -195,11 +195,11 @@ function BatchAccordion({
             onToggle();
           }
         }}
-        className="w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 transition-colors duration-200 group cursor-pointer focus:outline-none focus:bg-slate-50"
+        className="w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-200 group cursor-pointer focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/30"
       >
         {/* Batch Badge */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-violet-50 text-violet-600 border border-violet-100 rounded-xl text-xs font-black uppercase tracking-tight whitespace-nowrap shadow-sm">
+          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-500/20 rounded-xl text-xs font-black uppercase tracking-tight whitespace-nowrap shadow-sm dark:shadow-none">
             <Layers size={14} className="shrink-0" />
             {batchCode}
           </span>
@@ -207,37 +207,37 @@ function BatchAccordion({
 
         {/* Stats */}
         <div className="flex items-center gap-4 ml-auto mr-4">
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-lg border border-slate-100">
-            <Package size={12} className="text-slate-400" />
-            <span className="text-xs font-bold text-slate-600 tabular-nums">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
+            <Package size={12} className="text-slate-400 dark:text-slate-500" />
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tabular-nums">
               {pos.length}
             </span>
-            <span className="text-[10px] text-slate-400 font-medium">PO</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">PO</span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 rounded-lg border border-indigo-100">
-            <Truck size={12} className="text-indigo-400" />
-            <span className="text-xs font-bold text-indigo-600 tabular-nums">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg border border-indigo-100 dark:border-indigo-500/20">
+            <Truck size={12} className="text-indigo-400 dark:text-indigo-500" />
+            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
               {totalPcs.toLocaleString("id-ID")}
             </span>
-            <span className="text-[10px] text-indigo-400 font-medium">PCS</span>
+            <span className="text-[10px] text-indigo-400 dark:text-indigo-500 font-medium">PCS</span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
-            <CheckCircle2 size={12} className="text-emerald-400" />
-            <span className="text-xs font-bold text-emerald-600 tabular-nums">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
+            <CheckCircle2 size={12} className="text-emerald-400 dark:text-emerald-500" />
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
               {totalPcsKirim.toLocaleString("id-ID")}
             </span>
-            <span className="text-[10px] text-emerald-400 font-medium">Kirim</span>
+            <span className="text-[10px] text-emerald-400 dark:text-emerald-500 font-medium">Kirim</span>
           </div>
 
-          <div className="pl-2 border-l border-slate-200">
+          <div className="pl-2 border-l border-slate-200 dark:border-slate-700/50">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onApproveAll(batchCode, pos);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm shadow-emerald-200 active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 dark:bg-emerald-500/20 hover:bg-emerald-700 dark:hover:bg-emerald-500/30 text-white dark:text-emerald-400 rounded-lg text-xs font-bold transition-all shadow-sm shadow-emerald-200 dark:shadow-none active:scale-95"
             >
               <CheckCircle2 size={14} />
               Approve All
@@ -248,7 +248,7 @@ function BatchAccordion({
         {/* Chevron */}
         <ChevronDown
           size={18}
-          className={`text-slate-400 transition-transform duration-300 shrink-0 ${
+          className={`text-slate-400 dark:text-slate-500 transition-transform duration-300 shrink-0 ${
             isExpanded ? "rotate-180" : ""
           }`}
         />
@@ -260,10 +260,10 @@ function BatchAccordion({
           isExpanded ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="border-t border-slate-100">
+        <div className="border-t border-slate-100 dark:border-slate-800/50">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left min-w-[1000px]">
-              <thead className="bg-slate-50/80 text-slate-500 font-black uppercase text-[10px] tracking-wider">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-black uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="px-4 py-3 w-[50px] text-center">#</th>
                   <th className="px-4 py-3 w-[220px]">Purchase Order</th>
@@ -275,6 +275,7 @@ function BatchAccordion({
                   <th className="px-4 py-3 w-[120px] text-center">Tgl Kirim</th>
                   <th className="px-4 py-3 w-[60px] text-center">Pcs</th>
                   <th className="px-4 py-3 w-[90px] text-center">Pcs Kirim</th>
+                  <th className="px-4 py-3 w-[130px] text-center">Kode Vendor</th>
                   <th className="px-4 py-3 w-[180px]">Remarks</th>
                   <th className="px-4 py-3 w-[80px] text-center">Status</th>
                   <th className="px-4 py-3 w-[90px] text-center">Action</th>
@@ -291,93 +292,98 @@ function BatchAccordion({
                     <tr
                       key={po.id}
                       onClick={() => onViewRow(po)}
-                      className="border-t border-slate-50 hover:bg-indigo-50/30 cursor-pointer transition-colors duration-150"
+                      className="border-t border-slate-50 dark:border-slate-800/50 hover:bg-indigo-50/30 dark:hover:bg-slate-800/30 cursor-pointer transition-colors duration-150"
                     >
-                      <td className="px-4 py-3 text-center text-xs text-slate-400 font-medium">
+                      <td className="px-4 py-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
                         {idx + 1}
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-bold text-slate-800 text-sm leading-tight">
+                        <p className="font-bold text-slate-800 dark:text-slate-200 text-sm leading-tight">
                           {po.noPo}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[200px]">
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate max-w-[200px]">
                           {po.RitelModern?.namaPt || "-"}
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[130px] shadow-sm">
+                        <span className="inline-block px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[130px] shadow-sm dark:shadow-none">
                           {po.RitelModern?.inisial || "-"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           {site !== "-" && (
-                            <MapPin size={11} className="text-slate-300 shrink-0" />
+                            <MapPin size={11} className="text-slate-300 dark:text-slate-500 shrink-0" />
                           )}
-                          <span className={`text-xs font-medium ${site === "-" ? "text-slate-300" : "text-slate-600"}`}>
+                          <span className={`text-xs font-medium ${site === "-" ? "text-slate-300 dark:text-slate-600" : "text-slate-600 dark:text-slate-300"}`}>
                             {site}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-xs text-slate-600 font-medium truncate max-w-[110px]" title={po.tujuanDetail || "-"}>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate max-w-[110px]" title={po.tujuanDetail || "-"}>
                           {po.tujuanDetail || "-"}
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-slate-500 tabular-nums whitespace-nowrap">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">
                           {po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${isWarning ? "text-amber-600" : "text-slate-600"}`}>
+                        <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${isWarning ? "text-amber-600 dark:text-amber-500" : "text-slate-600 dark:text-slate-300"}`}>
                           {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {po.tglkirim ? (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-md text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-md text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
                             <CalendarDays size={11} className="shrink-0" />
                             {format(new Date(po.tglkirim), "dd MMM yy")}
                           </div>
                         ) : (
-                          <span className="text-slate-300">-</span>
+                          <span className="text-slate-300 dark:text-slate-600">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="font-bold text-slate-600 text-xs">
+                        <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">
                           {Number(po.pcsTotal || 0).toLocaleString("id-ID")}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-xs font-black tabular-nums">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg text-xs font-black tabular-nums">
                           <CheckCircle2 size={11} className="shrink-0" />
                           {Number(po.pcsKirimTotal || 0).toLocaleString("id-ID")}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider">
+                          {po.kodeVendor || "-"}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
-                        <p className="text-[11px] text-slate-500 font-medium italic truncate max-w-[170px]" title={po.remarksCreditLimit || "-"}>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic truncate max-w-[170px]" title={po.remarksCreditLimit || "-"}>
                           {po.remarksCreditLimit ? `"${po.remarksCreditLimit}"` : "-"}
                         </p>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {zone === "normal" && (
                           <StandardTooltip content={zoneLabel}>
-                            <span className="inline-flex items-center justify-center w-8 h-8 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full cursor-pointer hover:bg-emerald-100 transition-colors">
+                            <span className="inline-flex items-center justify-center w-8 h-8 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-full cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
                               <CheckCircle2 size={16} strokeWidth={2.5} />
                             </span>
                           </StandardTooltip>
                         )}
                         {zone === "early_extended" && (
                           <StandardTooltip content={zoneLabel}>
-                            <span className="inline-flex items-center justify-center w-8 h-8 bg-amber-50 text-amber-600 border border-amber-200 rounded-full cursor-pointer hover:bg-amber-100 transition-colors">
+                            <span className="inline-flex items-center justify-center w-8 h-8 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded-full cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors">
                               <AlertTriangle size={16} strokeWidth={2.5} />
                             </span>
                           </StandardTooltip>
                         )}
                         {zone === "late_extended" && (
                           <StandardTooltip content={zoneLabel}>
-                            <span className="inline-flex items-center justify-center w-8 h-8 bg-rose-50 text-rose-600 border border-rose-200 rounded-full cursor-pointer hover:bg-rose-100 transition-colors">
+                            <span className="inline-flex items-center justify-center w-8 h-8 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-full cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors">
                               <AlertCircle size={16} strokeWidth={2.5} />
                             </span>
                           </StandardTooltip>
@@ -733,10 +739,10 @@ export default function CreditLimitApprovalPage() {
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             Credit Limit — Approval PO
           </h1>
-          <p className="text-slate-400 text-sm mt-0.5">
+          <p className="text-slate-400 dark:text-slate-500 text-sm mt-0.5">
             Daftar pengajuan Credit Limit yang menunggu persetujuan (Khusus Pusat).
           </p>
         </div>
@@ -744,13 +750,13 @@ export default function CreditLimitApprovalPage() {
         {/* Search bar */}
         <div className="relative group">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400 transition-colors"
             size={16}
           />
           <input
             type="text"
             placeholder="Search No PO, Site, Company..."
-            className="pl-9 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all w-full md:w-72 shadow-sm text-slate-700"
+            className="pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-500/40 transition-all w-full md:w-72 shadow-sm dark:shadow-none text-slate-700 dark:text-slate-100"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -768,18 +774,18 @@ export default function CreditLimitApprovalPage() {
                 variant="outline"
                 role="combobox"
                 aria-expanded={openRitel}
-                className="w-full justify-between bg-white border-slate-200 text-slate-800 hover:bg-slate-50 hover:text-slate-900 h-12 rounded-xl shadow-sm transition-all"
+                className="w-full justify-between bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm dark:shadow-none transition-all"
               >
-                <span className={!selectedNamaPt ? "text-slate-400 font-normal truncate" : "font-bold truncate"}>
+                <span className={!selectedNamaPt ? "text-slate-400 dark:text-slate-500 font-normal truncate" : "font-bold truncate"}>
                   {selectedNamaPt || "Semua Ritel..."}
                 </span>
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverPrimitive.Portal>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white" align="start">
-                <Command className="bg-white border-slate-200">
-                  <CommandInput placeholder="Cari ritel..." className="!text-slate-900 placeholder:!text-slate-400 font-medium bg-white" />
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800" align="start">
+                <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <CommandInput placeholder="Cari ritel..." className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800" />
                   <CommandListUI className="max-h-64 scrollbar-hide">
                     <CommandEmpty className="text-slate-500 py-4 text-center">Ritel tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
@@ -790,7 +796,7 @@ export default function CreditLimitApprovalPage() {
                           setSelectedTujuan("");
                           setOpenRitel(false);
                         }}
-                        className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                        className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                       >
                         <Check className={cn("mr-2 h-4 w-4", selectedNamaPt === "" ? "opacity-100" : "opacity-0")} />
                         Semua Ritel
@@ -799,7 +805,7 @@ export default function CreditLimitApprovalPage() {
                         <CommandItem
                           key={namaPt}
                           value={namaPt}
-                          className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                          className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                           onSelect={() => {
                             setSelectedNamaPt(namaPt);
                             setSelectedInisial("");
@@ -829,18 +835,18 @@ export default function CreditLimitApprovalPage() {
                 role="combobox"
                 disabled={!selectedNamaPt}
                 aria-expanded={openInisial}
-                className="w-full justify-between bg-white border-slate-200 text-slate-800 hover:bg-slate-50 hover:text-slate-900 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
+                className="w-full justify-between bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm dark:shadow-none transition-all disabled:opacity-50"
               >
-                <span className={!selectedInisial ? "text-slate-400 font-normal truncate" : "font-bold truncate"}>
+                <span className={!selectedInisial ? "text-slate-400 dark:text-slate-500 font-normal truncate" : "font-bold truncate"}>
                   {selectedInisial || "Semua Inisial..."}
                 </span>
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverPrimitive.Portal>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white" align="start">
-                <Command className="bg-white border-slate-200">
-                  <CommandInput placeholder="Cari inisial..." className="!text-slate-900 placeholder:!text-slate-400 font-medium bg-white" />
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800" align="start">
+                <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <CommandInput placeholder="Cari inisial..." className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800" />
                   <CommandListUI className="max-h-64 scrollbar-hide">
                     <CommandEmpty className="text-slate-500 py-4 text-center">Inisial tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
@@ -850,7 +856,7 @@ export default function CreditLimitApprovalPage() {
                           setSelectedTujuan("");
                           setOpenInisial(false);
                         }}
-                        className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                        className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                       >
                         <Check className={cn("mr-2 h-4 w-4", selectedInisial === "" ? "opacity-100" : "opacity-0")} />
                         Semua Inisial
@@ -864,7 +870,7 @@ export default function CreditLimitApprovalPage() {
                             setSelectedTujuan("");
                             setOpenInisial(false);
                           }}
-                          className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                          className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                         >
                           <Check className={cn("mr-2 h-4 w-4", selectedInisial === ini ? "opacity-100" : "opacity-0")} />
                           {ini}
@@ -888,18 +894,18 @@ export default function CreditLimitApprovalPage() {
                 role="combobox"
                 disabled={!selectedNamaPt}
                 aria-expanded={openTujuan}
-                className="w-full justify-between bg-white border-slate-200 text-slate-800 hover:bg-slate-50 hover:text-slate-900 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
+                className="w-full justify-between bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm dark:shadow-none transition-all disabled:opacity-50"
               >
-                <span className={!selectedTujuan ? "text-slate-400 font-normal truncate" : "font-bold truncate"}>
+                <span className={!selectedTujuan ? "text-slate-400 dark:text-slate-500 font-normal truncate" : "font-bold truncate"}>
                   {selectedTujuan || "Semua Tujuan..."}
                 </span>
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverPrimitive.Portal>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white" align="start">
-                <Command className="bg-white border-slate-200">
-                  <CommandInput placeholder="Cari tujuan..." className="!text-slate-900 placeholder:!text-slate-400 font-medium bg-white" />
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800" align="start">
+                <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <CommandInput placeholder="Cari tujuan..." className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800" />
                   <CommandListUI className="max-h-64 scrollbar-hide">
                     <CommandEmpty className="text-slate-500 py-4 text-center">Tujuan tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
@@ -908,7 +914,7 @@ export default function CreditLimitApprovalPage() {
                           setSelectedTujuan("");
                           setOpenTujuan(false);
                         }}
-                        className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                        className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                       >
                         <Check className={cn("mr-2 h-4 w-4", selectedTujuan === "" ? "opacity-100" : "opacity-0")} />
                         Semua Tujuan
@@ -921,7 +927,7 @@ export default function CreditLimitApprovalPage() {
                             setSelectedTujuan(tujuan);
                             setOpenTujuan(false);
                           }}
-                          className="!text-slate-900 font-medium cursor-pointer aria-selected:bg-slate-100 aria-selected:!text-slate-900 flex items-center px-4 py-2"
+                          className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
                         >
                           <Check className={cn("mr-2 h-4 w-4", selectedTujuan === tujuan ? "opacity-100" : "opacity-0")} />
                           {tujuan}
@@ -942,7 +948,7 @@ export default function CreditLimitApprovalPage() {
           </label>
           <div className="flex flex-col xl:flex-row xl:items-center gap-2">
             <DateInputHybrid value={tglFrom} onChange={setTglFrom} placeholder="Dari..." />
-            <span className="hidden xl:inline text-slate-300">-</span>
+            <span className="hidden xl:inline text-slate-300 dark:text-slate-600">-</span>
             <DateInputHybrid value={tglTo} onChange={setTglTo} placeholder="Sampai..." />
           </div>
         </div>
@@ -952,30 +958,30 @@ export default function CreditLimitApprovalPage() {
       {loading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 animate-pulse">
+            <div key={i} className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none p-6 animate-pulse">
               <div className="flex items-center gap-4">
-                <div className="h-8 w-40 bg-slate-200 rounded-xl" />
+                <div className="h-8 w-40 bg-slate-200 dark:bg-slate-800/80 rounded-xl" />
                 <div className="ml-auto flex gap-3">
-                  <div className="h-7 w-20 bg-slate-100 rounded-lg" />
-                  <div className="h-7 w-24 bg-slate-100 rounded-lg" />
-                  <div className="h-7 w-24 bg-slate-100 rounded-lg" />
+                  <div className="h-7 w-20 bg-slate-100 dark:bg-slate-800/50 rounded-lg" />
+                  <div className="h-7 w-24 bg-slate-100 dark:bg-slate-800/50 rounded-lg" />
+                  <div className="h-7 w-24 bg-slate-100 dark:bg-slate-800/50 rounded-lg" />
                 </div>
-                <div className="h-5 w-5 bg-slate-100 rounded" />
+                <div className="h-5 w-5 bg-slate-100 dark:bg-slate-800/50 rounded" />
               </div>
             </div>
           ))}
         </div>
       ) : batchGroups.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none">
           <div className="flex flex-col items-center gap-3 py-16">
-            <div className="p-4 bg-slate-50 rounded-2xl">
-              <Truck size={28} className="text-slate-300" />
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+              <Truck size={28} className="text-slate-300 dark:text-slate-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-500">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 text-center">
                 Belum ada batch yang menunggu approval
               </p>
-              <p className="text-xs text-slate-400 mt-0.5 text-center">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 text-center">
                 Pengajuan Credit Limit akan muncul di sini setelah diajukan dari halaman Data.
               </p>
             </div>
@@ -1000,18 +1006,18 @@ export default function CreditLimitApprovalPage() {
 
       {/* ── Pagination ──────────────────────────────────────────────── */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-4">
-          <p className="text-xs text-slate-500">
-            Menampilkan <span className="font-bold text-slate-700">{paginatedBatches.length}</span> dari{" "}
-            <span className="font-bold text-slate-700">{batchGroups.length}</span> batch
+        <div className="flex items-center justify-between bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none px-6 py-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{paginatedBatches.length}</span> dari{" "}
+            <span className="font-bold text-slate-700 dark:text-slate-200">{batchGroups.length}</span> batch
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
-              <ChevronLeft size={16} className="text-slate-600" />
+              <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
             </button>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <button
@@ -1019,8 +1025,8 @@ export default function CreditLimitApprovalPage() {
                 onClick={() => setCurrentPage(page)}
                 className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${
                   page === currentPage
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-200/50"
+                    : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                 }`}
               >
                 {page}
@@ -1029,9 +1035,9 @@ export default function CreditLimitApprovalPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
-              <ChevronRight size={16} className="text-slate-600" />
+              <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
             </button>
           </div>
         </div>

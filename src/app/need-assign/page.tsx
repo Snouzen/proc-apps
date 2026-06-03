@@ -77,8 +77,8 @@ function CustomSelect({
         }}
         className={`flex h-10 w-full items-center justify-between rounded-xl border px-3 text-sm transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 ${
           disabled
-            ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
-            : "bg-white border-slate-300 text-slate-800 hover:border-blue-400 shadow-sm"
+            ? "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+            : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 hover:border-blue-400 shadow-sm"
         }`}
       >
         <span className="truncate">{selectedLabel}</span>
@@ -97,7 +97,7 @@ function CustomSelect({
                   onClear();
                 }
               }}
-              className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-rose-500 transition-colors"
+              className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-rose-500 transition-colors"
             >
               <X size={14} />
             </div>
@@ -113,7 +113,7 @@ function CustomSelect({
 
       {open && !disabled && (
         <div
-          className={`absolute z-[9999] mt-1 min-w-[200px] max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 ${
+          className={`absolute z-[9999] mt-1 min-w-[200px] max-h-60 w-full overflow-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
@@ -126,10 +126,10 @@ function CustomSelect({
                   onChange(String(opt.value));
                   setOpen(false);
                 }}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 font-medium ${
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 font-medium ${
                   String(opt.value) === String(value)
-                    ? "bg-blue-50 text-blue-700 font-bold"
-                    : "text-slate-700"
+                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold"
+                    : "text-slate-700 dark:text-slate-300"
                 }`}
               >
                 {opt.label}
@@ -418,7 +418,7 @@ export default function NeedAssignPage() {
       header: "No",
       id: "index",
       cell: ({ row }) => (
-        <span className="text-black font-bold">
+        <span className="text-black dark:text-slate-200 font-bold">
           {(page - 1) * rowsPerPage + row.index + 1}
         </span>
       ),
@@ -428,7 +428,7 @@ export default function NeedAssignPage() {
       accessorKey: "noPo",
       cell: ({ row }) => (
         <div
-          className="font-semibold text-black uppercase max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+          className="font-semibold text-black dark:text-slate-200 uppercase max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
           title={String(row.original.noPo || "-")}
         >
           {row.original.noPo || "-"}
@@ -440,7 +440,7 @@ export default function NeedAssignPage() {
       accessorKey: "company",
       cell: ({ row }) => (
         <div
-          className="text-slate-800 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+          className="text-slate-800 dark:text-slate-200 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
           title={String(
             row.original.company || row.original?.RitelModern?.namaPt || "-",
           )}
@@ -454,7 +454,7 @@ export default function NeedAssignPage() {
       accessorKey: "tujuanDetail",
       cell: ({ row }) => (
         <div
-          className="text-slate-800 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
+          className="text-slate-800 dark:text-slate-200 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
           title={String(row.original.tujuanDetail || "-")}
         >
           {row.original.tujuanDetail || "-"}
@@ -517,7 +517,7 @@ export default function NeedAssignPage() {
           regional ??
           "";
         return (
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 whitespace-nowrap">
+          <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800/50 px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
             {lockedRegional || "-"}
           </span>
         );
@@ -596,7 +596,7 @@ export default function NeedAssignPage() {
       header: "Tgl PO",
       accessorKey: "tglPo",
       cell: ({ row }) => (
-        <span className="text-slate-800 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
+        <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
           {formatDate(row.original.tglPo)}
         </span>
       ),
@@ -605,7 +605,7 @@ export default function NeedAssignPage() {
       header: "Expired",
       accessorKey: "expiredTgl",
       cell: ({ row }) => (
-        <span className="text-slate-800 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
+        <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
           {formatDate(row.original.expiredTgl)}
         </span>
       ),
@@ -614,7 +614,7 @@ export default function NeedAssignPage() {
       header: "No Invoice",
       accessorKey: "noInvoice",
       cell: ({ row }) => (
-        <span className="text-slate-800 font-medium whitespace-nowrap text-[12px]">
+        <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px]">
           {row.original.noInvoice || "-"}
         </span>
       ),
@@ -624,7 +624,7 @@ export default function NeedAssignPage() {
       accessorKey: "remarks",
       cell: ({ row }) => {
         const remarks = row.original.remarks;
-        if (!remarks) return <span className="text-slate-300 text-[12px]">-</span>;
+        if (!remarks) return <span className="text-slate-300 dark:text-slate-500 text-[12px]">-</span>;
         return (
           <div className="flex justify-center py-2">
             <Popover.Root 
@@ -637,7 +637,7 @@ export default function NeedAssignPage() {
                   onMouseEnter={() => setHoveredPoId(row.original.id)}
                   onMouseLeave={() => setHoveredPoId(null)}
                 >
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg text-[10px] font-bold transition-all duration-300 hover:bg-rose-100/80 truncate w-full shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 rounded-lg text-[10px] font-bold transition-all duration-300 hover:bg-rose-100/80 truncate w-full shadow-sm">
                     {remarks}
                   </span>
                 </div>
@@ -667,7 +667,7 @@ export default function NeedAssignPage() {
           0,
         );
         return (
-          <span className="text-slate-700 font-bold text-[12px] tabular-nums whitespace-nowrap inline-block text-right pr-4">
+          <span className="text-slate-700 dark:text-slate-200 font-bold text-[12px] tabular-nums whitespace-nowrap inline-block text-right pr-4">
             {total > 0 ? total.toLocaleString("id-ID") : "-"}
           </span>
         );
@@ -782,14 +782,14 @@ export default function NeedAssignPage() {
                 onClick={onAssign}
                 className={`inline-flex h-9 px-3 items-center justify-center rounded-xl border text-xs font-bold whitespace-nowrap transition-colors duration-150 ${
                   isButtonDisabled
-                    ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
-                    : "border-blue-200 bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+                    ? "border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50"
+                    : "border-blue-200 dark:border-blue-800 bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
                 }`}
               >
                 {st.saving ? "Saving…" : "Assign"}
               </button>
               <button
-                className="inline-flex h-9 px-3 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-bold whitespace-nowrap"
+                className="inline-flex h-9 px-3 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold whitespace-nowrap"
                 onClick={() => openModal(row.original)}
               >
                 View
@@ -841,8 +841,8 @@ export default function NeedAssignPage() {
     <main className="px-5 py-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Need To Assign</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Need To Assign</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Menampilkan PO yang belum memiliki data regional dan belum expired.
           </p>
         </div>
@@ -856,7 +856,7 @@ export default function NeedAssignPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari No PO / Company / Inisial…"
-              className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-800"
+              className="h-10 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-3 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
             />
           </div>
           {/* UI FIX: Modern Custom Select */}
@@ -878,21 +878,21 @@ export default function NeedAssignPage() {
         </div>
       </div>
 
-      <div className="mt-6 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-160px)] min-h-[500px]">
+      <div className="mt-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-160px)] min-h-[500px]">
         {error && (
-          <div className="px-6 py-4 text-sm text-rose-700 bg-rose-50 border-b border-rose-100">
+          <div className="px-6 py-4 text-sm text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border-b border-rose-100 dark:border-rose-800">
             {error}
           </div>
         )}
         <div className="overflow-auto flex-1 relative">
           <table className="min-w-[920px] w-full text-left relative">
-            <thead className="text-[11px] text-slate-800 uppercase tracking-wide sticky top-0 z-10 shadow-sm shadow-slate-200/50 bg-slate-50 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200">
+            <thead className="text-[11px] text-slate-800 dark:text-slate-300 uppercase tracking-wide sticky top-0 z-10 shadow-sm shadow-slate-200/50 dark:shadow-slate-900/50 bg-slate-50 dark:bg-slate-800/95 backdrop-blur after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200 dark:after:bg-slate-700">
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id}>
                   {hg.headers.map((h) => (
                     <th
                       key={h.id}
-                      className="px-6 py-3 font-bold bg-slate-50 whitespace-nowrap"
+                      className="px-6 py-3 font-bold bg-slate-50 dark:bg-slate-800/95 whitespace-nowrap"
                     >
                       {h.isPlaceholder
                         ? null
@@ -903,12 +903,12 @@ export default function NeedAssignPage() {
               ))}
             </thead>
             <tbody
-              className={`divide-y divide-slate-100 text-sm text-black transition-opacity duration-300 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
+              className={`divide-y divide-slate-100 dark:divide-slate-700 text-sm text-black dark:text-slate-200 transition-opacity duration-300 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
             >
               {table.getRowModel().rows.map((r) => (
                 <tr
                   key={r.id}
-                  className="hover:bg-slate-50/50 transition-colors"
+                  className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors"
                 >
                   {r.getVisibleCells().map((c) => (
                     <td key={c.id} className="px-6 py-3">
@@ -920,7 +920,7 @@ export default function NeedAssignPage() {
               {filteredRows.length === 0 && !loading && !isTransitioning && (
                 <tr>
                   <td
-                    className="px-6 py-10 text-center text-slate-500"
+                    className="px-6 py-10 text-center text-slate-500 dark:text-slate-400"
                     colSpan={columns.length}
                   >
                     Tidak ada data Need To Assign.
@@ -930,7 +930,7 @@ export default function NeedAssignPage() {
               {(loading || isTransitioning) && (
                 <tr>
                   <td
-                    className="px-6 py-10 text-center text-slate-800"
+                    className="px-6 py-10 text-center text-slate-800 dark:text-slate-200"
                     colSpan={columns.length}
                   >
                     Loading…
@@ -941,8 +941,8 @@ export default function NeedAssignPage() {
           </table>
         </div>
 
-        <div className="px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-slate-500">
+        <div className="px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 dark:border-slate-700">
+          <div className="text-sm text-slate-500 dark:text-slate-400">
             Showing {filteredRows.length} of {total} PO
           </div>
           <div className="flex items-center justify-end gap-2">
@@ -952,7 +952,7 @@ export default function NeedAssignPage() {
                 setIsTransitioning(true);
                 setPage((p) => Math.max(1, p - 1));
               }}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
             >
               Previous
             </button>
@@ -962,7 +962,7 @@ export default function NeedAssignPage() {
                 setIsTransitioning(true);
                 setPage((p) => Math.min(totalPages, p + 1));
               }}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
             >
               Next
             </button>

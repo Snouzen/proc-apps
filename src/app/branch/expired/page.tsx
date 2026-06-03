@@ -292,11 +292,11 @@ export default function ExpiredCalendarPage() {
             <div className="p-2.5 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl shadow-lg shadow-rose-500/20">
               <AlertTriangle size={22} className="text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
               Expired Calendar
             </h1>
           </div>
-          <p className="text-slate-500 text-sm ml-[52px]">
+          <p className="text-slate-500 dark:text-slate-400 text-sm ml-[52px]">
             Visualisasi tanggal kadaluarsa (expired) PO untuk monitoring limit
             waktu.
           </p>
@@ -304,8 +304,8 @@ export default function ExpiredCalendarPage() {
       </div>
 
       {/* Filters (Removed overflow-hidden to fix dropdown clipping) */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 relative">
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rose-500 to-pink-500" />
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-6 relative">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rose-500 to-pink-500 rounded-t-2xl" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
           {role !== "sitearea" && (
             <div className="space-y-1.5">
@@ -385,8 +385,8 @@ export default function ExpiredCalendarPage() {
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between relative">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between relative">
           <button
             onClick={() => {
               let m = month - 1,
@@ -399,23 +399,23 @@ export default function ExpiredCalendarPage() {
               setSelectedYear(String(y));
               setSelectedDateKey(null);
             }}
-            className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors z-10"
           >
             <ChevronLeft size={20} />
           </button>
 
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center relative pointer-events-auto">
-              <h3 className="text-lg font-bold text-slate-800">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
                 {MONTH_NAMES[month - 1]} {year}
               </h3>
               {selectedSiteArea && (
-                <p className="text-xs text-slate-400 font-medium mt-0.5">
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
                   {selectedSiteArea} · {selectedRegional}
                 </p>
               )}
               <div className="absolute top-1/2 -translate-y-1/2 left-full ml-3 flex items-center gap-2">
-                <span className="text-[10px] font-black bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-100 uppercase tracking-widest whitespace-nowrap">
+                <span className="text-[10px] font-black bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-lg border border-rose-100 dark:border-rose-800 uppercase tracking-widest whitespace-nowrap">
                   {Object.values(groupedPOs)
                     .flat()
                     .reduce((acc, po) => {
@@ -434,7 +434,7 @@ export default function ExpiredCalendarPage() {
                     .toLocaleString("id-ID")}{" "}
                   KG
                 </span>
-                <span className="text-[10px] font-black bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-lg border border-emerald-100 uppercase tracking-widest whitespace-nowrap">
+                <span className="text-[10px] font-black bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-lg border border-emerald-100 dark:border-emerald-800 uppercase tracking-widest whitespace-nowrap">
                   RP{" "}
                   {Object.values(groupedPOs)
                     .flat()
@@ -466,17 +466,17 @@ export default function ExpiredCalendarPage() {
               setSelectedYear(String(y));
               setSelectedDateKey(null);
             }}
-            className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors z-10"
           >
             <ChevronRight size={20} />
           </button>
         </div>
 
-        <div className="grid grid-cols-7 border-b border-slate-100">
+        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700/50">
           {DAY_LABELS.map((d) => (
             <div
               key={d}
-              className="text-center py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider"
+              className="text-center py-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider"
             >
               {d}
             </div>
@@ -491,24 +491,24 @@ export default function ExpiredCalendarPage() {
             </span>
           </div>
         ) : (
-          <div className="border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden m-6">
-            <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200">
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm overflow-hidden m-6">
+            <div className="grid grid-cols-7 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
               {DAY_LABELS.map((day, i) => (
                 <div
                   key={i}
-                  className="py-2 text-center text-[10px] font-black text-slate-500 uppercase tracking-wider"
+                  className="py-2 text-center text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                 >
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px bg-slate-200">
+            <div className="grid grid-cols-7 gap-px bg-slate-200 dark:bg-slate-700">
               {calendarCells.map((day, idx) => {
                 if (day === null)
                   return (
                     <div
                       key={`empty-${idx}`}
-                      className="bg-slate-50/50 min-h-[50px] sm:min-h-[60px]"
+                      className="bg-slate-50/50 dark:bg-slate-800/50 min-h-[50px] sm:min-h-[60px]"
                     />
                   );
                 const dateKey = formatDateKey(year, month, day);
@@ -524,16 +524,16 @@ export default function ExpiredCalendarPage() {
                   <div
                     key={dateKey}
                     onClick={() => setSelectedDateKey(dateKey)}
-                    className={`relative bg-white min-h-[50px] sm:min-h-[60px] p-2 cursor-pointer transition-all hover:bg-slate-50 group ${hasPOs ? "bg-rose-50/60 hover:bg-rose-100/60" : ""} ${isSelected ? "ring-2 ring-inset ring-rose-500 z-10" : ""}`}
+                    className={`relative bg-white dark:bg-slate-800 min-h-[50px] sm:min-h-[60px] p-2 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-700/50 group ${hasPOs ? "bg-rose-50/60 dark:bg-rose-900/20 hover:bg-rose-100/60 dark:hover:bg-rose-900/40" : ""} ${isSelected ? "ring-2 ring-inset ring-rose-500 z-10" : ""}`}
                   >
                     <div className="flex justify-between items-start">
                       <span
-                        className={`text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full ${today ? "bg-rose-600 text-white shadow-sm" : hasPOs ? "text-rose-900" : "text-slate-500"}`}
+                        className={`text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full ${today ? "bg-rose-600 text-white shadow-sm" : hasPOs ? "text-rose-900 dark:text-rose-300" : "text-slate-500 dark:text-slate-400"}`}
                       >
                         {day}
                       </span>
                       {hasPOs && (
-                        <span className="text-[9px] font-black text-rose-700 bg-rose-200/80 px-1.5 py-0.5 rounded-md leading-none">
+                        <span className="text-[9px] font-black text-rose-700 dark:text-rose-300 bg-rose-200/80 dark:bg-rose-900/50 px-1.5 py-0.5 rounded-md leading-none">
                           {pos.length}
                         </span>
                       )}
@@ -542,7 +542,7 @@ export default function ExpiredCalendarPage() {
                     {/* KG Info (Sesuai Delivery Calendar) */}
                     {hasPOs && (
                       <div className="mt-1 relative z-10">
-                        <span className="text-[10px] sm:text-[11px] font-black text-rose-800 tracking-tight leading-none block">
+                        <span className="text-[10px] sm:text-[11px] font-black text-rose-800 dark:text-rose-400 tracking-tight leading-none block">
                           {pos
                             .reduce((acc, po) => {
                               const items = Array.isArray(po.Items)
@@ -560,7 +560,7 @@ export default function ExpiredCalendarPage() {
                               );
                             }, 0)
                             .toLocaleString("id-ID")}{" "}
-                          <span className="text-[8px] font-bold text-rose-700/70 uppercase">
+                          <span className="text-[8px] font-bold text-rose-700/70 dark:text-rose-400/70 uppercase">
                             Kg
                           </span>
                         </span>
@@ -579,14 +579,14 @@ export default function ExpiredCalendarPage() {
         <div className="mt-8 border-t pt-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600">
+              <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
                 <AlertTriangle size={20} />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-800">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                   PO Expired: {selectedDateLabel}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
                   {filteredDetailPOs.length} /{" "}
                   {groupedPOs[selectedDateKey]?.length || 0} Purchase Orders
                   Berakhir
@@ -595,27 +595,27 @@ export default function ExpiredCalendarPage() {
             </div>
             <button
               onClick={() => setSelectedDateKey(null)}
-              className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
             >
               <X size={20} />
             </button>
           </div>
 
           {/* TOOLBAR TABEL */}
-          <div className="flex flex-col lg:flex-row gap-3 mb-4 items-center justify-between bg-zinc-50/80 p-3 rounded-2xl border border-slate-100">
+          <div className="flex flex-col lg:flex-row gap-3 mb-4 items-center justify-between bg-zinc-50/80 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <div className="relative w-full sm:w-64">
                 <Search
                   size={16}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                 />
-                <input
-                  type="text"
-                  value={inlineSearch}
-                  onChange={(e) => setInlineSearch(e.target.value)}
-                  placeholder="Cari No PO, Ritel..."
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 outline-none"
-                />
+                  <input
+                    type="text"
+                    value={inlineSearch}
+                    onChange={(e) => setInlineSearch(e.target.value)}
+                    placeholder="Cari No PO, Ritel..."
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-rose-500 outline-none"
+                  />
               </div>
               <div className="flex items-center gap-2">
                 <DateInputHybrid
@@ -624,7 +624,7 @@ export default function ExpiredCalendarPage() {
                   placeholder="Date From"
                   className="w-36"
                 />
-                <span className="text-slate-300 font-bold">to</span>
+                <span className="text-slate-300 dark:text-slate-600 font-bold">to</span>
                 <DateInputHybrid
                   value={inlineDateTo}
                   onChange={setInlineDateTo}
@@ -637,7 +637,7 @@ export default function ExpiredCalendarPage() {
             <div className="relative">
               <button
                 onClick={() => setColsOpen(!colsOpen)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm"
               >
                 <LayoutList size={16} />
                 Columns
@@ -648,17 +648,17 @@ export default function ExpiredCalendarPage() {
               </button>
 
               {colsOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-2xl z-[120] p-2 animate-in fade-in zoom-in-95 duration-200">
-                  <div className="p-2 border-b border-slate-50 flex items-center justify-between gap-1 mb-1">
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[120] p-2 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-2 border-b border-slate-50 dark:border-slate-700/50 flex items-center justify-between gap-1 mb-1">
                     <button
                       onClick={() => toggleAllCols(true)}
-                      className="text-[10px] font-black text-rose-600 uppercase tracking-widest hover:bg-rose-50 px-2 py-1 rounded-md"
+                      className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest hover:bg-rose-50 dark:hover:bg-rose-900/30 px-2 py-1 rounded-md"
                     >
                       All
                     </button>
                     <button
                       onClick={() => toggleAllCols(false)}
-                      className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 px-2 py-1 rounded-md"
+                      className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 px-2 py-1 rounded-md"
                     >
                       None
                     </button>
@@ -673,14 +673,14 @@ export default function ExpiredCalendarPage() {
                             [k]: !v,
                           }))
                         }
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors"
                       >
                         <div
-                          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${v ? "bg-rose-500 border-rose-500" : "bg-white border-slate-200"}`}
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${v ? "bg-rose-500 border-rose-500" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600"}`}
                         >
                           {v && <Check size={10} className="text-white" />}
                         </div>
-                        <span className="text-xs font-bold text-slate-600 capitalize">
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 capitalize">
                           {k.replace(/([A-Z])/g, " $1")}
                         </span>
                       </div>
@@ -698,7 +698,7 @@ export default function ExpiredCalendarPage() {
                 label: "NO PO",
                 hidden: !visibleCols.noPo,
                 render: (_v: any, po: any) => (
-                  <span className="text-xs font-black text-[#1e3a8a] whitespace-nowrap">
+                  <span className="text-xs font-black text-[#1e3a8a] dark:text-blue-300 whitespace-nowrap">
                     {po.noPo}
                   </span>
                 ),
@@ -708,7 +708,7 @@ export default function ExpiredCalendarPage() {
                 label: "TGL PO",
                 hidden: !visibleCols.tglPo,
                 render: (_v: any, po: any) => (
-                  <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {formatDatePremium(po.tglPo)}
                   </span>
                 ),
@@ -718,7 +718,7 @@ export default function ExpiredCalendarPage() {
                 label: "EXPIRED",
                 hidden: !visibleCols.expired,
                 render: (_v: any, po: any) => (
-                  <span className="text-[11px] font-black text-rose-500 whitespace-nowrap">
+                  <span className="text-[11px] font-black text-rose-500 dark:text-rose-400 whitespace-nowrap">
                     {formatDatePremium(po.expiredTgl)}
                   </span>
                 ),
@@ -733,7 +733,7 @@ export default function ExpiredCalendarPage() {
                     .filter(Boolean)
                     .join(", ");
                   return (
-                    <span className="text-[11px] font-bold text-slate-700 uppercase whitespace-nowrap">
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase whitespace-nowrap">
                       {names || "-"}
                     </span>
                   );
@@ -745,7 +745,7 @@ export default function ExpiredCalendarPage() {
                 hidden: !visibleCols.tglKirim,
                 render: (_v: any, po: any) => (
                   <span
-                    className={`text-[11px] font-black whitespace-nowrap ${po.tglkirim ? "text-amber-600" : "text-slate-300"}`}
+                    className={`text-[11px] font-black whitespace-nowrap ${po.tglkirim ? "text-amber-600 dark:text-amber-400" : "text-slate-300 dark:text-slate-500"}`}
                   >
                     {po.tglkirim ? formatDatePremium(po.tglkirim) : "-"}
                   </span>
@@ -764,7 +764,7 @@ export default function ExpiredCalendarPage() {
                     0,
                   );
                   return (
-                    <span className="text-[11px] font-black text-slate-700">
+                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">
                       {total.toLocaleString("id-ID")}
                     </span>
                   );
@@ -783,7 +783,7 @@ export default function ExpiredCalendarPage() {
                     0,
                   );
                   return (
-                    <span className="text-[11px] font-black text-amber-500">
+                    <span className="text-[11px] font-black text-amber-500 dark:text-amber-400">
                       {total ? total.toLocaleString("id-ID") : "-"}
                     </span>
                   );
@@ -794,7 +794,7 @@ export default function ExpiredCalendarPage() {
                 label: "NAMA SUPIR",
                 hidden: !visibleCols.namaSupir,
                 render: (_v: any, po: any) => (
-                  <span className="text-[11px] font-bold text-slate-600 uppercase">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">
                     {po.namaSupir || "-"}
                   </span>
                 ),
@@ -804,7 +804,7 @@ export default function ExpiredCalendarPage() {
                 label: "PLAT NOMOR",
                 hidden: !visibleCols.platNomor,
                 render: (_v: any, po: any) => (
-                  <span className="text-[11px] font-bold text-slate-600 uppercase">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">
                     {po.platNomor || "-"}
                   </span>
                 ),
@@ -824,7 +824,7 @@ export default function ExpiredCalendarPage() {
                     0,
                   );
                   return (
-                    <span className="text-[11px] font-black text-slate-700">
+                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">
                       {total.toLocaleString("id-ID")}
                     </span>
                   );
@@ -835,7 +835,7 @@ export default function ExpiredCalendarPage() {
                 label: "TUJUAN",
                 hidden: !visibleCols.tujuan,
                 render: (_v: any, po: any) => (
-                  <span className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[150px] inline-block">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase truncate max-w-[150px] inline-block">
                     {po.tujuanDetail || "-"}
                   </span>
                 ),
@@ -851,7 +851,7 @@ export default function ExpiredCalendarPage() {
                     0,
                   );
                   return (
-                    <span className="text-[11px] font-black text-indigo-600 whitespace-nowrap">
+                    <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
                       {formatCurrencyPremium(total)}
                     </span>
                   );
@@ -867,7 +867,7 @@ export default function ExpiredCalendarPage() {
                       e.stopPropagation();
                       window.open(`/po?noPo=${po.noPo}`, "_blank");
                     }}
-                    className="p-2 text-slate-300 hover:text-indigo-600 transition-colors"
+                    className="p-2 text-slate-300 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                   >
                     <ExternalLink size={14} />
                   </button>
@@ -879,18 +879,18 @@ export default function ExpiredCalendarPage() {
             hidePagination
             loading={false}
             variant="rounded"
-            className="bg-white border border-slate-100 rounded-[28px] overflow-hidden shadow-xl shadow-slate-200/50"
+            className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[28px] overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50"
             emptyMessage="Data Tidak Ditemukan"
           />
         </div>
       )}
 
       {!selectedSiteArea && selectedRegional !== "ALL" && (
-        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-          <div className="p-4 bg-slate-50 rounded-2xl mb-4">
-            <AlertTriangle size={32} className="text-slate-300" />
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl mb-4">
+            <AlertTriangle size={32} className="text-slate-300 dark:text-slate-500" />
           </div>
-          <p className="text-sm font-bold text-slate-500">
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Pilih Site Area untuk memantau data expired
           </p>
         </div>

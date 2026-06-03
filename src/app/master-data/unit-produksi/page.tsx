@@ -321,8 +321,8 @@ export default function UnitProduksiPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Unit Produksi</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Unit Produksi</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Kelola Regional dan Site Area
           </p>
         </div>
@@ -345,7 +345,7 @@ export default function UnitProduksiPage() {
               setModalMode("addSite");
               setIsModalOpen(true);
             }}
-            className="flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-sm"
+            className="flex items-center justify-center gap-2 bg-slate-900 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-sm active:scale-95 text-sm"
           >
             <Plus size={18} />
             Add New Site
@@ -371,17 +371,17 @@ export default function UnitProduksiPage() {
         variant="unit"
       />
       {/* Search Bar (diseragamkan seperti halaman Produk/Ritel) */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white dark:bg-slate-900/40 p-4 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none">
         <div className="relative max-w-md">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
             size={18}
           />
           <input
             suppressHydrationWarning
             type="text"
             placeholder="Cari Regional atau Site..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:outline-non focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm dark:text-slate-200"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -391,15 +391,16 @@ export default function UnitProduksiPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900/40 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
         <DataTable
+          rowKey={(r: any) => r.id}
           columns={[
             {
               key: "id",
               label: "ID",
               width: "w-32",
               render: (_v: any, reg: any) => (
-                <span className="text-sm font-medium text-slate-400">
+                <span className="text-sm font-medium text-slate-400 dark:text-slate-500">
                   {reg.id.substring(0, 10)}
                 </span>
               )
@@ -411,16 +412,16 @@ export default function UnitProduksiPage() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleRow(reg.id); }}
-                    className="text-gray-400 hover:text-blue-600 transition-all"
+                    className="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-indigo-400 transition-all"
                   >
                     {expandedRows.includes(reg.id) ? (
-                      <ChevronDown size={20} className="text-blue-600" />
+                      <ChevronDown size={20} className="text-blue-600 dark:text-indigo-400" />
                     ) : (
                       <ChevronRight size={20} />
                     )}
                   </button>
                   <span
-                    className="text-sm font-bold text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                    className="text-sm font-bold text-slate-800 dark:text-slate-200 cursor-pointer hover:text-blue-600 dark:hover:text-indigo-400 transition-colors"
                     onClick={(e) => { e.stopPropagation(); toggleRow(reg.id); }}
                   >
                     {reg.nama}
@@ -443,7 +444,7 @@ export default function UnitProduksiPage() {
                         sites: reg.sites,
                       });
                     }}
-                    className="p-2 text-gray-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-all"
+                    className="p-2 text-gray-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
                     title="View"
                   >
                     <Eye size={16} />
@@ -457,14 +458,14 @@ export default function UnitProduksiPage() {
                       setModalMode("addSite");
                       setIsModalOpen(true);
                     }}
-                    className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
+                    className="p-2 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-indigo-400 rounded-lg hover:bg-blue-50 dark:hover:bg-indigo-500/10 transition-all"
                     title="Tambah Site"
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); setDeleteRegional(reg.nama); }}
-                    className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
+                    className="p-2 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-rose-400 rounded-lg hover:bg-red-50 dark:hover:bg-rose-500/10 transition-all"
                     title="Hapus Regional"
                   >
                     <Trash2 size={16} />
@@ -483,19 +484,19 @@ export default function UnitProduksiPage() {
           expandedKeys={new Set(expandedRows)}
           onToggleExpand={(id) => toggleRow(id)}
           renderExpandedRow={(reg: any) => (
-            <tr className="bg-slate-50/50">
-              <td colSpan={3} className="px-16 py-4">
+            <tr className="bg-slate-50/50 dark:bg-slate-900/50">
+              <td colSpan={3} className="px-16 py-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-1">
                   {reg.sites.map((site: any, index: number) => (
                     <div
                       key={index}
-                      className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-3 justify-between shadow-sm group hover:border-indigo-400 transition-all"
+                      className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl flex items-center gap-3 justify-between shadow-sm group hover:border-indigo-400 dark:hover:border-indigo-500 transition-all"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                           <MapPin size={16} />
                         </div>
-                        <span className="text-sm font-bold text-slate-700">
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                           {site.name}
                         </span>
                       </div>
@@ -507,7 +508,7 @@ export default function UnitProduksiPage() {
                               regional: reg.nama,
                             })
                           }
-                          className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
+                          className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all"
                           title="View Detail"
                         >
                           <Eye size={14} />
@@ -523,7 +524,7 @@ export default function UnitProduksiPage() {
                             setNewSiteName(site.name);
                             setNewSiteAlamat(site.alamat);
                           }}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
+                          className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all"
                           title="Edit Site"
                         >
                           <Edit2 size={14} />
@@ -535,7 +536,7 @@ export default function UnitProduksiPage() {
                               site: site.name,
                             })
                           }
-                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
+                          className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-rose-400 rounded-lg hover:bg-red-50 dark:hover:bg-rose-500/10 transition-all"
                           title="Hapus Site"
                         >
                           <Trash2 size={14} />
@@ -556,9 +557,9 @@ export default function UnitProduksiPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setIsModalOpen(false)}
           ></div>
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-              <h3 className="text-xl font-bold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                 {modalMode === "addRegional"
                   ? "Tambah Regional Baru"
                   : contextRegional
@@ -567,7 +568,7 @@ export default function UnitProduksiPage() {
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-white rounded-xl transition-colors text-gray-400 hover:text-red-500"
+                className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-400 hover:text-red-500"
               >
                 <X size={20} />
               </button>
@@ -618,7 +619,7 @@ export default function UnitProduksiPage() {
                       placeholder="Contoh: SPP Kendal"
                       value={siteName}
                       onChange={(e) => setSiteName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200"
                     />
                   </div>
 
@@ -631,7 +632,7 @@ export default function UnitProduksiPage() {
                       placeholder="Masukkan alamat lengkap gudang/pabrik..."
                       value={siteAlamat}
                       onChange={(e) => setSiteAlamat(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 resize-none"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200 resize-none"
                     />
                   </div>
 
@@ -658,7 +659,7 @@ export default function UnitProduksiPage() {
                   } space-y-5`}
                 >
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                       Nama Regional
                     </label>
                     <input
@@ -667,7 +668,7 @@ export default function UnitProduksiPage() {
                       placeholder="Contoh: REG 4 KALIMANTAN"
                       value={selectedRegional}
                       onChange={(e) => setSelectedRegional(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
                     />
                   </div>
 
@@ -758,14 +759,14 @@ export default function UnitProduksiPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setViewRegional(null)}
           />
-          <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Regional: {viewRegional.nama}
               </h3>
               <button
                 onClick={() => setViewRegional(null)}
-                className="p-2 rounded-xl hover:bg-white text-gray-400 hover:text-red-500"
+                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
               >
                 <X size={18} />
               </button>
@@ -781,27 +782,27 @@ export default function UnitProduksiPage() {
                 return (
                   <>
                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {pageSites.map((s, i) => (
+                      {pageSites.map((s: any, i: number) => (
                         <li
                           key={`${start}-${i}`}
-                          className="px-3 py-2 bg-white border border-slate-200 rounded-xl flex items-center gap-2"
+                          className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center gap-2"
                         >
-                          <MapPin size={14} className="text-blue-600" />
-                          <span className="text-sm font-bold text-slate-700">
-                            {s}
+                          <MapPin size={14} className="text-blue-600 dark:text-indigo-400" />
+                          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                            {s.name}
                           </span>
                         </li>
                       ))}
                     </ul>
                     <div className="flex items-center justify-between mt-4">
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         Showing {total ? start + 1 : 0}–{end} of {total}
                       </p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setViewPage((p) => Math.max(p - 1, 1))}
                           disabled={viewPage === 1}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 disabled:opacity-50 hover:bg-gray-50"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                           Previous
                         </button>
@@ -810,7 +811,7 @@ export default function UnitProduksiPage() {
                             setViewPage((p) => Math.min(p + 1, totalPages))
                           }
                           disabled={viewPage === totalPages}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 disabled:opacity-50 hover:bg-gray-50"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                           Next
                         </button>
@@ -831,19 +832,19 @@ export default function UnitProduksiPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setDeleteRegional(null)}
           />
-          <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 bg-rose-50/50">
-              <h3 className="text-lg font-extrabold text-slate-800">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-rose-50/50 dark:bg-rose-500/10">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
                 Hapus semua site di {deleteRegional}?
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Tindakan ini akan menghapus seluruh site pada regional tersebut.
               </p>
             </div>
             <div className="p-5 flex items-center justify-end gap-2">
               <button
                 onClick={() => setDeleteRegional(null)}
-                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
+                className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700"
               >
                 Batal
               </button>
@@ -892,24 +893,24 @@ export default function UnitProduksiPage() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setViewedSite(null)}
           />
-          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-50 bg-indigo-50/50 flex items-center justify-between">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-indigo-50/50 dark:bg-indigo-500/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-indigo-600 text-white rounded-2xl">
                   <MapPin size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-800">
+                  <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">
                     Detail Site Area
                   </h3>
-                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
+                  <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
                     {viewedSite.regional}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setViewedSite(null)}
-                className="p-2 rounded-xl hover:bg-white text-slate-400 hover:text-rose-500 transition-colors"
+                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -919,21 +920,21 @@ export default function UnitProduksiPage() {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
                   Nama Site Area
                 </label>
-                <p className="text-xl font-black text-slate-800">
+                <p className="text-xl font-black text-slate-800 dark:text-slate-100">
                   {viewedSite.name}
                 </p>
               </div>
-              <div className="space-y-1 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
                   Alamat Lengkap
                 </label>
-                <p className="text-sm font-semibold text-slate-600 leading-relaxed italic">
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed italic">
                   {viewedSite.alamat || "Alamat belum ditambahkan."}
                 </p>
               </div>
               <button
                 onClick={() => setViewedSite(null)}
-                className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                className="w-full py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl font-black text-sm hover:bg-slate-800 dark:hover:bg-slate-700 transition-all shadow-lg shadow-slate-900/20"
               >
                 Tutup Detail
               </button>
