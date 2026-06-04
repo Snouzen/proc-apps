@@ -67,7 +67,8 @@ export async function GET(request: Request) {
           lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
           produk: rtvData?.Product?.name || rtvData?.produk || "-",
           unitProduksi: rtvData?.LokasiBarang?.namaRegional || rtvData?.PembebananReturn?.namaRegional || "-",
-          tujuan: rtvData?.namaCompany || rtvData?.RitelModern?.tujuan || "-"
+          tujuan: rtvData?.namaCompany || rtvData?.RitelModern?.tujuan || "-",
+          rpKg: Number(rtvData?.rpKg || 0),
         };
       });
 
@@ -196,6 +197,8 @@ export async function GET(request: Request) {
             lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
             produk: retur?.Product?.name || retur?.produk || "-",
             tujuan: retur?.namaCompany || retur?.RitelModern?.tujuan || "-",
+            rpKg: Number(retur?.rpKg || 0),
+            qty: retur?.qtyReturn || retur?.qty || retur?.pcs || 1,
           };
         });
 

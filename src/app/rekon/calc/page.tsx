@@ -65,6 +65,7 @@ interface Rtv {
   lokasiBarang?: string;
   produk?: string;
   tujuan?: string;
+  rpKg?: number;
 }
 
 interface Promo {
@@ -264,6 +265,7 @@ function RekonContent() {
           produk: r.Product?.name || r.produk || "-",
           unitProduksi: "-",
           tujuan: r.namaCompany || r.RitelModern?.tujuan || "-",
+          rpKg: Number(r.rpKg || 0),
         }));
 
         setSelectedRtvs(prev => {
@@ -788,7 +790,7 @@ function RekonContent() {
                        {/* Table RTV Container */}
                        <div className="bg-[#f8fafc] dark:bg-slate-900/50 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm w-full relative overflow-hidden">
                           <div className="max-h-[250px] overflow-auto premium-scrollbar scroll-smooth relative">
-                             <table className="w-full text-left border-collapse min-w-[1000px] table-auto">
+                             <table className="w-full text-left border-collapse min-w-[1100px] table-auto">
                                 <thead>
                                    <tr className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-white dark:border-slate-700/50 sticky top-0 bg-[#f8fafc] dark:bg-slate-900/90 backdrop-blur-md z-10 transition-colors">
                                       <th className="px-4 py-5 min-w-[140px]">RTV/CN</th>
@@ -799,6 +801,7 @@ function RekonContent() {
                                        <th className="px-4 py-5 min-w-[140px] font-black">Lokasi Barang</th>
                                        <th className="px-4 py-5 min-w-[140px] font-black">Tujuan</th>
                                        <th className="px-4 py-5 min-w-[120px] font-black">Produk</th>
+                                       <th className="px-4 py-5 min-w-[110px] text-right font-black">Rp/Kg</th>
                                        <th className="px-4 py-5 min-w-[110px] text-right font-black">Nominal</th>
                                        <th className="px-3 py-5 w-10 text-center">#</th>
                                    </tr>
@@ -878,6 +881,7 @@ function RekonContent() {
                                           <td className="px-4 py-4 text-slate-500 dark:text-slate-400 text-[10px] whitespace-nowrap">{rtv.lokasiBarang || "-"}</td>
                                           <td className="px-4 py-4 text-slate-500 dark:text-slate-400 text-[10px] whitespace-nowrap">{rtv.tujuan || "-"}</td>
                                           <td className="px-4 py-4 text-slate-500 dark:text-slate-400 text-[10px] max-w-[120px] truncate" title={rtv.produk}>{rtv.produk || "-"}</td>
+                                          <td className="px-4 py-4 text-right text-slate-500 dark:text-slate-400 tabular-nums font-bold whitespace-nowrap">{formatRp(rtv.rpKg || 0)}</td>
                                           <td className="px-4 py-4 text-right text-slate-800 dark:text-slate-200 tabular-nums font-black whitespace-nowrap">{formatRp(rtv.total)}</td>
                                          <td className="px-3 py-4 text-center">
                                             <button onClick={() => setSelectedRtvs(selectedRtvs.filter(x => x.id !== rtv.id))} className="w-5 h-5 bg-rose-50 dark:bg-rose-500/10 text-rose-400 dark:text-rose-500 rounded-full flex items-center justify-center mx-auto opacity-40 group-hover:opacity-100 transition-opacity hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-all"><X size={10} /></button>

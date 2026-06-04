@@ -280,16 +280,18 @@ export const generateRekonPdf = (
       const lokasi = typeof rtv === "object" ? (rtv.lokasiBarang || "-") : "-";
       const produk = typeof rtv === "object" ? (rtv.produk || "-") : "-";
       const tujuan = typeof rtv === "object" ? (rtv.tujuan || "-") : "-";
+      const rpKg = typeof rtv === "object" ? (rtv.rpKg || 0) : 0;
+      const pcs = typeof rtv === "object" ? (rtv.qty || rtv.qtyReturn || 0) : 0;
       
       // Get Unit Produksi from the related invoice's siteArea (to match UI calc/page.tsx)
       const relatedInv = (item.invoices || []).find((inv: any) => inv.noInvoice === refInv);
       const unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
       
-      return [String(i + 1), rtvNo || "-", refInv || "-", unitProduksi, pembebanan, lokasi, tujuan, produk, formatRp(nominal || 0)];
+      return [String(i + 1), rtvNo || "-", String(pcs), refInv || "-", unitProduksi, pembebanan, lokasi, tujuan, produk, formatRp(rpKg), formatRp(nominal || 0)];
     });
 
     if (rtvBody.length === 0) {
-      rtvBody.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-", "-"]);
+      rtvBody.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
     }
 
     rtvBody.push([
@@ -301,12 +303,14 @@ export const generateRekonPdf = (
       "",
       "",
       "",
+      "",
+      "",
       formatRp(item.totalRtvs || 0),
     ]);
 
     autoTable(doc, {
       startY: nextY + 3,
-      head: [["#", "No. RTV", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Tujuan", "Produk", "Nominal"]],
+      head: [["#", "No. RTV", "Pcs", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Tujuan", "Produk", "Rp/Kg", "Nominal"]],
       body: rtvBody,
       theme: "striped",
       styles: { fontSize: 6.5, cellPadding: 1.8, overflow: "linebreak" },
@@ -317,14 +321,16 @@ export const generateRekonPdf = (
       },
       columnStyles: {
         0: { halign: "center", cellWidth: 7 },
-        1: { cellWidth: 32 },
-        2: { cellWidth: 32 },
-        3: { cellWidth: 26 },
-        4: { cellWidth: 26 },
-        5: { cellWidth: 26 },
-        6: { cellWidth: 26 },
-        7: { cellWidth: 26 },
-        8: { halign: "right", cellWidth: 28 },
+        1: { cellWidth: 30 },
+        2: { halign: "center", cellWidth: 12 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 22 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 22 },
+        7: { cellWidth: 22 },
+        8: { cellWidth: 22 },
+        9: { halign: "right", cellWidth: 20 },
+        10: { halign: "right", cellWidth: 25 },
       },
       didParseCell: (hookData: any) => {
         if (hookData.row.index === rtvBody.length - 1) {
