@@ -25,7 +25,7 @@ export async function GET(request: Request) {
                { noInvoice: { not: "" } }
              ]
           },
-          select: { noInvoice: true },
+          select: { noInvoice: true, noPo: true },
           distinct: ['noInvoice'],
         }),
         prisma.dataRetur.findMany({
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       ]);
 
       return NextResponse.json({ 
-        invoices: availableInvoices.map(i => i.noInvoice).filter(Boolean),
+        invoices: availableInvoices.map(i => ({ noInvoice: i.noInvoice, noPo: i.noPo })).filter(i => i.noInvoice),
         rtvs: availableRtvs.map(r => r.rtvCn).filter(Boolean)
       });
     }

@@ -99,7 +99,7 @@ function RekonContent() {
   const [masterCompanies, setMasterCompanies] = useState<Company[]>([]);
   const [masterInvoices, setMasterInvoices] = useState<any[]>([]);
   const [masterRtvs, setMasterRtvs] = useState<any[]>([]);
-  const [masterInvoicesList, setMasterInvoicesList] = useState<string[]>([]);
+  const [masterInvoicesList, setMasterInvoicesList] = useState<any[]>([]);
   const [masterRtvsList, setMasterRtvsList] = useState<string[]>([]);
   const [masterPromos, setMasterPromos] = useState<Promo[]>([]);
 
@@ -283,11 +283,18 @@ function RekonContent() {
   };
 
   const availableInvoices = useMemo(() => {
-    return (masterInvoicesList || []).filter(no => 
-       no && typeof no === 'string' &&
-       no.toLowerCase().includes((invSearch || "").toLowerCase()) && 
-       !selectedInvoices.find(s => s.noInvoice === no)
-    );
+    return (masterInvoicesList || []).filter(item => {
+       if (!item) return false;
+       const noInv = typeof item === 'string' ? item : item.noInvoice;
+       const noPo = typeof item === 'string' ? "" : (item.noPo || "");
+       if (!noInv) return false;
+       
+       const searchLower = (invSearch || "").toLowerCase();
+       const matchInv = noInv.toLowerCase().includes(searchLower);
+       const matchPo = noPo.toLowerCase().includes(searchLower);
+       
+       return (matchInv || matchPo) && !selectedInvoices.find(s => s.noInvoice === noInv);
+    });
   }, [masterInvoicesList, invSearch, selectedInvoices]);
 
   const availableRtvs = useMemo(() => {
@@ -664,23 +671,31 @@ function RekonContent() {
                                          <div className="p-8 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">
                                             Tidak ada invoice tersedia
                                          </div>
-                                      ) : availableInvoices.map(invNo => (
-                                            <button 
-                                               key={invNo} 
-                                               onClick={() => handleSelectInvoice(invNo)} 
-                                               className="w-full p-5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-2xl transition-all flex justify-between items-center group text-left border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/20"
-                                            >
-                                               <div>
-                                                  <p className="font-black text-[12px] text-slate-800 dark:text-slate-200 uppercase tracking-tight">{highlightMatch(invNo, invSearch)}</p>
-                                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Pilih Invoice ini</p>
-                                               </div>
-                                               <div className="text-right">
-                                                  <div className="flex items-center gap-1 text-[8px] font-black text-indigo-500 uppercase">
-                                                     <Plus size={8} /> Ambil Detail
-                                                  </div>
-                                               </div>
-                                            </button>
-                                         ))
+                                      ) : availableInvoices.map(item => {
+                                             const invNo = typeof item === 'string' ? item : item.noInvoice;
+                                             const poNo = typeof item === 'string' ? null : item.noPo;
+                                             return (
+                                             <button 
+                                                key={invNo} 
+                                                onClick={() => handleSelectInvoice(invNo)} 
+                                                className="w-full p-5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-2xl transition-all flex justify-between items-center group text-left border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/20"
+                                             >
+                                                <div>
+                                                   <p className="font-black text-[12px] text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+                                                      {highlightMatch(invNo, invSearch)}
+                                                      {poNo && (
+                                                         <span className="text-slate-400 text-[10px] ml-2">({highlightMatch(poNo, invSearch)})</span>
+                                                      )}
+                                                   </p>
+                                                   <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Pilih Invoice ini</p>
+                                                </div>
+                                                <div className="text-right">
+                                                   <div className="flex items-center gap-1 text-[8px] font-black text-indigo-500 uppercase">
+                                                      <Plus size={8} /> Ambil Detail
+                                                   </div>
+                                                </div>
+                                             </button>
+                                          )})
                                       }
                                    </div>
                                 </Popover.Content>

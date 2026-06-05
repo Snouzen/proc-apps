@@ -55,7 +55,7 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
 
       // --- RTVs ---
       wsData.push(["Detail RTV"]);
-      wsData.push(["#", "No. RTV", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Produk", "Nominal"]);
+      wsData.push(["#", "No. RTV", "Tgl RTV", "Pcs", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Tujuan", "Produk", "Rp/Kg", "Nominal"]);
       if (item.rtvs && item.rtvs.length > 0) {
         item.rtvs.forEach((rtv: any, i: number) => {
           const rtvNo = typeof rtv === "string" ? rtv : rtv.noRtv;
@@ -64,21 +64,31 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
           const pembebanan = typeof rtv === "object" ? (rtv.pembebananRetur || "-") : "-";
           const lokasi = typeof rtv === "object" ? (rtv.lokasiBarang || "-") : "-";
           const produk = typeof rtv === "object" ? (rtv.produk || "-") : "-";
-          const unitProduksi = typeof rtv === "object" ? (rtv.unitProduksi || "-") : "-";
+          const tujuan = typeof rtv === "object" ? (rtv.tujuan || "-") : "-";
+          const rpKg = typeof rtv === "object" ? (rtv.rpKg || 0) : 0;
+          const pcs = typeof rtv === "object" ? (rtv.qty || rtv.qtyReturn || 0) : 0;
+          const tanggalRtv = (typeof rtv === "object" && rtv.tanggalRtv) ? format(new Date(rtv.tanggalRtv), "dd/MM/yyyy") : "-";
+          
+          const relatedInv = (item.invoices || []).find((inv: any) => inv.noInvoice === refInv);
+          const unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
           
           wsData.push([
             i + 1,
             rtvNo || "-",
+            tanggalRtv,
+            Number(pcs),
             refInv || "-",
             unitProduksi,
             pembebanan,
             lokasi,
+            tujuan,
             produk,
+            Number(rpKg),
             Number(nominal || 0)
           ]);
         });
       } else {
-        wsData.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-"]);
+        wsData.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
       }
       wsData.push([]);
 
