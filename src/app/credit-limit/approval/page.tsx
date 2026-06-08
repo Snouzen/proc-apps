@@ -802,13 +802,59 @@ export default function CreditLimitApprovalPage() {
         "Tgl Kirim": po.tglkirim ? format(new Date(po.tglkirim), "dd/MM/yyyy") : "-",
         "Pcs Total": Number(po.pcsTotal || 0),
         "Pcs Kirim": Number(po.pcsKirimTotal || 0),
+        "Nominal": Number(po.totalNominal || 0),
         "Kode Vendor": po.kodeVendor || "-",
         "Remarks": po.remarksCreditLimit || "-",
         "Status": po.statusCreditLimit || "-",
       };
     });
 
+    // Sub Total row
+    const totalPcsSum = dataToExport.reduce((sum, r) => sum + (Number(r["Pcs Total"]) || 0), 0);
+    const totalPcsKirimSum = dataToExport.reduce((sum, r) => sum + (Number(r["Pcs Kirim"]) || 0), 0);
+    const totalNominalSum = dataToExport.reduce((sum, r) => sum + (Number(r["Nominal"]) || 0), 0);
+
+    dataToExport.push({
+      "No": "" as any,
+      "Batch": "",
+      "No PO": "",
+      "Company": "",
+      "Inisial": "",
+      "Site Area": "",
+      "Tujuan": "",
+      "Tgl PO": "",
+      "Due Date": "",
+      "Tgl Kirim": "SUB TOTAL",
+      "Pcs Total": totalPcsSum,
+      "Pcs Kirim": totalPcsKirimSum,
+      "Nominal": totalNominalSum,
+      "Kode Vendor": "",
+      "Remarks": "",
+      "Status": "",
+    });
+
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Set column widths
+    worksheet["!cols"] = [
+      { wch: 4 },   // No
+      { wch: 16 },  // Batch
+      { wch: 18 },  // No PO
+      { wch: 25 },  // Company
+      { wch: 12 },  // Inisial
+      { wch: 18 },  // Site Area
+      { wch: 18 },  // Tujuan
+      { wch: 12 },  // Tgl PO
+      { wch: 12 },  // Due Date
+      { wch: 12 },  // Tgl Kirim
+      { wch: 10 },  // Pcs Total
+      { wch: 10 },  // Pcs Kirim
+      { wch: 16 },  // Nominal
+      { wch: 14 },  // Kode Vendor
+      { wch: 25 },  // Remarks
+      { wch: 12 },  // Status
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Approval PO");
     
