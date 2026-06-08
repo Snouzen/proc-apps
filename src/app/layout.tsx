@@ -81,6 +81,29 @@ export default function RootLayout({
             })();
           `}
         </Script>
+        <Script id="hydration-insertbefore-fix" strategy="beforeInteractive">
+          {`
+            (function() {
+              if (typeof Node === 'undefined') return;
+              var origInsertBefore = Node.prototype.insertBefore;
+              Node.prototype.insertBefore = function(newNode, refNode) {
+                if (refNode && refNode.parentNode !== this) {
+                  console.warn('[hydration-fix] insertBefore: refNode is not a child of this node. Appending instead.');
+                  return origInsertBefore.call(this, newNode, null);
+                }
+                return origInsertBefore.call(this, newNode, refNode);
+              };
+              var origRemoveChild = Node.prototype.removeChild;
+              Node.prototype.removeChild = function(child) {
+                if (child && child.parentNode !== this) {
+                  console.warn('[hydration-fix] removeChild: node is not a child of this node. Skipping.');
+                  return child;
+                }
+                return origRemoveChild.call(this, child);
+              };
+            })();
+          `}
+        </Script>
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
