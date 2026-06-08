@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import {
   FileText,
   Package,
@@ -83,10 +84,17 @@ type Props = {
 
 export default function PODetailModal({ open, onClose, data }: Props) {
   const router = useRouter();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   if (!data) return null;
 
   const formatDate = (d: string | null | undefined) => {
     if (!d) return "-";
+    if (!isMounted) return "-"; // Prevent hydration mismatch
     const date = new Date(d);
     if (isNaN(date.getTime())) return "-";
     return date.toLocaleDateString("id-ID", {
