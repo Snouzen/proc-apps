@@ -815,7 +815,7 @@ export default function PurchaseOrderPage() {
         <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-700">
           {/* Table Area */}
           <Card className="mb-8 border-none shadow-xl bg-slate-50/30 dark:bg-slate-800/30 rounded-3xl relative z-10 w-full overflow-visible">
-            <CardHeader className="bg-slate-50/30 border-b border-slate-100 p-8 space-y-6 relative z-50">
+            <CardHeader className="bg-slate-50/30 border-b border-slate-100 p-8 space-y-6 relative z-10">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3 flex-wrap">
@@ -858,9 +858,9 @@ export default function PurchaseOrderPage() {
               </div>
 
               {/* Tabel Filter Actions */}
-              <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-600">
+              <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3 text-sm font-medium text-slate-600">
                 {/* Date Picker 1 */}
-                <div className="w-[140px]">
+                <div className="w-full sm:w-[140px]">
                   <DateInputHybrid
                     value={tglFrom}
                     onChange={(v) => setTglFrom(v)}
@@ -870,7 +870,7 @@ export default function PurchaseOrderPage() {
                 </div>
 
                 {/* Date Picker 2 */}
-                <div className="w-[140px]">
+                <div className="w-full sm:w-[140px]">
                   <DateInputHybrid
                     value={tglTo}
                     onChange={(v) => setTglTo(v)}
@@ -880,44 +880,50 @@ export default function PurchaseOrderPage() {
                 </div>
 
                 {/* Status Filter Dropdown */}
-                <SmoothSelect
-                  value={statusFilter}
-                  onChange={(v) => setStatusFilter(v as any)}
-                  options={[
-                    { value: "all", label: "All Status" },
-                    { value: "active", label: "Active" },
-                    { value: "almost_expired", label: "Almost Expired" },
-                    { value: "expired", label: "Expired" },
-                    { value: "complete", label: "Complete" },
-                  ]}
-                  width={140}
-                />
+                <div className="w-full sm:w-[140px]">
+                  <SmoothSelect
+                    value={statusFilter}
+                    onChange={(v) => setStatusFilter(v as any)}
+                    options={[
+                      { value: "all", label: "All Status" },
+                      { value: "active", label: "Active" },
+                      { value: "almost_expired", label: "Almost Expired" },
+                      { value: "expired", label: "Expired" },
+                      { value: "complete", label: "Complete" },
+                    ]}
+                  />
+                </div>
 
                 {/* Sort Dropdown */}
-                <SmoothSelect
-                  value={sortOrder}
-                  onChange={(v) => setSortOrder(v as any)}
-                  options={[
-                    { value: "newest", label: "Newest" },
-                    { value: "oldest", label: "Oldest" },
-                  ]}
-                  width={120}
-                />
-
-                <div className="flex items-center gap-3 ml-2">
-                  <span className="text-slate-500">Tampilkan</span>
+                <div className="w-full sm:w-[140px]">
                   <SmoothSelect
-                    value={perPage}
-                    onChange={(v) => setPerPage(v)}
+                    value={sortOrder}
+                    onChange={(v) => setSortOrder(v as any)}
                     options={[
-                      { value: "10", label: "10" },
-                      { value: "25", label: "25" },
-                      { value: "50", label: "50" },
-                      { value: "100", label: "100" },
-                      { value: "all", label: "Semua" },
+                      { value: "newest", label: "Newest" },
+                      { value: "oldest", label: "Oldest" },
                     ]}
-                    width={100}
                   />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <span className="text-slate-500">Tampilkan</span>
+                  <div className="w-[100px]">
+                    <SmoothSelect
+                      value={perPage}
+                      onChange={(v) => {
+                        setPerPage(v);
+                        setCurrentPage(1);
+                      }}
+                      options={[
+                        { value: "10", label: "10" },
+                        { value: "25", label: "25" },
+                        { value: "50", label: "50" },
+                        { value: "100", label: "100" },
+                        { value: "all", label: "Semua" },
+                      ]}
+                    />
+                  </div>
                   <span className="text-slate-500">data</span>
                 </div>
               </div>
@@ -930,7 +936,7 @@ export default function PurchaseOrderPage() {
                         key: "no",
                         label: "NO",
                         align: "center",
-                        width: "w-12",
+                        width: "w-12 min-w-[48px]",
                         render: (_v: any, _po: any, index: number) => (
                           <span className="font-bold text-xs text-slate-500">
                             {perPage === "all" ? index + 1 : (currentPage - 1) * parseInt(perPage, 10) + index + 1}
@@ -940,6 +946,7 @@ export default function PurchaseOrderPage() {
                       {
                         key: "noPo",
                         label: "NO PO",
+                        width: "w-[150px] min-w-[150px]",
                         render: (_v: any, po: any) => (
                           <div className="py-2">
                             <div className="font-bold text-slate-800 dark:text-slate-100 text-xs whitespace-nowrap">{po.noPo}</div>
@@ -954,6 +961,7 @@ export default function PurchaseOrderPage() {
                       {
                         key: "tglPo",
                         label: "TGL PO",
+                        width: "w-[110px] min-w-[110px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
                             {po.tglPo ? new Date(po.tglPo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
@@ -963,6 +971,7 @@ export default function PurchaseOrderPage() {
                       {
                         key: "expiredTgl",
                         label: "DUE DATE",
+                        width: "w-[110px] min-w-[110px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
                             {po.expiredTgl ? new Date(po.expiredTgl).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
@@ -972,6 +981,7 @@ export default function PurchaseOrderPage() {
                       {
                         key: "produk",
                         label: "PRODUK",
+                        width: "w-[240px] min-w-[240px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
                             {Number(po.itemsCount) > 1 
@@ -984,6 +994,7 @@ export default function PurchaseOrderPage() {
                         key: "pcsKirim",
                         label: "PCS KIRIM",
                         align: "right",
+                        width: "w-[100px] min-w-[100px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
                             {(Number(po.pcsKirimTotal) || 0).toLocaleString('id-ID')}
@@ -993,6 +1004,7 @@ export default function PurchaseOrderPage() {
                       {
                         key: "tujuanDetail",
                         label: "TUJUAN DETAIL",
+                        width: "w-[180px] min-w-[180px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
                             {po.tujuanDetail || '-'}
@@ -1002,6 +1014,7 @@ export default function PurchaseOrderPage() {
                       {
                         key: "unitProduksi",
                         label: "UNIT PRODUKSI",
+                        width: "w-[180px] min-w-[180px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
                             {po.UnitProduksi?.namaRegional || po.regional || '-'}
@@ -1011,6 +1024,7 @@ export default function PurchaseOrderPage() {
                       {
                         key: "siteArea",
                         label: "SITE AREA",
+                        width: "w-[140px] min-w-[140px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
                             {po.UnitProduksi?.siteArea || '-'}
@@ -1021,6 +1035,7 @@ export default function PurchaseOrderPage() {
                         key: "totalKg",
                         label: "KG",
                         align: "right",
+                        width: "w-[90px] min-w-[90px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
                             {(Number(po.totalKg) || 0).toLocaleString('id-ID')}
@@ -1031,6 +1046,7 @@ export default function PurchaseOrderPage() {
                         key: "totalDiscount",
                         label: "DISCOUNT",
                         align: "right",
+                        width: "w-[110px] min-w-[110px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
                             {(Number(po.totalDiscount) || 0).toLocaleString('id-ID')}
@@ -1041,6 +1057,7 @@ export default function PurchaseOrderPage() {
                         key: "totalNominal",
                         label: "NOMINAL",
                         align: "right",
+                        width: "w-[140px] min-w-[140px]",
                         render: (_v: any, po: any) => (
                           <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
                             {(Number(po.totalNominal) || 0).toLocaleString('id-ID')}
@@ -1051,6 +1068,7 @@ export default function PurchaseOrderPage() {
                         key: "aksi",
                         label: "AKSI",
                         align: "right",
+                        width: "w-[90px] min-w-[90px]",
                         render: (_v: any, po: any) => (
                           <div className="flex justify-end gap-1">
                             <button title="Edit" onClick={(e) => { e.stopPropagation(); setEditNoPo(po.noPo); setEditOpen(true); }} className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors">

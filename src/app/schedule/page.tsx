@@ -578,11 +578,14 @@ export default function SchedulePage() {
   }, [poData, activeFilter, search]);
 
   const stats = useMemo(() => {
-    // poData sudah difilter ke group=active (noInvoice kosong) dari API
-    // Hitung langsung dari seluruh data yang diterima tanpa limit
-    const total = poData.length;
+    const emptyInv = ["", "-", "Unknown"];
+    const hasNoInvoice = (po: any) => !po.noInvoice || emptyInv.includes(po.noInvoice);
+    // Total PO & Belum Dijadwalkan: hanya PO tanpa invoice (existing behavior)
+    const noInvoicePOs = poData.filter(hasNoInvoice);
+    const total = noInvoicePOs.length;
+    const pending = noInvoicePOs.filter((po) => !po.tglkirim).length;
+    // Sudah Dijadwalkan: semua PO yang punya tglkirim (termasuk yang sudah punya invoice)
     const scheduled = poData.filter((po) => po.tglkirim).length;
-    const pending = poData.filter((po) => !po.tglkirim).length;
     return { total, scheduled, pending };
   }, [poData]);
 

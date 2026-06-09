@@ -175,13 +175,13 @@ function TablePagination({
 
   // Default variant — Dashboard style
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0 px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
       <div className="text-sm text-gray-700 dark:text-slate-300 flex items-center gap-2">
-        Rows per page
+        <span className="whitespace-nowrap">Rows per page</span>
         {onRowsPerPageChange && rowsPerPageOptions ? (
           <Popover.Root>
             <Popover.Trigger asChild>
-              <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all outline-none">
+              <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all outline-none shrink-0">
                 <span>{rowsPerPage}</span>
                 <ChevronDown size={14} className="text-gray-400" />
               </button>
@@ -217,12 +217,12 @@ function TablePagination({
           <span className="font-bold">{rowsPerPage}</span>
         )}
       </div>
-      <div className="flex items-center gap-3 text-sm text-black dark:text-slate-100">
-        <span>
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-3 sm:gap-4 text-sm text-black dark:text-slate-100">
+        <span className="whitespace-nowrap">
           Page <span className="font-bold">{page}</span> of{" "}
           <span className="font-bold">{totalPages}</span>
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             onClick={() => onPageChange(1)}

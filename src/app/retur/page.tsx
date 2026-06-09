@@ -890,12 +890,12 @@ function ReturContent() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 mt-2 lg:mt-0">
           {selectedRetailerId && (
             <button 
               suppressHydrationWarning
               onClick={handleExportExcel}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md active:scale-95 group"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md active:scale-95 group"
             >
               <FileSpreadsheet size={18} className="group-hover:-translate-y-0.5 transition-transform" />
               Export Excel
@@ -906,7 +906,7 @@ function ReturContent() {
             <button 
               suppressHydrationWarning
               onClick={handleExportAll}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md active:scale-95 group"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md active:scale-95 group whitespace-nowrap"
             >
               <FileSpreadsheet size={18} className="group-hover:-translate-y-0.5 transition-transform" />
               Export Semua
@@ -922,7 +922,7 @@ function ReturContent() {
                   setSearchRetailerText("");
                   setShowBulkModal(true);
                 }}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-md active:scale-95 group"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-md active:scale-95 group whitespace-nowrap"
               >
                 <Upload size={18} className="group-hover:-translate-y-0.5 transition-transform" />
                 Bulk Upload
@@ -932,7 +932,7 @@ function ReturContent() {
               <button 
                 suppressHydrationWarning
                 onClick={handleAddReturn}
-                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-all shadow-md active:scale-95"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-all shadow-md active:scale-95 whitespace-nowrap"
               >
                 <Plus size={18} />
                 Add Return

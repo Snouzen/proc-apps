@@ -174,6 +174,8 @@ function BatchAccordion({
   onViewRow,
   onApproveAll,
   onExportExcel,
+  onToggleND,
+  onChecklistAllND,
 }: {
   batchCode: string;
   pos: any[];
@@ -184,9 +186,12 @@ function BatchAccordion({
   onViewRow: (po: any) => void;
   onApproveAll: (batchCode: string, pos: any[]) => void;
   onExportExcel: (batchCode: string, pos: any[]) => void;
+  onToggleND: (poId: string, currentVal: boolean) => void;
+  onChecklistAllND: (batchCode: string, pos: any[], checked: boolean) => void;
 }) {
   const totalPcs = pos.reduce((sum, po) => sum + Number(po.pcsTotal || 0), 0);
   const totalPcsKirim = pos.reduce((sum, po) => sum + Number(po.pcsKirimTotal || 0), 0);
+  const isAllNDChecked = pos.length > 0 && pos.every(p => p.isNotaDinas);
 
   return (
     <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden transition-all duration-300">
@@ -246,6 +251,16 @@ function BatchAccordion({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                onChecklistAllND(batchCode, pos, !isAllNDChecked);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-lg text-xs font-bold transition-all shadow-sm shadow-indigo-200 dark:shadow-none active:scale-95"
+            >
+              <Check size={14} />
+              {isAllNDChecked ? "Uncheck All ND" : "Check All ND"}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
                 onExportExcel(batchCode, pos);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm shadow-emerald-200 dark:shadow-none active:scale-95"
@@ -300,6 +315,7 @@ function BatchAccordion({
                   <th className="px-4 py-3 w-[90px] text-center">Pcs Kirim</th>
                   <th className="px-4 py-3 w-[130px] text-center">Kode Vendor</th>
                   <th className="px-4 py-3 w-[180px]">Remarks</th>
+                  <th className="px-4 py-3 w-[50px] text-center">ND</th>
                   <th className="px-4 py-3 w-[80px] text-center">Status</th>
                   <th className="px-4 py-3 w-[90px] text-center">Action</th>
                 </tr>
@@ -388,6 +404,16 @@ function BatchAccordion({
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic truncate max-w-[170px]" title={po.remarksCreditLimit || "-"}>
                           {po.remarksCreditLimit ? `"${po.remarksCreditLimit}"` : "-"}
                         </p>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={po.isNotaDinas || false}
+                            onChange={() => onToggleND(po.id, po.isNotaDinas || false)}
+                            className="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
+                          />
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {zone === "normal" && (
@@ -593,6 +619,46 @@ export default function CreditLimitApprovalPage() {
     }
   };
 
+  const handleToggleND = async (poId: string, currentVal: boolean) => {
+    const newVal = !currentVal;
+    
+    // Optimistic UI update
+    setPoData((prev) =>
+      prev.map((item) =>
+        item.id === poId ? { ...item, isNotaDinas: newVal } : item
+      )
+    );
+
+    try {
+      const res = await fetch("/api/po/credit-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ poId, action: "toggleND", isNotaDinas: newVal }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Gagal menyimpan status ND");
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Gagal menyimpan status ND. Silakan coba lagi.",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3000
+      });
+      // Revert optimistic update
+      setPoData((prev) =>
+        prev.map((item) =>
+          item.id === poId ? { ...item, isNotaDinas: currentVal } : item
+        )
+      );
+    }
+  };
+
   const handleApproveAll = async (batchCode: string, pos: any[]) => {
     const result = await Swal.fire({
       title: "Approve Semua PO?",
@@ -777,6 +843,49 @@ export default function CreditLimitApprovalPage() {
     });
   };
 
+  const handleChecklistAllND = async (batchCode: string, posToToggle: any[], checked: boolean) => {
+    const poIds = posToToggle.map((po) => po.id);
+    
+    // Optimistic UI update
+    setPoData((prev) =>
+      prev.map((item) =>
+        poIds.includes(item.id) ? { ...item, isNotaDinas: checked } : item
+      )
+    );
+
+    try {
+      const res = await fetch("/api/po/credit-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ poIds, action: "toggleAllND", isNotaDinas: checked }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Gagal menyimpan status ND massal");
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Gagal menyimpan status ND. Silakan coba lagi.",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3000
+      });
+      // Revert optimistic update
+      setPoData((prev) =>
+        prev.map((item) => {
+          if (poIds.includes(item.id)) {
+            return { ...item, isNotaDinas: !checked };
+          }
+          return item;
+        })
+      );
+    }
+  };
+
   const handleExportExcel = (batchCode: string, posToExport: any[]) => {
     if (!posToExport || posToExport.length === 0) {
       Swal.fire({
@@ -805,6 +914,7 @@ export default function CreditLimitApprovalPage() {
         "Nominal": Number(po.totalNominal || 0),
         "Kode Vendor": po.kodeVendor || "-",
         "Remarks": po.remarksCreditLimit || "-",
+        "ND": po.isNotaDinas ? "true" : "false",
         "Status": po.statusCreditLimit || "-",
       };
     });
@@ -830,6 +940,7 @@ export default function CreditLimitApprovalPage() {
       "Nominal": totalNominalSum,
       "Kode Vendor": "",
       "Remarks": "",
+      "ND": "",
       "Status": "",
     });
 
@@ -1135,6 +1246,8 @@ export default function CreditLimitApprovalPage() {
               onViewRow={handleViewRow}
               onApproveAll={handleApproveAll}
               onExportExcel={handleExportExcel}
+              onToggleND={handleToggleND}
+              onChecklistAllND={handleChecklistAllND}
             />
           ))}
         </div>

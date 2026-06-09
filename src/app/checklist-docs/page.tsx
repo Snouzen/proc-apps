@@ -393,7 +393,7 @@ export default function ChecklistDocsPage() {
             />
           </div>
           
-          <div className="flex items-center gap-2 relative">
+          <div className="flex flex-wrap items-center gap-2 relative">
             <button
               onClick={() => setShowColumns(!showColumns)}
               className="h-10 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors flex items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold"

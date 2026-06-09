@@ -158,7 +158,7 @@ export function ReturFilterBar({
               />
           </div>
 
-          <div className="w-full flex items-center justify-end gap-3 mt-0.5 pt-2 border-t border-slate-100/30 dark:border-slate-700/30">
+          <div className="w-full flex flex-wrap items-center justify-between sm:justify-end gap-3 mt-2 pt-4 border-t border-slate-100/30 dark:border-slate-700/30">
               {(filterInisial || filterToko || filterLokasi || dateFrom || dateTo || selectedStatus) && (
                 <button 
                   onClick={() => {
@@ -169,7 +169,7 @@ export function ReturFilterBar({
                     setDateTo(null);
                     setSelectedStatus(null);
                   }}
-                  className="px-4 py-2 bg-white dark:bg-slate-800 text-rose-500 dark:text-rose-400 border border-rose-100 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 dark:hover:bg-slate-700 transition-all active:scale-95 shadow-sm"
+                  className="px-4 py-2 bg-white dark:bg-slate-800 text-rose-500 dark:text-rose-400 border border-rose-100 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 dark:hover:bg-slate-700 transition-all active:scale-95 shadow-sm whitespace-nowrap"
                 >
                   Reset Filter
                 </button>
@@ -181,14 +181,14 @@ export function ReturFilterBar({
               
               {/* Mass Edit Controls */}
               {isMassEditing ? (
-                <div className="flex items-center gap-2">
-                  <button onClick={handleCancelMassEdit} className="px-4 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all shadow-sm active:scale-95">Batal</button>
-                  <button onClick={handleSaveMassEdit} disabled={isSavingMass} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all shadow-md active:scale-95">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                  <button onClick={handleCancelMassEdit} className="px-4 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all shadow-sm active:scale-95 whitespace-nowrap">Batal</button>
+                  <button onClick={handleSaveMassEdit} disabled={isSavingMass} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all shadow-md active:scale-95 whitespace-nowrap">
                     {isSavingMass ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save All
                   </button>
                 </div>
               ) : (
-                <button onClick={handleStartMassEdit} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all shadow-sm active:scale-95">
+                <button onClick={handleStartMassEdit} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] uppercase tracking-widest font-black hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all shadow-sm active:scale-95 whitespace-nowrap">
                   <Pencil size={14} /> Edit All
                 </button>
               )}

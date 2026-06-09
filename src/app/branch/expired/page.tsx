@@ -386,7 +386,7 @@ export default function ExpiredCalendarPage() {
 
       {/* Calendar Grid */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between relative">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
           <button
             onClick={() => {
               let m = month - 1,
@@ -399,58 +399,59 @@ export default function ExpiredCalendarPage() {
               setSelectedYear(String(y));
               setSelectedDateKey(null);
             }}
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors z-10"
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
           >
             <ChevronLeft size={20} />
           </button>
 
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center relative pointer-events-auto">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+          <div className="flex flex-col items-center max-w-[60%] sm:max-w-none">
+            <div className="text-center">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">
                 {MONTH_NAMES[month - 1]} {year}
               </h3>
               {selectedSiteArea && (
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5 uppercase tracking-wider">
                   {selectedSiteArea} · {selectedRegional}
                 </p>
               )}
-              <div className="absolute top-1/2 -translate-y-1/2 left-full ml-3 flex items-center gap-2">
-                <span className="text-[10px] font-black bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-lg border border-rose-100 dark:border-rose-800 uppercase tracking-widest whitespace-nowrap">
-                  {Object.values(groupedPOs)
-                    .flat()
-                    .reduce((acc, po) => {
-                      const items = Array.isArray(po.Items) ? po.Items : [];
-                      return (
-                        acc +
-                        items.reduce(
-                          (s: number, it: any) =>
-                            s +
-                            (Number(it.pcs) || 0) *
-                              (Number(it.Product?.satuanKg) || 1),
-                          0,
-                        )
-                      );
-                    }, 0)
-                    .toLocaleString("id-ID")}{" "}
-                  KG
-                </span>
-                <span className="text-[10px] font-black bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-lg border border-emerald-100 dark:border-emerald-800 uppercase tracking-widest whitespace-nowrap">
-                  RP{" "}
-                  {Object.values(groupedPOs)
-                    .flat()
-                    .reduce((acc, po) => {
-                      const items = Array.isArray(po.Items) ? po.Items : [];
-                      return (
-                        acc +
-                        items.reduce(
-                          (s: number, it: any) => s + (Number(it.nominal) || 0),
-                          0,
-                        )
-                      );
-                    }, 0)
-                    .toLocaleString("id-ID")}
-                </span>
-              </div>
+            </div>
+            
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+              <span className="text-[9px] sm:text-[10px] font-black bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-lg border border-rose-100 dark:border-rose-800 uppercase tracking-widest whitespace-nowrap">
+                {Object.values(groupedPOs)
+                  .flat()
+                  .reduce((acc, po) => {
+                    const items = Array.isArray(po.Items) ? po.Items : [];
+                    return (
+                      acc +
+                      items.reduce(
+                        (s: number, it: any) =>
+                          s +
+                          (Number(it.pcs) || 0) *
+                            (Number(it.Product?.satuanKg) || 1),
+                        0,
+                      )
+                    );
+                  }, 0)
+                  .toLocaleString("id-ID")}{" "}
+                KG
+              </span>
+              <span className="text-[9px] sm:text-[10px] font-black bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-lg border border-emerald-100 dark:border-emerald-800 uppercase tracking-widest whitespace-nowrap">
+                RP{" "}
+                {Object.values(groupedPOs)
+                  .flat()
+                  .reduce((acc, po) => {
+                    const items = Array.isArray(po.Items) ? po.Items : [];
+                    return (
+                      acc +
+                      items.reduce(
+                        (s: number, it: any) => s + (Number(it.nominal) || 0),
+                        0,
+                      )
+                    );
+                  }, 0)
+                  .toLocaleString("id-ID")}
+              </span>
             </div>
           </div>
 
@@ -466,7 +467,7 @@ export default function ExpiredCalendarPage() {
               setSelectedYear(String(y));
               setSelectedDateKey(null);
             }}
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors z-10"
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
           >
             <ChevronRight size={20} />
           </button>

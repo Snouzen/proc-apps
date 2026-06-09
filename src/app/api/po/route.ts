@@ -802,17 +802,36 @@ export async function GET(request: Request) {
       );
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
-        { 
-          OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }],
-        },
         {
           OR: [
-            { expiredTgl: null },
-            { expiredTgl: { gte: startOfToday } },
-            { 
+            // Existing: PO tanpa invoice + due date valid (untuk Total PO & Belum Dijadwalkan)
+            {
               AND: [
-                { expiredTgl: { gte: startOfPast14Days, lt: startOfToday } },
-                { tglkirim: null }
+                { OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }] },
+                {
+                  OR: [
+                    { expiredTgl: null },
+                    { expiredTgl: { gte: startOfToday } },
+                    { 
+                      AND: [
+                        { expiredTgl: { gte: startOfPast14Days, lt: startOfToday } },
+                        { tglkirim: null }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            // New: PO yang sudah dijadwalkan (punya tglkirim) — tampil walaupun sudah punya invoice
+            {
+              AND: [
+                { tglkirim: { not: null } },
+                {
+                  OR: [
+                    { expiredTgl: null },
+                    { expiredTgl: { gte: startOfPast14Days } },
+                  ]
+                }
               ]
             }
           ]
@@ -1106,6 +1125,7 @@ export async function GET(request: Request) {
                   regional: true,
                   statusCreditLimit: true,
                   remarksCreditLimit: true,
+                  isNotaDinas: true,
                   kodeVendor: true,
                   remarks: true,
                   buktiTagih: true,
@@ -1214,6 +1234,7 @@ export async function GET(request: Request) {
                 regional: true,
                 statusCreditLimit: true,
                 remarksCreditLimit: true,
+                isNotaDinas: true,
                 kodeVendor: true,
                 remarks: true,
                 buktiTagih: true,

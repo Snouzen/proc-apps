@@ -434,24 +434,24 @@ function RekonContent() {
   if (isLoading) return <div className="p-24 text-center font-black text-slate-200 uppercase tracking-widest italic animate-pulse">Synchronizing Data...</div>;
 
   return (
-    <div className="max-w-[1850px] mx-auto p-8 lg:p-12 bg-[#f8fafc] dark:bg-transparent min-h-screen font-sans">
+    <div className="max-w-[1850px] mx-auto p-4 sm:p-8 lg:p-12 bg-[#f8fafc] dark:bg-transparent min-h-screen font-sans overflow-x-hidden w-full">
       {/* Header */}
-      <div className="flex justify-between items-center mb-16 px-4">
-        <div className="flex items-center gap-4">
-           <div className="w-14 h-14 bg-[#5c56f6] rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-indigo-200 dark:shadow-none">
-              <LayoutGrid size={32} strokeWidth={2.5} />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 sm:mb-16 gap-4 px-2 sm:px-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+           <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#5c56f6] rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-indigo-200 dark:shadow-none shrink-0">
+              <LayoutGrid size={28} className="sm:w-[32px] sm:h-[32px]" strokeWidth={2.5} />
            </div>
-           <div>
-              <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter uppercase leading-none">Kalkulator Rekon</h1>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
-                Rekonsiliasi &gt; Kalkulasi {rekonNo && <span className="text-indigo-500 ml-2 border-l border-slate-200 dark:border-slate-700 pl-2">Draft: {rekonNo}</span>}
+           <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter uppercase leading-none truncate">Kalkulator Rekon</h1>
+              <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1 truncate">
+                Rekonsiliasi &gt; Kalkulasi {rekonNo && <span className="text-indigo-500 ml-1 sm:ml-2 border-l border-slate-200 dark:border-slate-700 pl-1 sm:pl-2">Draft: {rekonNo}</span>}
               </p>
            </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 w-full sm:w-auto">
            <button 
              onClick={() => setOpenExcelModal(true)}
-             className="px-10 py-3 bg-[#5c56f6] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-indigo-100 flex items-center gap-3 hover:bg-indigo-700 transition-all"
+             className="w-full sm:w-auto justify-center px-6 sm:px-10 py-3 bg-[#5c56f6] text-white rounded-xl sm:rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-indigo-100 flex items-center gap-3 hover:bg-indigo-700 transition-all"
            >
               <Upload size={14} strokeWidth={3} />
               Bulk Upload
@@ -464,13 +464,13 @@ function RekonContent() {
         <div className="flex-1 space-y-12 min-w-0">
            
            {/* STEP 1: Bank Statement & Payment Proof */}
-           <div className="bg-white dark:bg-slate-800 rounded-[40px] p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-10 relative overflow-hidden">
+           <div className="bg-white dark:bg-slate-800 rounded-[32px] sm:rounded-[40px] p-6 sm:p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-8 sm:space-y-10 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none"></div>
               
-              <div className="flex items-center justify-between relative z-10">
-                 <div className="flex items-center gap-4">
-                    <div className="w-8 h-8 rounded-full bg-[#f59e0b] text-white flex items-center justify-center font-black text-xs shadow-lg">1</div>
-                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Rekening Koran & Bukti Bayar</h3>
+              <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
+                 <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[#f59e0b] text-white flex items-center justify-center font-black text-xs shadow-lg shrink-0">1</div>
+                    <h3 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em] leading-snug">Rekening Koran & Bukti Bayar</h3>
                  </div>
                  {tglBayar && (
                     <div className="px-4 py-1.5 bg-amber-50 text-[#f59e0b] rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-100/50 animate-in fade-in slide-in-from-right-2">
@@ -479,22 +479,22 @@ function RekonContent() {
                  )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 relative z-10">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 relative z-10">
                  {/* Nominal Input */}
                  <div className="md:col-span-12 space-y-3">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nominal Rekening Koran</label>
                     <div className="relative group">
-                       <div className="absolute left-10 top-1/2 -translate-y-1/2 text-slate-200 dark:text-slate-500 group-focus-within:text-[#f59e0b] dark:group-focus-within:text-[#f59e0b] transition-colors">
-                          <CircleDollarSign size={36} />
+                       <div className="absolute left-5 sm:left-10 top-1/2 -translate-y-1/2 text-slate-200 dark:text-slate-500 group-focus-within:text-[#f59e0b] dark:group-focus-within:text-[#f59e0b] transition-colors">
+                          <CircleDollarSign className="w-[24px] h-[24px] sm:w-[36px] sm:h-[36px]" />
                        </div>
                        <input 
                           type="text" 
                           placeholder="0" 
-                          className="w-full h-28 pl-32 pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[36px] border-none outline-none font-black text-4xl text-slate-700 dark:text-slate-100 placeholder:text-slate-200 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-orange-50/50 dark:focus:ring-orange-500/20 shadow-sm group-hover:shadow-md"
+                          className="w-full h-20 sm:h-28 pl-16 sm:pl-32 pr-6 sm:pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[24px] sm:rounded-[36px] border-none outline-none font-black text-3xl sm:text-4xl text-slate-700 dark:text-slate-100 placeholder:text-slate-200 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-orange-50/50 dark:focus:ring-orange-500/20 shadow-sm group-hover:shadow-md"
                           onChange={e => setBankStatement(Number(e.target.value.replace(/[^0-9]/g, '')))}
                           value={bankStatement ? new Intl.NumberFormat("id-ID").format(bankStatement) : ""}
                        />
-                       <span className="absolute right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-200 dark:text-slate-500 uppercase tracking-widest">Nominal Rp</span>
+                       <span className="hidden sm:block absolute right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-200 dark:text-slate-500 uppercase tracking-widest pointer-events-none">Nominal Rp</span>
                     </div>
                  </div>
 
@@ -582,10 +582,10 @@ function RekonContent() {
            </div>
 
            {/* STEP 2: Lookup Invoice & Retur (REDESIGNED FOR GRID TABLE) */}
-           <div className="bg-white dark:bg-slate-800 rounded-[48px] p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-10 relative">
-              <div className="flex items-center gap-4 mb-2">
-                 <div className="w-8 h-8 rounded-full bg-[#5c56f6] text-white flex items-center justify-center font-black text-xs shadow-lg">2</div>
-                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Lookup Invoice, Retur & Promo</h3>
+           <div className="bg-white dark:bg-slate-800 rounded-[32px] sm:rounded-[48px] p-6 sm:p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-8 sm:space-y-10 relative overflow-hidden w-full max-w-full min-w-0">
+              <div className="flex items-center gap-3 sm:gap-4 mb-2">
+                 <div className="w-8 h-8 rounded-full bg-[#5c56f6] text-white flex items-center justify-center font-black text-xs shadow-lg shrink-0">2</div>
+                  <h3 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em] leading-snug">Lookup Invoice, Retur & Promo</h3>
               </div>
 
               {/* Company Selection Dropdown - Premium */}
@@ -593,32 +593,32 @@ function RekonContent() {
                  <Popover.Root open={isCompanyOpen} onOpenChange={setIsCompanyOpen} modal={false}>
                     <Popover.Anchor asChild>
                        <div className={`relative w-full h-16 rounded-[28px] border transition-all flex items-center justify-between overflow-hidden cursor-pointer ${selectedCompany && !isCompanyOpen ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20 shadow-xl shadow-indigo-100/30 dark:shadow-none' : 'bg-[#f8fafc] dark:bg-slate-900/50 border-slate-50 dark:border-slate-700 focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:ring-4 focus-within:ring-indigo-50/50 dark:focus-within:ring-indigo-500/20'}`}>
-                          <div className="flex items-center gap-5 w-full pl-10 pr-12">
-                             <Building2 size={22} className={selectedCompany && !isCompanyOpen ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-500 transition-colors'} />
+                          <div className="flex items-center gap-3 sm:gap-5 w-full pl-4 sm:pl-10 pr-10 sm:pr-12">
+                             <Building2 size={22} className={`shrink-0 ${selectedCompany && !isCompanyOpen ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-500 transition-colors'}`} />
                              <input
                                 type="text"
                                 placeholder={selectedCompany ? selectedCompany.namaPt : "PILIH COMPANY / RITEL MODERN..."}
-                                className={`w-full bg-transparent border-none outline-none font-black uppercase tracking-[0.2em] text-[10px] ${selectedCompany && !isCompanyOpen ? 'text-indigo-600 dark:text-indigo-300 italic cursor-pointer' : 'text-slate-600 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:italic'}`}
+                                className={`w-full bg-transparent border-none outline-none font-black uppercase tracking-widest sm:tracking-[0.2em] text-[9px] sm:text-[10px] truncate ${selectedCompany && !isCompanyOpen ? 'text-indigo-600 dark:text-indigo-300 italic cursor-pointer' : 'text-slate-600 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:italic'}`}
                                 value={companySearch}
                                 onChange={e => { setCompanySearch(e.target.value); setIsCompanyOpen(true); }}
                                 onFocus={() => setIsCompanyOpen(true)}
                                 onBlur={() => setTimeout(() => setIsCompanyOpen(false), 300)}
                              />
                           </div>
-                          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                          <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 pointer-events-none">
                              <ChevronDown size={18} className={selectedCompany && !isCompanyOpen ? 'text-indigo-400' : 'text-slate-200 dark:text-slate-600'} />
                           </div>
                        </div>
                     </Popover.Anchor>
                     <Popover.Portal>
-                       <Popover.Content className="z-[110] w-[var(--radix-popover-trigger-width)] bg-white dark:bg-slate-800 rounded-[40px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-50 dark:border-slate-700 p-6 animate-in fade-in zoom-in-95 mt-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                       <Popover.Content className="z-[110] w-[var(--radix-popover-trigger-width)] bg-white dark:bg-slate-800 rounded-[40px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-50 dark:border-slate-700 p-4 sm:p-6 animate-in fade-in zoom-in-95 mt-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                           <div className="max-h-[350px] overflow-y-auto no-scrollbar space-y-1">
                              {Array.from(new Map(masterCompanies.map(item => [item.namaPt, item])).values())
                                 .filter(c => c.namaPt.toLowerCase().includes(companySearch.toLowerCase()))
                                 .map(c => (
-                                <button key={c.id} onClick={() => { setSelectedCompany(c); setCompanySearch(""); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromo(null); fetchCompanyData(c.namaPt, c.id); }} className={`w-full text-left p-5 rounded-[22px] transition-all font-black text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl dark:shadow-none' : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'}`}>
-                                   {highlightMatch(c.namaPt, companySearch)}
-                                   <ChevronRight size={14} className={selectedCompany?.id === c.id ? 'opacity-100' : 'opacity-0'} />
+                                <button key={c.id} onClick={() => { setSelectedCompany(c); setCompanySearch(""); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromo(null); fetchCompanyData(c.namaPt, c.id); }} className={`w-full text-left p-4 sm:p-5 rounded-[22px] transition-all font-black text-[10px] sm:text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl dark:shadow-none' : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'}`}>
+                                   <span className="truncate pr-2">{highlightMatch(c.namaPt, companySearch)}</span>
+                                   <ChevronRight size={14} className={`shrink-0 ${selectedCompany?.id === c.id ? 'opacity-100' : 'opacity-0'}`} />
                                 </button>
                              ))}
                              {Array.from(new Map(masterCompanies.map(item => [item.namaPt, item])).values())
@@ -634,21 +634,21 @@ function RekonContent() {
               </div>
 
                {selectedCompany ? (
-                  <div className="space-y-8 animate-in fade-in duration-500 pt-4">
-                     <div className="flex flex-col gap-12">
+                  <div className="space-y-8 animate-in fade-in duration-500 pt-4 w-full min-w-0">
+                     <div className="flex flex-col gap-12 w-full min-w-0">
                     
                     {/* LEFT COLUMN: LOOKUP INVOICE */}
-                    <div className="space-y-8">
-                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-2 uppercase">Lookup Invoice</h4>
+                    <div className="space-y-6 sm:space-y-8 min-w-0 w-full max-w-full">
+                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em] pl-2">Lookup Invoice</h4>
                        {/* Search Input Invoice with Suggestions */}
                        <div className="relative group" onClick={() => setIsInvOpen(true)}>
-                          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-500 transition-colors pointer-events-none" size={20} />
+                          <Search className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-500 transition-colors pointer-events-none" size={20} />
                           <Popover.Root open={isInvOpen} onOpenChange={setIsInvOpen} modal={false}>
                              <Popover.Anchor asChild>
                                 <input 
                                    type="text" 
                                    placeholder="Input Nomor Invoice..." 
-                                   className="w-full h-16 pl-16 pr-8 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[28px] border-none outline-none font-bold text-xs text-slate-600 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-indigo-50/50 dark:focus:ring-indigo-500/20 transition-all uppercase cursor-pointer" 
+                                   className="w-full h-16 pl-12 sm:pl-16 pr-4 sm:pr-8 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[28px] border-none outline-none font-bold text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-indigo-50/50 dark:focus:ring-indigo-500/20 transition-all uppercase cursor-pointer" 
                                    value={invSearch} 
                                    onChange={e => { setInvSearch(e.target.value); setIsInvOpen(true); }}
                                    onFocus={() => setIsInvOpen(true)}
@@ -704,8 +704,8 @@ function RekonContent() {
                        </div>
 
                        {/* Table Invoice Container */}
-                       <div className="bg-[#f8fafc] dark:bg-slate-900/50 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm w-full relative overflow-hidden">
-                          <div className="max-h-[280px] overflow-auto premium-scrollbar scroll-smooth relative">
+                       <div className="bg-[#f8fafc] dark:bg-slate-900/50 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm w-full relative overflow-hidden min-w-0">
+                          <div className="max-h-[280px] overflow-x-auto overflow-y-auto premium-scrollbar scroll-smooth relative w-full">
                              <table className="w-full text-left border-collapse min-w-[820px] table-auto">
                                 <thead>
                                    <tr className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-white dark:border-slate-700/50 sticky top-0 bg-[#f8fafc] dark:bg-slate-900/90 backdrop-blur-md z-10">
@@ -745,17 +745,17 @@ function RekonContent() {
                     <div className="w-full h-[1px] bg-slate-100 dark:bg-slate-700 my-2"></div>
 
                     {/* RIGHT COLUMN: LOOKUP RTV */}
-                    <div className="space-y-8">
-                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-2 uppercase">Lookup RTV</h4>
+                    <div className="space-y-6 sm:space-y-8 min-w-0 w-full max-w-full">
+                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em] pl-2">Lookup RTV</h4>
                        {/* Search Input RTV with Suggestions */}
                        <div className="relative group" onClick={() => setIsRtvOpen(true)}>
-                          <Plus className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 group-focus-within:text-rose-500 transition-colors pointer-events-none" size={20} />
+                          <Plus className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 group-focus-within:text-rose-500 transition-colors pointer-events-none" size={20} />
                           <Popover.Root open={isRtvOpen} onOpenChange={setIsRtvOpen} modal={false}>
                              <Popover.Anchor asChild>
                                 <input 
                                    type="text" 
                                    placeholder="Input Nomor RTV/CN..." 
-                                   className="w-full h-16 pl-16 pr-8 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[28px] border-none outline-none font-bold text-xs text-slate-600 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-rose-50/50 dark:focus:ring-rose-500/20 transition-all uppercase cursor-pointer" 
+                                   className="w-full h-16 pl-12 sm:pl-16 pr-4 sm:pr-8 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[28px] border-none outline-none font-bold text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-rose-50/50 dark:focus:ring-rose-500/20 transition-all uppercase cursor-pointer" 
                                    value={rtvSearch} 
                                    onChange={e => { setRtvSearch(e.target.value); setIsRtvOpen(true); }}
                                    onFocus={() => setIsRtvOpen(true)}
@@ -803,8 +803,8 @@ function RekonContent() {
                        </div>
 
                        {/* Table RTV Container */}
-                       <div className="bg-[#f8fafc] dark:bg-slate-900/50 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm w-full relative overflow-hidden">
-                          <div className="max-h-[250px] overflow-auto premium-scrollbar scroll-smooth relative">
+                       <div className="bg-[#f8fafc] dark:bg-slate-900/50 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm w-full relative overflow-hidden min-w-0">
+                          <div className="max-h-[250px] overflow-x-auto overflow-y-auto premium-scrollbar scroll-smooth relative w-full">
                              <table className="w-full text-left border-collapse min-w-[1100px] table-auto">
                                 <thead>
                                    <tr className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-white dark:border-slate-700/50 sticky top-0 bg-[#f8fafc] dark:bg-slate-900/90 backdrop-blur-md z-10 transition-colors">
