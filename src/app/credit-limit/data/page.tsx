@@ -13,6 +13,7 @@ import {
   AlertCircle,
   ChevronsUpDown,
   Check,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -305,7 +306,7 @@ export default function CreditLimitDataPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        "/api/po?group=active&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
+        "/api/po?group=schedule_page&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
         { cache: "no-store" },
       );
       const data = await res.json();
@@ -315,19 +316,13 @@ export default function CreditLimitDataPage() {
           ? data.data
           : [];
 
-      // Filter:
+      // Filter (Temporary simplified rules per user request):
       // 1. Sudah dijadwalkan (tglkirim ada)
-      // 2. pcsKirimTotal >= pcsTotal (pengiriman lengkap)
-      // 3. Due date (expiredTgl) dalam range 14 hari sebelum/sesudah hari ini
-      // 4. Belum diajukan credit limit (statusCreditLimit === null)
+      // 2. Belum diajukan credit limit (statusCreditLimit === null atau REJECTED)
       const eligible = list.filter((po: any) => {
         const isScheduled = !!po.tglkirim;
-        const pcsKirim = Number(po.pcsKirimTotal || 0);
-        const pcsTotal = Number(po.pcsTotal || 0);
-        const pcsMatch = pcsTotal > 0 && pcsKirim >= pcsTotal;
-        const zone = getDueDateZone(po.expiredTgl);
         const notRequested = !po.statusCreditLimit || po.statusCreditLimit === "REJECTED";
-        return isScheduled && pcsMatch && zone !== "out_of_range" && notRequested;
+        return isScheduled && notRequested;
       });
 
       setPoData(eligible);
@@ -601,10 +596,21 @@ export default function CreditLimitDataPage() {
           <input
             type="text"
             placeholder="Search No PO, Site, Company..."
-            className="pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-500/40 transition-all w-full md:w-72 shadow-sm dark:shadow-none text-slate-700 dark:text-slate-100"
+            className="pl-9 pr-10 py-2.5 text-sm bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-500/40 transition-all w-full md:w-72 shadow-sm dark:shadow-none text-slate-700 dark:text-slate-100"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.preventDefault();
+            }}
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
       </div>
 
