@@ -34,12 +34,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "poId(s) and action are required" }, { status: 400 });
     }
 
-    const validActions = ["request", "approve", "reject", "approveAll", "updateKodeVendor", "toggleND", "toggleAllND"];
+    const validActions = ["request", "reRequest", "approve", "approveDireksi", "reject", "approveAll", "approveDireksiAll", "updateKodeVendor", "toggleND", "toggleAllND"];
     if (!validActions.includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    if ((action === "approve" || action === "reject" || action === "approveAll") && safeRole !== "pusat") {
+    if ((action === "approve" || action === "approveDireksi" || action === "reject" || action === "approveAll" || action === "approveDireksiAll") && safeRole !== "pusat") {
       return NextResponse.json({ error: "Hanya Pusat yang dapat melakukan aksi ini" }, { status: 403 });
     }
 
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, data: result.po, batchCode: result.batchCode });
     }
 
-    // ── APPROVE ALL ────────────────────────────────────────────────────
+    // ── APPROVE ALL PUSAT ──────────────────────────────────────────────
     if (action === "approveAll" && poIds && Array.isArray(poIds)) {
       if (safeRole !== "pusat") {
         return NextResponse.json({ error: "Hanya Pusat yang dapat melakukan aksi ini" }, { status: 403 });
@@ -125,7 +125,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, count: result.count });
     }
 
-    // ── APPROVE ────────────────────────────────────────────────────────
+    // ── APPROVE ALL DIREKSI ────────────────────────────────────────────
+    if (action === "approveDireksiAll" && poIds && Array.isArray(poIds)) {
+      if (safeRole !== "pusat") {
+        return NextResponse.json({ error: "Hanya Pusat yang dapat melakukan aksi ini" }, { status: 403 });
+      }
+      const result = await prisma.purchaseOrder.updateMany({
+        where: { id: { in: poIds } },
+        data: { statusCreditLimit: "APPROVED_DIREKSI" },
+      });
+      return NextResponse.json({ success: true, count: result.count });
+    }
+
+    // ── APPROVE PUSAT ──────────────────────────────────────────────────
     if (action === "approve") {
       const po = await prisma.purchaseOrder.update({
         where: { id: poId },
@@ -134,13 +146,48 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, data: po });
     }
 
-    // ── REJECT: Reset PO, remove from batch ───────────────────────────
+    // ── APPROVE DIREKSI ────────────────────────────────────────────────
+    if (action === "approveDireksi") {
+      const po = await prisma.purchaseOrder.update({
+        where: { id: poId },
+        data: { statusCreditLimit: "APPROVED_DIREKSI" },
+      });
+      return NextResponse.json({ success: true, data: po });
+    }
+
+    // ── REJECT ─────────────────────────────────────────────────────────
     if (action === "reject") {
+      const currentPo = await prisma.purchaseOrder.findUnique({ where: { id: poId } });
+      if (!currentPo) return NextResponse.json({ error: "PO not found" }, { status: 404 });
+
+      if (currentPo.statusCreditLimit === "REQUESTED") {
+        // Rejected by Pusat -> Reset PO, remove from batch (goes back to Data page)
+        const po = await prisma.purchaseOrder.update({
+          where: { id: poId },
+          data: {
+            statusCreditLimit: "REJECTED",
+            creditLimitBatchId: null,
+          },
+        });
+        return NextResponse.json({ success: true, data: po });
+      } else {
+        // Rejected by Direksi -> Stay in batch, set status to REJECTED
+        const po = await prisma.purchaseOrder.update({
+          where: { id: poId },
+          data: {
+            statusCreditLimit: "REJECTED",
+          },
+        });
+        return NextResponse.json({ success: true, data: po });
+      }
+    }
+
+    // ── RE-REQUEST (Dari halaman approval untuk PO yang ditolak Direksi) 
+    if (action === "reRequest") {
       const po = await prisma.purchaseOrder.update({
         where: { id: poId },
         data: {
-          statusCreditLimit: "REJECTED",
-          creditLimitBatchId: null, // Remove from batch so it goes back to data page
+          statusCreditLimit: "REQUESTED",
         },
       });
       return NextResponse.json({ success: true, data: po });

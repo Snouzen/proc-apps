@@ -23,6 +23,7 @@ import {
 } from "react";
 import { upperClean } from "@/lib/text";
 import DateInputHybrid from "@/components/DateInputHybrid";
+import { GlobalPagination } from "@/components/global-pagination";
 import { getMe } from "@/lib/me";
 
 type Row = {
@@ -1413,7 +1414,7 @@ export default function ReportPage() {
                 : `Menampilkan ${pageRows.length} dari ${serverTotal} baris`}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-600 dark:text-slate-400">Rows</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Rows per page:</span>
             <select
               value={rowsPerPage}
               onChange={(e) => setRowsPerPage(Number(e.target.value))}
@@ -1425,25 +1426,6 @@ export default function ReportPage() {
                 </option>
               ))}
             </select>
-            <span className="text-sm text-slate-600 dark:text-slate-400">
-              Page {page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Prev
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              Next
-            </button>
           </div>
         </div>
 
@@ -1594,6 +1576,16 @@ export default function ReportPage() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4 mb-2 px-2">
+          <GlobalPagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            itemsCount={pageRows.length}
+            totalItems={serverTotal}
+            itemName="baris"
+          />
         </div>
       </div>
     </div>

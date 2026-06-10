@@ -822,17 +822,9 @@ export async function GET(request: Request) {
                 }
               ]
             },
-            // New: PO yang sudah dijadwalkan (punya tglkirim) — tampil walaupun sudah punya invoice
+            // New: PO yang sudah dijadwalkan (punya tglkirim) — tampil walaupun sudah punya invoice dan tanpa batasan expiredTgl
             {
-              AND: [
-                { tglkirim: { not: null } },
-                {
-                  OR: [
-                    { expiredTgl: null },
-                    { expiredTgl: { gte: startOfPast14Days } },
-                  ]
-                }
-              ]
+              tglkirim: { not: null }
             }
           ]
         },

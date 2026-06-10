@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getMe } from "@/lib/me";
+import { useMemo, useState } from "react";
 import PODetailModal from "@/components/po-detail-modal";
-import { Search, ChevronDown, X } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   ColumnDef,
   getCoreRowModel,
@@ -11,289 +10,22 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import * as Popover from "@radix-ui/react-popover";
+import { GlobalPagination } from "@/components/global-pagination";
+import { CustomSelect } from "@/components/ui/custom-select";
 
-type Row = {
-  id: string;
-  noPo: string;
-  company: string;
-  regional: string | null;
-  siteArea: string;
-  tglPo: string | null;
-  expiredTgl: string | null;
-  noInvoice: string | null;
-  tujuanDetail: string | null;
-  linkPo: string | null;
-  remarks: string | null;
-  Items: any[];
-  UnitProduksi?: any;
-  RitelModern?: any;
-};
-
-// UI FIX: Modern Custom Select Component Wrapper
-function CustomSelect({
-  value,
-  onChange,
-  options,
-  placeholder = "Pilih...",
-  disabled = false,
-  className = "",
-  align = "left",
-  onClear,
-}: {
-  value: string | number;
-  onChange: (val: string) => void;
-  options: { value: string | number; label: string }[];
-  placeholder?: string;
-  disabled?: boolean;
-  className?: string;
-  align?: "left" | "right";
-  onClear?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const clickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", clickOutside);
-    return () => document.removeEventListener("mousedown", clickOutside);
-  }, []);
-
-  const selectedLabel =
-    options.find((o) => String(o.value) === String(value))?.label || placeholder;
-
-  return (
-    <div ref={ref} className={`relative ${className}`}>
-      <div
-        role="button"
-        tabIndex={disabled ? -1 : 0}
-        onClick={() => !disabled && setOpen(!open)}
-        onKeyDown={(e) => {
-          if (!disabled && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            setOpen(!open);
-          }
-        }}
-        className={`flex h-10 w-full items-center justify-between rounded-xl border px-3 text-sm transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 ${
-          disabled
-            ? "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
-            : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 hover:border-blue-400 shadow-sm"
-        }`}
-      >
-        <span className="truncate">{selectedLabel}</span>
-        <div className="flex items-center gap-1.5 ml-2">
-          {onClear && value && !disabled && (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClear();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  onClear();
-                }
-              }}
-              className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-rose-500 transition-colors"
-            >
-              <X size={14} />
-            </div>
-          )}
-          <ChevronDown
-            size={16}
-            className={`text-slate-400 transition-transform duration-200 ${
-              open ? "rotate-180" : ""
-            }`}
-          />
-        </div>
-      </div>
-
-      {open && !disabled && (
-        <div
-          className={`absolute z-[9999] mt-1 min-w-[200px] max-h-60 w-full overflow-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
-        >
-          {options.length > 0 ? (
-            options.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  onChange(String(opt.value));
-                  setOpen(false);
-                }}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 font-medium ${
-                  String(opt.value) === String(value)
-                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold"
-                    : "text-slate-700 dark:text-slate-300"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))
-          ) : (
-            <div className="px-3 py-2 text-xs text-slate-400 text-center">
-              Tidak ada data
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+import { useAuthData } from "@/hooks/useAuthData";
+import { useMasterUnits } from "@/hooks/useMasterUnits";
+import { usePoDetailModal } from "@/hooks/usePoDetailModal";
+import { useNeedAssignTable, NeedAssignRow } from "@/hooks/useNeedAssignTable";
 
 export default function NeedAssignPage() {
-  const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<"pusat" | "rm" | null>(null);
-  const [regional, setRegional] = useState<string | null>(null);
-  const [rows, setRows] = useState<Row[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const lastCtrlRef = useRef<AbortController | null>(null);
+  const { role, regional } = useAuthData();
+  const { unitData: units } = useMasterUnits();
+  
+  const tableState = useNeedAssignTable({ role, regional });
+  const detailModal = usePoDetailModal({ role, regional });
 
-  const [openDetail, setOpenDetail] = useState(false);
   const [hoveredPoId, setHoveredPoId] = useState<string | null>(null);
-  const [detailData, setDetailData] = useState<any | null>(null);
-  const [units, setUnits] = useState<
-    { idRegional: string; namaRegional: string; siteArea: string }[]
-  >([]);
-  const [edited, setEdited] = useState<
-    Record<
-      string,
-      {
-        regional?: string;
-        siteArea?: string;
-        saving?: boolean;
-        error?: string | null;
-        ok?: boolean;
-      }
-    >
-  >({});
-
-  useEffect(() => {
-    (async () => {
-      const me = await getMe();
-      setRole(me?.role === "rm" ? "rm" : "pusat");
-      setRegional(me?.regional ?? null);
-    })();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const run = async () => {
-      try {
-        const res = await fetch("/api/unit-produksi", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const json = await res.json().catch(() => []);
-        const list = Array.isArray(json) ? json : [];
-        setUnits(
-          list.map((u: any) => ({
-            idRegional: u?.idRegional,
-            namaRegional: u?.namaRegional,
-            siteArea: u?.siteArea,
-          })),
-        );
-      } catch {
-        setUnits([]);
-      }
-    };
-    run();
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const newSearch = String(search || "").trim();
-      if (newSearch !== debouncedSearch) {
-        setDebouncedSearch(newSearch);
-        if (page !== 1) {
-          setIsTransitioning(true);
-          setPage(1);
-        }
-      }
-    }, 500);
-    return () => clearTimeout(t);
-  }, [search, debouncedSearch, page]);
-
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  const fetchData = useCallback(async () => {
-    if (!role) return;
-    if (typeof document !== "undefined" && !document.hasFocus()) return;
-    setLoading(true);
-    setIsTransitioning(true);
-    if (lastCtrlRef.current) {
-      try {
-        lastCtrlRef.current.abort();
-      } catch {}
-    }
-    const controller = new AbortController();
-    lastCtrlRef.current = controller;
-    const timer = setTimeout(() => controller.abort(), 10000);
-    try {
-      const params = new URLSearchParams();
-      params.set("includeUnknown", "true");
-      params.set("summary", "true");
-      params.set("includeItems", "false");
-      params.set("group", "assign");
-      params.set("limit", String(rowsPerPage));
-      params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
-      if (role === "rm" && regional) params.set("regional", regional);
-      if (debouncedSearch) params.set("q", debouncedSearch);
-      const res = await fetch(`/api/po?${params.toString()}`, {
-        cache: "no-store",
-        signal: controller.signal,
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) {
-        const msg =
-          (json as any)?.error || res.statusText || "Gagal mengambil data PO";
-        throw new Error(msg);
-      }
-      const list = Array.isArray((json as any)?.data)
-        ? (json as any).data
-        : Array.isArray(json)
-          ? (json as any)
-          : [];
-      setRows(list as Row[]);
-      setTotal(Number((json as any)?.total) || list.length);
-      setError(null);
-    } catch (e: any) {
-      if (e?.name === "AbortError") return;
-      const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
-      setError(msg);
-    } finally {
-      clearTimeout(timer);
-      setLoading(false);
-      setIsTransitioning(false);
-    }
-  }, [debouncedSearch, page, regional, role, rowsPerPage]);
-
-  useEffect(() => {
-    if (!role) return;
-    if (typeof document !== "undefined" && !document.hasFocus()) return;
-    fetchData();
-  }, [fetchData, role, debouncedSearch, page, rowsPerPage, regional]);
-
-  useEffect(() => {
-    return () => {
-      if (lastCtrlRef.current) {
-        try {
-          lastCtrlRef.current.abort();
-        } catch {}
-      }
-    };
-  }, []);
 
   const formatDate = (d: any) => {
     const date = d ? new Date(d) : null;
@@ -304,86 +36,8 @@ export default function NeedAssignPage() {
     return `${day} ${month} ${year}`;
   };
 
-  const openModal = async (po: any) => {
-    const nopo = String(po?.noPo || "").trim();
-    let fullPo: any = po;
-    if (nopo) {
-      try {
-        const params = new URLSearchParams();
-        params.set("includeUnknown", "true");
-        params.set("noPo", nopo);
-        params.set("includeItems", "true");
-        params.set("limit", "1");
-        params.set("offset", "0");
-        if (role === "rm" && regional) params.set("regional", regional);
-        const res = await fetch(`/api/po?${params.toString()}`, {
-          cache: "no-store",
-        });
-        const json = await res.json().catch(() => null);
-        const first = Array.isArray((json as any)?.data)
-          ? (json as any).data[0]
-          : Array.isArray(json)
-            ? (json as any)[0]
-            : null;
-        if (first) fullPo = first;
-      } catch {}
-    }
-
-    const items: any[] = Array.isArray(fullPo?.Items) ? fullPo.Items : [];
-    const mappedItems = items.map((it: any, idx: number) => ({
-      id:
-        it?.id ??
-        `${it?.Product?.name || "item"}-${it?.pcs || 0}-${it?.hargaPcs || 0}-${idx}`,
-      pcs: Number(it?.pcs || 0),
-      pcsKirim: Number(it?.pcsKirim || 0),
-      hargaPcs: Number(it?.hargaPcs || 0),
-      nominal: Number(it?.nominal || 0),
-      rpTagih: Number(it?.rpTagih || 0),
-      Product: {
-        name: String(it?.Product?.name || "-"),
-        satuanKg:
-          typeof it?.Product?.satuanKg === "number"
-            ? it.Product.satuanKg
-            : undefined,
-      },
-    }));
-    setDetailData({
-      id: fullPo?.id || "",
-      noPo: fullPo?.noPo || "-",
-      company: fullPo?.RitelModern?.namaPt || fullPo?.company || "Unknown",
-      createdAt: fullPo?.createdAt || null,
-      updatedAt: fullPo?.updatedAt || null,
-      tglPo: fullPo?.tglPo || null,
-      expiredTgl: fullPo?.expiredTgl || null,
-      linkPo: fullPo?.linkPo || null,
-      noInvoice: fullPo?.noInvoice || null,
-      siteArea:
-        fullPo?.UnitProduksi?.siteArea &&
-        fullPo.UnitProduksi.siteArea !== "UNKNOWN"
-          ? fullPo.UnitProduksi.siteArea
-          : "-",
-      tujuanDetail: fullPo?.tujuanDetail || null,
-      regional: fullPo?.regional || fullPo?.UnitProduksi?.namaRegional || null,
-      Items: mappedItems,
-      status: {
-        kirim: !!fullPo?.statusKirim,
-        sdif: !!fullPo?.statusSdif,
-        po: !!fullPo?.statusPo,
-        fp: !!fullPo?.statusFp,
-        kwi: !!fullPo?.statusKwi,
-        inv: !!fullPo?.statusInv,
-        tagih: !!fullPo?.statusTagih,
-        bayar: !!fullPo?.statusBayar,
-      },
-      remarks: fullPo?.remarks || null,
-      buktiKirim: fullPo?.buktiKirim || null,
-      buktiFp: fullPo?.buktiFp || null,
-    });
-    setOpenDetail(true);
-  };
-
-  const filteredRows = useMemo(() => rows, [rows]);
-  const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
+  const filteredRows = useMemo(() => tableState.rows, [tableState.rows]);
+  const totalPages = Math.max(1, Math.ceil(tableState.total / tableState.rowsPerPage));
 
   const keyify = (s: any) =>
     String(s ?? "")
@@ -408,18 +62,19 @@ export default function NeedAssignPage() {
     }
     return map;
   }, [units]);
+  
   const siteRegionalKeys = useMemo(
     () => Object.keys(siteOptionsByRegional),
     [siteOptionsByRegional],
   );
 
-  const columns: ColumnDef<Row>[] = [
+  const columns: ColumnDef<NeedAssignRow>[] = [
     {
       header: "No",
       id: "index",
       cell: ({ row }) => (
         <span className="text-black dark:text-slate-200 font-bold">
-          {(page - 1) * rowsPerPage + row.index + 1}
+          {(tableState.page - 1) * tableState.rowsPerPage + row.index + 1}
         </span>
       ),
     },
@@ -441,9 +96,7 @@ export default function NeedAssignPage() {
       cell: ({ row }) => (
         <div
           className="text-slate-800 dark:text-slate-200 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-          title={String(
-            row.original.company || row.original?.RitelModern?.namaPt || "-",
-          )}
+          title={String(row.original.company || row.original?.RitelModern?.namaPt || "-")}
         >
           {row.original.company || row.original?.RitelModern?.namaPt || "-"}
         </div>
@@ -467,19 +120,19 @@ export default function NeedAssignPage() {
       cell: ({ row }) => {
         const noPo = row.original.noPo;
         const current =
-          edited[noPo]?.regional ??
+          tableState.edited[noPo]?.regional ??
           (row.original.regional && row.original.regional !== "UNKNOWN"
             ? row.original.regional
             : "") ??
           "";
+          
         if (role === "pusat") {
           return (
             <div className="flex items-center gap-2">
-              {/* UI FIX: Modern Custom Select */}
               <CustomSelect
                 value={current}
                 onChange={(val) =>
-                  setEdited((prev) => ({
+                  tableState.setEdited((prev) => ({
                     ...prev,
                     [noPo]: {
                       ...(prev[noPo] || {}),
@@ -495,12 +148,12 @@ export default function NeedAssignPage() {
                   .sort()
                   .map((opt) => ({ value: opt, label: opt }))}
                 onClear={() =>
-                  setEdited((prev) => ({
+                  tableState.setEdited((prev) => ({
                     ...prev,
                     [noPo]: {
                       ...(prev[noPo] || {}),
                       regional: "",
-                      siteArea: "", // Reset site area too if regional cleared
+                      siteArea: "",
                       error: null,
                     },
                   }))
@@ -510,12 +163,14 @@ export default function NeedAssignPage() {
             </div>
           );
         }
+        
         const lockedRegional =
           (row.original.regional && row.original.regional !== "UNKNOWN"
             ? row.original.regional
             : null) ??
           regional ??
           "";
+          
         return (
           <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800/50 px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
             {lockedRegional || "-"}
@@ -528,35 +183,30 @@ export default function NeedAssignPage() {
       accessorKey: "siteArea",
       cell: ({ row }) => {
         const noPo = row.original.noPo;
-        const currRegionalRaw =
-          edited[noPo]?.regional ?? row.original.regional ?? "";
+        const currRegionalRaw = tableState.edited[noPo]?.regional ?? row.original.regional ?? "";
+        
         const effectiveRegional =
           (regional && regional !== "UNKNOWN" ? regional : null) ||
-          (currRegionalRaw && currRegionalRaw !== "UNKNOWN"
-            ? currRegionalRaw
-            : "");
-        const currentSite =
-          edited[noPo]?.siteArea ?? row.original.siteArea ?? "";
+          (currRegionalRaw && currRegionalRaw !== "UNKNOWN" ? currRegionalRaw : "");
+          
+        const currentSite = tableState.edited[noPo]?.siteArea ?? row.original.siteArea ?? "";
+        
         const regKey = keyify(effectiveRegional);
         const resolvedKey =
           regKey && siteOptionsByRegional[regKey]
             ? regKey
-            : siteRegionalKeys.find(
-                (k) => (regKey && k.includes(regKey)) || regKey.includes(k),
-              ) || regKey;
-        const options = resolvedKey
-          ? siteOptionsByRegional[resolvedKey] || []
-          : [];
+            : siteRegionalKeys.find((k) => (regKey && k.includes(regKey)) || regKey.includes(k)) || regKey;
+            
+        const options = resolvedKey ? siteOptionsByRegional[resolvedKey] || [] : [];
         const disabled = !effectiveRegional || options.length === 0;
-        // options already computed from effectiveRegional
+
         return (
           <div className="flex items-center gap-2">
-            {/* UI FIX: Modern Custom Select */}
             <CustomSelect
               value={currentSite || ""}
               disabled={disabled}
               onChange={(val) =>
-                setEdited((prev) => ({
+                tableState.setEdited((prev) => ({
                   ...prev,
                   [noPo]: {
                     ...(prev[noPo] || {}),
@@ -577,7 +227,7 @@ export default function NeedAssignPage() {
               }
               options={options.map((opt) => ({ value: opt, label: opt }))}
               onClear={() =>
-                setEdited((prev) => ({
+                tableState.setEdited((prev) => ({
                   ...prev,
                   [noPo]: {
                     ...(prev[noPo] || {}),
@@ -625,6 +275,7 @@ export default function NeedAssignPage() {
       cell: ({ row }) => {
         const remarks = row.original.remarks;
         if (!remarks) return <span className="text-slate-300 dark:text-slate-500 text-[12px]">-</span>;
+        
         return (
           <div className="flex justify-center py-2">
             <Popover.Root 
@@ -677,9 +328,8 @@ export default function NeedAssignPage() {
       header: "Actions",
       cell: ({ row }) => {
         const noPo = row.original.noPo;
-        const st = edited[noPo] || {};
+        const st = tableState.edited[noPo] || {};
         
-        // 1. Bersihkan nilai dan buat perbandingan dengan data original
         const selectedReg = st.regional !== undefined ? st.regional : row.original.regional;
         const selectedSite = st.siteArea !== undefined ? st.siteArea : row.original.siteArea;
         
@@ -692,34 +342,23 @@ export default function NeedAssignPage() {
         
         const currentReg = cleanStr(selectedReg);
         const currentSite = cleanStr(selectedSite);
-        
         const originalReg = cleanStr(row.original.regional);
         const originalSite = cleanStr(row.original.siteArea);
         
-        // 2. Cek apakah ada perubahan data pengisian
         const hasChanges = currentReg !== originalReg || currentSite !== originalSite;
-        
-        // 3. Cek validasi minimum berdasar role
         const isValid = role === "pusat" ? currentReg !== "" : currentReg !== "" && currentSite !== "";
-        
-        // 4. Tombol disabled check
         const isButtonDisabled = !isValid || !hasChanges || !!st.saving;
 
         const onAssign = async () => {
           const reg =
             role === "pusat"
-              ? edited[noPo]?.regional ||
-                (row.original.regional && row.original.regional !== "UNKNOWN"
-                  ? row.original.regional
-                  : null)
+              ? tableState.edited[noPo]?.regional ||
+                (row.original.regional && row.original.regional !== "UNKNOWN" ? row.original.regional : null)
               : (regional && regional !== "UNKNOWN" ? regional : null) ||
-                (row.original.regional && row.original.regional !== "UNKNOWN"
-                  ? row.original.regional
-                  : null);
+                (row.original.regional && row.original.regional !== "UNKNOWN" ? row.original.regional : null);
 
-          // Validation logic based on role
           if (!reg) {
-            setEdited((prev) => ({
+            tableState.setEdited((prev) => ({
               ...prev,
               [noPo]: { ...(prev[noPo] || {}), error: "Isi regional dulu" },
             }));
@@ -727,17 +366,18 @@ export default function NeedAssignPage() {
           }
 
           if (role === "rm" && !st.siteArea) {
-            setEdited((prev) => ({
+            tableState.setEdited((prev) => ({
               ...prev,
               [noPo]: { ...(prev[noPo] || {}), error: "Pilih site area" },
             }));
             return;
           }
 
-          setEdited((prev) => ({
+          tableState.setEdited((prev) => ({
             ...prev,
             [noPo]: { ...(prev[noPo] || {}), saving: true, error: null },
           }));
+          
           try {
             const res = await fetch("/api/po/assign", {
               method: "POST",
@@ -749,22 +389,18 @@ export default function NeedAssignPage() {
               }),
             });
             const json = await res.json().catch(() => null);
-            if (!res.ok)
-              throw new Error((json as any)?.error || res.statusText);
+            if (!res.ok) throw new Error((json as any)?.error || res.statusText);
             
-            // UI Improvement: Auto-Hide (Optimistic Update)
-            setRows((prev) => prev.filter((r) => r.noPo !== noPo));
-            setTotal((prev) => Math.max(0, prev - 1));
+            tableState.setRows((prev) => prev.filter((r) => r.noPo !== noPo));
+            tableState.setTotal((prev) => Math.max(0, prev - 1));
 
-            setEdited((prev) => {
+            tableState.setEdited((prev) => {
               const next = { ...prev };
               delete next[noPo];
               return next;
             });
-            
-            // alert("PO berhasil di-assign!"); // Fallback as toast library not found
           } catch (e: any) {
-            setEdited((prev) => ({
+            tableState.setEdited((prev) => ({
               ...prev,
               [noPo]: {
                 ...(prev[noPo] || {}),
@@ -774,6 +410,7 @@ export default function NeedAssignPage() {
             }));
           }
         };
+
         return (
           <div className="text-right">
             <div className="flex items-center justify-end gap-2">
@@ -790,7 +427,7 @@ export default function NeedAssignPage() {
               </button>
               <button
                 className="inline-flex h-9 px-3 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold whitespace-nowrap"
-                onClick={() => openModal(row.original)}
+                onClick={() => detailModal.openModal(row.original)}
               >
                 View
               </button>
@@ -800,9 +437,9 @@ export default function NeedAssignPage() {
                 {st.error}
               </div>
             )}
-            {st.ok && !st.error && (
+            {st.ok && (
               <div className="mt-1 text-[11px] font-semibold text-emerald-600">
-                Assigned
+                Berhasil
               </div>
             )}
           </div>
@@ -815,166 +452,139 @@ export default function NeedAssignPage() {
     data: filteredRows,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    state: {
-      pagination: {
-        pageIndex: Math.max(0, page - 1),
-        pageSize: rowsPerPage,
-      },
-    },
-    manualPagination: true,
-    pageCount: totalPages,
-    onPaginationChange: (updater) => {
-      setIsTransitioning(true);
-      const next =
-        typeof updater === "function"
-          ? updater({
-              pageIndex: Math.max(0, page - 1),
-              pageSize: rowsPerPage,
-            })
-          : updater;
-      setRowsPerPage(next.pageSize);
-      setPage(next.pageIndex + 1);
-    },
   });
 
   return (
-    <main className="px-5 py-6">
+    <div className="p-6 max-w-[1600px] mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Need To Assign</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Menampilkan PO yang belum memiliki data regional dan belum expired.
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+            Need Assign
+          </h1>
+          <p className="text-slate-400 dark:text-slate-500 text-sm mt-0.5">
+            Daftar PO yang menunggu mapping Unit Produksi/Regional.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-          <div className="relative w-full sm:w-80">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari No PO / Company / Inisial…"
-              className="h-10 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-3 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-            />
-          </div>
-          {/* UI FIX: Modern Custom Select */}
-          <CustomSelect
-            value={rowsPerPage}
-            onChange={(val) => {
-              setIsTransitioning(true);
-              setRowsPerPage(Number(val) || 10);
-              if (page !== 1) setPage(1);
-            }}
-            options={[
-              { value: 10, label: "10 rows" },
-              { value: 25, label: "25 rows" },
-              { value: 50, label: "50 rows" },
-            ]}
-            className="w-32"
-            align="right"
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            placeholder="Cari PO, Perusahaan..."
+            className="pl-9 pr-4 py-2 text-sm bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+            value={tableState.search}
+            onChange={(e) => tableState.setSearch(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="mt-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-160px)] min-h-[500px]">
-        {error && (
-          <div className="px-6 py-4 text-sm text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border-b border-rose-100 dark:border-rose-800">
-            {error}
+      <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden relative min-h-[400px] flex flex-col">
+        {tableState.loading && (
+          <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center transition-all duration-300">
+            <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700">
+              <div className="h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                Memuat data...
+              </span>
+            </div>
           </div>
         )}
-        <div className="overflow-auto flex-1 relative">
-          <table className="min-w-[920px] w-full text-left relative">
-            <thead className="text-[11px] text-slate-800 dark:text-slate-300 uppercase tracking-wide sticky top-0 z-10 shadow-sm shadow-slate-200/50 dark:shadow-slate-900/50 bg-slate-50 dark:bg-slate-800/95 backdrop-blur after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200 dark:after:bg-slate-700">
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((h) => (
-                    <th
-                      key={h.id}
-                      className="px-6 py-3 font-bold bg-slate-50 dark:bg-slate-800/95 whitespace-nowrap"
-                    >
-                      {h.isPlaceholder
-                        ? null
-                        : flexRender(h.column.columnDef.header, h.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody
-              className={`divide-y divide-slate-100 dark:divide-slate-700 text-sm text-black dark:text-slate-200 transition-opacity duration-300 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
-            >
-              {table.getRowModel().rows.map((r) => (
-                <tr
-                  key={r.id}
-                  className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors"
-                >
-                  {r.getVisibleCells().map((c) => (
-                    <td key={c.id} className="px-6 py-3">
-                      {flexRender(c.column.columnDef.cell, c.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {filteredRows.length === 0 && !loading && !isTransitioning && (
-                <tr>
-                  <td
-                    className="px-6 py-10 text-center text-slate-500 dark:text-slate-400"
-                    colSpan={columns.length}
-                  >
-                    Tidak ada data Need To Assign.
-                  </td>
-                </tr>
-              )}
-              {(loading || isTransitioning) && (
-                <tr>
-                  <td
-                    className="px-6 py-10 text-center text-slate-800 dark:text-slate-200"
-                    colSpan={columns.length}
-                  >
-                    Loading…
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
 
-        <div className="px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 dark:border-slate-700">
-          <div className="text-sm text-slate-500 dark:text-slate-400">
-            Showing {filteredRows.length} of {total} PO
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <button
-              disabled={page <= 1 || isTransitioning}
-              onClick={() => {
-                setIsTransitioning(true);
-                setPage((p) => Math.max(1, p - 1));
-              }}
-              className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              disabled={page >= totalPages || isTransitioning}
-              onClick={() => {
-                setIsTransitioning(true);
-                setPage((p) => Math.min(totalPages, p + 1));
-              }}
-              className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
-            >
-              Next
-            </button>
+        <div className={`transition-opacity duration-300 flex-1 flex flex-col ${tableState.isTransitioning ? "opacity-50" : "opacity-100"}`}>
+          <div className="overflow-x-auto w-full flex-1">
+            {tableState.error ? (
+              <div className="p-8 text-center text-rose-500 font-medium">
+                {tableState.error}
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse min-w-max xl:min-w-[1400px]">
+                <thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id} className="border-b border-slate-100 dark:border-slate-800">
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className="px-6 py-4 text-[13px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/50"
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                  {table.getRowModel().rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group">
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-6 py-4 align-top">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  {!tableState.loading && filteredRows.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={columns.length}
+                        className="py-12 text-center text-slate-400 dark:text-slate-500 font-medium"
+                      >
+                        Tidak ada data yang perlu di-assign
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
 
+      {!tableState.loading && !tableState.error && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900/40 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            Total Data: <span className="text-slate-900 dark:text-slate-100 font-bold">{tableState.total.toLocaleString("id-ID")}</span> baris
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Rows per page
+            </span>
+            <CustomSelect
+              value={tableState.rowsPerPage}
+              onChange={(val) => {
+                tableState.setRowsPerPage(Number(val));
+                tableState.setPage(1);
+              }}
+              options={[
+                { value: 10, label: "10" },
+                { value: 25, label: "25" },
+                { value: 50, label: "50" },
+                { value: 100, label: "100" },
+              ]}
+              className="w-20 shadow-sm dark:shadow-none"
+            />
+          </div>
+
+          <GlobalPagination
+            currentPage={tableState.page}
+            totalPages={totalPages}
+            onPageChange={tableState.setPage}
+            itemsCount={filteredRows.length}
+            totalItems={tableState.total}
+            itemName="po"
+          />
+        </div>
+      )}
+
       <PODetailModal
-        open={openDetail}
-        onClose={() => setOpenDetail(false)}
-        data={detailData}
+        open={detailModal.openDetail}
+        onClose={() => detailModal.setOpenDetail(false)}
+        data={detailModal.detailData}
       />
-    </main>
+    </div>
   );
 }

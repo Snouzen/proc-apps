@@ -28,6 +28,7 @@ const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), {
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 import RitelFormModal from "./components/RitelFormModal";
 import RitelTable from "./components/RitelTable";
+import { GlobalPagination } from "@/components/global-pagination";
 
 export default function RitelModernPage() {
   const me = getMeSync();
@@ -983,32 +984,15 @@ export default function RitelModernPage() {
                         </div>
                       )))}
                     </div>
-                    <div className="flex items-center justify-between pt-3">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Menampilkan {start + 1}-
-                        {Math.min(start + aliasItemsPerPage, aliases.length)}{" "}
-                        dari {aliases.length}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            setAliasPage((p) => Math.max(p - 1, 1))
-                          }
-                          disabled={aliasPage === 1}
-                          className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          onClick={() =>
-                            setAliasPage((p) => Math.min(p + 1, totalPages))
-                          }
-                          disabled={aliasPage === totalPages}
-                          className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                        >
-                          Next
-                        </button>
-                      </div>
+                    <div className="pt-3">
+                      <GlobalPagination
+                        currentPage={aliasPage}
+                        totalPages={totalPages}
+                        onPageChange={setAliasPage}
+                        itemsCount={pageAliases.length}
+                        totalItems={aliases.length}
+                        itemName="inisial"
+                      />
                     </div>
                   </>
                 );

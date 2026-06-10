@@ -9,7 +9,7 @@ export default function SmoothSelect({
   onChange,
   onOpen,
   className,
-  width = 176,
+  width = "100%",
   disabled = false,
 }: {
   options: Option[];
@@ -17,7 +17,7 @@ export default function SmoothSelect({
   onChange: (v: string) => void;
   onOpen?: () => void;
   className?: string;
-  width?: number;
+  width?: number | string;
   disabled?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);

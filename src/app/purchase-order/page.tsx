@@ -1,84 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Search,
-  ArrowUpRight,
-  TrendingUp,
-  FileText,
-  Package,
-  Building,
-  Check,
-  ChevronsUpDown,
-  Loader2,
-  Trash2,
-  Pencil,
-  Calendar,
-  PlusCircle,
-  CalendarIcon,
-  ChevronDown,
-  Info,
-  FileSpreadsheet,
-  Plus,
-  MapPin,
-  Upload,
-  X,
-} from "lucide-react";
-import { getMe } from "@/lib/me";
+import { useState } from "react";
+import { Search, Loader2, Trash2 } from "lucide-react";
+
+import { useAuthData } from "@/hooks/useAuthData";
+import { useRetailerFilters } from "@/hooks/useRetailerFilters";
+import { useGlobalSearch } from "@/hooks/useGlobalSearch";
+import { usePurchaseOrderTable } from "@/hooks/usePurchaseOrderTable";
+import { usePoDetailModal } from "@/hooks/usePoDetailModal";
+
 import PODetailModal from "@/components/po-detail-modal";
 import POEditModal from "@/components/po-edit-modal";
 import BulkUploadModal from "@/components/bulk-upload-modal";
-import { LoaderThree } from "@/components/ui/loader";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import SmoothSelect from "@/components/ui/smooth-select";
 import DateInputHybrid from "@/components/DateInputHybrid";
-import Link from "next/link";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList as CommandListUI,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 
-type Retailer = {
-  id: string;
-  namaPt: string;
-  inisial: string | null;
-  tujuan: string | null;
-};
+import { PurchaseOrderHeader } from "./_components/PurchaseOrderHeader";
+import { PurchaseOrderFilters } from "./_components/PurchaseOrderFilters";
+import { getPurchaseOrderColumns } from "./_components/PurchaseOrderColumns";
 
-// Ikon tambahan untuk Error State
 function AlertCircle(props: any) {
   return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -87,723 +33,67 @@ function AlertCircle(props: any) {
 }
 
 export default function PurchaseOrderPage() {
-  const [retailers, setRetailers] = useState<Retailer[]>([]);
-  // [FIX LOGIC] Kita simpan Nama PT-nya, bukan ID pertama-nya
-  const [selectedNamaPt, setSelectedNamaPt] = useState<string>("");
-  const [selectedInisial, setSelectedInisial] = useState<string>("");
-  const [selectedTujuan, setSelectedTujuan] = useState<string>("");
+  const { role, regional } = useAuthData();
 
-  const [openRitel, setOpenRitel] = useState(false);
-  const [openInisial, setOpenInisial] = useState(false);
-  const [openTujuan, setOpenTujuan] = useState(false);
+  const ritelFilters = useRetailerFilters();
+  const globalSearch = useGlobalSearch();
+  const poTable = usePurchaseOrderTable(ritelFilters.retailers);
+  const detailModal = usePoDetailModal({ role, regional });
 
-  const [loadingData, setLoadingData] = useState(false);
-  const [poData, setPoData] = useState<any[] | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  const [selectedPO, setSelectedPO] = useState<any | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
-  const [searchFilter, setSearchFilter] = useState("");
-
-  const [tglFrom, setTglFrom] = useState("");
-  const [tglTo, setTglTo] = useState("");
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [perPage, setPerPage] = useState("10");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  const [activeNamaPt, setActiveNamaPt] = useState<string>("");
-  const [activeInisial, setActiveInisial] = useState<string>("");
-  const [activeTujuan, setActiveTujuan] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [userRole, setUserRole] = useState<string | null>(null);
-
-  // Reset pagination ke halaman 1 setiap kali filter berubah
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchFilter, tglFrom, tglTo, sortOrder, perPage, statusFilter, activeTujuan]);
-
   const [editOpen, setEditOpen] = useState(false);
   const [editNoPo, setEditNoPo] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
-  const lastCtrlRef = useRef<AbortController | null>(null);
-
-  // ── Global Search (No PO / No Invoice) ──
-  const [globalQuery, setGlobalQuery] = useState("");
-  const [globalResults, setGlobalResults] = useState<any[] | null>(null);
-  const [globalLoading, setGlobalLoading] = useState(false);
-  const globalCtrlRef = useRef<AbortController | null>(null);
-  const globalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const globalSearchRef = useRef<HTMLDivElement | null>(null);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (globalSearchRef.current && !globalSearchRef.current.contains(e.target as Node)) {
-        setGlobalResults(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  const handleGlobalSearch = useCallback((value: string) => {
-    setGlobalQuery(value);
-    if (globalTimerRef.current) clearTimeout(globalTimerRef.current);
-    if (globalCtrlRef.current) globalCtrlRef.current.abort();
-
-    const q = value.trim();
-    if (q.length < 2) {
-      setGlobalResults(null);
-      setGlobalLoading(false);
-      return;
-    }
-
-    setGlobalLoading(true);
-    globalTimerRef.current = setTimeout(async () => {
-      const ctrl = new AbortController();
-      globalCtrlRef.current = ctrl;
-      try {
-        const url = `/api/po?q=${encodeURIComponent(q)}&summary=true&limit=15`;
-        const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
-        const json = await res.json();
-        const list = Array.isArray(json) ? json : json?.data || [];
-        setGlobalResults(list);
-      } catch (e: any) {
-        if (e.name !== "AbortError") {
-          console.error(e);
-          setGlobalResults([]);
-        }
-      } finally {
-        setGlobalLoading(false);
-      }
-    }, 400);
-  }, []);
-
-  const handleDelete = async (noPo: string) => {
-    setDeleting(true);
-    try {
-      await fetch(`/api/po?noPo=${encodeURIComponent(noPo)}`, { method: "DELETE" });
-      handleFetchData(); // Refresh data
-      setConfirmDelete(null);
-    } catch (e) {
-      alert("Gagal menghapus PO");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  // Fetch Master Ritel (Hanya 1x saat mount)
-  useEffect(() => {
-    getMe().then((data) => {
-      if (data?.authenticated) setUserRole(data.role || null);
-    });
-
-    fetch("/api/ritel")
-      .then((res) => res.json())
-      .then((json) => {
-        const list = Array.isArray(json) ? json : json?.data || [];
-        setRetailers(list);
-      })
-      .finally(() => setIsInitialLoad(false));
-  }, []);
-
-  // Filter inisial unik dari Nama PT yang dipilih
-  const availableInisials = useMemo(() => {
-    if (!selectedNamaPt) return [];
-    const samePtRetailers = retailers.filter(
-      (r) => r.namaPt === selectedNamaPt,
-    );
-    const inisials = samePtRetailers
-      .map((r) => r.inisial)
-      .filter(Boolean) as string[];
-    return Array.from(new Set(inisials)).sort();
-  }, [selectedNamaPt, retailers]);
-
-  // Filter tujuan unik dari Nama PT dan Inisial yang dipilih
-  const availableTujuans = useMemo(() => {
-    if (!selectedNamaPt) return [];
-    
-    const validRetailers = retailers.filter((r) => {
-      if (r.namaPt !== selectedNamaPt) return false;
-      if (selectedInisial && r.inisial !== selectedInisial) return false;
-      return true;
-    });
-
-    const tujuans = validRetailers
-      .map((r) => r.tujuan)
-      .filter(Boolean) as string[];
-      
-    return Array.from(new Set(tujuans)).sort();
-  }, [selectedNamaPt, selectedInisial, retailers]);
-
-  // Main Fetch Data [PERBAIKAN LOGIC BESAR-BESARAN]
-  const handleFetchData = async () => {
-    if (!selectedNamaPt) return;
-
-    setLoadingData(true);
-    setPoData(null); // Clear state instantly so it resets properly when changing Ritel!
-    if (lastCtrlRef.current) lastCtrlRef.current.abort();
-    const ctrl = new AbortController();
-    lastCtrlRef.current = ctrl;
-
-    try {
-      // Cari semua ID ritel yang cocok dengan filter PT dan Inisial
-      const ritelsToFetch = selectedInisial
-        ? retailers.filter(
-            (r) => r.namaPt === selectedNamaPt && r.inisial === selectedInisial,
-          )
-        : retailers.filter((r) => r.namaPt === selectedNamaPt);
-
-      // [FIX EMAXCONN] Kirim semua retailer ID dalam 1 request (comma-separated)
-      const allIds = ritelsToFetch.map((r) => r.id).join(",");
-      const url = `/api/po?retailerId=${encodeURIComponent(allIds)}&summary=true`;
-      const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
-      const json = await res.json();
-      const combinedList = Array.isArray(json) ? json : json?.data || [];
-
-      setPoData(combinedList);
-      setActiveNamaPt(selectedNamaPt);
-      setActiveInisial(selectedInisial);
-      setActiveTujuan(selectedTujuan);
-    } catch (e: any) {
-      if (e.name !== "AbortError") console.error(e);
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
-  // [FIX STATS] Gunakan totalNominal & pcsTotal dari summary, bukan po.Items
-  const stats = useMemo(() => {
-    if (!poData || poData.length === 0) return null;
-    const totalPo = poData.length;
-    const totalNominal = poData.reduce(
-      (acc, po) => acc + (Number(po.totalNominal) || 0),
-      0,
-    );
-    const totalItems = poData.reduce(
-      (acc, po) => acc + (Number(po.pcsTotal) || 0),
-      0,
-    );
-
-    return { totalPo, totalNominal, totalItems };
-  }, [poData]);
-
-  const toDate = (d: any) => {
-    if (!d) return null;
-    const dt = new Date(d);
-    return isNaN(dt.getTime()) ? null : dt;
-  };
-  const isCompleted = (po: any) => {
-    const inv = String(po?.noInvoice || "").trim();
-    return inv.length > 0 && inv !== "-" && inv.toLowerCase() !== "unknown";
-  };
-  const daysUntil = (d: Date | null) => {
-    if (!d) return null;
-    const ms = d.getTime() - Date.now();
-    return Math.ceil(ms / (1000 * 60 * 60 * 24));
-  };
-
-  const filteredPo = useMemo(() => {
-    if (!poData) return [];
-    let data = [...poData];
-
-    // Filter by search
-    const q = searchFilter.toLowerCase().trim();
-    if (q) {
-      data = data.filter(
-        (po) =>
-          (po.noPo || "").toLowerCase().includes(q) ||
-          (po.noInvoice || "").toLowerCase().includes(q),
-      );
-    }
-
-    // Filter by Tujuan Detail
-    const tujuanQ = activeTujuan.toLowerCase().trim();
-    if (tujuanQ) {
-      data = data.filter((po) =>
-        (po.tujuanDetail || "").toLowerCase().includes(tujuanQ),
-      );
-    }
-
-    // Filter by Tgl PO
-    if (tglFrom) {
-      const fromDate = new Date(tglFrom);
-      fromDate.setHours(0, 0, 0, 0);
-      data = data.filter(po => new Date(po.tglPo) >= fromDate);
-    }
-    if (tglTo) {
-      const toDateObj = new Date(tglTo);
-      toDateObj.setHours(23, 59, 59, 999);
-      data = data.filter(po => new Date(po.tglPo) <= toDateObj);
-    }
-
-    // Filter by Status
-    if (statusFilter !== "all") {
-      data = data.filter((po) => {
-        const completed = isCompleted(po);
-        if (statusFilter === "complete") return completed;
-        if (completed) return false;
-        
-        const du = daysUntil(toDate(po.expiredTgl));
-        if (du == null) return statusFilter === "active";
-        
-        if (statusFilter === "expired") return du < 0;
-        if (statusFilter === "almost_expired") return du >= 0 && du <= 14;
-        if (statusFilter === "active") return du > 14;
-        return true;
-      });
-    }
-
-    // Sort by Tgl PO
-    data.sort((a, b) => {
-      const dateA = new Date(a.tglPo || 0).getTime();
-      const dateB = new Date(b.tglPo || 0).getTime();
-      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
-    });
-
-    return data;
-  }, [poData, searchFilter, tglFrom, tglTo, sortOrder, statusFilter]);
-
-  const limitData = perPage === "all" ? filteredPo.length || 1 : parseInt(perPage, 10);
-  const totalPages = Math.ceil(filteredPo.length / limitData) || 1;
-
-  const paginatedPo = useMemo(() => {
-    if (perPage === "all") return filteredPo;
-    const limit = parseInt(perPage, 10);
-    const start = (currentPage - 1) * limit;
-    return filteredPo.slice(start, start + limit);
-  }, [filteredPo, perPage, currentPage]);
-
-  if (isInitialLoad)
+  if (ritelFilters.isInitialLoad) {
     return (
       <div className="py-32 flex flex-col items-center justify-center">
         <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
         <p className="text-slate-500 font-medium font-sm">Memuat Master Data...</p>
       </div>
     );
+  }
+
+  const columns = getPurchaseOrderColumns({ poTable, role, setEditNoPo, setEditOpen });
 
   return (
     <div className="w-full space-y-8 p-4 md:p-8 animate-in fade-in duration-700">
-      {/* Header Dashboard */}
       <Card className="border border-slate-100 shadow-xl bg-white relative rounded-3xl">
-        <div className="absolute top-0 right-0 p-8 opacity-[0.03] text-blue-900 pointer-events-none">
-          <Building size={140} />
-        </div>
         <CardHeader className="relative z-50 pb-4">
-          <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-            <div>
-              <CardTitle className="text-3xl font-black text-slate-800">
-                Purchase Order Dashboard
-              </CardTitle>
-              <CardDescription className="text-slate-500">
-                Sistem filter presisi untuk memantau performa per inisial peritel.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Global Search Bar */}
-              <div ref={globalSearchRef} className="relative w-full md:w-72">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
-                <input
-                  value={globalQuery}
-                  onChange={(e) => handleGlobalSearch(e.target.value)}
-                  placeholder="Cari No PO / Invoice..."
-                  className="w-full pl-10 pr-9 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 h-11"
-                />
-                {globalQuery && (
-                  <button
-                    type="button"
-                    onClick={() => { setGlobalQuery(""); setGlobalResults(null); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-
-                {/* Floating Results Dropdown */}
-                {(globalResults !== null || globalLoading) && globalQuery.trim().length >= 2 && (
-                  <div className="absolute left-0 top-full mt-2 w-[380px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-[9999] max-h-[420px] overflow-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                    {globalLoading ? (
-                      <div className="flex items-center justify-center gap-2 py-8 text-slate-500">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="text-sm font-medium">Mencari...</span>
-                      </div>
-                    ) : globalResults && globalResults.length > 0 ? (
-                      <div className="divide-y divide-slate-100">
-                        <div className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 rounded-t-2xl sticky top-0 border-b border-slate-100">
-                          {globalResults.length} hasil ditemukan
-                        </div>
-                        {globalResults.map((po: any) => (
-                          <button
-                            key={po.id}
-                            type="button"
-                            onClick={async () => {
-                              // Load full PO into the main table
-                              setGlobalResults(null);
-                              setGlobalQuery("");
-                              setLoadingData(true);
-                              try {
-                                const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true`, { cache: "no-store" });
-                                const json = await res.json();
-                                const list = Array.isArray(json) ? json : json?.data || [];
-                                // Also fetch summary version for the table display
-                                const summaryRes = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&summary=true`, { cache: "no-store" });
-                                const summaryJson = await summaryRes.json();
-                                const summaryList = Array.isArray(summaryJson) ? summaryJson : summaryJson?.data || [];
-                                setPoData(summaryList.length > 0 ? summaryList : list);
-                                setActiveNamaPt(po.RitelModern?.namaPt || "Pencarian");
-                                setActiveInisial(po.RitelModern?.inisial || "");
-                                // Also set the full PO for possible manual click detail later
-                                if (list.length > 0) {
-                                  setSelectedPO(list[0]);
-                                }
-                              } catch (e) {
-                                console.error(e);
-                              } finally {
-                                setLoadingData(false);
-                              }
-                            }}
-                            className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-center gap-3 group"
-                          >
-                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-                              <FileText size={14} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-bold text-slate-800 text-sm truncate">{po.noPo}</div>
-                              <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                                {po.RitelModern?.namaPt || "-"}
-                                {po.RitelModern?.inisial ? ` · ${po.RitelModern.inisial}` : ""}
-                              </div>
-                            </div>
-                            <div className="text-right shrink-0 space-y-1">
-                              {po.noInvoice && (
-                                <div className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block">
-                                  INV: {po.noInvoice}
-                                </div>
-                              )}
-                              <div className="text-[10px] text-slate-400">
-                                {po.tglPo ? new Date(po.tglPo).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-"}
-                              </div>
-                            </div>
-                            <ArrowUpRight size={14} className="text-slate-300 group-hover:text-blue-500 transition-colors shrink-0" />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-10 text-center">
-                        <Search size={36} className="text-slate-200 mb-3" />
-                        <p className="text-sm font-semibold text-slate-500">Tidak ada hasil untuk &ldquo;{globalQuery}&rdquo;</p>
-                        <p className="text-xs text-slate-400 mt-1">Coba kata kunci lain</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 h-11 rounded-xl font-bold"
-                onClick={() => setIsBulkOpen(true)}
-              >
-                <Upload className="w-4 h-4 mr-2 text-blue-600" />
-                Bulk Upload
-              </Button>
-              <Link href="/po">
-                <Button className="bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white dark:text-white shadow-none h-11 rounded-xl px-5 font-bold">
-                  <PlusCircle className="w-4 h-4 mr-2" />
-                  Add PO
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <PurchaseOrderHeader 
+            globalSearch={globalSearch} 
+            poTable={poTable} 
+            detailModal={detailModal} 
+            setIsBulkOpen={setIsBulkOpen} 
+          />
         </CardHeader>
         <CardContent className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-          {/* Dropdown 1: Ritel */}
-          <div className="md:col-span-4 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Ritel Modern
-            </label>
-            <Popover open={openRitel} onOpenChange={setOpenRitel}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openRitel}
-                  className="w-full justify-between bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm transition-all"
-                >
-                  <span className={!selectedNamaPt ? "text-slate-400 font-normal" : "font-bold"}>
-                    {selectedNamaPt || "Pilih Ritel..."}
-                  </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverPrimitive.Portal>
-                <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800 dark:border dark:border-slate-700"
-                  align="start"
-                >
-                  <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                    {/* [FIX TEKS PUTIH] Tambahkan text-slate-900 */}
-                    <CommandInput
-                      placeholder="Cari ritel..."
-                      className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800"
-                    />
-                    <CommandListUI className="max-h-64 scrollbar-hide">
-                      <CommandEmpty className="text-slate-500 py-4 text-center">
-                        Ritel tidak ditemukan.
-                      </CommandEmpty>
-                      <CommandGroup>
-                        {Array.from(
-                          new Set(retailers.map((r) => r.namaPt)),
-                        ).sort((a, b) => a.localeCompare(b)).map((namaPt) => (
-                          <CommandItem
-                            key={namaPt}
-                            value={namaPt}
-                            className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
-                            onSelect={() => {
-                              setSelectedNamaPt(namaPt);
-                              setSelectedInisial(""); // Reset inisial saat ritel ganti
-                              setSelectedTujuan("");  // Reset tujuan saat ritel ganti
-                              setOpenRitel(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedNamaPt === namaPt
-                                  ? "opacity-100"
-                                  : "opacity-0",
-                              )}
-                            />
-                            {namaPt}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandListUI>
-                  </Command>
-                </PopoverContent>
-              </PopoverPrimitive.Portal>
-            </Popover>
-          </div>
-
-          {/* Dropdown 2: Inisial */}
-          <div className="md:col-span-3 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Inisial (Opsional)
-            </label>
-            <Popover open={openInisial} onOpenChange={setOpenInisial}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  disabled={!selectedNamaPt}
-                  aria-expanded={openInisial}
-                  className="w-full justify-between bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
-                >
-                  <span className={!selectedInisial ? "text-slate-400 font-normal" : "font-bold"}>
-                    {selectedInisial || "Semua Inisial..."}
-                  </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverPrimitive.Portal>
-                <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800 dark:border dark:border-slate-700"
-                  align="start"
-                >
-                  <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                    <CommandInput
-                      placeholder="Cari inisial..."
-                      className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800"
-                    />
-                    <CommandListUI className="max-h-64 scrollbar-hide">
-                      <CommandEmpty className="text-slate-500 py-4 text-center">
-                        Inisial tidak ditemukan.
-                      </CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem
-                          onSelect={() => {
-                            setSelectedInisial("");
-                            setSelectedTujuan(""); // Reset tujuan jika inisial direset
-                            setOpenInisial(false);
-                          }}
-                          className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedInisial === ""
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-                          Semua Inisial
-                        </CommandItem>
-                        {availableInisials.map((ini) => (
-                          <CommandItem
-                            key={ini}
-                            value={ini}
-                            onSelect={() => {
-                              setSelectedInisial(ini);
-                              setSelectedTujuan(""); // Reset tujuan karena inisial ganti
-                              setOpenInisial(false);
-                            }}
-                            className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedInisial === ini
-                                  ? "opacity-100"
-                                  : "opacity-0",
-                              )}
-                            />
-                            {ini}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandListUI>
-                  </Command>
-                </PopoverContent>
-              </PopoverPrimitive.Portal>
-            </Popover>
-          </div>
-
-          {/* Input 3: Tujuan Detail */}
-          <div className="md:col-span-3 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Tujuan Detail (Opsional)
-            </label>
-            <Popover open={openTujuan} onOpenChange={setOpenTujuan}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  disabled={!selectedNamaPt}
-                  aria-expanded={openTujuan}
-                  className="w-full justify-between bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm transition-all disabled:opacity-50"
-                >
-                  <span className={!selectedTujuan ? "text-slate-400 font-normal" : "font-bold"}>
-                    {selectedTujuan || "Semua Tujuan..."}
-                  </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverPrimitive.Portal>
-                <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800 dark:border dark:border-slate-700"
-                  align="start"
-                >
-                  <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                    <CommandInput
-                      placeholder="Cari tujuan..."
-                      className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800"
-                    />
-                    <CommandListUI className="max-h-64 scrollbar-hide">
-                      <CommandEmpty className="text-slate-500 py-4 text-center">
-                        Tujuan tidak ditemukan.
-                      </CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem
-                          onSelect={() => {
-                            setSelectedTujuan("");
-                            setOpenTujuan(false);
-                          }}
-                          className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedTujuan === ""
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-                          Semua Tujuan
-                        </CommandItem>
-                        {availableTujuans.map((tuj) => (
-                          <CommandItem
-                            key={tuj}
-                            value={tuj}
-                            onSelect={() => {
-                              setSelectedTujuan(tuj);
-                              setOpenTujuan(false);
-                            }}
-                            className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedTujuan === tuj
-                                  ? "opacity-100"
-                                  : "opacity-0",
-                              )}
-                            />
-                            {tuj}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandListUI>
-                  </Command>
-                </PopoverContent>
-              </PopoverPrimitive.Portal>
-            </Popover>
-          </div>
-
-          <div className="md:col-span-2">
-            <Button
-              onClick={handleFetchData}
-              disabled={!selectedNamaPt || loadingData}
-              className="w-full h-12 bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 text-white dark:text-white font-black rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-slate-100 disabled:dark:bg-slate-800 disabled:text-slate-400 disabled:dark:text-slate-500"
-            >
-              {loadingData ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <ArrowUpRight size={18} />
-              )}
-              Tampilkan Data
-            </Button>
-          </div>
+          <PurchaseOrderFilters ritelFilters={ritelFilters} poTable={poTable} />
         </CardContent>
       </Card>
 
-      {/* Conditional Rendering Area */}
-      {poData === null ? (
+      {poTable.poData === null ? (
         <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
           <div className="p-8 bg-slate-50 rounded-full text-slate-200 border border-slate-100 shadow-inner">
             <Search size={80} />
           </div>
           <div className="space-y-1">
-            <h3 className="text-xl font-bold text-slate-800">
-              Siap Memuat Data
-            </h3>
-            <p className="text-slate-400 max-w-xs mx-auto text-sm">
-              Pilih Ritel Modern & Inisial di atas untuk memuat ringkasan
-              Purchase Order.
-            </p>
+            <h3 className="text-xl font-bold text-slate-800">Siap Memuat Data</h3>
+            <p className="text-slate-400 max-w-xs mx-auto text-sm">Pilih Ritel Modern & Inisial di atas untuk memuat ringkasan Purchase Order.</p>
           </div>
         </div>
-      ) : poData.length === 0 && !loadingData ? (
+      ) : poTable.poData.length === 0 && !poTable.loadingData ? (
         <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
           <div className="p-8 bg-rose-50 rounded-full text-rose-200 border border-rose-100">
             <AlertCircle size={80} />
           </div>
           <div className="space-y-1">
-            <h3 className="text-xl font-bold text-slate-800">
-              Data Tidak Ditemukan
-            </h3>
-            <p className="text-slate-400 max-w-xs mx-auto text-sm">
-              Tidak ada Purchase Order yang sesuai dengan kriteria filter
-              tersebut.
-            </p>
+            <h3 className="text-xl font-bold text-slate-800">Data Tidak Ditemukan</h3>
+            <p className="text-slate-400 max-w-xs mx-auto text-sm">Tidak ada Purchase Order yang sesuai dengan kriteria filter tersebut.</p>
             <Button
               variant="outline"
               onClick={() => {
-                setSelectedNamaPt("");
-                setSelectedInisial("");
-                setPoData(null);
+                ritelFilters.handleSelectNamaPt("");
+                poTable.setManualData(null as any, "", "");
               }}
               className="mt-4 rounded-xl border-slate-200 text-slate-800"
             >
@@ -813,43 +103,29 @@ export default function PurchaseOrderPage() {
         </div>
       ) : (
         <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-700">
-          {/* Table Area */}
           <Card className="mb-8 border-none shadow-xl bg-slate-50/30 dark:bg-slate-800/30 rounded-3xl relative z-10 w-full overflow-visible">
-            <CardHeader className="bg-slate-50/30 border-b border-slate-100 p-8 space-y-6 relative z-10">
+            <CardHeader className="bg-slate-50/30 border-b border-slate-100 p-8 space-y-6 relative z-40">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <CardTitle className="text-2xl font-black text-slate-800 dark:text-slate-100">
-                      Daftar Purchase Order
-                    </CardTitle>
-                    {activeNamaPt && (
+                    <CardTitle className="text-2xl font-black text-slate-800 dark:text-slate-100">Daftar Purchase Order</CardTitle>
+                    {poTable.activeNamaPt && (
                       <span className="text-xs font-semibold px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full shadow-sm">
-                        Total {filteredPo.length} PO &middot; Hal {currentPage} dari {totalPages}
+                        Total {poTable.filteredPo.length} PO &middot; Hal {poTable.currentPage} dari {poTable.totalPages}
                       </span>
                     )}
                   </div>
                   <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Menampilkan data untuk{" "}
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
-                      {activeNamaPt}
-                    </span>
-                    {activeInisial && (
-                      <span>
-                        {" "}
-                        - Inisial{" "}
-                        <span className="font-bold text-slate-900 dark:text-slate-100">
-                          {activeInisial}
-                        </span>
-                      </span>
-                    )}
+                    Menampilkan data untuk <span className="font-bold text-slate-900 dark:text-slate-100">{poTable.activeNamaPt}</span>
+                    {poTable.activeInisial && <span> - Inisial <span className="font-bold text-slate-900 dark:text-slate-100">{poTable.activeInisial}</span></span>}
                   </CardDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="relative w-full md:w-64 shrink-0">
                     <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                     <input
-                      value={searchFilter}
-                      onChange={(e) => setSearchFilter(e.target.value)}
+                      value={poTable.searchFilter}
+                      onChange={(e) => poTable.setSearchFilter(e.target.value)}
                       placeholder="Cari PO / Invoice..."
                       className="w-full pl-12 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 text-sm focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/30 outline-none transition-all placeholder:italic placeholder:text-slate-400 dark:placeholder:text-slate-500 h-11"
                     />
@@ -857,337 +133,66 @@ export default function PurchaseOrderPage() {
                 </div>
               </div>
 
-              {/* Tabel Filter Actions */}
               <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3 text-sm font-medium text-slate-600">
-                {/* Date Picker 1 */}
-                <div className="w-full sm:w-[140px]">
-                  <DateInputHybrid
-                    value={tglFrom}
-                    onChange={(v) => setTglFrom(v)}
-                    placeholder="Dari Tgl PO..."
-                    maxDate={tglTo}
-                  />
+                <div className="w-full sm:w-[150px]"><DateInputHybrid value={poTable.tglFrom} onChange={(v) => poTable.setTglFrom(v)} placeholder="Dari Tgl PO..." maxDate={poTable.tglTo} /></div>
+                <div className="w-full sm:w-[150px]"><DateInputHybrid value={poTable.tglTo} onChange={(v) => poTable.setTglTo(v)} placeholder="Sampai Tgl..." minDate={poTable.tglFrom} /></div>
+                <div className="w-full sm:w-[160px] relative z-20">
+                  <SmoothSelect value={poTable.statusFilter} onChange={(v) => poTable.setStatusFilter(v as any)} options={[{ value: "all", label: "All Status" }, { value: "active", label: "Active" }, { value: "almost_expired", label: "Almost Expired" }, { value: "expired", label: "Expired" }, { value: "complete", label: "Complete" }]} />
                 </div>
-
-                {/* Date Picker 2 */}
-                <div className="w-full sm:w-[140px]">
-                  <DateInputHybrid
-                    value={tglTo}
-                    onChange={(v) => setTglTo(v)}
-                    placeholder="Sampai Tgl..."
-                    minDate={tglFrom}
-                  />
+                <div className="w-full sm:w-[130px] relative z-10">
+                  <SmoothSelect value={poTable.sortOrder} onChange={(v) => poTable.setSortOrder(v as any)} options={[{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }]} />
                 </div>
-
-                {/* Status Filter Dropdown */}
-                <div className="w-full sm:w-[140px]">
-                  <SmoothSelect
-                    value={statusFilter}
-                    onChange={(v) => setStatusFilter(v as any)}
-                    options={[
-                      { value: "all", label: "All Status" },
-                      { value: "active", label: "Active" },
-                      { value: "almost_expired", label: "Almost Expired" },
-                      { value: "expired", label: "Expired" },
-                      { value: "complete", label: "Complete" },
-                    ]}
-                  />
-                </div>
-
-                {/* Sort Dropdown */}
-                <div className="w-full sm:w-[140px]">
-                  <SmoothSelect
-                    value={sortOrder}
-                    onChange={(v) => setSortOrder(v as any)}
-                    options={[
-                      { value: "newest", label: "Newest" },
-                      { value: "oldest", label: "Oldest" },
-                    ]}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-slate-500">Tampilkan</span>
-                  <div className="w-[100px]">
-                    <SmoothSelect
-                      value={perPage}
-                      onChange={(v) => {
-                        setPerPage(v);
-                        setCurrentPage(1);
-                      }}
-                      options={[
-                        { value: "10", label: "10" },
-                        { value: "25", label: "25" },
-                        { value: "50", label: "50" },
-                        { value: "100", label: "100" },
-                        { value: "all", label: "Semua" },
-                      ]}
-                    />
+                <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                  <span className="text-slate-500 whitespace-nowrap">Tampilkan</span>
+                  <div className="w-[100px] relative z-10">
+                    <SmoothSelect value={poTable.perPage} onChange={(v) => { poTable.setPerPage(v); poTable.setCurrentPage(1); }} options={[{ value: "10", label: "10" }, { value: "25", label: "25" }, { value: "50", label: "50" }, { value: "100", label: "100" }, { value: "all", label: "Semua" }]} />
                   </div>
                   <span className="text-slate-500">data</span>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                  <DataTable
-                    columns={[
-                      {
-                        key: "no",
-                        label: "NO",
-                        align: "center",
-                        width: "w-12 min-w-[48px]",
-                        render: (_v: any, _po: any, index: number) => (
-                          <span className="font-bold text-xs text-slate-500">
-                            {perPage === "all" ? index + 1 : (currentPage - 1) * parseInt(perPage, 10) + index + 1}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "noPo",
-                        label: "NO PO",
-                        width: "w-[150px] min-w-[150px]",
-                        render: (_v: any, po: any) => (
-                          <div className="py-2">
-                            <div className="font-bold text-slate-800 dark:text-slate-100 text-xs whitespace-nowrap">{po.noPo}</div>
-                            {po.noInvoice && (
-                              <div className="text-[10px] font-semibold text-slate-500 mt-0.5 whitespace-nowrap">
-                                INV: {po.noInvoice}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      },
-                      {
-                        key: "tglPo",
-                        label: "TGL PO",
-                        width: "w-[110px] min-w-[110px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
-                            {po.tglPo ? new Date(po.tglPo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "expiredTgl",
-                        label: "DUE DATE",
-                        width: "w-[110px] min-w-[110px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
-                            {po.expiredTgl ? new Date(po.expiredTgl).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "produk",
-                        label: "PRODUK",
-                        width: "w-[240px] min-w-[240px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
-                            {Number(po.itemsCount) > 1 
-                              ? `${po.firstProductName || 'Item'} (+${Number(po.itemsCount) - 1} lainnya)` 
-                              : (po.firstProductName || '-')}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "pcsKirim",
-                        label: "PCS KIRIM",
-                        align: "right",
-                        width: "w-[100px] min-w-[100px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
-                            {(Number(po.pcsKirimTotal) || 0).toLocaleString('id-ID')}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "tujuanDetail",
-                        label: "TUJUAN DETAIL",
-                        width: "w-[180px] min-w-[180px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
-                            {po.tujuanDetail || '-'}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "unitProduksi",
-                        label: "UNIT PRODUKSI",
-                        width: "w-[180px] min-w-[180px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
-                            {po.UnitProduksi?.namaRegional || po.regional || '-'}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "siteArea",
-                        label: "SITE AREA",
-                        width: "w-[140px] min-w-[140px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
-                            {po.UnitProduksi?.siteArea || '-'}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "totalKg",
-                        label: "KG",
-                        align: "right",
-                        width: "w-[90px] min-w-[90px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
-                            {(Number(po.totalKg) || 0).toLocaleString('id-ID')}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "totalDiscount",
-                        label: "DISCOUNT",
-                        align: "right",
-                        width: "w-[110px] min-w-[110px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
-                            {(Number(po.totalDiscount) || 0).toLocaleString('id-ID')}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "totalNominal",
-                        label: "NOMINAL",
-                        align: "right",
-                        width: "w-[140px] min-w-[140px]",
-                        render: (_v: any, po: any) => (
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs tabular-nums">
-                            {(Number(po.totalNominal) || 0).toLocaleString('id-ID')}
-                          </span>
-                        )
-                      },
-                      {
-                        key: "aksi",
-                        label: "AKSI",
-                        align: "right",
-                        width: "w-[90px] min-w-[90px]",
-                        render: (_v: any, po: any) => (
-                          <div className="flex justify-end gap-1">
-                            <button title="Edit" onClick={(e) => { e.stopPropagation(); setEditNoPo(po.noPo); setEditOpen(true); }} className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors">
-                              <Pencil size={16} />
-                            </button>
-                            {userRole !== "magang" && (
-                              <button title="Delete" onClick={(e) => { e.stopPropagation(); setConfirmDelete(po.noPo); }} className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors">
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        )
-                      }
-                    ]}
-                    data={paginatedPo}
-                    loading={loadingData}
-                    total={filteredPo.length}
-                    page={currentPage}
-                    rowsPerPage={limitData}
-                    onPageChange={setCurrentPage}
-                    onRowClick={(po: any) => { setSelectedPO(po); setIsModalOpen(true); }}
-                    emptyMessage={
-                      statusFilter === 'active' ? 'Tidak ada data PO Active.' :
-                      statusFilter === 'almost_expired' ? 'Tidak ada data PO Mendekati Expired (Almost Expired).' :
-                      statusFilter === 'expired' ? 'Tidak ada data PO Expired.' :
-                      statusFilter === 'complete' ? 'Tidak ada data PO Complete.' :
-                      'Tidak ada data PO yang sesuai.'
-                    }
-                  />
+              <div className="overflow-x-auto w-full">
+                <DataTable
+                  columns={columns}
+                  data={poTable.paginatedPo}
+                  loading={poTable.loadingData}
+                  total={poTable.filteredPo.length}
+                  page={poTable.currentPage}
+                  rowsPerPage={poTable.limitData}
+                  onPageChange={poTable.setCurrentPage}
+                  onRowClick={(po: any) => detailModal.openModal(po)}
+                  emptyMessage="Tidak ada data PO yang sesuai."
+                />
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Detail Modal */}
-      {selectedPO && (
-        <PODetailModal
-          open={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedPO(null);
-          }}
-          data={{
-            ...selectedPO,
-            buktiKirim: selectedPO.buktiKirim,
-            buktiFp: selectedPO.buktiFp,
-            company:
-              selectedPO?.RitelModern?.namaPt ||
-              selectedPO?.company ||
-              "Unknown",
-            status: {
-              kirim: !!selectedPO.statusKirim,
-              sdif: !!selectedPO.statusSdif,
-              po: !!selectedPO.statusPo,
-              fp: !!selectedPO.statusFp,
-              kwi: !!selectedPO.statusKwi,
-              inv: !!selectedPO.statusInv,
-              tagih: !!selectedPO.statusTagih,
-              bayar: !!selectedPO.statusBayar,
-            },
-          }}
-        />
-      )}
+      <PODetailModal open={detailModal.openDetail} onClose={() => detailModal.setOpenDetail(false)} data={detailModal.detailData} />
 
-      {/* Edit Modal */}
       {editOpen && editNoPo && (
-        <POEditModal
-          open={editOpen}
-          noPo={editNoPo}
-          onClose={() => {
-            setEditOpen(false);
-            setEditNoPo(null);
-          }}
-          onSaved={() => {
-            setEditOpen(false);
-            setEditNoPo(null);
-            handleFetchData();
-          }}
-        />
+        <POEditModal open={editOpen} noPo={editNoPo} onClose={() => { setEditOpen(false); setEditNoPo(null); }} onSaved={() => { setEditOpen(false); setEditNoPo(null); poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, ritelFilters.selectedTujuan); }} />
       )}
 
-      {/* Delete Confirmation Modal */}
-      {confirmDelete && (
+      {poTable.confirmDelete && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4">
-              <Trash2 size={32} />
-            </div>
+            <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4"><Trash2 size={32} /></div>
             <h3 className="text-xl font-bold text-slate-900 mb-2">Hapus Data?</h3>
-            <p className="text-slate-500 text-sm mb-6">
-              Anda yakin ingin menghapus PO <span className="font-bold text-slate-800">{confirmDelete}</span>? Tindakan ini tidak dapat dibatalkan.
-            </p>
+            <p className="text-slate-500 text-sm mb-6">Anda yakin ingin menghapus PO <span className="font-bold text-slate-800">{poTable.confirmDelete}</span>? Tindakan ini tidak dapat dibatalkan.</p>
             <div className="flex w-full gap-3">
-              <Button
-                variant="outline"
-                className="flex-1 rounded-xl h-12"
-                onClick={() => setConfirmDelete(null)}
-                disabled={deleting}
-              >
-                Batal
-              </Button>
-              <Button
-                className="flex-1 rounded-xl h-12 bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-200"
-                onClick={() => handleDelete(confirmDelete)}
-                disabled={deleting}
-              >
-                {deleting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Hapus PO"}
+              <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => poTable.setConfirmDelete(null)} disabled={poTable.deleting}>Batal</Button>
+              <Button className="flex-1 rounded-xl h-12 bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-200" onClick={() => poTable.handleDelete(poTable.confirmDelete as string)} disabled={poTable.deleting}>
+                {poTable.deleting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Hapus PO"}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      <BulkUploadModal
-        open={isBulkOpen}
-        onClose={() => setIsBulkOpen(false)}
-        onSuccess={() => handleFetchData()}
-      />
+      <BulkUploadModal open={isBulkOpen} onClose={() => setIsBulkOpen(false)} onSuccess={() => poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, ritelFilters.selectedTujuan)} />
     </div>
   );
 }

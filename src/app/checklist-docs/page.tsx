@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import PODetailModal from "@/components/po-detail-modal";
 import CustomSelect from "@/components/select"; // We need to check if this exists or just use standard select
+import { GlobalPagination } from "@/components/global-pagination";
 
 type Row = {
   id: string;
@@ -540,46 +541,36 @@ export default function ChecklistDocsPage() {
           </table>
         </div>
 
-        <div className="px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 dark:border-slate-700">
-          <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Showing {filteredRows.length} of {total} PO
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700">
+          <div className="flex justify-end mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Rows per page:</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setIsTransitioning(true);
+                  setRowsPerPage(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
           </div>
-          <div className="flex items-center justify-end gap-2">
-            <select
-              value={rowsPerPage}
-              onChange={(e) => {
-                setIsTransitioning(true);
-                setRowsPerPage(Number(e.target.value));
-                setPage(1);
-              }}
-              className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value={10}>10 rows</option>
-              <option value={25}>25 rows</option>
-              <option value={50}>50 rows</option>
-            </select>
-            
-            <button
-              disabled={page <= 1 || isTransitioning}
-              onClick={() => {
-                setIsTransitioning(true);
-                setPage((p) => Math.max(1, p - 1));
-              }}
-              className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-50 disabled:bg-slate-50 disabled:dark:bg-slate-900"
-            >
-              Previous
-            </button>
-            <button
-              disabled={page >= totalPages || isTransitioning}
-              onClick={() => {
-                setIsTransitioning(true);
-                setPage((p) => Math.min(totalPages, p + 1));
-              }}
-              className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-50 disabled:bg-slate-50 disabled:dark:bg-slate-900"
-            >
-              Next
-            </button>
-          </div>
+          <GlobalPagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={(p) => {
+              setIsTransitioning(true);
+              setPage(p);
+            }}
+            itemsCount={filteredRows.length}
+            totalItems={total}
+            itemName="PO"
+          />
         </div>
       </div>
 

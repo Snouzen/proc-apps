@@ -1,5 +1,6 @@
 import React from "react";
 import { Zap, Building2, Eye, Edit2, Trash2 } from "lucide-react";
+import { GlobalPagination } from "@/components/global-pagination";
 
 const highlightText = (text: string, query: string) => {
   if (!query) return text;
@@ -209,33 +210,16 @@ export default function RitelTable({
         )}
       </div>
 
-      {filteredData.length > itemsPerPage && (
-        <div className="flex items-center justify-between px-2 py-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Showing {indexOfFirstItem + 1} to{" "}
-            {Math.min(indexOfLastItem, filteredData.length)} of{" "}
-            {filteredData.length} entries
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 text-sm font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="mt-4">
+        <GlobalPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          itemsCount={currentItems.length}
+          totalItems={filteredData.length}
+          itemName="Ritel"
+        />
+      </div>
     </>
   );
 }
