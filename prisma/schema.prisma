@@ -46,6 +46,8 @@ model PurchaseOrder {
   statusCreditLimit  String?
   remarksCreditLimit String?
   isNotaDinas        Boolean             @default(false)
+  noNd               String?
+  linkNd             String?
   kodeVendor         String?
   remarks            String?
   createdAt          DateTime            @default(now())

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   Layers,
   CalendarDays,
@@ -13,6 +15,8 @@ import {
   X,
   Clock,
   AlertTriangle,
+  ExternalLink,
+  Edit3,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cleanSiteArea, getDueDateZone, getZoneLabel, needsRemarks } from "@/lib/credit-limit";
@@ -32,6 +36,7 @@ export function BatchAccordion({
   onExportExcel,
   onToggleND,
   onChecklistAllND,
+  onUpdateNDDetails,
 }: {
   batchCode: string;
   pos: any[];
@@ -44,7 +49,12 @@ export function BatchAccordion({
   onExportExcel: (batchCode: string, pos: any[]) => void;
   onToggleND: (poId: string, currentVal: boolean) => void;
   onChecklistAllND: (batchCode: string, pos: any[], checked: boolean) => void;
+  onUpdateNDDetails: (poId: string, noNd: string, linkNd: string) => void;
 }) {
+  const [editNdId, setEditNdId] = useState<string | null>(null);
+  const [tempNoNd, setTempNoNd] = useState("");
+  const [tempLinkNd, setTempLinkNd] = useState("");
+
   const totalPcs = pos.reduce((sum, po) => sum + Number(po.pcsTotal || 0), 0);
   const totalPcsKirim = pos.reduce((sum, po) => sum + Number(po.pcsKirimTotal || 0), 0);
   const isAllNDChecked = pos.length > 0 && pos.every(p => p.isNotaDinas);
@@ -199,8 +209,10 @@ export function BatchAccordion({
                   <th className="px-4 py-3 w-[130px] text-center">Kode Vendor</th>
                   <th className="px-4 py-3 w-[180px]">Remarks</th>
                   <th className="px-4 py-3 w-[50px] text-center">ND</th>
+                  <th className="px-4 py-3 w-[150px] min-w-[150px] text-center">No ND</th>
+                  <th className="px-4 py-3 w-[150px] min-w-[150px] text-center">Link ND</th>
                   <th className="px-4 py-3 w-[80px] text-center">Status</th>
-                  <th className="px-4 py-3 w-[90px] text-center">Action</th>
+                  <th className="px-4 py-3 w-[140px] text-center sticky right-0 z-10 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur border-l border-slate-100 dark:border-slate-800/50">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,7 +225,7 @@ export function BatchAccordion({
                     <tr
                       key={po.id}
                       onClick={() => onViewRow(po)}
-                      className="border-t border-slate-50 dark:border-slate-800/50 hover:bg-indigo-50/30 dark:hover:bg-slate-800/30 cursor-pointer transition-colors duration-150"
+                      className="group border-t border-slate-50 dark:border-slate-800/50 hover:bg-indigo-50/30 dark:hover:bg-slate-800/30 cursor-pointer transition-colors duration-150"
                     >
                       <td className="px-4 py-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
                         {idx + 1}
@@ -298,10 +310,76 @@ export function BatchAccordion({
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <StatusBadge status={po.statusCreditLimit} />
+                        {editNdId === po.id ? (
+                          <input
+                            type="text"
+                            value={tempNoNd}
+                            onChange={(e) => setTempNoNd(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
+                            placeholder="Input No ND"
+                          />
+                        ) : (
+                          <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                            {po.noNd || "-"}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
+                          {editNdId === po.id ? (
+                            <input
+                              type="text"
+                              value={tempLinkNd}
+                              onChange={(e) => setTempLinkNd(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="Input Link"
+                            />
+                          ) : po.linkNd ? (
+                            <a
+                              href={po.linkNd.startsWith("http") ? po.linkNd : `https://${po.linkNd}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center w-7 h-7 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 rounded-lg transition-colors shadow-sm"
+                              title="Buka Dokumen ND"
+                            >
+                              <ExternalLink size={14} />
+                            </a>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600 font-medium">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <StatusBadge status={po.statusCreditLimit} />
+                      </td>
+                      <td className="px-4 py-3 text-center sticky right-0 z-10 bg-white dark:bg-slate-900/40 group-hover:bg-indigo-50/30 dark:group-hover:bg-slate-800/30 backdrop-blur border-l border-slate-50 dark:border-slate-800/50 transition-colors duration-150">
                         <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          {editNdId === po.id ? (
+                            <ActionButton
+                              icon={Check}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateNDDetails(po.id, tempNoNd, tempLinkNd);
+                                setEditNdId(null);
+                              }}
+                              tooltip="Simpan ND"
+                              variant="indigo"
+                            />
+                          ) : (
+                            <ActionButton
+                              icon={Edit3}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTempNoNd(po.noNd || "");
+                                setTempLinkNd(po.linkNd || "");
+                                setEditNdId(po.id);
+                              }}
+                              tooltip="Edit ND"
+                              variant="slate"
+                            />
+                          )}
                           {po.statusCreditLimit === "REQUESTED" ? (
                             <>
                               <ActionButton

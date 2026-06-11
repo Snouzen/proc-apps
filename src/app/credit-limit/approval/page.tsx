@@ -101,6 +101,7 @@ export default function CreditLimitApprovalPage() {
               onExportExcel={data.handleExportExcel}
               onToggleND={data.handleToggleND}
               onChecklistAllND={data.handleChecklistAllND}
+              onUpdateNDDetails={data.handleUpdateNDDetails}
             />
           ))}
         </div>

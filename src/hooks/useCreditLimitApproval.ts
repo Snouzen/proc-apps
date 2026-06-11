@@ -183,6 +183,49 @@ export function useCreditLimitApproval({
     }
   };
 
+  const handleUpdateNDDetails = async (poId: string, noNd: string, linkNd: string) => {
+    // Optimistic UI update
+    setPoData((prev) =>
+      prev.map((item) =>
+        item.id === poId ? { ...item, noNd, linkNd } : item
+      )
+    );
+
+    try {
+      const res = await fetch("/api/po/credit-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ poId, action: "updateNDDetails", noNd, linkNd }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Gagal menyimpan detail ND");
+      }
+      
+      Swal.fire({
+        icon: "success",
+        title: "Berhasil",
+        text: "Detail ND berhasil disimpan.",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3000
+      });
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Gagal menyimpan detail ND. Silakan coba lagi.",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3000
+      });
+      // We don't revert optimistic update here, they can just refresh or try again
+    }
+  };
+
   const handleApproveAll = async (batchCode: string, pos: any[]) => {
     const hasRequested = pos.some(p => p.statusCreditLimit === "REQUESTED");
     const action = hasRequested ? "approveAll" : "approveDireksiAll";
@@ -449,5 +492,6 @@ export function useCreditLimitApproval({
     handleApproveAll,
     handleChecklistAllND,
     handleExportExcel,
+    handleUpdateNDDetails,
   };
 }

@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "poId(s) and action are required" }, { status: 400 });
     }
 
-    const validActions = ["request", "reRequest", "approve", "approveDireksi", "reject", "approveAll", "approveDireksiAll", "updateKodeVendor", "toggleND", "toggleAllND"];
+    const validActions = ["request", "reRequest", "approve", "approveDireksi", "reject", "approveAll", "approveDireksiAll", "updateKodeVendor", "toggleND", "toggleAllND", "updateNDDetails"];
     if (!validActions.includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
@@ -218,6 +218,18 @@ export async function POST(req: Request) {
         data: { isNotaDinas: body.isNotaDinas },
       });
       return NextResponse.json({ success: true, count: result.count });
+    }
+
+    // UPDATE ND DETAILS
+    if (action === "updateNDDetails") {
+      const po = await prisma.purchaseOrder.update({
+        where: { id: poId },
+        data: { 
+          noNd: body.noNd || null,
+          linkNd: body.linkNd || null,
+        },
+      });
+      return NextResponse.json({ success: true, data: po });
     }
 
     return NextResponse.json({ error: "Unhandled action" }, { status: 400 });
