@@ -112,7 +112,7 @@ function RekonContent() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([]);
   const [selectedRtvs, setSelectedRtvs] = useState<Rtv[]>([]);
-  const [selectedPromo, setSelectedPromo] = useState<Promo | null>(null);
+  const [selectedPromos, setSelectedPromos] = useState<Promo[]>([]);
   const [adminFee, setAdminFee] = useState<number>(0);
   const [notesList, setNotesList] = useState<Array<{type?: 'invoice' | 'rtv', desc: string, nominal: number}>>([]);
 
@@ -152,7 +152,7 @@ function RekonContent() {
             setAdminFee(d.biayaAdmin || 0);
             setSelectedInvoices(d.detailedInvoices || []);
             setSelectedRtvs(d.detailedRtvs || []);
-            setSelectedPromo(d.detailedPromo || null);
+            setSelectedPromos(d.detailedPromos || []);
             setRekonNo(d.noRekonsiliasi || null);
             setNotesList(Array.isArray(d.notes) ? d.notes.map((n: any) => ({ ...n, type: n.type || 'invoice' })) : []);
             setBuktiBayarUrl(d.buktiBayarUrl || null);
@@ -314,8 +314,8 @@ function RekonContent() {
   }, [selectedRtvs]);
 
   const totalPromo = useMemo(() => {
-    return selectedPromo ? Number(selectedPromo.total || 0) : 0;
-  }, [selectedPromo]);
+    return selectedPromos.reduce((sum, promo) => sum + Number(promo.total || 0), 0);
+  }, [selectedPromos]);
 
   const totalNotesInvoice = useMemo(() => {
     return notesList.filter(n => n.type === 'invoice' || !n.type).reduce((sum, n) => sum + (Number(n.nominal) || 0), 0);
@@ -394,7 +394,7 @@ function RekonContent() {
           noRtv: rtv.noRtv, 
           refInvoice: rtv.refInvoice || "" 
         })),
-        noPromo: selectedPromo?.nomor || null,
+        noPromo: selectedPromos.length > 0 ? selectedPromos.map(p => p.nomor).join(', ') : null,
         notes: notesList.filter(n => n.desc || n.nominal).map(n => ({ type: n.type || 'invoice', desc: n.desc, nominal: n.nominal })),
         buktiBayarUrl: uploadedBuktiBayarUrl || null,
         rincianBayarUrl: rincianBayarUrl || null,
@@ -616,7 +616,7 @@ function RekonContent() {
                              {Array.from(new Map(masterCompanies.map(item => [item.namaPt, item])).values())
                                 .filter(c => c.namaPt.toLowerCase().includes(companySearch.toLowerCase()))
                                 .map(c => (
-                                <button key={c.id} onClick={() => { setSelectedCompany(c); setCompanySearch(""); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromo(null); fetchCompanyData(c.namaPt, c.id); }} className={`w-full text-left p-4 sm:p-5 rounded-[22px] transition-all font-black text-[10px] sm:text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl dark:shadow-none' : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'}`}>
+                                <button key={c.id} onClick={() => { setSelectedCompany(c); setCompanySearch(""); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromos([]); fetchCompanyData(c.namaPt, c.id); }} className={`w-full text-left p-4 sm:p-5 rounded-[22px] transition-all font-black text-[10px] sm:text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl dark:shadow-none' : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'}`}>
                                    <span className="truncate pr-2">{highlightMatch(c.namaPt, companySearch)}</span>
                                    <ChevronRight size={14} className={`shrink-0 ${selectedCompany?.id === c.id ? 'opacity-100' : 'opacity-0'}`} />
                                 </button>
@@ -1082,15 +1082,19 @@ function RekonContent() {
                                        <div className="p-8 text-center text-[10px] font-black text-emerald-400 uppercase italic tracking-widest animate-pulse">
                                           Sedang menarik data...
                                        </div>
-                                    ) : (masterPromos || []).filter(p => ((p.nomor || "") + (p.kegiatan || "")).toLowerCase().includes(promoSearch.toLowerCase())).length === 0 ? (
+                                    ) : (masterPromos || [])
+                                       .filter(p => !selectedPromos.find(sp => sp.id === p.id))
+                                       .filter(p => ((p.nomor || "") + (p.kegiatan || "")).toLowerCase().includes(promoSearch.toLowerCase())).length === 0 ? (
                                        <div className="p-8 text-center text-[10px] font-black text-slate-300 dark:text-slate-500 uppercase italic tracking-widest">
                                           Tidak ada Promo tersedia untuk retailer ini
                                        </div>
                                     ) : (
-                                       masterPromos.filter(p => ((p.nomor || "") + (p.kegiatan || "")).toLowerCase().includes(promoSearch.toLowerCase())).map(promo => (
+                                       (masterPromos || [])
+                                          .filter(p => !selectedPromos.find(sp => sp.id === p.id))
+                                          .filter(p => ((p.nomor || "") + (p.kegiatan || "")).toLowerCase().includes(promoSearch.toLowerCase())).map(promo => (
                                           <button 
                                              key={promo.id} 
-                                             onClick={() => { setSelectedPromo(promo); setIsPromoOpen(false); setPromoSearch(""); }} 
+                                             onClick={() => { setSelectedPromos([...selectedPromos, promo]); setIsPromoOpen(false); setPromoSearch(""); }} 
                                              className="w-full p-5 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-2xl transition-all flex justify-between items-center group text-left border border-transparent hover:border-emerald-100 dark:hover:border-emerald-500/20"
                                           >
                                              <div className="flex items-center gap-5">
@@ -1117,36 +1121,40 @@ function RekonContent() {
                      </div>
 
                      {/* Selected Promo Summary Card (Sleek & Compact) */}
-                     {selectedPromo && (
-                        <div className="bg-white dark:bg-slate-800 rounded-[32px] p-6 border border-emerald-100 dark:border-slate-700 shadow-[0_20px_40px_-15px_rgba(16,185,129,0.1)] dark:shadow-none animate-in slide-in-from-top-4 flex items-center justify-between group relative overflow-hidden">
-                           <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
-                           <div className="flex items-center gap-6">
-                              <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                                 <Percent size={24} />
-                              </div>
-                              <div className="space-y-1">
-                                 <h5 className="font-black text-sm text-slate-800 dark:text-slate-200 uppercase tracking-tight leading-none">{selectedPromo.nomor}</h5>
-                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">{selectedPromo.kegiatan} • {selectedPromo.periode}</p>
-                                 <div className="flex items-center gap-3 mt-1">
-                                    <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-700/50 text-[8px] font-black text-slate-400 rounded-md border border-slate-100 dark:border-slate-700 uppercase italic">
-                                       {selectedPromo.tanggal ? new Date(selectedPromo.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "-"}
-                                    </span>
+                     {selectedPromos.length > 0 && (
+                        <div className="space-y-4 mt-6">
+                           {selectedPromos.map((promo) => (
+                              <div key={promo.id} className="bg-white dark:bg-slate-800 rounded-[32px] p-6 border border-emerald-100 dark:border-slate-700 shadow-[0_20px_40px_-15px_rgba(16,185,129,0.1)] dark:shadow-none animate-in slide-in-from-top-4 flex items-center justify-between group relative overflow-hidden">
+                                 <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
+                                 <div className="flex items-center gap-6">
+                                    <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                       <Percent size={24} />
+                                    </div>
+                                    <div className="space-y-1">
+                                       <h5 className="font-black text-sm text-slate-800 dark:text-slate-200 uppercase tracking-tight leading-none">{promo.nomor}</h5>
+                                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">{promo.kegiatan} • {promo.periode}</p>
+                                       <div className="flex items-center gap-3 mt-1">
+                                          <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-700/50 text-[8px] font-black text-slate-400 rounded-md border border-slate-100 dark:border-slate-700 uppercase italic">
+                                             {promo.tanggal ? new Date(promo.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "-"}
+                                          </span>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 <div className="flex items-center gap-8">
+                                    <div className="text-right">
+                                       <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1">Total Promo</p>
+                                       <p className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400 tracking-tighter leading-none">{formatRp(promo.total)}</p>
+                                    </div>
+                                    <button 
+                                       onClick={() => setSelectedPromos(selectedPromos.filter(p => p.id !== promo.id))} 
+                                       className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-400 dark:text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all shadow-sm"
+                                       title="Hapus Promo"
+                                    >
+                                       <X size={18} />
+                                    </button>
                                  </div>
                               </div>
-                           </div>
-                           <div className="flex items-center gap-8">
-                              <div className="text-right">
-                                 <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1">Total Promo</p>
-                                 <p className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400 tracking-tighter leading-none">{formatRp(selectedPromo.total)}</p>
-                              </div>
-                              <button 
-                                 onClick={() => setSelectedPromo(null)} 
-                                 className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-400 dark:text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all shadow-sm"
-                                 title="Hapus Promo"
-                              >
-                                 <X size={18} />
-                              </button>
-                           </div>
+                           ))}
                         </div>
                      )}
                   </div>

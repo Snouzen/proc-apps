@@ -227,7 +227,8 @@ export async function POST(request: Request) {
         return { ...item, rtv, prod };
       }).filter(item => item.prod); // Harus ada produk
 
-      // 2. Jika REPLACE aktif, hapus data lama yang rtvCn DAN produk-nya bentrok
+      // 2. Jika REPLACE aktif, hapus data lama yang rtvCn DAN produk DAN ritelId-nya bentrok
+      // HANYA untuk item yang memiliki rtvCn (tidak kosong), karena RTV kosong bukan kunci unik
       if (replaceDuplicates) {
         const validItems = processedBatch.filter((item: any) => item.rtv);
         if (validItems.length > 0) {
@@ -238,7 +239,8 @@ export async function POST(request: Request) {
               where: {
                 OR: chunk.map((item: any) => ({
                   rtvCn: item.rtv,
-                  produk: item.prod
+                  produk: item.prod,
+                  ritelId: item.ritelId || undefined,
                 }))
               }
             });
@@ -247,20 +249,30 @@ export async function POST(request: Request) {
       }
 
       // 3. Jika SKIP aktif (replaceDuplicates: false), filter out yang sudah ada di DB
+      // HANYA cek duplikat untuk item yang memiliki rtvCn (tidak kosong)
+      // Item tanpa rtvCn selalu dianggap unik karena belum ada nomor referensi
       let finalDataToCreate = processedBatch;
       if (!replaceDuplicates) {
-        const existingRecords = await prisma.dataRetur.findMany({
-          where: {
-            OR: processedBatch.map(item => ({
-              rtvCn: item.rtv,
-              produk: item.prod
-            }))
-          },
-          select: { rtvCn: true, produk: true }
-        });
+        const itemsWithRtv = processedBatch.filter((item: any) => item.rtv);
+        const itemsWithoutRtv = processedBatch.filter((item: any) => !item.rtv);
 
-        const existingKeys = new Set(existingRecords.map(r => `${r.rtvCn}|${r.produk}`));
-        finalDataToCreate = processedBatch.filter(item => !existingKeys.has(`${item.rtv}|${item.prod}`));
+        if (itemsWithRtv.length > 0) {
+          const existingRecords = await prisma.dataRetur.findMany({
+            where: {
+              OR: itemsWithRtv.map(item => ({
+                rtvCn: item.rtv,
+                produk: item.prod,
+                ritelId: item.ritelId || undefined,
+              }))
+            },
+            select: { rtvCn: true, produk: true, ritelId: true }
+          });
+
+          const existingKeys = new Set(existingRecords.map(r => `${r.rtvCn}|${r.produk}|${r.ritelId}`));
+          const filteredWithRtv = itemsWithRtv.filter(item => !existingKeys.has(`${item.rtv}|${item.prod}|${item.ritelId}`));
+          finalDataToCreate = [...filteredWithRtv, ...itemsWithoutRtv];
+        }
+        // Jika semua item tanpa RTV, langsung lolos semua (tidak ada dedup)
       }
 
       if (finalDataToCreate.length === 0) {
@@ -314,18 +326,22 @@ export async function POST(request: Request) {
     const rtv = body.rtvCn ? String(body.rtvCn).trim() : null;
     const prod = body.produk ? String(body.produk).trim() : null;
 
-    // Cek Duplikat Eksisting
-    const existing = await prisma.dataRetur.findFirst({
-      where: {
-        rtvCn: rtv,
-        produk: prod
-      }
-    });
+    // Cek Duplikat Eksisting — HANYA jika rtvCn ada (tidak kosong)
+    // RTV kosong = belum ada nomor referensi, jadi tidak bisa dijadikan kunci duplikasi
+    if (rtv) {
+      const existing = await prisma.dataRetur.findFirst({
+        where: {
+          rtvCn: rtv,
+          produk: prod,
+          ritelId: body.ritelId || undefined,
+        }
+      });
 
-    if (existing) {
-      return NextResponse.json({ 
-        error: `Produk "${prod}" sudah ada di Nomor RTV "${rtv || '-'}"` 
-      }, { status: 409 });
+      if (existing) {
+        return NextResponse.json({ 
+          error: `Produk "${prod}" sudah ada di Nomor RTV "${rtv}" untuk ritel ini` 
+        }, { status: 409 });
+      }
     }
 
     const newData = await prisma.dataRetur.create({

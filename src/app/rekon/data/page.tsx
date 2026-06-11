@@ -23,6 +23,7 @@ import {
   FileDown,
   X,
   Paperclip,
+  Percent,
   Download, FileSpreadsheet } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -299,14 +300,12 @@ export default function DataRekonPage() {
 
                         {/* Promo */}
                         <td className="px-6 py-4 text-center">
-                           {item.noPromo ? (
-                              <div className="flex flex-col items-center gap-1">
-                                 <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-[9px] font-black uppercase border border-emerald-100/50 dark:border-emerald-500/20">
-                                    {item.noPromo}
-                                 </span>
-                                 <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatRp(item.totalPromo || 0)}</p>
-                              </div>
-                           ) : <span className="text-slate-200 dark:text-slate-700">-</span>}
+                           <div className="flex flex-col items-center gap-1">
+                              <span className="px-3 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 rounded-full text-[9px] font-black uppercase">
+                                 {item.promos?.length || 0} PROMO
+                              </span>
+                              <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatRp(item.totalPromo || 0)}</p>
+                           </div>
                         </td>
 
                         {/* Admin Fee */}
@@ -391,12 +390,12 @@ export default function DataRekonPage() {
                       {/* EXPANDED DETAIL ROW */}
                       {isExpanded && (
                         <tr key={`${item.id}-detail`} className="border-b border-slate-100 dark:border-slate-800/50">
-                          <td colSpan={11} className="px-0 py-0">
+                          <td colSpan={12} className="px-0 py-0">
                             <div 
                               className="bg-slate-50/60 dark:bg-slate-900/40 px-14 py-8"
                               style={{ animation: 'fadeSlideIn 0.2s ease-out' }}
                             >
-                              <div className="grid grid-cols-3 gap-12 w-full">
+                              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-8 w-full">
                                 
                                 {/* LEFT: Invoice Breakdown */}
                                 <div>
@@ -568,6 +567,52 @@ export default function DataRekonPage() {
                                   </div>
                                 </div>
 
+                                {/* RIGHT: Promo Breakdown */}
+                                <div>
+                                  <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-6 h-6 bg-emerald-500 rounded-lg flex items-center justify-center">
+                                      <Percent size={12} className="text-white" />
+                                    </div>
+                                    <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Promo ({item.promos?.length || 0})</h4>
+                                  </div>
+                                  <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
+                                    <table className="w-full text-left">
+                                      <thead>
+                                        <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
+                                          <th className="px-5 py-3">#</th>
+                                          <th className="px-5 py-3">NO. PROMO</th>
+                                          <th className="px-5 py-3">KEGIATAN</th>
+                                          <th className="px-5 py-3 text-right">NOMINAL</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {item.promos?.length > 0 ? item.promos.map((promo: any, i: number) => (
+                                          <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-emerald-50/30 dark:hover:bg-emerald-500/10 transition-colors">
+                                            <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
+                                            <td className="px-5 py-3">
+                                              <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">{promo.nomor}</span>
+                                            </td>
+                                            <td className="px-5 py-3">
+                                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{promo.kegiatan || '-'}</span>
+                                            </td>
+                                            <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200">
+                                              {formatRp(promo.total || 0)}
+                                            </td>
+                                          </tr>
+                                        )) : (
+                                          <tr><td colSpan={4} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada promo</td></tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                  <div className="mt-3 flex justify-end">
+                                    <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
+                                      <span className="text-[8px] font-black text-emerald-400 dark:text-emerald-500 uppercase tracking-widest mr-3">Total</span>
+                                      <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatRp(item.totalPromo || 0)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
                               </div>
 
                               {/* Bukti & Rincian Bayar Section */}
@@ -615,7 +660,7 @@ export default function DataRekonPage() {
                 
                 {data.length === 0 && !loading && (
                    <tr>
-                      <td colSpan={11} className="px-6 py-20 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest italic">
+                      <td colSpan={12} className="px-6 py-20 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest italic">
                          Belum ada data rekonsiliasi.
                       </td>
                    </tr>

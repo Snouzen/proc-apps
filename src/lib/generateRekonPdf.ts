@@ -340,6 +340,49 @@ export const generateRekonPdf = (
       },
     });
 
+    // ─── Promo Detail Table (only if promos exist) ───
+    if (item.promos && item.promos.length > 0) {
+      nextY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(16, 185, 129); // emerald-500
+      doc.text(`DETAIL PROMO (${item.promos.length})`, 14, nextY);
+      doc.setTextColor(0, 0, 0);
+
+      const promoBody = item.promos.map((p: any, i: number) => [
+        String(i + 1),
+        p.nomor || "-",
+        p.kegiatan || "-",
+        formatRp(p.total || 0),
+      ]);
+      promoBody.push(["", "TOTAL PROMO", "", formatRp(item.totalPromo || 0)]);
+
+      autoTable(doc, {
+        startY: nextY + 3,
+        head: [["#", "No. Promo", "Kegiatan", "Nominal"]],
+        body: promoBody,
+        theme: "striped",
+        styles: { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
+        headStyles: {
+          fontStyle: "bold",
+          fillColor: [16, 185, 129],
+          textColor: [255, 255, 255],
+        },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 10 },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 50 },
+          3: { halign: "right", cellWidth: 40 },
+        },
+        didParseCell: (hookData: any) => {
+          if (hookData.row.index === promoBody.length - 1) {
+            hookData.cell.styles.fontStyle = "bold";
+            hookData.cell.styles.fillColor = [209, 250, 229]; // emerald-100
+          }
+        },
+      });
+    }
+
     // ─── Notes Detail Table (only if notes exist) ───
     const notesArr: Array<{desc: string, nominal: number}> = Array.isArray(item.notes) && item.notes.length > 0
       ? item.notes

@@ -687,14 +687,34 @@ function NewReturPageContent() {
       });
 
       if (res.ok) {
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil!",
-          text: `${items.length} Data retur berhasil disimpan`,
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        setTimeout(() => router.push(`/retur?ritelId=${ritelId}`), 2000);
+        const result = await res.json();
+        const savedCount = result.count ?? items.length;
+        
+        if (savedCount === 0) {
+          Swal.fire({
+            icon: "warning",
+            title: "Data Sudah Ada",
+            text: "Semua data retur yang diinput sudah pernah ada sebelumnya (duplikat RTV + Produk). Tidak ada data baru yang disimpan.",
+            confirmButtonColor: "#4f46e5",
+          });
+        } else if (savedCount < items.length) {
+          Swal.fire({
+            icon: "info",
+            title: "Sebagian Berhasil",
+            text: `${savedCount} dari ${items.length} data retur berhasil disimpan. ${items.length - savedCount} data lainnya sudah ada sebelumnya (duplikat).`,
+            confirmButtonColor: "#4f46e5",
+          });
+          setTimeout(() => router.push(`/retur?ritelId=${ritelId}`), 2000);
+        } else {
+          Swal.fire({
+            icon: "success",
+            title: "Berhasil!",
+            text: `${savedCount} Data retur berhasil disimpan`,
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          setTimeout(() => router.push(`/retur?ritelId=${ritelId}`), 2000);
+        }
       } else {
         const err = await res.json();
         throw new Error(err.error || "Gagal menyimpan data");

@@ -73,10 +73,13 @@ export async function GET(request: Request) {
         };
       });
 
-      // Fetch Promo if exists
-      let promoData = null;
+      // Fetch Promos if exists
+      let promoData: any[] = [];
       if (rekon.noPromo) {
-        promoData = await prisma.promo.findUnique({ where: { nomor: rekon.noPromo } });
+        const promoNumbers = rekon.noPromo.split(',').map((n: string) => n.trim()).filter(Boolean);
+        if (promoNumbers.length > 0) {
+          promoData = await prisma.promo.findMany({ where: { nomor: { in: promoNumbers } } });
+        }
       }
 
       // Normalize notes: support new array format + backward compat with legacy single fields
@@ -93,7 +96,7 @@ export async function GET(request: Request) {
           notes: normalizedNotes,
           detailedInvoices: invoicesWithTotals,
           detailedRtvs: rtvsWithData,
-          detailedPromo: promoData
+          detailedPromos: promoData
         } 
       });
     }
@@ -142,8 +145,9 @@ export async function GET(request: Request) {
     // 2. Lookup SEMUA Detail sekaligus (Bulk) untuk performa
     const allInvNos = [...new Set(reconciles.flatMap(r => r.invoices || []))];
     const allRtvNos = [...new Set(reconciles.flatMap(r => r.rtvs || []))];
+    const allPromoNos = [...new Set(reconciles.flatMap(r => (r.noPromo || "").split(",").map((p: string) => p.trim()).filter(Boolean)))];
 
-      const [posData, retursData] = await Promise.all([
+      const [posData, retursData, promosData] = await Promise.all([
         prisma.purchaseOrder.findMany({
           where: { noInvoice: { in: allInvNos } },
           include: { UnitProduksi: true, Items: { include: { Product: true } } }
@@ -151,10 +155,15 @@ export async function GET(request: Request) {
         prisma.dataRetur.findMany({
           where: { rtvCn: { in: allRtvNos } },
           include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true }
+        }),
+        prisma.promo.findMany({
+          where: { nomor: { in: allPromoNos } }
         })
       ]);
 
       // Create lookup maps for O(1) speed
+      const promoMap = new Map<string, any>();
+      promosData.forEach((p: any) => promoMap.set(p.nomor, p));
       const poMap = new Map(posData.map((p: any) => {
         const total = p.Items?.reduce((sum: number, item: any) => {
           return sum + (Number(item.rpTagih) || (Number(item.hargaPcs) * Number(item.pcsKirim)) || 0);
@@ -212,7 +221,10 @@ export async function GET(request: Request) {
         normalizedNotes = [{ desc: rekon.notesDesc || "", nominal: rekon.notesNominal || 0 }];
       }
 
-      return { ...rekon, notes: normalizedNotes, invoices: invoicesWithData, rtvs: rtvsWithData };
+      const promoNumbers = (rekon.noPromo || "").split(",").map((p: string) => p.trim()).filter(Boolean);
+      const detailedPromos = promoNumbers.map((nomor: string) => promoMap.get(nomor)).filter(Boolean);
+
+      return { ...rekon, notes: normalizedNotes, invoices: invoicesWithData, rtvs: rtvsWithData, promos: detailedPromos };
     });
 
     return NextResponse.json({ data, total });
