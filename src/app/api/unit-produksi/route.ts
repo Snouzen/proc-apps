@@ -11,6 +11,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
 import { UnitProduksiCreateSchema, UnitProduksiPatchSchema } from "@/lib/schemas/master-data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const cacheKey = "unit_produksi:list";
   const cached = cacheGet<any>(cacheKey);

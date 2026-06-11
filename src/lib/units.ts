@@ -58,7 +58,7 @@ export function getUnitsSync(): UnitProduksi[] | null {
 export async function getUnits(force = false): Promise<UnitProduksi[]> {
   if (force) unitsCache = null;
   const sync = getUnitsSync();
-  if (sync && !force) return sync;
+  if (sync && sync.length > 0 && !force) return sync;
 
   if (unitsPromise) return unitsPromise;
   unitsPromise = fetch("/api/unit-produksi", {
