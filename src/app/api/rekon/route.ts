@@ -227,6 +227,32 @@ export async function GET(request: Request) {
       return { ...rekon, notes: normalizedNotes, invoices: invoicesWithData, rtvs: rtvsWithData, promos: detailedPromos };
     });
 
+    // ── BACKFILL: Sync buktiBayar on POs for finalized rekons ──
+    // Runs efficiently — only updates POs where buktiBayar is still null/empty
+    try {
+      const finalRekons = reconciles.filter(r => r.status === "final" && r.noRekonsiliasi && (r.invoices || []).length > 0);
+      if (finalRekons.length > 0) {
+        const backfillOps = finalRekons.map(r =>
+          prisma.purchaseOrder.updateMany({
+            where: {
+              noInvoice: { in: r.invoices || [] },
+              OR: [
+                { buktiBayar: null },
+                { buktiBayar: "" },
+                { buktiBayar: "-" },
+              ],
+            },
+            data: { buktiBayar: r.noRekonsiliasi },
+          })
+        );
+        // Fire-and-forget — don't block the response
+        Promise.all(backfillOps).catch(err => console.error("Backfill buktiBayar error:", err));
+      }
+    } catch (e) {
+      // Silently fail — backfill is best-effort
+      console.error("Backfill buktiBayar setup error:", e);
+    }
+
     return NextResponse.json({ data, total });
   } catch (error: any) {
     console.error("GET Rekon Data Error:", error);
@@ -372,6 +398,23 @@ export async function POST(request: Request) {
         
         await prisma.$transaction(updatePromises);
       }
+    }
+
+    // 5. SYNC: Auto-fill buktiBayar on PurchaseOrder when rekon is submitted (not draft)
+    const rekonStatus = status || "final";
+    const rekonNo = newRekon.noRekonsiliasi;
+    const invoiceList: string[] = Array.isArray(invoices) ? invoices.filter(Boolean) : [];
+
+    if (rekonStatus === "final" && invoiceList.length > 0 && rekonNo) {
+      // Update all POs matching the invoice numbers — set buktiBayar to the rekon code
+      await prisma.purchaseOrder.updateMany({
+        where: {
+          noInvoice: { in: invoiceList },
+        },
+        data: {
+          buktiBayar: rekonNo,
+        },
+      });
     }
 
     return NextResponse.json({ success: true, data: newRekon });
