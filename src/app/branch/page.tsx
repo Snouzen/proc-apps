@@ -20,6 +20,7 @@ import {
   Search,
 } from "lucide-react";
 import { getMe } from "@/lib/me";
+import { PoDateBadge } from "@/components/PoDateBadge";
 import SmoothSelect from "@/components/ui/smooth-select";
 import PODetailModal from "@/components/po-detail-modal";
 import DateInputHybrid from "@/components/DateInputHybrid";
@@ -884,7 +885,11 @@ export default function BranchPage() {
                   label: "Tgl PO",
                   hidden: !visibleCols.tglPo,
                   render: (_v: any, po: any) => (
-                    <span className="whitespace-nowrap">{formatDateId(po.tglPo)}</span>
+                    <PoDateBadge 
+                      dateNode={<span className="whitespace-nowrap">{formatDateId(po.tglPo)}</span>}
+                      type="TAGIH"
+                      buktiData={po.buktiTagih}
+                    />
                   ),
                 },
                 {
@@ -892,7 +897,11 @@ export default function BranchPage() {
                   label: "Expired",
                   hidden: !visibleCols.expired,
                   render: (_v: any, po: any) => (
-                    <span className="whitespace-nowrap text-rose-600 font-semibold">{formatDateId(po.expiredTgl)}</span>
+                    <PoDateBadge 
+                      dateNode={<span className="whitespace-nowrap text-rose-600 font-semibold">{formatDateId(po.expiredTgl)}</span>}
+                      type="PAID"
+                      buktiData={po.buktiBayar}
+                    />
                   ),
                 },
                 {

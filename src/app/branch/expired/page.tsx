@@ -23,6 +23,7 @@ import {
   Truck,
 } from "lucide-react";
 import { getMe } from "@/lib/me";
+import { PoDateBadge } from "@/components/PoDateBadge";
 import SmoothSelect from "@/components/ui/smooth-select";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import { DataTable } from "@/components/data-table";
@@ -709,9 +710,11 @@ export default function ExpiredCalendarPage() {
                 label: "TGL PO",
                 hidden: !visibleCols.tglPo,
                 render: (_v: any, po: any) => (
-                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                    {formatDatePremium(po.tglPo)}
-                  </span>
+                  <PoDateBadge 
+                    dateNode={<span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDatePremium(po.tglPo)}</span>}
+                    type="TAGIH"
+                    buktiData={po.buktiTagih}
+                  />
                 ),
               },
               {
@@ -719,9 +722,11 @@ export default function ExpiredCalendarPage() {
                 label: "EXPIRED",
                 hidden: !visibleCols.expired,
                 render: (_v: any, po: any) => (
-                  <span className="text-[11px] font-black text-rose-500 dark:text-rose-400 whitespace-nowrap">
-                    {formatDatePremium(po.expiredTgl)}
-                  </span>
+                  <PoDateBadge 
+                    dateNode={<span className="text-[11px] font-black text-rose-500 dark:text-rose-400 whitespace-nowrap">{formatDatePremium(po.expiredTgl)}</span>}
+                    type="PAID"
+                    buktiData={po.buktiBayar}
+                  />
                 ),
               },
               {

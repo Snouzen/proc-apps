@@ -9,6 +9,7 @@ import {
   useReactTable,
   flexRender,
 } from "@tanstack/react-table";
+import { PoDateBadge } from "@/components/PoDateBadge";
 import PODetailModal from "@/components/po-detail-modal";
 import CustomSelect from "@/components/select"; // We need to check if this exists or just use standard select
 import { GlobalPagination } from "@/components/global-pagination";
@@ -320,8 +321,8 @@ export default function ChecklistDocsPage() {
     { header: "Company", id: "company", accessorKey: "company", cell: ({ row }) => <div className="text-slate-800 dark:text-slate-200 font-medium max-w-[150px] truncate" title={row.original.company || row.original?.RitelModern?.namaPt || "-"}>{row.original.company || row.original?.RitelModern?.namaPt || "-"}</div> },
     { header: "No PO", id: "noPo", accessorKey: "noPo", cell: ({ row }) => <div className="font-semibold text-black dark:text-slate-100 max-w-[150px] truncate" title={row.original.noPo || "-"}>{row.original.noPo || "-"}</div> },
     { header: "No Invoice", id: "noInvoice", accessorKey: "noInvoice", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-200 font-medium">{row.original.noInvoice || "-"}</span> },
-    { header: "Tgl PO", id: "tglPo", accessorKey: "tglPo", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-[12px]">{formatDate(row.original.tglPo)}</span> },
-    { header: "Expired", id: "expiredTgl", accessorKey: "expiredTgl", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-[12px]">{formatDate(row.original.expiredTgl)}</span> },
+    { header: "Tgl PO", id: "tglPo", accessorKey: "tglPo", cell: ({ row }) => <PoDateBadge dateNode={<span className="text-slate-800 dark:text-slate-300 text-[12px]">{formatDate(row.original.tglPo)}</span>} type="TAGIH" buktiData={row.original.buktiTagih} /> },
+    { header: "Expired", id: "expiredTgl", accessorKey: "expiredTgl", cell: ({ row }) => <PoDateBadge dateNode={<span className="text-slate-800 dark:text-slate-300 text-[12px]">{formatDate(row.original.expiredTgl)}</span>} type="PAID" buktiData={row.original.buktiBayar} /> },
     { header: "Regional", id: "regional", accessorKey: "regional", cell: ({ row }) => { const reg = row.original.regional || row.original?.UnitProduksi?.namaRegional || "-"; return <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">{reg}</span>; } },
     { header: "Status Tagih", id: "statusTagih", accessorKey: "statusTagih", cell: ({ row, table }) => { const { isEditAll, editingRows, handleFieldChange } = table.options.meta as any; const id = row.original.id; const isEditing = isEditAll || !!editingRows[id]; if (isEditing) { return <label className="flex items-center justify-center cursor-pointer p-2"><input type="checkbox" checked={editingRows[id]?.statusTagih ?? false} onChange={(e) => handleFieldChange(id, "statusTagih", e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /></label>; } return <div className="flex justify-center">{row.original.statusTagih ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">✓</span> : <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">-</span>}</div>; } },
     { header: "Bukti Tagih", id: "buktiTagih", accessorKey: "buktiTagih", cell: ({ row, table }) => { const { isEditAll, editingRows, handleFieldChange } = table.options.meta as any; const id = row.original.id; const isEditing = isEditAll || !!editingRows[id]; if (isEditing) { return <input type="text" placeholder="Ref Tagih..." value={editingRows[id]?.buktiTagih ?? ""} onChange={(e) => handleFieldChange(id, "buktiTagih", e.target.value)} className="w-full min-w-[150px] px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white dark:bg-slate-800 dark:text-slate-100" />; } return <div className="text-slate-800 dark:text-slate-200 font-medium truncate max-w-[150px]" title={row.original.buktiTagih || "-"}>{row.original.buktiTagih || "-"}</div>; } },
@@ -541,25 +542,31 @@ export default function ChecklistDocsPage() {
           </table>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700">
-          <div className="flex justify-end mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Rows per page:</span>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setIsTransitioning(true);
-                  setRowsPerPage(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900/40 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            Total Data: <span className="text-slate-900 dark:text-slate-100 font-bold">{total.toLocaleString("id-ID")}</span> baris
           </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Rows per page
+            </span>
+            <CustomSelect
+              value={String(rowsPerPage)}
+              onChange={(val) => {
+                setIsTransitioning(true);
+                setRowsPerPage(Number(val));
+                setPage(1);
+              }}
+              options={[
+                { value: "10", label: "10" },
+                { value: "25", label: "25" },
+                { value: "50", label: "50" },
+                { value: "100", label: "100" },
+              ]}
+              className="w-20 shadow-sm dark:shadow-none"
+            />
+          </div>
+
           <GlobalPagination
             currentPage={page}
             totalPages={totalPages}

@@ -22,6 +22,7 @@ import {
   useState,
 } from "react";
 import { upperClean } from "@/lib/text";
+import { PoDateBadge } from "@/components/PoDateBadge";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import { GlobalPagination } from "@/components/global-pagination";
 import { getMe } from "@/lib/me";
@@ -1559,6 +1560,30 @@ export default function ReportPage() {
                             <StatusBadge
                               label={c.label.toUpperCase()}
                               checked={!!v}
+                            />
+                          ) : c.id === "tglPo" ? (
+                            <PoDateBadge 
+                              dateNode={
+                                c.kind === "text" && highlightTerm ? (
+                                  <HighlightText text={text} highlight={highlightTerm} />
+                                ) : (
+                                  text
+                                )
+                              }
+                              type="TAGIH"
+                              buktiData={r.buktiTagih}
+                            />
+                          ) : c.id === "expiredTgl" ? (
+                            <PoDateBadge 
+                              dateNode={
+                                c.kind === "text" && highlightTerm ? (
+                                  <HighlightText text={text} highlight={highlightTerm} />
+                                ) : (
+                                  text
+                                )
+                              }
+                              type="PAID"
+                              buktiData={r.buktiBayar}
                             />
                           ) : c.kind === "text" && highlightTerm ? (
                             <HighlightText

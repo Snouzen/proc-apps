@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import StatCard from "@/components/card";
+import { PoDateBadge } from "@/components/PoDateBadge";
 
 // Dynamic imports for complex components
 const ChartAreaInteractive = dynamic(() => import("@/components/chart-area-interactive").then(mod => mod.ChartAreaInteractive), { ssr: false });
@@ -452,7 +453,11 @@ function TableUnderChart({
             render: (_val: any, po: any) => (
               <>
                 <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">Tgl PO</span>
-                <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap mt-0.5">{toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}</span>
+                <PoDateBadge 
+                  dateNode={<span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap mt-0.5">{toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}</span>}
+                  type="TAGIH"
+                  buktiData={po.buktiTagih}
+                />
               </>
             ),
           },
@@ -470,7 +475,11 @@ function TableUnderChart({
             render: (_val: any, po: any) => (
               <>
                 <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">Tgl Expired</span>
-                <span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap mt-0.5">{toDate(po.expiredTgl)?.toLocaleDateString("id-ID") || "-"}</span>
+                <PoDateBadge 
+                  dateNode={<span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap mt-0.5">{toDate(po.expiredTgl)?.toLocaleDateString("id-ID") || "-"}</span>}
+                  type="PAID"
+                  buktiData={po.buktiBayar}
+                />
               </>
             ),
           },

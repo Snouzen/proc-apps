@@ -9,6 +9,7 @@ import PODetailModal from "@/components/po-detail-modal";
 import POEditModal from "@/components/po-edit-modal";
 import { LoaderThree } from "@/components/ui/loader";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
+import { PoDateBadge } from "@/components/PoDateBadge";
 
 export default function PurchaseOrderDetail() {
   const params = useParams<{ id: string }>();
@@ -425,10 +426,18 @@ export default function PurchaseOrderDetail() {
                             {r.noPo}
                           </td>
                           <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
-                            {formatDate(r.tglPo)}
+                            <PoDateBadge 
+                              dateNode={formatDate(r.tglPo)}
+                              type="TAGIH"
+                              buktiData={r.po?.buktiTagih}
+                            />
                           </td>
                           <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
-                            {formatDate(r.expiredTgl)}
+                            <PoDateBadge 
+                              dateNode={formatDate(r.expiredTgl)}
+                              type="PAID"
+                              buktiData={r.po?.buktiBayar}
+                            />
                           </td>
                           <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
                             {r.inisial}

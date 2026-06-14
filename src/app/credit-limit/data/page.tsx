@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import PODetailModal from "@/components/po-detail-modal";
+import { PoDateBadge } from "@/components/PoDateBadge";
 
 import { cleanSiteArea, getDueDateZone, needsRemarks } from "@/lib/credit-limit";
 import {
@@ -194,9 +195,15 @@ export default function CreditLimitDataPage() {
             label: "Tgl PO",
             width: "w-[120px]",
             render: (_v: any, po: any) => (
-              <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">
-                {po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}
-              </span>
+              <PoDateBadge 
+                dateNode={
+                  <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">
+                    {po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}
+                  </span>
+                }
+                type="TAGIH"
+                buktiData={po.buktiTagih}
+              />
             ),
           },
           {
@@ -207,9 +214,15 @@ export default function CreditLimitDataPage() {
               const zone = getDueDateZone(po.expiredTgl);
               const isWarning = needsRemarks(zone);
               return (
-                <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${isWarning ? "text-amber-600 dark:text-amber-500" : "text-slate-600 dark:text-slate-300"}`}>
-                  {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
-                </span>
+                <PoDateBadge 
+                  dateNode={
+                    <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${isWarning ? "text-amber-600 dark:text-amber-500" : "text-slate-600 dark:text-slate-300"}`}>
+                      {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
+                    </span>
+                  }
+                  type="PAID"
+                  buktiData={po.buktiBayar}
+                />
               );
             },
           },

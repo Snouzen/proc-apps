@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { getMe } from "@/lib/me";
 import { format } from "date-fns";
+import { PoDateBadge } from "@/components/PoDateBadge";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import PODetailModal from "@/components/po-detail-modal";
 // Lazy-loaded: jsPDF is ~100KB, only needed when user clicks download/preview
@@ -739,7 +740,11 @@ export default function SchedulePage() {
               label: "Tgl PO",
               width: "w-[120px]",
               render: (_v: any, po: any) => (
-                <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">{po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}</span>
+                <PoDateBadge 
+                  dateNode={<span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">{po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}</span>}
+                  type="TAGIH"
+                  buktiData={po.buktiTagih}
+                />
               ),
             },
             {
@@ -747,12 +752,18 @@ export default function SchedulePage() {
               label: "Due Date",
               width: "w-[110px]",
               render: (_v: any, po: any) => (
-                <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${
-                  po.expiredTgl && new Date(po.expiredTgl).getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000
-                    ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"
-                }`}>
-                  {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
-                </span>
+                <PoDateBadge 
+                  dateNode={
+                    <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${
+                      po.expiredTgl && new Date(po.expiredTgl).getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000
+                        ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"
+                    }`}>
+                      {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
+                    </span>
+                  }
+                  type="PAID"
+                  buktiData={po.buktiBayar}
+                />
               ),
             },
             {

@@ -50,15 +50,22 @@ export function getPurchaseOrderColumns({
       label: "TGL PO",
       width: "w-[110px] min-w-[110px]",
       render: (_v: any, po: any) => (
-        <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
-          {po.tglPo
-            ? new Date(po.tglPo).toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
-            : "-"}
-        </span>
+        <div>
+          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
+            {po.tglPo
+              ? new Date(po.tglPo).toLocaleDateString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "-"}
+          </span>
+          {po.buktiTagih && po.buktiTagih !== "-" && (
+            <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+              TAGIH
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -66,15 +73,22 @@ export function getPurchaseOrderColumns({
       label: "DUE DATE",
       width: "w-[110px] min-w-[110px]",
       render: (_v: any, po: any) => (
-        <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
-          {po.expiredTgl
-            ? new Date(po.expiredTgl).toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
-            : "-"}
-        </span>
+        <div>
+          <span className="text-slate-700 dark:text-slate-200 font-semibold text-xs whitespace-nowrap">
+            {po.expiredTgl
+              ? new Date(po.expiredTgl).toLocaleDateString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "-"}
+          </span>
+          {po.buktiBayar && po.buktiBayar !== "-" && (
+            <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+              PAID
+            </span>
+          )}
+        </div>
       ),
     },
     {

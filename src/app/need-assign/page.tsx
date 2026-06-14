@@ -12,6 +12,7 @@ import {
 import * as Popover from "@radix-ui/react-popover";
 import { GlobalPagination } from "@/components/global-pagination";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { PoDateBadge } from "@/components/PoDateBadge";
 
 import { useAuthData } from "@/hooks/useAuthData";
 import { useMasterUnits } from "@/hooks/useMasterUnits";
@@ -246,18 +247,30 @@ export default function NeedAssignPage() {
       header: "Tgl PO",
       accessorKey: "tglPo",
       cell: ({ row }) => (
-        <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
-          {formatDate(row.original.tglPo)}
-        </span>
+        <PoDateBadge 
+          dateNode={
+            <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
+              {formatDate(row.original.tglPo)}
+            </span>
+          }
+          type="TAGIH"
+          buktiData={row.original.buktiTagih}
+        />
       ),
     },
     {
       header: "Expired",
       accessorKey: "expiredTgl",
       cell: ({ row }) => (
-        <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
-          {formatDate(row.original.expiredTgl)}
-        </span>
+        <PoDateBadge 
+          dateNode={
+            <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
+              {formatDate(row.original.expiredTgl)}
+            </span>
+          }
+          type="PAID"
+          buktiData={row.original.buktiBayar}
+        />
       ),
     },
     {

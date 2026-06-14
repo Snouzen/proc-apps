@@ -13,6 +13,8 @@ export interface NeedAssignRow {
   tujuanDetail: string | null;
   linkPo: string | null;
   remarks: string | null;
+  buktiTagih?: string | null;
+  buktiBayar?: string | null;
   Items: any[];
   UnitProduksi?: any;
   RitelModern?: any;

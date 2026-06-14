@@ -2,6 +2,61 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+export const usePagination = ({
+  currentPage,
+  totalPages,
+  siblingCount = 1,
+}: {
+  currentPage: number;
+  totalPages: number;
+  siblingCount?: number;
+}) => {
+  const range = (start: number, end: number) => {
+    let length = end - start + 1;
+    return Array.from({ length }, (_, idx) => idx + start);
+  };
+
+  const DOTS = "...";
+
+  const paginationRange = () => {
+    const totalPageNumbers = siblingCount + 5;
+
+    if (totalPageNumbers >= totalPages) {
+      return range(1, totalPages);
+    }
+
+    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
+    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
+
+    const shouldShowLeftDots = leftSiblingIndex > 2;
+    const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
+
+    const firstPageIndex = 1;
+    const lastPageIndex = totalPages;
+
+    if (!shouldShowLeftDots && shouldShowRightDots) {
+      let leftItemCount = 3 + 2 * siblingCount;
+      let leftRange = range(1, leftItemCount);
+      return [...leftRange, DOTS, totalPages];
+    }
+
+    if (shouldShowLeftDots && !shouldShowRightDots) {
+      let rightItemCount = 3 + 2 * siblingCount;
+      let rightRange = range(totalPages - rightItemCount + 1, totalPages);
+      return [firstPageIndex, DOTS, ...rightRange];
+    }
+
+    if (shouldShowLeftDots && shouldShowRightDots) {
+      let middleRange = range(leftSiblingIndex, rightSiblingIndex);
+      return [firstPageIndex, DOTS, ...middleRange, DOTS, lastPageIndex];
+    }
+
+    return [];
+  };
+
+  return paginationRange();
+};
+
 export function GlobalPagination({
   currentPage,
   totalPages,
@@ -34,11 +89,18 @@ export function GlobalPagination({
           <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
         </button>
         
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+        {usePagination({ currentPage, totalPages }).map((page, index) => {
+          if (page === "...") {
+            return (
+              <span key={`dots-${index}`} className="w-9 h-9 flex items-center justify-center text-xs font-bold text-slate-400">
+                ...
+              </span>
+            );
+          }
           return (
             <button
-              key={page}
-              onClick={() => onPageChange(page)}
+              key={index}
+              onClick={() => onPageChange(page as number)}
               className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${
                 page === currentPage
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-200/50"
