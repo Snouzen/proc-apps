@@ -36,6 +36,22 @@ export async function GET(req: NextRequest) {
       ]
     };
 
+    const pendingBayarCondition = {
+      OR: [
+        { statusBayar: false },
+        { buktiBayar: null },
+        { buktiBayar: "" }
+      ]
+    };
+
+    const completedBayarCondition = {
+      AND: [
+        { statusBayar: true },
+        { buktiBayar: { not: null } },
+        { buktiBayar: { not: "" } }
+      ]
+    };
+
     const searchCondition = q ? {
       OR: [
         { noPo: { contains: q, mode: "insensitive" } },
@@ -47,10 +63,15 @@ export async function GET(req: NextRequest) {
 
     const wherePending: any = { AND: [pendingCondition, ...(q ? [searchCondition] : [])] };
     const whereCompleted: any = { AND: [completedCondition, ...(q ? [searchCondition] : [])] };
+    const wherePendingBayar: any = { AND: [pendingBayarCondition, ...(q ? [searchCondition] : [])] };
+    const whereCompletedBayar: any = { AND: [completedBayarCondition, ...(q ? [searchCondition] : [])] };
     const whereTotal: any = q ? searchCondition : {};
 
     const filter = searchParams.get("filter") || "pending";
-    const activeWhere = filter === "completed" ? whereCompleted : filter === "total" ? whereTotal : wherePending;
+    const activeWhere = filter === "completed" ? whereCompleted : 
+                        filter === "pending_bayar" ? wherePendingBayar : 
+                        filter === "completed_bayar" ? whereCompletedBayar : 
+                        filter === "total" ? whereTotal : wherePending;
 
     const totalCacheKey = `checklist_summary:${q}`;
     let summary = cacheGet<any>(totalCacheKey);
@@ -92,18 +113,24 @@ export async function GET(req: NextRequest) {
     if (summary) {
       data = await findManyPromise;
     } else {
-      const [totalPo, pendingTagih, completedTagih, fetchedData] = await Promise.all([
+      const [totalPo, pendingTagih, completedTagih, pendingBayar, completedBayar, fetchedData] = await Promise.all([
         prisma.purchaseOrder.count({ where: whereTotal }),
         prisma.purchaseOrder.count({ where: wherePending }),
         prisma.purchaseOrder.count({ where: whereCompleted }),
+        prisma.purchaseOrder.count({ where: wherePendingBayar }),
+        prisma.purchaseOrder.count({ where: whereCompletedBayar }),
         findManyPromise
       ]);
-      summary = { totalPo, pendingTagih, completedTagih };
+      summary = { totalPo, pendingTagih, completedTagih, pendingBayar, completedBayar };
       data = fetchedData;
       cacheSet(totalCacheKey, summary, 60000); // 1 minute cache
     }
 
-    const activeTotal = filter === "completed" ? summary.completedTagih : filter === "total" ? summary.totalPo : summary.pendingTagih;
+    let activeTotal = summary.pendingTagih;
+    if (filter === "completed") activeTotal = summary.completedTagih;
+    else if (filter === "total") activeTotal = summary.totalPo;
+    else if (filter === "pending_bayar") activeTotal = summary.pendingBayar;
+    else if (filter === "completed_bayar") activeTotal = summary.completedBayar;
 
     return NextResponse.json({ total: activeTotal, summary, data });
   } catch (error: any) {
@@ -136,16 +163,18 @@ export async function POST(req: NextRequest) {
 
     // Perform transaction to update multiple rows
     await prisma.$transaction(
-      updates.map((update: any) => 
-        prisma.purchaseOrder.update({
+      updates.map((update: any) => {
+        const dataToUpdate: any = { updatedAt: new Date() };
+        if (update.statusTagih !== undefined) dataToUpdate.statusTagih = update.statusTagih;
+        if (update.buktiTagih !== undefined) dataToUpdate.buktiTagih = update.buktiTagih;
+        if (update.statusBayar !== undefined) dataToUpdate.statusBayar = update.statusBayar;
+        if (update.buktiBayar !== undefined) dataToUpdate.buktiBayar = update.buktiBayar;
+        
+        return prisma.purchaseOrder.update({
           where: { id: update.id },
-          data: {
-            statusTagih: update.statusTagih,
-            buktiTagih: update.buktiTagih,
-            updatedAt: new Date(),
-          }
-        })
-      )
+          data: dataToUpdate
+        });
+      })
     );
 
     // Invalidate cache

@@ -53,7 +53,7 @@ export default function ChecklistDocsPage() {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState({ totalPo: 0, pendingTagih: 0, completedTagih: 0 });
+  const [summary, setSummary] = useState({ totalPo: 0, pendingTagih: 0, completedTagih: 0, pendingBayar: 0, completedBayar: 0 });
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("pending");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -95,7 +95,7 @@ export default function ChecklistDocsPage() {
 
   // Edit states
   const [isEditAll, setIsEditAll] = useState(false);
-  const [editingRows, setEditingRows] = useState<Record<string, { statusTagih: boolean; buktiTagih: string; saving?: boolean; error?: string }>>({});
+  const [editingRows, setEditingRows] = useState<Record<string, { statusTagih: boolean; buktiTagih: string; statusBayar: boolean; buktiBayar: string; saving?: boolean; error?: string }>>({});
 
   useEffect(() => {
     (async () => {
@@ -103,6 +103,29 @@ export default function ChecklistDocsPage() {
       setRole(me?.role || null);
     })();
   }, []);
+
+  useEffect(() => {
+    setVisibleCols(prev => {
+      const next = { ...prev };
+      if (activeFilter === "pending_bayar" || activeFilter === "completed_bayar") {
+        next.statusTagih = false;
+        next.buktiTagih = false;
+        next.statusBayar = true;
+        next.buktiBayar = true;
+      } else if (activeFilter === "pending" || activeFilter === "completed") {
+        next.statusTagih = true;
+        next.buktiTagih = true;
+        next.statusBayar = false;
+        next.buktiBayar = false;
+      } else if (activeFilter === "total") {
+        next.statusTagih = true;
+        next.buktiTagih = true;
+        next.statusBayar = true;
+        next.buktiBayar = true;
+      }
+      return next;
+    });
+  }, [activeFilter]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -157,6 +180,8 @@ export default function ChecklistDocsPage() {
           totalPo: Number(json.summary.totalPo) || 0,
           pendingTagih: Number(json.summary.pendingTagih) || 0,
           completedTagih: Number(json.summary.completedTagih) || 0,
+          pendingBayar: Number(json.summary.pendingBayar) || 0,
+          completedBayar: Number(json.summary.completedBayar) || 0,
         });
       }
       setError(null);
@@ -237,6 +262,8 @@ export default function ChecklistDocsPage() {
         [row.id]: {
           statusTagih: !!row.statusTagih,
           buktiTagih: row.buktiTagih || "",
+          statusBayar: !!row.statusBayar,
+          buktiBayar: row.buktiBayar || "",
         }
       };
     });
@@ -248,18 +275,20 @@ export default function ChecklistDocsPage() {
       setEditingRows({});
     } else {
       setIsEditAll(true);
-      const newEditingState: Record<string, any> = {};
+      const allDrafts: Record<string, any> = {};
       rows.forEach(r => {
-        newEditingState[r.id] = {
+        allDrafts[r.id] = {
           statusTagih: !!r.statusTagih,
           buktiTagih: r.buktiTagih || "",
+          statusBayar: !!r.statusBayar,
+          buktiBayar: r.buktiBayar || "",
         };
       });
-      setEditingRows(newEditingState);
+      setEditingRows(allDrafts);
     }
   };
 
-  const handleFieldChange = (id: string, field: "statusTagih" | "buktiTagih", value: any) => {
+  const handleFieldChange = (id: string, field: "statusTagih" | "buktiTagih" | "statusBayar" | "buktiBayar", value: any) => {
     setEditingRows(prev => ({
       ...prev,
       [id]: {
@@ -286,7 +315,9 @@ export default function ChecklistDocsPage() {
       const updates = ids.map(id => ({
         id,
         statusTagih: editingRows[id].statusTagih,
-        buktiTagih: editingRows[id].buktiTagih
+        buktiTagih: editingRows[id].buktiTagih,
+        statusBayar: editingRows[id].statusBayar,
+        buktiBayar: editingRows[id].buktiBayar,
       }));
 
       const res = await fetch("/api/po/checklist", {
@@ -333,8 +364,8 @@ export default function ChecklistDocsPage() {
     { header: "FP", id: "statusFp", accessorKey: "statusFp", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-[12px] font-medium">{row.original.statusFp ? "✓" : "-"}</span> },
     { header: "Kwi", id: "statusKwi", accessorKey: "statusKwi", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-[12px] font-medium">{row.original.statusKwi ? "✓" : "-"}</span> },
     { header: "Inv", id: "statusInv", accessorKey: "statusInv", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-[12px] font-medium">{row.original.statusInv ? "✓" : "-"}</span> },
-    { header: "Bayar", id: "statusBayar", accessorKey: "statusBayar", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-[12px] font-medium">{row.original.statusBayar ? "✓" : "-"}</span> },
-    { header: "Bukti Bayar", id: "buktiBayar", accessorKey: "buktiBayar", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-sm max-w-[150px] truncate" title={row.original.buktiBayar || "-"}>{row.original.buktiBayar || "-"}</span> },
+    { header: "Bayar", id: "statusBayar", accessorKey: "statusBayar", cell: ({ row, table }) => { const { isEditAll, editingRows, handleFieldChange } = table.options.meta as any; const id = row.original.id; const isEditing = isEditAll || !!editingRows[id]; if (isEditing) { return <label className="flex items-center justify-center cursor-pointer p-2"><input type="checkbox" checked={editingRows[id]?.statusBayar ?? false} onChange={(e) => handleFieldChange(id, "statusBayar", e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /></label>; } return <div className="flex justify-center">{row.original.statusBayar ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">✓</span> : <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">-</span>}</div>; } },
+    { header: "Bukti Bayar", id: "buktiBayar", accessorKey: "buktiBayar", cell: ({ row, table }) => { const { isEditAll, editingRows, handleFieldChange } = table.options.meta as any; const id = row.original.id; const isEditing = isEditAll || !!editingRows[id]; if (isEditing) { return <input type="text" placeholder="Ref Bayar..." value={editingRows[id]?.buktiBayar ?? ""} onChange={(e) => handleFieldChange(id, "buktiBayar", e.target.value)} className="w-full min-w-[150px] px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white dark:bg-slate-800 dark:text-slate-100" />; } return <div className="text-slate-800 dark:text-slate-200 font-medium truncate max-w-[150px]" title={row.original.buktiBayar || "-"}>{row.original.buktiBayar || "-"}</div>; } },
     { header: "Remarks", id: "remarks", accessorKey: "remarks", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-sm max-w-[150px] truncate" title={row.original.remarks || "-"}>{row.original.remarks || "-"}</span> },
     { header: "Nama Supir", id: "namaSupir", accessorKey: "namaSupir", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-sm max-w-[150px] truncate" title={row.original.namaSupir || "-"}>{row.original.namaSupir || "-"}</span> },
     { header: "Plat Nomor", id: "platNomor", accessorKey: "platNomor", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-300 text-sm max-w-[150px] truncate" title={row.original.platNomor || "-"}>{row.original.platNomor || "-"}</span> },
@@ -455,27 +486,41 @@ export default function ChecklistDocsPage() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div 
           onClick={() => { setActiveFilter("total"); setPage(1); }}
           className={`cursor-pointer rounded-2xl border shadow-sm p-5 flex flex-col justify-center transition-all ${activeFilter === "total" ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"}`}
         >
-          <span className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total PO</span>
-          <span className="text-3xl font-bold text-slate-800 dark:text-slate-100">{summary.totalPo}</span>
+          <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Total PO</span>
+          <span className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-slate-100">{summary.totalPo}</span>
         </div>
         <div 
           onClick={() => { setActiveFilter("pending"); setPage(1); }}
           className={`cursor-pointer rounded-2xl border shadow-sm p-5 flex flex-col justify-center transition-all ${activeFilter === "pending" ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"}`}
         >
-          <span className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Pending Tagih</span>
-          <span className="text-3xl font-bold text-amber-600 dark:text-amber-500">{summary.pendingTagih}</span>
+          <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Pending Tagih</span>
+          <span className="text-2xl lg:text-3xl font-bold text-amber-600 dark:text-amber-500">{summary.pendingTagih}</span>
         </div>
         <div 
           onClick={() => { setActiveFilter("completed"); setPage(1); }}
           className={`cursor-pointer rounded-2xl border shadow-sm p-5 flex flex-col justify-center transition-all ${activeFilter === "completed" ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"}`}
         >
-          <span className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Completed Tagih</span>
-          <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-500">{summary.completedTagih}</span>
+          <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Completed Tagih</span>
+          <span className="text-2xl lg:text-3xl font-bold text-emerald-600 dark:text-emerald-500">{summary.completedTagih}</span>
+        </div>
+        <div 
+          onClick={() => { setActiveFilter("pending_bayar"); setPage(1); }}
+          className={`cursor-pointer rounded-2xl border shadow-sm p-5 flex flex-col justify-center transition-all ${activeFilter === "pending_bayar" ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"}`}
+        >
+          <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Pending Payment</span>
+          <span className="text-2xl lg:text-3xl font-bold text-orange-600 dark:text-orange-500">{summary.pendingBayar}</span>
+        </div>
+        <div 
+          onClick={() => { setActiveFilter("completed_bayar"); setPage(1); }}
+          className={`cursor-pointer rounded-2xl border shadow-sm p-5 flex flex-col justify-center transition-all ${activeFilter === "completed_bayar" ? "bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"}`}
+        >
+          <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Completed Payment</span>
+          <span className="text-2xl lg:text-3xl font-bold text-teal-600 dark:text-teal-500">{summary.completedBayar}</span>
         </div>
       </div>
 
