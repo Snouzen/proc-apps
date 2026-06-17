@@ -1,856 +1,138 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
-import { DataTable } from "@/components/data-table";
-import { useRouter, useSearchParams } from "next/navigation";
-import Swal from "sweetalert2";
+import { Suspense } from "react";
 import { 
   Plus, 
   Upload, 
-  Search, 
-  Pencil, 
-  Trash2,
-  Package, 
   LayoutList,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Loader2,
-  Building2,
-  ChevronDown,
   ArrowLeft,
   FileSpreadsheet,
-  X,
-  Check,
   Calendar,
   CheckCircle2,
-  XCircle
+  Trash2
 } from "lucide-react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday } from "date-fns";
-import { id } from "date-fns/locale";
-import * as Popover from "@radix-ui/react-popover";
-import dynamic from "next/dynamic";
-
-// Dynamic imports for heavy modals
-const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
-const ReturDetailModal = dynamic(() => import("@/components/retur-detail-modal"), { ssr: false });
 import { ReturFilterBar } from "./components/ReturFilterBar";
 import { ReturGroupedView } from "./components/ReturGroupedView";
 import { ReturTable } from "./components/ReturTable";
-
+import { useRetur } from "./hooks/useRetur";
+import { ReturBulkModal } from "./components/ReturBulkModal";
+import { ReturAddModal } from "./components/ReturAddModal";
 
 function ReturContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialRitelId = searchParams.get("ritelId");
-  const [data, setData] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
-  const [totalQty, setTotalQty] = useState(0);
-  const [totalNominal, setTotalNominal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [isFetchingPage, setIsFetchingPage] = useState(false);
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | "magang" | null>(null);
-  const [userArea, setUserArea] = useState<string | null>(null);
-  const [userRegional, setUserRegional] = useState<string | null>(null);
-  
-  const [retailers, setRetailers] = useState<any[]>([]);
-  const [selectedRetailerId, setSelectedRetailerId] = useState<string | null>(null);
-  const [isGroupedMode, setIsGroupedMode] = useState(true);
-  const [filterInisial, setFilterInisial] = useState("");
-  const [filterToko, setFilterToko] = useState("");
-  const [filterLokasi, setFilterLokasi] = useState("");
-  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
-  const [dateFrom, setDateFrom] = useState<string | null>(null);
-  const [dateTo, setDateTo] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkStep, setBulkStep] = useState(1); 
-  const [bulkRetailerId, setBulkRetailerId] = useState<string>("");
-  const [searchRetailerText, setSearchRetailerText] = useState("");
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isListOpen, setIsListOpen] = useState(false);
-  const [openExcelModal, setOpenExcelModal] = useState(false);
-  
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addRetailerId, setAddRetailerId] = useState("");
-  const [searchAddText, setSearchAddText] = useState("");
-  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
-  
-  const [products, setProducts] = useState<any[]>([]);
-  const [units, setUnits] = useState<any[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
-  const [isMassEditing, setIsMassEditing] = useState(false);
-  const [massEditForms, setMassEditForms] = useState<Record<string, any>>({});
-  const [isSavingMass, setIsSavingMass] = useState(false);
-  const [searchToko, setSearchToko] = useState("");
-  const [searchProduk, setSearchProduk] = useState("");
-  const [isTokoOpen, setIsTokoOpen] = useState(false);
-  const [isProdukOpen, setIsProdukOpen] = useState(false);
-  const [isLokasiOpen, setIsLokasiOpen] = useState(false);
-  const [searchLokasi, setSearchLokasi] = useState("");
-  const [isPembebananOpen, setIsPembebananOpen] = useState(false);
-  const [isInisialOpen, setIsInisialOpen] = useState(false);
-  const [searchInisial, setSearchInisial] = useState("");
-  const [searchPembebanan, setSearchPembebanan] = useState("");
-  const [viewDetailId, setViewDetailId] = useState<string | null>(null);
-  const selectedDetail = useMemo(() => data.find(d => d.id === viewDetailId), [data, viewDetailId]);
-  
-  const [stats, setStats] = useState({
-    sudah_diambil: 0,
-    belum_diambil: 0,
-    dimusnahkan: 0,
-    total: 0
-  });
-  
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const comboRef = useRef<HTMLTableCellElement>(null);
-  const comboboxInputRef = useRef<HTMLInputElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const addDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-      if (addDropdownRef.current && !addDropdownRef.current.contains(event.target as Node)) {
-        setIsAddDropdownOpen(false);
-      }
-      if (comboRef.current && !comboRef.current.contains(event.target as Node)) {
-        setIsListOpen(false);
-        setActiveIndex(-1);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  useEffect(() => {
-    if (initialRitelId) {
-      setSelectedRetailerId(initialRitelId);
-      setIsGroupedMode(false);
-    }
-  }, [initialRitelId]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/ritel").then(res => res.json()),
-      fetch("/api/product").then(res => res.json()),
-      fetch("/api/unit-produksi").then(res => res.json()),
-      import("@/lib/me").then(({ getMe }) => getMe())
-    ]).then(([ritelJson, productJson, unitJson, me]) => {
-      setRetailers(Array.isArray(ritelJson) ? ritelJson : (ritelJson?.data || []));
-      setProducts(Array.isArray(productJson) ? productJson : (productJson?.data || []));
-      setUnits(Array.isArray(unitJson) ? unitJson : (unitJson?.data || []));
-      if (me?.authenticated) {
-        let r = (me.role as any) || null;
-        if (r === "pic_site") r = "sitearea";
-        setRole(r as any);
-        setUserRegional(me.regional || null);
-        // Set userArea: prefer me.siteArea, fallback derive from email prefix
-        const parsedUnits = Array.isArray(unitJson) ? unitJson : (unitJson?.data || []);
-        if (me.siteArea) {
-          setUserArea(me.siteArea);
-        } else if ((r === "sitearea") && me.email) {
-          // Derive siteArea from email: "spbsukoharjo@bulog.co.id" → "spbsukoharjo"
-          const emailPrefix = (me.email.split("@")[0] || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-          const matchedUnit = parsedUnits.find((u: any) => {
-            const sa = (u.siteArea || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-            return sa === emailPrefix;
-          });
-          setUserArea(matchedUnit?.siteArea || null);
-        } else {
-          setUserArea(null);
-        }
-      }
-    });
-  }, []);
-
-  const fetchRetur = useCallback(async () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
-    if (data.length > 0) {
-      setIsFetchingPage(true);
-    } else {
-      setLoading(true);
-    }
-
-    try {
-      const params = new URLSearchParams();
-      params.set("page", String(page)); 
-      params.set("limit", String(rowsPerPage));
-      
-      if (debouncedSearch) params.set("q", debouncedSearch);
-      if (selectedRetailerId) params.set("retailerId", selectedRetailerId);
-      
-      // New filters
-      if (filterInisial) params.set("inisial", filterInisial);
-      if (filterToko) params.set("toko", filterToko);
-      if (filterLokasi) params.set("lokasi", filterLokasi);
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      if (selectedStatus) params.set("status", selectedStatus);
-
-      const res = await fetch(`/api/retur?${params.toString()}`, {
-        signal: abortControllerRef.current.signal,
-      });
-      const json = await res.json();
-      
-      if (res.ok) {
-        setIsGroupedMode(json.isGrouped);
-        setData(json.data || []);
-        setTotal(json.total || 0);
-        setTotalQty(json.totalQty || 0);
-        setTotalNominal(json.totalNominal || 0);
-        setAvailableLocations(json.availableLocations || []);
-      }
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
-        console.error("Fetch Retur Error:", err);
-      }
-    } finally {
-      setLoading(false);
-      setIsFetchingPage(false);
-      fetchStats();
-    }
-  }, [page, debouncedSearch, rowsPerPage, selectedRetailerId, filterInisial, filterToko, filterLokasi, dateFrom, dateTo, selectedStatus]);
-
-  const handleExportExcel = useCallback(async () => {
-    if (!selectedRetailerId) return;
-    
-    try {
-      const params = new URLSearchParams();
-      params.set("retailerId", selectedRetailerId);
-      if (search) params.set("q", search);
-      if (filterInisial) params.set("inisial", filterInisial);
-      if (filterToko) params.set("toko", filterToko);
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      if (selectedStatus) params.set("status", selectedStatus);
-      if (filterLokasi) params.set("lokasi", filterLokasi);
-
-      // Trigger download
-      window.location.href = `/api/retur/export?${params.toString()}`;
-    } catch (err) {
-      console.error("Export Error:", err);
-      Swal.fire("Error", "Gagal melakukan export excel", "error");
-    }
-  }, [selectedRetailerId, search, filterInisial, filterToko, filterLokasi, dateFrom, dateTo, selectedStatus]);
-
-  const handleExportAll = useCallback(async () => {
-    try {
-      // Trigger download without any filters to grab everything
-      window.location.href = `/api/retur/export`;
-    } catch (err) {
-      console.error("Export All Error:", err);
-      Swal.fire("Error", "Gagal melakukan export keseluruhan", "error");
-    }
-  }, []);
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      if (debouncedSearch) params.set("q", debouncedSearch);
-      if (selectedRetailerId) params.set("retailerId", selectedRetailerId);
-      if (filterInisial) params.set("inisial", filterInisial);
-      if (filterToko) params.set("toko", filterToko);
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      // We don't filter stats by status, otherwise cards would hide themselves
-
-      const res = await fetch(`/api/retur/stats?${params.toString()}`);
-      if (res.ok) {
-        const json = await res.json();
-        setStats(json);
-      }
-    } catch (err) {
-      console.error("Fetch Stats Error:", err);
-    }
-  }, [debouncedSearch, selectedRetailerId, filterInisial, filterToko, filterLokasi, dateFrom, dateTo]);
-
-  // --- CLIENT SIDE FILTERING FOR DETAIL MODE ---
-  const filteredData = useMemo(() => {
-    return data;
-  }, [data]);
-
-  const paginatedData = useMemo(() => {
-    return data;
-  }, [data]);
-
-  const clientTotalPages = Math.ceil(filteredData.length / rowsPerPage);
-
-  useEffect(() => {
-    fetchRetur();
-    fetchStats();
-  }, [fetchRetur, fetchStats]);
-
-  // --- HANDLE INCOMING QUERY PARAMS (REDIRECTION FROM SCHEDULE) ---
-  useEffect(() => {
-    const statusParam = searchParams.get("status");
-    if (statusParam) {
-      setSelectedStatus(statusParam.toUpperCase());
-      setPage(1);
-    }
-  }, [searchParams]);
-
-  // --- AUTO CALCULATE RP/KG FOR INLINE EDIT ---
-  useEffect(() => {
-    if (editingId) {
-      const nominal = Number(editForm.nominal) || 0;
-      const qty = Number(editForm.qtyReturn) || 0;
-      const result = qty > 0 ? Math.round(nominal / qty) : 0;
-      if (editForm.rpKg !== result) {
-        setEditForm((p: any) => ({ ...p, rpKg: result }));
-      }
-    }
-  }, [editForm.nominal, editForm.qtyReturn, editingId]);
-
-  const totalPages = Math.ceil(total / rowsPerPage);
-
-  const formatIDR = (val: any) => {
-    const num = Number(val) || 0;
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(num);
-  };
-
-  const formatDate = (date: any) => {
-    if (!date) return "-";
-    try {
-      return format(new Date(date), "dd MMM yyyy", { locale: id });
-    } catch {
-      return "-";
-    }
-  };
-
-  const formatNumber = (val: any) => {
-    const num = Number(val) || 0;
-    return num.toLocaleString("id-ID");
-  };
-
-  const filteredRetailers = useMemo(() => {
-    const unique = Array.from(new Map(retailers.map(r => [r.namaPt, r])).values());
-    return unique.filter(r => 
-      r.namaPt.toLowerCase().includes(searchRetailerText.toLowerCase())
-    );
-  }, [retailers, searchRetailerText]);
-
-  const filterOptions = useMemo(() => {
-    if (!selectedRetailerId || retailers.length === 0) return { inisials: [], tokos: [] };
-    const r = retailers.find(x => x.id === selectedRetailerId);
-    if (!r) return { inisials: [], tokos: [] };
-    
-    const pt = r.namaPt.trim().toLowerCase();
-    const related = retailers.filter(x => x.namaPt.trim().toLowerCase() === pt);
-    
-    return {
-      inisials: Array.from(new Set(related.map(x => x.inisial).filter(Boolean))) as string[],
-      tokos: Array.from(new Set(related.map(x => x.tujuan).filter(Boolean))) as string[],
-    };
-  }, [selectedRetailerId, retailers]);
-
-  useEffect(() => {
-    setActiveIndex(-1);
-  }, [searchRetailerText]);
-
-  const handleSelectRetailer = (ritel: any) => {
-    setBulkRetailerId(ritel.id);
-    setSearchRetailerText(ritel.namaPt);
-    setIsDropdownOpen(false);
-    setActiveIndex(-1);
-  };
-
-  const handleStartEdit = (item: any) => {
-    setEditingId(item.id);
-    setEditForm({ ...item });
-    setSearchToko(item.namaCompany || "");
-    setSearchProduk(item.produk || "");
-    setSearchLokasi(item.LokasiBarang?.siteArea || ""); // TAMBAH INI
-    setSearchPembebanan(item.PembebananReturn?.siteArea || ""); // TAMBAH INI
-    setSearchInisial(item.inisial || "");
-    setIsInisialOpen(false);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditForm({});
-    setSearchToko("");
-    setSearchProduk("");
-    setSearchLokasi(""); // TAMBAH INI
-    setSearchPembebanan(""); // TAMBAH INI
-    setIsTokoOpen(false);
-    setIsProdukOpen(false);
-    setIsLokasiOpen(false); // TAMBAH INI
-    setIsPembebananOpen(false); // TAMBAH INI
-    setIsInisialOpen(false);
-    setSearchInisial("");
-  };
-
-  const handleStartMassEdit = () => {
-    setIsMassEditing(true);
-    setEditingId(null);
-    setEditForm({});
-    const initial: Record<string, any> = {};
-    data.forEach(item => {
-      initial[item.id] = { ...item };
-    });
-    setMassEditForms(initial);
-  };
-
-  const handleCancelMassEdit = () => {
-    setIsMassEditing(false);
-    setMassEditForms({});
-  };
-
-  const handleSaveMassEdit = async () => {
-    try {
-      setIsSavingMass(true);
-      const ids = Object.keys(massEditForms);
-      
-      const promises = ids.map(async (id) => {
-        const itemData = massEditForms[id];
-        const { RitelModern, LokasiBarang, Product, PembebananReturn, createdAt, updatedAt, _count, ...pureData } = itemData;
-
-        const cleanedPayload = {
-          ...pureData,
-          id,
-          rtvCn: pureData.rtvCn ? String(pureData.rtvCn).trim() : null,
-          kodeToko: pureData.kodeToko ? Number(pureData.kodeToko.toString().replace(/[^0-9]/g, '')) : null,
-          qtyReturn: Number(pureData.qtyReturn) || 0,
-          nominal: Number(pureData.nominal) || 0,
-          rpKg: Number(pureData.rpKg) || 0,
-          tanggalRtv: pureData.tanggalRtv ? new Date(pureData.tanggalRtv).toISOString() : null,
-          maxPickup: pureData.maxPickup ? new Date(pureData.maxPickup).toISOString() : null,
-          tanggalPembayaran: pureData.tanggalPembayaran ? new Date(pureData.tanggalPembayaran).toISOString() : null,
-          invoiceRekon: pureData.invoiceRekon || "",
-          inisial: pureData.inisial || ""
-        };
-
-        const res = await fetch(`/api/retur`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cleanedPayload),
-        });
-
-        if (!res.ok) throw new Error("Gagal menyimpan beberapa data");
-      });
-
-      await Promise.all(promises);
-
-      Swal.fire({ icon: 'success', title: 'Semua data diperbarui', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
-      
-      setIsMassEditing(false);
-      setMassEditForms({});
-      
-      const scrollY = window.scrollY;
-      await fetchRetur();
-      requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior }));
-    } catch (error: any) {
-      console.error(error);
-      Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: error.message || "Gagal menyimpan perubahan!" });
-    } finally {
-      setIsSavingMass(false);
-    }
-  };
-
-  const handleFieldChange = (item: any, field: string, value: any) => {
-    if (isMassEditing) {
-      setMassEditForms(prev => {
-        const current = { ...(prev[item.id] || item), [field]: value };
-        if (field === 'nominal' || field === 'qtyReturn') {
-          const nominal = Number(current.nominal) || 0;
-          const qty = Number(current.qtyReturn) || 0;
-          current.rpKg = qty > 0 ? Math.round(nominal / qty) : 0;
-        }
-        return { ...prev, [item.id]: current };
-      });
-    } else {
-      setEditForm((prev: any) => {
-        const current = { ...prev, [field]: value };
-        if (field === 'nominal' || field === 'qtyReturn') {
-          const nominal = Number(current.nominal) || 0;
-          const qty = Number(current.qtyReturn) || 0;
-          current.rpKg = qty > 0 ? Math.round(nominal / qty) : 0;
-        }
-        return current;
-      });
-    }
-  };
-
-  const handleSaveInline = async (id: string) => {
-    try {
-      setIsFetchingPage(true);
-      
-      // --- DATA SANITIZATION (PURGE RELATIONAL TRASH) ---
-      // Distinguish between pure data and relational objects that cause Prisma errors
-      const { 
-        RitelModern, 
-        LokasiBarang, 
-        Product, 
-        PembebananReturn, 
-        createdAt, 
-        updatedAt,
-        _count,
-        ...pureData 
-      } = editForm;
-
-      // --- STRICT TYPE CASTING FOR PRISMA (NULLABLE INT) ---
-      const cleanedPayload = {
-        ...pureData,
-        id, // Persistence
-        rtvCn: pureData.rtvCn ? String(pureData.rtvCn).trim() : null,
-        kodeToko: pureData.kodeToko ? Number(pureData.kodeToko.toString().replace(/[^0-9]/g, '')) : null,
-        qtyReturn: Number(pureData.qtyReturn) || 0,
-        nominal: Number(pureData.nominal) || 0,
-        rpKg: Number(pureData.rpKg) || 0,
-        tanggalRtv: pureData.tanggalRtv ? new Date(pureData.tanggalRtv).toISOString() : null,
-        maxPickup: pureData.maxPickup ? new Date(pureData.maxPickup).toISOString() : null,
-        tanggalPembayaran: pureData.tanggalPembayaran ? new Date(pureData.tanggalPembayaran).toISOString() : null,
-        invoiceRekon: pureData.invoiceRekon || "",
-        inisial: pureData.inisial || ""
-      };
-
-      const res = await fetch(`/api/retur`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cleanedPayload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Gagal menyimpan data");
-      }
-
-      setEditingId(null);
-      
-      // --- SUCCESS TOAST ---
-      Swal.fire({ 
-        icon: 'success', 
-        title: 'Data diperbarui', 
-        toast: true, 
-        position: 'top-end', 
-        timer: 1500, 
-        showConfirmButton: false,
-        background: '#f8fafc',
-        color: '#0f172a'
-      });
-
-      // Preserve scroll position after re-fetch
-      const scrollY = window.scrollY;
-      await fetchRetur();
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior });
-      });
-    } catch (error: any) {
-      console.error(error);
-      // --- ERROR MODAL ---
-      Swal.fire({ 
-        icon: 'error', 
-        title: 'Gagal Menyimpan', 
-        text: error.message || "Gagal menyimpan perubahan!", 
-        confirmButtonColor: '#4f46e5',
-        background: '#fff',
-        customClass: {
-          popup: 'rounded-[32px]',
-          confirmButton: 'rounded-xl px-10'
-        }
-      });
-    } finally {
-      setIsFetchingPage(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    const result = await Swal.fire({
-      title: 'Hapus Data Retur?',
-      text: 'Data ini akan hilang permanen!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#94a3b8',
-      confirmButtonText: 'Ya, Hapus!',
-      cancelButtonText: 'Batal',
-      background: '#fff',
-      customClass: {
-        popup: 'rounded-[32px]',
-        confirmButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest cursor-pointer',
-        cancelButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest cursor-pointer'
-      }
-    });
-
-    if (result.isConfirmed) {
-      try {
-        setIsFetchingPage(true);
-        const res = await fetch(`/api/retur?id=${id}`, { 
-          method: 'DELETE' 
-        });
-        
-        if (!res.ok) {
-          let errorMessage = "Gagal menghapus data";
-          try {
-            // Safe parse: don't crash if response is empty
-            const errData = await res.json();
-            errorMessage = errData.error || errorMessage;
-          } catch (e) {
-            // Ignore JSON parse error on failed request
-          }
-          throw new Error(errorMessage);
-        }
-
-        // --- BYPASS JSON PARSE (FORCE SUCCESS) ---
-        Swal.fire({
-          icon: 'success',
-          title: 'Data dihapus!',
-          toast: true,
-          position: 'top-end',
-          timer: 1500,
-          showConfirmButton: false
-        });
-
-        // Smart UI Cleanup: Instant removal from screen
-        setData(prevData => prevData.filter(item => item.id !== id));
-        
-        // Panggil fetch lagi untuk memastikan Card Ritel ter-update jika datanya 0
-        fetchRetur();
-
-      } catch (error: any) {
-        console.error(error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Oops...',
-          text: error.message || 'Gagal menghapus data',
-          confirmButtonColor: '#ef4444'
-        });
-      } finally {
-        setIsFetchingPage(false);
-      }
-    }
-  };
-
-  const handleDeleteGroup = async (ritelId: string, ritelName: string) => {
-    const result = await Swal.fire({
-      title: 'Hapus Seluruh Data?',
-      html: `Semua data retur untuk <b>${ritelName}</b> akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan!`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#94a3b8',
-      confirmButtonText: 'Ya, Hapus Semua!',
-      cancelButtonText: 'Batal',
-      background: '#fff',
-      customClass: {
-        popup: 'rounded-[32px]',
-        confirmButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest cursor-pointer',
-        cancelButton: 'rounded-xl px-6 py-3 font-black uppercase text-[11px] tracking-widest cursor-pointer'
-      }
-    });
-
-    if (result.isConfirmed) {
-      try {
-        setIsFetchingPage(true);
-        const res = await fetch(`/api/retur?ritelId=${ritelId}`, { 
-          method: 'DELETE' 
-        });
-        
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || "Gagal menghapus data grup");
-        }
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Grup Dihapus!',
-          text: `Seluruh data ${ritelName} telah dibersihkan.`,
-          toast: true,
-          position: 'top-end',
-          timer: 2000,
-          showConfirmButton: false
-        });
-
-        // Instant removal of the card
-        setData(prev => prev.filter(r => r.id !== ritelId));
-        fetchRetur();
-      } catch (error: any) {
-        console.error(error);
-        Swal.fire({ icon: 'error', title: 'Gagal', text: error.message });
-      } finally {
-        setIsFetchingPage(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    setData([]); // Bersihkan data agar tidak render crash (missing _count) saat ganti mode
-    setPage(1);
-  }, [selectedRetailerId]);
-
-  const filteredInisial = useMemo(() => {
-    if (retailers.length === 0) return [];
-    if (!editingId && !isMassEditing) return [];
-
-    let targetPt = "";
-    if (isMassEditing && selectedRetailerId) {
-      targetPt = retailers.find(r => r.id === selectedRetailerId)?.namaPt || "";
-    } else {
-      const item = data.find(d => d.id === editingId);
-      targetPt = item?.RitelModern?.namaPt || retailers.find(r => r.id === item?.ritelId)?.namaPt || "";
-    }
-
-    if (!targetPt) return [];
-    targetPt = targetPt.trim().toLowerCase();
-    return Array.from(
-      new Set(
-        retailers
-          .filter(r => r.namaPt.trim().toLowerCase() === targetPt && r.inisial)
-          .map(r => r.inisial)
-      )
-    ).filter(i => i && i.toLowerCase().includes(searchInisial.toLowerCase())) as string[];
-  }, [retailers, searchInisial, editingId, data]);
-
-  const masterTujuanList = useMemo(() => {
-    if (!selectedRetailerId || retailers.length === 0) return [];
-    const currentRetailer = retailers.find(r => r.id === selectedRetailerId);
-    if (!currentRetailer) return [];
-    
-    // Ambil semua tujuan dari Ritel Modern dengan PT yang sama
-    const list = retailers
-      .filter(r => r.namaPt === currentRetailer.namaPt && r.tujuan)
-      .map(r => r.tujuan);
-      
-    // Hilangkan duplikat
-    return Array.from(new Set(list));
-  }, [selectedRetailerId, retailers]);
-
-  const filteredTujuanItems = useMemo(() => {
-    if (!editForm.namaCompany) return masterTujuanList;
-    return masterTujuanList.filter(tj => 
-      tj.toLowerCase().includes(editForm.namaCompany.toLowerCase())
-    );
-  }, [masterTujuanList, editForm.namaCompany]);
-
-  const handleTujuanKeyDown = (e: React.KeyboardEvent) => {
-    if (!isListOpen) {
-      if (e.key === 'ArrowDown' || e.key === 'Enter') setIsListOpen(true);
-      return;
-    }
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIndex(prev => (prev < filteredTujuanItems.length - 1 ? prev + 1 : prev));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIndex(prev => (prev > 0 ? prev - 1 : prev));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (activeIndex !== -1 && filteredTujuanItems[activeIndex]) {
-        setEditForm({ ...editForm, namaCompany: filteredTujuanItems[activeIndex] });
-        setIsListOpen(false);
-        setActiveIndex(-1);
-      }
-    } else if (e.key === 'Escape') {
-      setIsListOpen(false);
-      setActiveIndex(-1);
-    }
-  };
-
-  const PRIORITY_PRODUCTS = useMemo(() => ["PUNOKAWAN 5 KG", "BEFOOD SETRA RAMOS 5 KG"], []);
-
-  const availableToko = useMemo(() => {
-    if (retailers.length === 0) return [];
-    
-    let targetPt = "";
-    if (isMassEditing && selectedRetailerId) {
-      targetPt = retailers.find(r => r.id === selectedRetailerId)?.namaPt || "";
-    } else {
-      if (!editForm.id) return [];
-      targetPt = editForm.RitelModern?.namaPt || "";
-    }
-    
-    if (!targetPt) return [];
-
-    return Array.from(new Set(
-      retailers
-        .filter(r => r.namaPt === targetPt && r.tujuan)
-        .map(r => r.tujuan)
-    ));
-  }, [editForm.id, editForm.RitelModern, retailers]);
-
-  const filteredToko = useMemo(() => 
-    availableToko.filter(t => t.toLowerCase().includes(searchToko.toLowerCase())),
-    [availableToko, searchToko]
-  );
-
-  const filteredProductsInline = useMemo(() => {
-    const raw = products.filter(p => p.name.toLowerCase().includes(searchProduk.toLowerCase()));
-    return raw.sort((a, b) => {
-      const idxA = PRIORITY_PRODUCTS.indexOf(a.name.toUpperCase());
-      const idxB = PRIORITY_PRODUCTS.indexOf(b.name.toUpperCase());
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.name.localeCompare(b.name);
-    });
-  }, [products, searchProduk, PRIORITY_PRODUCTS]);
-
-  const filteredLokasi = useMemo(() => {
-    if (!searchLokasi) return units;
-    return units.filter(u => String(u.siteArea).toLowerCase().includes(searchLokasi.toLowerCase()));
-  }, [units, searchLokasi]);
-
-  const filteredPembebanan = useMemo(() => {
-    if (!searchPembebanan) return units;
-    return units.filter(u => String(u.siteArea).toLowerCase().includes(searchPembebanan.toLowerCase()));
-  }, [units, searchPembebanan]);
-
-  const handleAddReturn = () => {
-    if (!selectedRetailerId) {
-      setShowAddModal(true);
-      setAddRetailerId("");
-      setSearchAddText("");
-      setIsAddDropdownOpen(false);
-    } else {
-      router.push(`/retur/new?ritelId=${selectedRetailerId}`);
-    }
-  };
-
-  const highlightMatch = (text: string, query: string) => {
-    if (!query) return text;
-    const parts = text.split(new RegExp(`(${query})`, "gi"));
-    return (
-      <span>
-        {parts.map((part, i) => 
-          part.toLowerCase() === query.toLowerCase() ? (
-            <mark key={i} className="bg-yellow-200 text-black px-0.5 rounded-sm">
-              {part}
-            </mark>
-          ) : (
-            part
-          )
-        )}
-      </span>
-    );
-  };
+  const {
+    router,
+    data,
+    total,
+    totalQty,
+    totalNominal,
+    loading,
+    isFetchingPage,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+    search,
+    setSearch,
+    role,
+    userArea,
+    userRegional,
+    retailers,
+    selectedRetailerId,
+    setSelectedRetailerId,
+    isGroupedMode,
+    setIsGroupedMode,
+    filterInisial,
+    setFilterInisial,
+    filterToko,
+    setFilterToko,
+    filterLokasi,
+    setFilterLokasi,
+    availableLocations,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    selectedStatus,
+    setSelectedStatus,
+    showBulkModal,
+    setShowBulkModal,
+    bulkStep,
+    setBulkStep,
+    bulkRetailerId,
+    setBulkRetailerId,
+    searchRetailerText,
+    setSearchRetailerText,
+    activeIndex,
+    setActiveIndex,
+    isDropdownOpen,
+    setIsDropdownOpen,
+    isListOpen,
+    setIsListOpen,
+    openExcelModal,
+    setOpenExcelModal,
+    showAddModal,
+    setShowAddModal,
+    addRetailerId,
+    setAddRetailerId,
+    searchAddText,
+    setSearchAddText,
+    isAddDropdownOpen,
+    setIsAddDropdownOpen,
+    products,
+    units,
+    editingId,
+    editForm,
+    setEditForm,
+    isMassEditing,
+    massEditForms,
+    isSavingMass,
+    searchToko,
+    setSearchToko,
+    searchProduk,
+    setSearchProduk,
+    searchLokasi,
+    setSearchLokasi,
+    searchPembebanan,
+    setSearchPembebanan,
+    viewDetailId,
+    setViewDetailId,
+    selectedDetail,
+    stats,
+    dropdownRef,
+    comboRef,
+    addDropdownRef,
+    fetchRetur,
+    handleExportExcel,
+    handleExportAll,
+    paginatedData,
+    formatIDR,
+    formatDate,
+    formatNumber,
+    filteredRetailers,
+    filterOptions,
+    handleSelectRetailer,
+    handleStartEdit,
+    handleCancelEdit,
+    handleStartMassEdit,
+    handleCancelMassEdit,
+    handleSaveMassEdit,
+    handleFieldChange,
+    handleSaveInline,
+    handleDelete,
+    handleDeleteGroup,
+    filteredInisial,
+    filteredTujuanItems,
+    handleTujuanKeyDown,
+    filteredToko,
+    filteredProductsInline,
+    filteredLokasi,
+    filteredPembebanan,
+    handleAddReturn,
+    setSearchInisial,
+    setIsInisialOpen,
+    isInisialOpen
+  } = useRetur();
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 animate-in fade-in duration-500 overflow-x-hidden">
@@ -861,7 +143,7 @@ function ReturContent() {
               suppressHydrationWarning
               onClick={() => {
                 setSelectedRetailerId(null);
-                setIsGroupedMode(true); // Switch instant
+                setIsGroupedMode(true);
               }}
               className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 shadow-sm"
               title="Back to List"
@@ -875,7 +157,7 @@ function ReturContent() {
                  <LayoutList className="text-white" size={24} />
               </div>
               {selectedRetailerId 
-                ? `Retur: ${retailers.find(r => r.id === selectedRetailerId)?.namaPt || 'Detail'}` 
+                ? `Retur: ${retailers.find((r: any) => r.id === selectedRetailerId)?.namaPt || 'Detail'}` 
                 : role === "sitearea" 
                   ? `Retur Area: ${userArea}`
                   : 'Data Retur Barang'
@@ -941,7 +223,6 @@ function ReturContent() {
         </div>
       </div>
 
-      {/* ── Status Cards ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div 
           onClick={() => {
@@ -1004,7 +285,6 @@ function ReturContent() {
         </div>
       </div>
 
-      {/* ── Filter & Search ─────────────────────────────────────────────── */}
       <ReturFilterBar
         search={search}
         setSearch={setSearch}
@@ -1039,7 +319,6 @@ function ReturContent() {
         availableLocations={availableLocations}
       />
 
-      {/* ── Main Content Area ───────────────────────────────────────────── */}
       <div className="-mt-4">
         {isGroupedMode ? (
           <ReturGroupedView 
@@ -1108,277 +387,42 @@ function ReturContent() {
         )}
       </div>
 
-      {/* ── BULK UPLOAD MODAL (SWITCHABLE CONTROLLERS) ─────────────────── */}
-      {showBulkModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowBulkModal(false)} />
-          <div className="relative bg-white dark:bg-slate-800 w-full max-w-xl rounded-[40px] shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-300 overflow-visible">
-            <div className="p-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between rounded-t-[40px]">
-              <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Bulk Upload Retur</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Step {bulkStep} of 2: {bulkStep === 1 ? 'Pilih Ritel' : 'Upload File'}</p>
-              </div>
-              <button onClick={() => setShowBulkModal(false)} className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer">
-                <ChevronDown size={20} />
-              </button>
-            </div>
+      <ReturBulkModal
+        showBulkModal={showBulkModal}
+        setShowBulkModal={setShowBulkModal}
+        bulkStep={bulkStep}
+        setBulkStep={setBulkStep}
+        bulkRetailerId={bulkRetailerId}
+        setBulkRetailerId={setBulkRetailerId}
+        searchRetailerText={searchRetailerText}
+        setSearchRetailerText={setSearchRetailerText}
+        isDropdownOpen={isDropdownOpen}
+        setIsDropdownOpen={setIsDropdownOpen}
+        activeIndex={activeIndex}
+        setActiveIndex={setActiveIndex}
+        filteredRetailers={filteredRetailers}
+        handleSelectRetailer={handleSelectRetailer}
+        dropdownRef={dropdownRef}
+        retailers={retailers}
+        openExcelModal={openExcelModal}
+        setOpenExcelModal={setOpenExcelModal}
+        fetchRetur={fetchRetur}
+      />
 
-            <div className="p-8 overflow-visible">
-              {bulkStep === 1 ? (
-                <div className="space-y-8">
-                  <div className="bg-indigo-50/60 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300 p-5 rounded-[24px] text-xs font-bold leading-relaxed shadow-sm">
-                    Pilih perusahaan peritel (Modern Ritel) terlebih dahulu untuk memandu pemetaan data secara spesifik sebelum mengunggah berkas.
-                  </div>
+      <ReturAddModal
+        showAddModal={showAddModal}
+        setShowAddModal={setShowAddModal}
+        addDropdownRef={addDropdownRef}
+        searchAddText={searchAddText}
+        setSearchAddText={setSearchAddText}
+        isAddDropdownOpen={isAddDropdownOpen}
+        setIsAddDropdownOpen={setIsAddDropdownOpen}
+        setAddRetailerId={setAddRetailerId}
+        addRetailerId={addRetailerId}
+        filteredRetailers={filteredRetailers}
+        router={router}
+      />
 
-                  <div className="flex flex-col items-center max-w-md mx-auto w-full space-y-6 pb-2">
-                    <div className="w-full relative" ref={dropdownRef}>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">
-                        Pilih Ritel Modern
-                      </label>
-                      
-                      <div className="relative group">
-                        <input 
-                          type="text"
-                          placeholder="Ketik untuk mencari ritel..."
-                          value={searchRetailerText}
-                          onChange={(e) => {
-                            setSearchRetailerText(e.target.value);
-                            setIsDropdownOpen(true);
-                            if (!e.target.value) setBulkRetailerId("");
-                          }}
-                          onFocus={() => setIsDropdownOpen(true)}
-                          onKeyDown={(e) => {
-                             if (!isDropdownOpen) return;
-                             if (e.key === "ArrowDown") {
-                                setActiveIndex(prev => (prev < filteredRetailers.length - 1 ? prev + 1 : prev));
-                                e.preventDefault();
-                             } else if (e.key === "ArrowUp") {
-                                setActiveIndex(prev => (prev > 0 ? prev - 1 : prev));
-                                e.preventDefault();
-                             } else if (e.key === "Enter" && activeIndex >= 0) {
-                                handleSelectRetailer(filteredRetailers[activeIndex]);
-                                e.preventDefault();
-                             }
-                          }}
-                          className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 dark:focus:border-indigo-500 transition-all text-sm font-black text-slate-700 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 pr-24"
-                        />
-                        
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                          {searchRetailerText && (
-                            <button 
-                              onClick={() => {
-                                setSearchRetailerText("");
-                                setBulkRetailerId("");
-                                setIsDropdownOpen(true);
-                              }}
-                              className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-                          <ChevronDown size={20} className={`text-slate-300 transition-transform duration-500 ${isDropdownOpen ? 'rotate-180' : 'rotate-0'}`} />
-                        </div>
-                      </div>
-
-                      {isDropdownOpen && (
-                        <ul className="absolute left-0 right-0 top-full mt-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-slate-900/50 max-h-[250px] overflow-y-auto z-[999] py-2 animate-in fade-in slide-in-from-top-2 duration-300 scrollbar-hide">
-                          {filteredRetailers.length > 0 ? (
-                            filteredRetailers.map((r, idx) => (
-                              <li 
-                                key={r.id}
-                                onClick={() => handleSelectRetailer(r)}
-                                onMouseEnter={() => setActiveIndex(idx)}
-                                className={`px-5 py-3.5 cursor-pointer text-xs font-black uppercase tracking-tighter transition-all border-b border-slate-50 last:border-0 ${
-                                  bulkRetailerId === r.id || activeIndex === idx 
-                                  ? 'bg-indigo-600 text-white' 
-                                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-                                }`}
-                              >
-                                {highlightMatch(r.namaPt, searchRetailerText)}
-                                {bulkRetailerId === r.id && <div className={`mt-1 text-[8px] font-medium ${activeIndex === idx ? 'text-indigo-200' : 'text-indigo-400'} animate-pulse`}>SELECTED</div>}
-                              </li>
-                            ))
-                          ) : (
-                            <li className="px-5 py-10 text-center flex flex-col items-center gap-3">
-                               <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl text-slate-200 dark:text-slate-600"><Search size={24} /></div>
-                               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                  Data &quot;{searchRetailerText}&quot; Tidak Ada
-                               </span>
-                            </li>
-                          )}
-                        </ul>
-                      )}
-                    </div>
-
-                    <button 
-                      disabled={!bulkRetailerId}
-                      onClick={() => setBulkStep(2)}
-                      className={`w-full py-5 rounded-[24px] font-black text-xs md:text-sm uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
-                        bulkRetailerId 
-                        ? "bg-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/50 hover:bg-indigo-700 hover:-translate-y-0.5" 
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50 border border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      LANJUTKAN KE UPLOAD <ChevronRight size={18} />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                  <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-[24px]">
-                     <div className="p-2 bg-emerald-500 text-white rounded-lg shadow-sm">
-                        <FileSpreadsheet size={18} />
-                     </div>
-                     <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest uppercase">
-                        Retailer: {retailers.find(r => r.id === bulkRetailerId)?.namaPt}
-                     </span>
-                  </div>
-                  
-                  <div className="bg-slate-50 rounded-[32px] p-10 border border-dashed border-slate-300 flex flex-col items-center justify-center text-center gap-5">
-                    <div className="p-4 bg-indigo-100 text-indigo-600 rounded-full">
-                       <Upload size={32} />
-                    </div>
-                    <div>
-                       <p className="text-sm font-black text-slate-700">Sistem Sudah Siap</p>
-                       <p className="text-xs font-medium text-slate-500 mt-1 max-w-[250px] mx-auto">
-                          Klik tombol di bawah ini untuk memunculkan jendela upload file Excel.
-                       </p>
-                    </div>
-                    <button 
-                       onClick={() => {
-                          setShowBulkModal(false);
-                          setTimeout(() => setOpenExcelModal(true), 200);
-                       }}
-                       className="px-6 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center gap-2"
-                    >
-                       <FileSpreadsheet size={16} /> Buka Menu Upload
-                    </button>
-                  </div>
-
-                  <button 
-                    onClick={() => {
-                       setBulkStep(1);
-                       setIsDropdownOpen(true);
-                    }}
-                    className="w-full py-3 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-indigo-600 transition-colors flex items-center justify-center gap-1"
-                  >
-                    <ArrowLeft size={12} /> Ganti Retailer
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── EXTERNAL MODAL (ROOT LEVEL) ────────────────────────────────── */}
-      {openExcelModal && (
-        <ExcelBulkModal 
-          open={openExcelModal}
-          onClose={() => setOpenExcelModal(false)}
-          variant="retur"
-          retailerId={bulkRetailerId}
-          retailerInisial={retailers.find(r => r.id === bulkRetailerId)?.inisial || ""}
-          onSuccess={() => {
-             setOpenExcelModal(false);
-             fetchRetur();
-          }}
-        />
-      )}
-
-      {/* ── ADD RETURN MODAL (MANUAL SELECTION) ────────────────────────── */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-white dark:bg-slate-800 w-full max-w-xl rounded-[40px] shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-300 overflow-visible">
-            <div className="p-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between rounded-t-[40px]">
-              <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Tambah Data Retur</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Pilih Ritel Modern</p>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-8 overflow-visible space-y-8">
-              <div className="bg-indigo-50/60 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300 p-5 rounded-[24px] text-xs font-bold leading-relaxed shadow-sm">
-                Pilih perusahaan peritel (Modern Ritel) terlebih dahulu sebelum mengisi form data retur baru.
-              </div>
-
-              <div className="flex flex-col items-center max-w-md mx-auto w-full space-y-6 pb-2">
-                <div className="w-full relative" ref={addDropdownRef}>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">
-                    Pilih Ritel Modern
-                  </label>
-                  
-                  <div className="relative group">
-                    <input 
-                      type="text"
-                      placeholder="Ketik untuk mencari ritel..."
-                      value={searchAddText}
-                      onChange={(e) => {
-                        setSearchAddText(e.target.value);
-                        setIsAddDropdownOpen(true);
-                        if (!e.target.value) setAddRetailerId("");
-                      }}
-                      onFocus={() => setIsAddDropdownOpen(true)}
-                      className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 dark:focus:border-indigo-500 transition-all text-sm font-black text-slate-700 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 pr-24"
-                    />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                      {searchAddText && (
-                        <button 
-                          onClick={() => { setSearchAddText(""); setAddRetailerId(""); setIsAddDropdownOpen(true); }}
-                          className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <X size={14} />
-                        </button>
-                      )}
-                      <ChevronDown size={20} className={`text-slate-300 transition-transform duration-500 ${isAddDropdownOpen ? 'rotate-180' : 'rotate-0'}`} />
-                    </div>
-                  </div>
-
-                  {isAddDropdownOpen && (
-                    <ul className="absolute left-0 right-0 top-full mt-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-slate-900/50 max-h-[250px] overflow-y-auto z-[999] py-2 animate-in fade-in slide-in-from-top-2 duration-300 scrollbar-hide">
-                      {filteredRetailers
-                        .filter(r => r.namaPt.toLowerCase().includes(searchAddText.toLowerCase()))
-                        .map((r, idx) => (
-                        <li 
-                          key={r.id}
-                          onClick={() => {
-                            setAddRetailerId(r.id);
-                            setSearchAddText(r.namaPt);
-                            setIsAddDropdownOpen(false);
-                          }}
-                          className={`px-5 py-3.5 cursor-pointer text-xs font-black uppercase tracking-tighter transition-all border-b border-slate-50 last:border-0 ${
-                            addRetailerId === r.id ? 'bg-indigo-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-                          }`}
-                        >
-                          {r.namaPt}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <button 
-                  disabled={!addRetailerId}
-                  onClick={() => router.push(`/retur/new?ritelId=${addRetailerId}`)}
-                  className={`w-full py-5 rounded-[24px] font-black text-xs md:text-sm uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
-                    addRetailerId 
-                    ? "bg-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/50 hover:bg-indigo-700 hover:-translate-y-0.5" 
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50 border border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  LANJUTKAN KE FORM INPUT <ChevronRight size={18} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Soft Loading Overlay */}
       {isFetchingPage && (
         <div className="fixed bottom-10 right-10 z-[110] animate-in slide-in-from-bottom-5 duration-500">
            <div className="bg-white/90 backdrop-blur p-4 rounded-2xl shadow-2xl border border-slate-100 flex items-center gap-3">

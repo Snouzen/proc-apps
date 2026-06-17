@@ -31,6 +31,14 @@ const lazyGenerateInvoicePdf = (
 ) => import("@/lib/generateInvoice").then((m) => m.generateInvoicePdf(...args));
 import Swal from "sweetalert2";
 
+import { LoaderThree } from "@/components/ui/loader";
+import { useSchedule } from "./hooks/useSchedule";
+import ScheduleSummaryCards from "./components/ScheduleSummaryCards";
+import ScheduleFilters from "./components/ScheduleFilters";
+
+import { ActionButton, StandardTooltip } from "@/components/ui/action-button";
+import ScheduleModals from "./components/ScheduleModals";
+
 // ── Helper: strip junk site area text ──────────────────────────────────────
 function cleanSiteArea(val?: string | null): string {
   if (!val) return "-";
@@ -60,548 +68,49 @@ function SkeletonRow() {
   );
 }
 
-// ── Tooltip Component ────────────────────────────────────────────────────────
-function StandardTooltip({ 
-  children, 
-  content 
-}: { 
-  children: React.ReactNode, 
-  content: string 
-}) {
-  if (!content || content === "-") return <>{children}</>;
-  return (
-    <div className="group/tooltip relative inline-block">
-      {children}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[9px] font-black uppercase tracking-widest rounded-lg opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 whitespace-nowrap pointer-events-none shadow-xl border border-slate-700">
-        {content}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800" />
-      </div>
-    </div>
-  );
-}
-
-// ── Action Button with Tooltip ───────────────────────────────────────────────
-function ActionButton({ 
-  icon: Icon, 
-  onClick, 
-  tooltip, 
-  variant = "indigo",
-  disabled = false,
-  loading = false,
-}: { 
-  icon: any; 
-  onClick: (e: any) => void; 
-  tooltip: string;
-  variant?: "indigo" | "rose" | "slate" | "emerald";
-  disabled?: boolean;
-  loading?: boolean;
-}) {
-  const bgColors = {
-    indigo: "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white",
-    rose: "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800 hover:bg-rose-600 hover:text-white",
-    slate: "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-600 hover:text-white",
-    emerald: "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white",
-  };
-
-  return (
-    <StandardTooltip content={tooltip}>
-      <button
-        onClick={onClick}
-        disabled={disabled || loading}
-        className={`p-2.5 rounded-xl border transition-all duration-200 shadow-sm active:scale-90 flex items-center justify-center ${bgColors[variant]} disabled:opacity-50 disabled:cursor-not-allowed`}
-      >
-        {loading ? (
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <Icon size={16} strokeWidth={2.5} />
-        )}
-      </button>
-    </StandardTooltip>
-  );
-}
-
 export default function SchedulePage() {
-  const router = useRouter();
-  const [poData, setPoData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedPo, setSelectedPo] = useState<any>(null);
-  const [namaSupir, setNamaSupir] = useState("");
-  const [platNomor, setPlatNomor] = useState("");
-  const [savingPcsId, setSavingPcsId] = useState<string | null>(null);
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const hook = useSchedule();
+  const {
+    poData, setPoData,
+    loading,
+    search, setSearch,
+    updatingId, setUpdatingId,
+    selectedDate, setSelectedDate,
+    modalOpen, setModalOpen,
+    selectedPo, setSelectedPo,
+    namaSupir, setNamaSupir,
+    platNomor, setPlatNomor,
+    savingPcsId, setSavingPcsId,
+    expandedRows, setExpandedRows,
+    isViewOpen, setIsViewOpen,
+    loadingDetail, setLoadingDetail,
+    detailData, setDetailData,
+    pdfPreviewUrl, setPdfPreviewUrl,
+    activeFilter, setActiveFilter,
+    currentPage, setCurrentPage,
+    itemsPerPage,
+    fetchData,
+    handleUpdateSchedule,
+    toggleRow,
+    handleUpdateItemPcsKirim,
+    handleUpdatePcsKirim,
+    handleRejectPo,
+    handleDownloadInvoice,
+    handlePreviewPdf,
+    handleViewRow,
+    filteredPo,
+    paginatedPOs,
+    stats,
+    totalPages
+  } = hook;
 
-  // -- Action State --
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [loadingDetail, setLoadingDetail] = useState(false);
-  const [detailData, setDetailData] = useState<any>(null);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
-
-  // -- Filter State --
-  const [activeFilter, setActiveFilter] = useState<
-    "all" | "scheduled" | "unscheduled"
-  >("all");
-
-  // -- Pagination State --
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        "/api/po?group=schedule_page&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
-        { cache: "no-store" },
-      );
-      const data = await res.json();
-      // API paged path returns { data, total }; no-limit path returns array
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-          ? data.data
-          : [];
-      setPoData(list);
-    } catch (err) {
-      console.error("Failed to fetch PO data:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    getMe().then((u) => {
-      setUser(u);
-    });
-    fetchData();
-  }, [fetchData]);
-
-  const handleUpdateSchedule = async () => {
-    if (!selectedPo || !selectedDate) {
-      Swal.fire({
-        icon: "warning",
-        title: "Form Belum Lengkap",
-        text: "Mohon isi tanggal pengiriman terlebih dahulu.",
-        confirmButtonColor: "#3085d6",
-      });
-      return;
-    }
-
-    setUpdatingId(selectedPo.id);
-
-    try {
-      const res = await fetch("/api/po/schedule", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedPo.id,
-          // Gunakan format YYYY-MM-DD agar lolos validasi regex di backend
-          tglKirim: selectedDate
-            ? format(new Date(selectedDate), "yyyy-MM-dd")
-            : null,
-          // [PENGAMAN] Gunakan ternary operator agar tidak crash saat data undefined
-          namaSupir: namaSupir ? String(namaSupir).trim() : null,
-          platNomor: platNomor ? String(platNomor).trim() : null,
-        }),
-      });
-
-      if (res.ok) {
-        setModalOpen(false);
-        await Swal.fire({
-          icon: "success",
-          title: "Berhasil!",
-          text: "Jadwal pengiriman telah diperbarui.",
-          timer: 1500,
-          showConfirmButton: false,
-        });
-
-        // --- RETUR REMINDER LOGIC (ALL ROLES) ---
-        if (user) {
-          try {
-            const statsRes = await fetch("/api/retur/stats");
-            if (statsRes.ok) {
-              const stats = await statsRes.json();
-              if (stats.belum_diambil > 0) {
-                await Swal.fire({
-                  title: "📌 Pengingat Retur!",
-                  html: `Anda memiliki <b>${stats.belum_diambil}</b> data retur yang <b>Belum Diambil</b>.<br/>Mohon pastikan untuk melakukan pengambilan barang retur segera.`,
-                  icon: "info",
-                  showCancelButton: true,
-                  confirmButtonColor: "#4f46e5",
-                  cancelButtonColor: "#94a3b8",
-                  confirmButtonText: "Lihat Data Retur",
-                  cancelButtonText: "Nanti Saja",
-                  background: "#ffffff",
-                  customClass: {
-                    popup: "rounded-[32px] border border-slate-100 shadow-2xl",
-                    confirmButton: "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4",
-                    cancelButton: "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4",
-                  }
-                }).then((result) => {
-                  if (result.isConfirmed) {
-                    router.push("/retur?status=BELUM DIAMBIL");
-                  }
-                });
-              }
-            }
-          } catch (err) {
-            console.error("Retur check failed", err);
-          }
-        }
-
-        fetchData();
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(
-          errData.error || errData.message || "Gagal menyimpan ke server",
-        );
-      }
-    } catch (err: any) {
-      console.error("Update Schedule Error:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Gagal Update",
-        text: err.message || "Terjadi kesalahan sistem, silakan coba lagi.",
-        confirmButtonColor: "#d33",
-      });
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const toggleRow = (id: string) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleUpdateItemPcsKirim = async (poId: string, itemId: string, value: string) => {
-    const pcs = Number(value);
-    const targetPo = poData.find((p) => p.id === poId);
-    if (!targetPo) return;
-
-    const targetItem = targetPo.Items?.find((it: any) => it.id === itemId);
-    if (!targetItem) return;
-
-    const maxPcs = Number(targetItem.pcs || 0);
-
-    if (pcs > maxPcs) {
-      Swal.fire({
-        toast: true,
-        position: "top-end",
-        icon: "error",
-        title: "Pcs Kirim melebihi Pcs PO!",
-        text: `Item ${targetItem.namaProduk} maks: ${maxPcs}`,
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        background: "#fff1f2", // rose-50
-      });
-      fetchData();
-      return;
-    }
-
-    if (isNaN(pcs) || pcs < 0) return;
-
-    setSavingPcsId(itemId);
-    try {
-      const res = await fetch("/api/po/pcs-kirim", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: poId, itemId, pcsKirim: pcs }),
-      });
-
-      if (res.ok) {
-        // Refetch to sync aggregate totals (pcsKirimTotal)
-        fetchData();
-        router.refresh();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Gagal update Pcs Kirim Item");
-      }
-    } catch (err) {
-      console.error("Update Item Pcs Kirim failed:", err);
-    } finally {
-      setSavingPcsId(null);
-    }
-  };
-
-  const handleUpdatePcsKirim = async (id: string, value: string) => {
-    const pcs = Number(value);
-    const targetPo = poData.find((p) => p.id === id);
-    if (!targetPo) return;
-
-    const maxPcs = Number(targetPo.pcsTotal || 0);
-
-    // Strict Rule: PCS Kirim cannot exceed PCS Total
-    if (pcs > maxPcs) {
-      Swal.fire({
-        toast: true,
-        position: "top-end",
-        icon: "error",
-        title: "Pcs Kirim melebihi Pcs PO!",
-        text: `Maksimum yang diizinkan: ${maxPcs}`,
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        background: "#fff1f2", // rose-50
-      });
-      // Rollback UI state to previous value or max value
-      fetchData(); 
-      return;
-    }
-
-    if (isNaN(pcs) || pcs < 0) return;
-
-    setSavingPcsId(id);
-    try {
-      const res = await fetch("/api/po/pcs-kirim", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, pcsKirim: pcs }),
-      });
-
-      if (res.ok) {
-        // Refetch to sync aggregate totals (pcsKirimTotal)
-        fetchData();
-        router.refresh();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Gagal update Pcs Kirim");
-      }
-    } catch (err) {
-      console.error("Update Pcs Kirim failed:", err);
-    } finally {
-      setSavingPcsId(null);
-    }
-  };
-
-  const handleRejectPo = async (po: any) => {
-    const result = await Swal.fire({
-      title: "Reject PO?",
-      html: `
-        <div class="text-left space-y-3">
-          <p class="text-sm text-slate-500 italic">PO #${po.noPo} akan dikembalikan ke antrean pusat.</p>
-          <div class="space-y-1">
-            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alasan Reject (Remarks)</label>
-            <textarea id="reject-remarks" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-all resize-none h-24" placeholder="Contoh: Salah input unit, revisi qty, dll..."></textarea>
-          </div>
-        </div>
-      `,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#e11d48", // rose-600
-      cancelButtonColor: "#64748b", // slate-500
-      confirmButtonText: "Ya, Reject PO",
-      cancelButtonText: "Batal",
-      reverseButtons: true,
-      background: "#ffffff",
-      customClass: {
-        popup: "rounded-[32px] border border-slate-100 shadow-2xl p-8",
-        title: "text-slate-900 font-black uppercase tracking-tight text-xl mb-4",
-        confirmButton: "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4 shadow-lg shadow-rose-200 transition-all active:scale-95",
-        cancelButton: "rounded-2xl font-black uppercase tracking-widest text-[10px] px-8 py-4 transition-all active:scale-95",
-      },
-      preConfirm: () => {
-        const remarks = (document.getElementById("reject-remarks") as HTMLTextAreaElement).value;
-        if (!remarks.trim()) {
-          Swal.showValidationMessage("Mohon isi alasan reject");
-          return false;
-        }
-        return remarks;
-      }
-    });
-
-    if (!result.isConfirmed) return;
-    const rejectRemarks = result.value;
-
-    const Toast = Swal.mixin({
-      toast: true,
-      position: "top-end",
-      showConfirmButton: false,
-      timer: 2000,
-      timerProgressBar: true,
-    });
-
-    setUpdatingId(po.id);
-    try {
-      const res = await fetch("/api/po/reject", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: po.id, remarks: rejectRemarks }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        // [UX FIX] Instant UI Removal: Hapus data dari state lokal secara instan
-        setPoData((prev) => prev.filter((item) => item.id !== po.id));
-
-        Toast.fire({
-          icon: "success",
-          title: "PO Berhasil Direject!",
-          text: "Data telah dikembalikan ke antrean pusat.",
-          background: "#ecfdf5", // emerald-50
-        });
-
-        // Trigger Revalidation server-side
-        router.refresh();
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Gagal Reject",
-          text: data.error || "Terjadi kesalahan pada server.",
-          confirmButtonColor: "#6366f1",
-        });
-      }
-    } catch (err) {
-      console.error("Reject failure:", err);
-      Toast.fire({
-        icon: "error",
-        title: "Kesalahan Network",
-        background: "#fff1f2", // rose-50
-      });
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleDownloadInvoice = async (po: any) => {
-    // Memastikan data item lengkap sebelum generate
-    if (!po.Items || po.Items.length === 0) {
-      try {
-        const res = await fetch(
-          `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
-          { cache: "no-store" },
-        );
-        const data = await res.json();
-        const fullPo = Array.isArray(data?.data)
-          ? data.data[0]
-          : Array.isArray(data)
-            ? data[0]
-            : null;
-        if (fullPo) {
-          await lazyGenerateInvoicePdf(fullPo, "download");
-          return;
-        }
-      } catch (err) {
-        console.error("Failed to fetch full PO for invoice:", err);
-      }
-    }
-    await lazyGenerateInvoicePdf(po, "download");
-  };
-
-  const handlePreviewPdf = async (po: any) => {
-    let targetPo = po;
-    if (!po.Items || po.Items.length === 0) {
-      try {
-        const res = await fetch(
-          `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
-          { cache: "no-store" },
-        );
-        const data = await res.json();
-        const fullPo = Array.isArray(data?.data)
-          ? data.data[0]
-          : Array.isArray(data)
-            ? data[0]
-            : null;
-        if (fullPo) targetPo = fullPo;
-      } catch (err) {
-        console.error("Failed to fetch full PO for preview:", err);
-      }
-    }
-    const blobUrl = await lazyGenerateInvoicePdf(targetPo, "preview");
-    if (blobUrl) setPdfPreviewUrl(blobUrl as string);
-  };
-
-  const handleViewRow = async (po: any) => {
-    setSelectedPo(po);
-    setDetailData(po); // base instant fallback
-    setIsViewOpen(true);
-    setLoadingDetail(true);
-    try {
-      const res = await fetch(
-        `/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true&limit=1`,
-        { cache: "no-store" },
-      );
-      const data = await res.json();
-      const first = Array.isArray(data?.data)
-        ? data.data[0]
-        : Array.isArray(data)
-          ? data[0]
-          : null;
-      if (first) {
-        setDetailData(first);
-      }
-    } catch (err) {
-      console.error("Failed to fetch detail:", err);
-    } finally {
-      setLoadingDetail(false);
-    }
-  };
-
-  const filteredPo = useMemo(() => {
-    // Tahap 1: Filter berdasarkan Card yang diklik
-    let categoryFiltered = poData;
-    if (activeFilter === "scheduled") {
-      categoryFiltered = poData.filter((po) => po.tglkirim);
-    } else if (activeFilter === "unscheduled") {
-      categoryFiltered = poData.filter((po) => !po.tglkirim);
-    }
-
-    // Tahap 2: Filter berdasarkan Search Bar
-    if (!search.trim()) return categoryFiltered;
-
-    const query = search.toLowerCase();
-    return categoryFiltered.filter((po) => {
-      const siteArea = String(
-        po.UnitProduksi?.siteArea || po.siteArea || "",
-      ).toLowerCase();
-      const company = String(
-        po.RitelModern?.namaPt || po.company || "",
-      ).toLowerCase();
-      const inisial = String(po.RitelModern?.inisial || "").toLowerCase();
-      const noPo = String(po.noPo || "").toLowerCase();
-      const noInvoice = String(po.noInvoice || "").toLowerCase();
-      return (
-        siteArea.includes(query) ||
-        company.includes(query) ||
-        inisial.includes(query) ||
-        noPo.includes(query) ||
-        noInvoice.includes(query)
-      );
-    });
-  }, [poData, activeFilter, search]);
-
-  const stats = useMemo(() => {
-    const emptyInv = ["", "-", "Unknown"];
-    const hasNoInvoice = (po: any) => !po.noInvoice || emptyInv.includes(po.noInvoice);
-    // Total PO & Belum Dijadwalkan: hanya PO tanpa invoice (existing behavior)
-    const noInvoicePOs = poData.filter(hasNoInvoice);
-    const total = noInvoicePOs.length;
-    const pending = noInvoicePOs.filter((po) => !po.tglkirim).length;
-    // Sudah Dijadwalkan: semua PO yang punya tglkirim (termasuk yang sudah punya invoice)
-    const scheduled = poData.filter((po) => po.tglkirim).length;
-    return { total, scheduled, pending };
-  }, [poData]);
-
-  // Reset pagination to page 1 whenever search query or filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, activeFilter]);
-
-  // Compute paginated slice from the `filteredPo` array
-  const paginatedPOs = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredPo.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredPo, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredPo.length / itemsPerPage);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoaderThree label="Loading schedule data..." />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-7">
@@ -632,58 +141,13 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* ── Stat Cards ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          {
-            id: "all",
-            label: "Total PO",
-            value: stats.total,
-            icon: <Truck size={18} className="text-blue-500" />,
-            bg: "bg-blue-50 dark:bg-blue-900/30",
-            text: "text-blue-600 dark:text-blue-400",
-            ring: "ring-blue-500 dark:ring-blue-400",
-          },
-          {
-            id: "scheduled",
-            label: "Sudah Dijadwalkan",
-            value: stats.scheduled,
-            icon: <CalendarCheck size={18} className="text-emerald-500" />,
-            bg: "bg-emerald-50 dark:bg-emerald-900/30",
-            text: "text-emerald-600 dark:text-emerald-400",
-            ring: "ring-emerald-500 dark:ring-emerald-400",
-          },
-          {
-            id: "unscheduled",
-            label: "Belum Dijadwalkan",
-            value: stats.pending,
-            icon: <Clock size={18} className="text-amber-500" />,
-            bg: "bg-amber-50 dark:bg-amber-900/30",
-            text: "text-amber-600 dark:text-amber-500",
-            ring: "ring-amber-500 dark:ring-amber-500",
-          },
-        ].map((stat) => (
-          <div
-            key={stat.id}
-            onClick={() => setActiveFilter(stat.id as any)}
-            className={`cursor-pointer bg-white dark:bg-slate-800 px-5 py-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center gap-4 transition-all duration-200 ${
-              activeFilter === stat.id
-                ? `ring-2 ${stat.ring} shadow-md scale-[1.02]`
-                : "hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm"
-            }`}
-          >
-            <div className={`p-2.5 rounded-xl ${stat.bg} shrink-0`}>
-              {stat.icon}
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-                {stat.label}
-              </p>
-              <p className={`text-2xl font-bold ${stat.text}`}>{stat.value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      <ScheduleSummaryCards 
+        stats={hook.stats} 
+        activeFilter={hook.activeFilter} 
+        setActiveFilter={hook.setActiveFilter} 
+      />
+
+      <ScheduleFilters hook={hook} />
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
       <DataTable
@@ -994,171 +458,25 @@ export default function SchedulePage() {
           className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden"
         />
 
-      {/* ── Modal ─────────────────────────────────────────────────────────── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-[28px] w-full max-w-md shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-slate-50 dark:border-slate-700/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl">
-                  <Calendar className="text-indigo-600" size={20} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                    Set Delivery Schedule
-                  </h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                    PO{" "}
-                    <span className="font-semibold text-slate-600 dark:text-slate-300">
-                      #{selectedPo?.noPo}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="px-7 py-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-                  Tanggal Kirim
-                </label>
-                <DateInputHybrid
-                  value={selectedDate}
-                  onChange={setSelectedDate}
-                  placeholder="Pilih tanggal kirim..."
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-                  Nama Supir{" "}
-                  <span className="text-[10px] text-slate-300 dark:text-slate-500 normal-case font-normal">
-                    (Opsional)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Masukkan nama supir..."
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all text-slate-800 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                  value={namaSupir}
-                  onChange={(e) => setNamaSupir(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
-                  Plat Nomor{" "}
-                  <span className="text-[10px] text-slate-300 dark:text-slate-500 normal-case font-normal">
-                    (Opsional)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: B 1234 ABC"
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all text-slate-800 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                  value={platNomor}
-                  onChange={(e) => setPlatNomor(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex gap-3 px-7 pb-7">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="flex-1 px-5 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95"
-              >
-                Batal
-              </button>
-              <button
-                disabled={!selectedDate || !!updatingId}
-                onClick={handleUpdateSchedule}
-                className="flex-1 px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95 flex items-center justify-center gap-2"
-              >
-                {updatingId ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle2 size={16} />
-                    Simpan Jadwal
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── View Detail Modal (Component) ────────────────────────────────── */}
-      <PODetailModal
-        open={isViewOpen}
-        onClose={() => {
-          setIsViewOpen(false);
-          setDetailData(null);
-        }}
-        data={
-          detailData
-            ? {
-                ...detailData,
-                buktiKirim: detailData.buktiKirim,
-                buktiFp: detailData.buktiFp,
-                status: {
-                  kirim: !!detailData.statusKirim,
-                  sdif: !!detailData.statusSdif,
-                  po: !!detailData.statusPo,
-                  fp: !!detailData.statusFp,
-                  kwi: !!detailData.statusKwi,
-                  inv: !!detailData.statusInv,
-                  tagih: !!detailData.statusTagih,
-                  bayar: !!detailData.statusBayar,
-                },
-              }
-            : null
-        }
+      <ScheduleModals
+        modalOpen={modalOpen}
+        setModalOpen={setModalOpen}
+        selectedPo={selectedPo}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        namaSupir={namaSupir}
+        setNamaSupir={setNamaSupir}
+        platNomor={platNomor}
+        setPlatNomor={setPlatNomor}
+        updatingId={updatingId}
+        handleUpdateSchedule={handleUpdateSchedule}
+        isViewOpen={isViewOpen}
+        setIsViewOpen={setIsViewOpen}
+        detailData={detailData}
+        setDetailData={setDetailData}
+        pdfPreviewUrl={pdfPreviewUrl}
+        setPdfPreviewUrl={setPdfPreviewUrl}
       />
-
-      {/* ── Live Preview Modal ─────────────────────────────────────────── */}
-      {pdfPreviewUrl && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-10 animate-in fade-in duration-200">
-          <div className="bg-slate-100 w-full max-w-5xl h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-50 rounded-lg">
-                  <Eye className="text-indigo-600" size={18} />
-                </div>
-                <h3 className="font-bold text-slate-800">
-                  Live Preview Invoice
-                </h3>
-              </div>
-              <button
-                onClick={() => setPdfPreviewUrl(null)}
-                className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* PDF Viewer (Iframe) */}
-            <div className="flex-1 w-full h-full bg-slate-200">
-              <iframe
-                src={pdfPreviewUrl}
-                className="w-full h-full border-none"
-                title="PDF Preview"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

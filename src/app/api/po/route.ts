@@ -1130,7 +1130,7 @@ export async function GET(request: Request) {
                   namaSupir: true,
                   platNomor: true,
                   RitelModern: { select: { namaPt: true, inisial: true } },
-                  UnitProduksi: { select: { siteArea: true, namaRegional: true } },
+                  UnitProduksi: { select: { siteArea: true, namaRegional: true, managerOperasional: true } },
                   CreditLimitBatch: { select: { batchCode: true, status: true } },
                 },
                 orderBy,
@@ -1192,7 +1192,7 @@ export async function GET(request: Request) {
                     select: { id: true, namaPt: true, inisial: true, tujuan: true },
                   },
                   UnitProduksi: {
-                    select: { idRegional: true, namaRegional: true, siteArea: true, alamat: true },
+                    select: { idRegional: true, namaRegional: true, siteArea: true, alamat: true, managerOperasional: true },
                   },
                   CreditLimitBatch: { select: { batchCode: true, status: true } },
                 },
@@ -1246,7 +1246,7 @@ export async function GET(request: Request) {
                 platNomor: true,
                 // ----------------------
                 RitelModern: { select: { namaPt: true, inisial: true } },
-                UnitProduksi: { select: { siteArea: true, namaRegional: true } },
+                UnitProduksi: { select: { siteArea: true, namaRegional: true, managerOperasional: true } },
                 CreditLimitBatch: { select: { batchCode: true, status: true } },
               },
               orderBy,
@@ -1310,7 +1310,7 @@ export async function GET(request: Request) {
                   select: { id: true, namaPt: true, inisial: true, tujuan: true },
                 },
                 UnitProduksi: {
-                  select: { idRegional: true, namaRegional: true, siteArea: true },
+                  select: { idRegional: true, namaRegional: true, siteArea: true, managerOperasional: true },
                 },
                 CreditLimitBatch: { select: { batchCode: true, status: true } },
               },

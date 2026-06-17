@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React from "react";
 import {
   Building2,
   MapPin,
@@ -19,415 +19,69 @@ import {
   ExternalLink,
   Search,
 } from "lucide-react";
-import { getMe } from "@/lib/me";
-import { PoDateBadge } from "@/components/PoDateBadge";
-import SmoothSelect from "@/components/ui/smooth-select";
+// import removed
 import PODetailModal from "@/components/po-detail-modal";
-import DateInputHybrid from "@/components/DateInputHybrid";
-import { DataTable } from "@/components/data-table";
-
-/* ──────────────────────────────────────────────
-   Constants
-   ────────────────────────────────────────────── */
-const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-const DAY_LABELS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
-const YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030];
-
-const formatDateId = (d: any) => {
-  if (!d) return "-";
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return "-";
-  return dt.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
+import { useBranchCalendar, MONTH_NAMES, DAY_LABELS } from "./hooks/useBranchCalendar";
+import { BranchFilters } from "./components/BranchFilters";
+import { BranchStats } from "./components/BranchStats";
+import { BranchCalendarGrid } from "./components/BranchCalendarGrid";
+import { BranchInlineDetail } from "./components/BranchInlineDetail";
 
 /* ──────────────────────────────────────────────
    Main Page Component
    ────────────────────────────────────────────── */
 export default function BranchPage() {
-  // ── Role & User State ──
-  const [role, setRole] = useState<"pusat" | "rm" | "sitearea" | null>(null);
-  const [userRegional, setUserRegional] = useState<string | null>(null);
-  const [userSiteArea, setUserSiteArea] = useState<string | null>(null);
-
-  // ── Dynamic Data ──
-  const [regionalData, setRegionalData] = useState<Record<string, string[]>>(
-    {},
-  );
-  const [isLoading, setIsLoading] = useState(true);
-
-  // ── Filter State ──
-  const now = new Date();
-  const [selectedRegional, setSelectedRegional] = useState("");
-  const [selectedSiteArea, setSelectedSiteArea] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(
-    String(now.getMonth() + 1),
-  );
-  const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()));
-
-  // ── PO Data ──
-  const [poData, setPoData] = useState<any[]>([]);
-  const [poLoading, setPoLoading] = useState(false);
-
-  // ── UI State Below Calendar ──
-  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
-
-  // ── State Inline Table ──
-  const [inlineSearch, setInlineSearch] = useState("");
-  const [inlineDateFrom, setInlineDateFrom] = useState("");
-  const [inlineDateTo, setInlineDateTo] = useState("");
-  const [colsOpen, setColsOpen] = useState(false);
-  const [visibleCols, setVisibleCols] = useState({
-    noPo: true,
-    tglPo: true,
-    expired: true,
-    produk: true,
-    tglKirim: true,
-    pcs: true,
-    pcsKirim: true,
-    namaSupir: true,
-    platNomor: true,
-    totalKg: true,
-    tujuan: true,
-    regional: true,
-    siteArea: true,
-    nominal: true,
-  });
-
-  const [selectedDetailPO, setSelectedDetailPO] = useState<any>(null);
-
-  const toggleAllCols = (val: boolean) => {
-    const next = {} as typeof visibleCols;
-    Object.keys(visibleCols).forEach((k) => {
-      next[k as keyof typeof visibleCols] = val;
-    });
-    setVisibleCols(next);
-  };
-
-  // Reset state saat ganti tanggal
-  useEffect(() => {
-    setInlineSearch("");
-    setInlineDateFrom("");
-    setInlineDateTo("");
-    setColsOpen(false);
-  }, [selectedDateKey]);
-
-  // ── Fetch Role ──
-  useEffect(() => {
-    (async () => {
-      try {
-        const me = await getMe();
-        const r = me?.role === "rm" || me?.role === "sitearea" 
-          ? (me.role as "rm" | "sitearea") 
-          : "pusat";
-        
-        setRole(r as any);
-
-        // Ekstrak data asli & Normalisasi Fallback
-        const reg = me?.regional || "";
-        const emailPrefix = me?.email ? me.email.split('@')[0].toUpperCase() : "";
-        
-        // Normalisasi: SPPSUMBAWA -> SPP SUMBAWA, SPBDKI -> SPB DKI
-        let formattedSite = emailPrefix;
-        if (emailPrefix.startsWith("SPP") && emailPrefix.length > 3) {
-            formattedSite = "SPP " + emailPrefix.substring(3);
-        } else if (emailPrefix.startsWith("SPB") && emailPrefix.length > 3) {
-            formattedSite = "SPB " + emailPrefix.substring(3);
-        }
-
-        const site = me?.siteArea || formattedSite;
-        
-        setUserRegional(reg);
-        setUserSiteArea(site);
-
-        // KUNCI STATE ABSOLUT
-        if (r === "sitearea") {
-          setSelectedRegional(reg);
-          setSelectedSiteArea(site); 
-        } else if (r === "rm") {
-          setSelectedRegional(reg);
-          setSelectedSiteArea("ALL");
-        } else {
-          setSelectedRegional("ALL");
-          setSelectedSiteArea("ALL");
-        }
-      } catch {
-        setRole("pusat");
-      }
-    })();
-  }, []);
-
-
-
-  // ── Fetch Regional Data from API ──
-  const JUNK_VALUES = [
-    "unknown",
-    "site area belum ada unit produksi",
-    "belum ada",
-    "n/a",
-    "none",
-    "-",
-    "",
-  ];
-  const isJunk = (v?: string | null) =>
-    !v || JUNK_VALUES.includes(v.trim().toLowerCase());
-
-  const fetchRegions = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/unit-produksi", { cache: "no-store" });
-      const data = await res.json().catch(() => []);
-      const list = Array.isArray(data) ? data : [];
-
-      const grouped = list.reduce(
-        (acc: Record<string, string[]>, curr: any) => {
-          const reg = curr.namaRegional;
-          const site = curr.siteArea;
-          // Skip junk regional or junk site area
-          if (isJunk(reg)) return acc;
-          if (!acc[reg]) acc[reg] = [];
-          if (!isJunk(site) && !acc[reg].includes(site)) acc[reg].push(site);
-          return acc;
-        },
-        {} as Record<string, string[]>,
-      );
-
-      for (const key of Object.keys(grouped)) {
-        grouped[key].sort();
-      }
-
-      setRegionalData(grouped);
-    } catch {
-      setRegionalData({});
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchRegions();
-  }, [fetchRegions]);
-
-  // ── Fetch PO Data ──
-  const fetchPOData = useCallback(async () => {
-    // Role Pusat can view all, but RM and others must have at least regional selected if siteArea is not global
-    // But for this calendar, let's allow total view if both are empty for Pusat
-    setPoLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set("limit", "5000"); // UX FIX: Large limit for calendar
-      params.set("status", "active");
-      params.set("includeUnknown", "true");
-      params.set("month", selectedMonth);
-      params.set("year", selectedYear);
-      if (selectedRegional && selectedRegional !== "ALL")
-        params.set("regional", selectedRegional);
-      if (selectedSiteArea && selectedSiteArea !== "ALL")
-        params.set("siteArea", selectedSiteArea);
-
-      const res = await fetch(`/api/po?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const json = await res.json().catch(() => null);
-      const list = Array.isArray((json as any)?.data)
-        ? (json as any).data
-        : Array.isArray(json)
-          ? json
-          : [];
-      setPoData(list);
-    } catch {
-      setPoData([]);
-    } finally {
-      setPoLoading(false);
-    }
-  }, [selectedRegional, selectedSiteArea, selectedMonth, selectedYear]);
-
-  useEffect(() => {
-    fetchPOData();
-    setSelectedDateKey(null); // Reset detail when location changes
-  }, [fetchPOData]);
-
-  // ── Derived Options ──
-  const regionalOptions = useMemo(() => {
-    // JIKA BUKAN PUSAT, KUNCI MATI HANYA DI REGIONAL MILIKNYA
-    if (role !== "pusat" && selectedRegional) {
-      return [{ value: selectedRegional, label: selectedRegional }];
-    }
-    
-    const base = Object.keys(regionalData).sort().map((r) => ({ value: r, label: r }));
-    return [{ value: "ALL", label: "Semua Regional" }, ...base];
-  }, [regionalData, role, selectedRegional]);
-
-  const siteAreaOptions = useMemo(() => {
-    // KUNCI MATI UNTUK CABANG: HANYA ADA 1 OPSI
-    if (role === "sitearea") {
-      const siteLabel = userSiteArea || selectedSiteArea;
-      return [{ value: siteLabel, label: siteLabel }];
-    }
-
-    if (!selectedRegional || selectedRegional === "ALL") {
-      return [{ value: "ALL", label: "Semua Site Area" }];
-    }
-    
-    const sites = regionalData[selectedRegional] || [];
-    const base = sites.map((s) => ({ value: s, label: s }));
-    return [{ value: "ALL", label: "Semua Site Area" }, ...base];
-  }, [selectedRegional, regionalData, role, userSiteArea, selectedSiteArea]);
-
-  const monthOptions = MONTH_NAMES.map((m, i) => ({
-    value: String(i + 1),
-    label: m,
-  }));
-
-  const yearOptions = YEARS.map((y) => ({
-    value: String(y),
-    label: String(y),
-  }));
-
-  // ── Calendar Logic ──
-  const month = Number(selectedMonth);
-  const year = Number(selectedYear);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  // getDay() returns 0=Sun, convert to Mon=0 based
-  const firstDayRaw = new Date(year, month - 1, 1).getDay();
-  const startOffset = firstDayRaw === 0 ? 6 : firstDayRaw - 1; // Mon-based
-
-  // UX FIX: Robust Regional Key Match Helper
-  const formatDateKey = (y: number, m: number, d: number) => {
-    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-  };
-
-  // Group POs by tglkirim date string (YYYY-MM-DD)
-  const groupedPOs = useMemo(() => {
-    const map: Record<string, any[]> = {};
-    poData.forEach((po) => {
-      const raw = po.tglkirim || po.tglKirim;
-      if (!raw) return;
-
-      // FIX: Robust Date Parsing for Grouping
-      const d = new Date(raw);
-      if (isNaN(d.getTime())) return;
-
-      const key = formatDateKey(d.getFullYear(), d.getMonth() + 1, d.getDate());
-
-      if (!map[key]) map[key] = [];
-      map[key].push(po);
-    });
-    return map;
-  }, [poData]);
-
-  const totalScheduled = useMemo(() => {
-    return poData.filter((po) => po.tglkirim || po.tglKirim).length;
-  }, [poData]);
-
-  const totalUnscheduled = poData.filter(
-    (po) => !po.tglkirim && !po.tglKirim,
-  ).length;
-
-  const filteredDetailPOs = useMemo(() => {
-    if (!selectedDateKey || !groupedPOs[selectedDateKey]) return [];
-    let list = groupedPOs[selectedDateKey];
-
-    if (inlineSearch.trim()) {
-      const q = inlineSearch.toLowerCase();
-      list = list.filter((po) => {
-        const noPo = String(po.noPo || "").toLowerCase();
-        const noInv = String(po.noInvoice || "").toLowerCase();
-        const comp = String(
-          po.RitelModern?.namaPt || po.company || "",
-        ).toLowerCase();
-        const ini = String(po.RitelModern?.inisial || "").toLowerCase();
-        return (
-          noPo.includes(q) ||
-          noInv.includes(q) ||
-          comp.includes(q) ||
-          ini.includes(q)
-        );
-      });
-    }
-    if (inlineDateFrom) {
-      const from = new Date(inlineDateFrom).getTime();
-      list = list.filter(
-        (po) => po.tglPo && new Date(po.tglPo).getTime() >= from,
-      );
-    }
-    if (inlineDateTo) {
-      const to = new Date(inlineDateTo).getTime() + 86399999; // End of day
-      list = list.filter(
-        (po) => po.tglPo && new Date(po.tglPo).getTime() <= to,
-      );
-    }
-    return list;
-  }, [selectedDateKey, groupedPOs, inlineSearch, inlineDateFrom, inlineDateTo]);
-
-  // ── Handlers ──
-  const handleRegionalChange = (val: string) => {
-    setSelectedRegional(val);
-    setSelectedSiteArea("ALL");
-    setSelectedDateKey(null);
-  };
-
-  const handlePrevMonth = () => {
-    let m = month - 1;
-    let y = year;
-    if (m < 1) {
-      m = 12;
-      y -= 1;
-    }
-    setSelectedMonth(String(m));
-    setSelectedYear(String(y));
-    setSelectedDateKey(null);
-  };
-
-  const handleNextMonth = () => {
-    let m = month + 1;
-    let y = year;
-    if (m > 12) {
-      m = 1;
-      y += 1;
-    }
-    setSelectedMonth(String(m));
-    setSelectedYear(String(y));
-    setSelectedDateKey(null);
-  };
-
-  const isToday = (day: number) => {
-    const today = new Date();
-    return (
-      today.getFullYear() === year &&
-      today.getMonth() + 1 === month &&
-      today.getDate() === day
-    );
-  };
-
-  const formatDate = (d: any) => {
-    if (!d) return "-";
-    const dt = new Date(d);
-    if (isNaN(dt.getTime())) return "-";
-    return `${dt.getDate().toString().padStart(2, "0")}/${(dt.getMonth() + 1).toString().padStart(2, "0")}/${dt.getFullYear()}`;
-  };
-
-  const formatCurrency = (n: any) => {
-    const num = Number(n);
-    if (!num || isNaN(num)) return "-";
-    return `Rp ${num.toLocaleString("id-ID")}`;
-  };
+  const {
+    role,
+    userRegional,
+    userSiteArea,
+    regionalData,
+    isLoading,
+    selectedRegional,
+    setSelectedRegional,
+    selectedSiteArea,
+    setSelectedSiteArea,
+    selectedMonth,
+    setSelectedMonth,
+    selectedYear,
+    setSelectedYear,
+    poData,
+    poLoading,
+    selectedDateKey,
+    setSelectedDateKey,
+    inlineSearch,
+    setInlineSearch,
+    inlineDateFrom,
+    setInlineDateFrom,
+    inlineDateTo,
+    setInlineDateTo,
+    colsOpen,
+    setColsOpen,
+    visibleCols,
+    setVisibleCols,
+    toggleAllCols,
+    selectedDetailPO,
+    setSelectedDetailPO,
+    regionalOptions,
+    siteAreaOptions,
+    monthOptions,
+    yearOptions,
+    month,
+    year,
+    daysInMonth,
+    startOffset,
+    groupedPOs,
+    totalScheduled,
+    totalUnscheduled,
+    filteredDetailPOs,
+    handleRegionalChange,
+    handlePrevMonth,
+    handleNextMonth,
+    isToday,
+    formatDate,
+    formatCurrency,
+    formatDateKey,
+  } = useBranchCalendar();
 
   // ── Loading State ──
   if (isLoading || role === null) {
@@ -478,569 +132,69 @@ export default function BranchPage() {
         </div>
       </div>
 
-      {/* ─── Filter Section ─── */}
-      <div className="relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500 rounded-t-2xl" />
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-5">
-            <Filter size={14} className="text-slate-500 dark:text-slate-400" />
-            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-              Filter Wilayah & Periode
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* SEMBUNYIKAN REGIONAL JIKA ROLE ADALAH CABANG */}
-            {role !== "sitearea" && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Globe2 size={12} /> Regional
-                </label>
-                <SmoothSelect
-                  value={selectedRegional}
-                  onChange={handleRegionalChange}
-                  options={regionalOptions}
-                  disabled={role !== "pusat"} // 👈 HANYA PUSAT YANG BISA UBAH REGIONAL
-                />
-              </div>
-            )}
-            
-            {/* SITE AREA DIKUNCI JIKA CABANG */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <MapPin size={12} /> Site Area
-              </label>
-              <SmoothSelect
-                value={selectedSiteArea}
-                onChange={(v) => {
-                  if (role !== "sitearea") {
-                    setSelectedSiteArea(v);
-                    setSelectedDateKey(null);
-                  }
-                }}
-                options={siteAreaOptions}
-                disabled={role === "sitearea"}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <CalendarRange size={12} /> Bulan
-              </label>
-              <SmoothSelect
-                value={selectedMonth}
-                onChange={(v) => {
-                  setSelectedMonth(v);
-                  setSelectedDateKey(null);
-                }}
-                options={monthOptions}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <CalendarRange size={12} /> Tahun
-              </label>
-              <SmoothSelect
-                value={selectedYear}
-                onChange={(v) => {
-                  setSelectedYear(v);
-                  setSelectedDateKey(null);
-                }}
-                options={yearOptions}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <BranchFilters
+        role={role}
+        selectedRegional={selectedRegional}
+        handleRegionalChange={handleRegionalChange}
+        regionalOptions={regionalOptions}
+        selectedSiteArea={selectedSiteArea}
+        setSelectedSiteArea={setSelectedSiteArea}
+        siteAreaOptions={siteAreaOptions}
+        selectedMonth={selectedMonth}
+        setSelectedMonth={setSelectedMonth}
+        monthOptions={monthOptions}
+        selectedYear={selectedYear}
+        setSelectedYear={setSelectedYear}
+        yearOptions={yearOptions}
+        setSelectedDateKey={setSelectedDateKey}
+      />
 
-      {/* ─── Stats Row ─── */}
-      {selectedSiteArea && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            {
-              label: "Total Active PO",
-              value: poData.length,
-              icon: <Package size={18} />,
-              color: "text-blue-600",
-              bg: "bg-blue-50 dark:bg-blue-900/30",
-            },
-            {
-              label: "Sudah Dijadwalkan",
-              value: totalScheduled,
-              icon: <Truck size={18} />,
-              color: "text-emerald-600 dark:text-emerald-400",
-              bg: "bg-emerald-50 dark:bg-emerald-900/30",
-            },
-            {
-              label: "Belum Dijadwalkan",
-              value: totalUnscheduled,
-              icon: <Clock size={18} />,
-              color: "text-amber-600 dark:text-amber-400",
-              bg: "bg-amber-50 dark:bg-amber-900/30",
-            },
-          ].map((s, i) => (
-            <div
-              key={i}
-              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-all duration-200"
-            >
-              <div className={`p-2.5 rounded-xl ${s.bg}`}>
-                <span className={s.color}>{s.icon}</span>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
-                  {s.label}
-                </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {poLoading ? "..." : s.value}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <BranchStats
+        selectedSiteArea={selectedSiteArea}
+        poData={poData}
+        totalScheduled={totalScheduled}
+        totalUnscheduled={totalUnscheduled}
+        poLoading={poLoading}
+      />
 
-      {/* ─── Calendar Section ─── */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
-        {/* Calendar Header */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-          <button
-            onClick={handlePrevMonth}
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <div className="text-center">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-              {MONTH_NAMES[month - 1]} {year}
-            </h3>
-            {selectedSiteArea && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
-                {selectedSiteArea} · {selectedRegional}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={handleNextMonth}
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+      <BranchCalendarGrid
+        startOffset={startOffset}
+        daysInMonth={daysInMonth}
+        year={year}
+        month={month}
+        groupedPOs={groupedPOs}
+        selectedDateKey={selectedDateKey}
+        setSelectedDateKey={setSelectedDateKey}
+        formatDateKey={formatDateKey}
+        isToday={isToday}
+        poLoading={poLoading}
+        selectedSiteArea={selectedSiteArea}
+        selectedRegional={selectedRegional}
+        handlePrevMonth={handlePrevMonth}
+        handleNextMonth={handleNextMonth}
+        MONTH_NAMES={MONTH_NAMES}
+        DAY_LABELS={DAY_LABELS}
+      />
 
-        {/* Day Labels */}
-        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700/50">
-          {DAY_LABELS.map((d) => (
-            <div
-              key={d}
-              className="text-center py-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider"
-            >
-              {d}
-            </div>
-          ))}
-        </div>
+      <BranchInlineDetail
+        selectedDateKey={selectedDateKey}
+        groupedPOs={groupedPOs}
+        filteredDetailPOs={filteredDetailPOs}
+        inlineSearch={inlineSearch}
+        setInlineSearch={setInlineSearch}
+        inlineDateFrom={inlineDateFrom}
+        setInlineDateFrom={setInlineDateFrom}
+        inlineDateTo={inlineDateTo}
+        setInlineDateTo={setInlineDateTo}
+        colsOpen={colsOpen}
+        setColsOpen={setColsOpen}
+        visibleCols={visibleCols}
+        setVisibleCols={setVisibleCols}
+        toggleAllCols={toggleAllCols}
+        setSelectedDateKey={setSelectedDateKey}
+        setSelectedDetailPO={setSelectedDetailPO}
+      />
 
-        {/* Calendar Grid */}
-        {!selectedSiteArea ? (
-          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-            <div className="p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-full mb-4">
-              <Calendar size={32} className="text-slate-300" />
-            </div>
-            <p className="text-sm font-semibold text-slate-500">
-              Pilih Site Area terlebih dahulu
-            </p>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm">
-              Pilih Regional dan Site Area di filter atas untuk menampilkan
-              jadwal pengiriman pada kalender.
-            </p>
-          </div>
-        ) : poLoading ? (
-          <div className="flex items-center justify-center py-20 gap-3">
-            <Loader2 size={20} className="text-indigo-500 animate-spin" />
-            <span className="text-sm text-slate-500 font-medium">
-              Memuat data PO...
-            </span>
-          </div>
-        ) : (
-          <div className="border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm overflow-hidden mb-6">
-            {/* HEADER HARI */}
-            <div className="grid grid-cols-7 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
-              {DAY_LABELS.map((day, i) => (
-                <div
-                  key={i}
-                  className="py-2 text-center text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* BODY TANGGAL */}
-            <div className="grid grid-cols-7 gap-px bg-slate-200 dark:bg-slate-700">
-              {calendarCells.map((day, idx) => {
-                if (day === null) {
-                  return (
-                    <div
-                      key={`empty-${idx}`}
-                      className="bg-slate-50/50 dark:bg-slate-800/50 min-h-[50px] sm:min-h-[60px]"
-                    />
-                  );
-                }
-
-                const dateKey = formatDateKey(year, month, day);
-                const pos = groupedPOs[dateKey] || [];
-                const hasPOs = pos.length > 0;
-                const isSelected = selectedDateKey === dateKey;
-                const today = isToday(day);
-
-                const totalKg = hasPOs
-                  ? pos.reduce((acc, po) => {
-                      const items = Array.isArray(po.Items) ? po.Items : [];
-                      const kg = items.reduce((s: number, it: any) => {
-                        const sat = Number(it.Product?.satuanKg || 1);
-                        return (
-                          s + (Number(it.pcsKirim) || Number(it.pcs) || 0) * sat
-                        );
-                      }, 0);
-                      return acc + kg;
-                    }, 0)
-                  : 0;
-
-                return (
-                  <div
-                    key={dateKey}
-                    onClick={() => setSelectedDateKey(dateKey)}
-                    className={`relative group bg-white dark:bg-slate-800 min-h-[50px] sm:min-h-[60px] p-2 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-700/50
-                      ${hasPOs ? "bg-amber-50/60 dark:bg-indigo-900/20 hover:bg-amber-100/60 dark:hover:bg-indigo-900/40" : ""}
-                      ${isSelected ? "ring-2 ring-inset ring-indigo-500 z-10" : ""}
-                    `}
-                  >
-                    <div className="flex justify-between items-start relative z-10">
-                      <span
-                        className={`text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full
-                        ${today ? "bg-indigo-600 text-white shadow-sm" : hasPOs ? "text-amber-900 dark:text-indigo-300" : "text-slate-500 dark:text-slate-300"}
-                      `}
-                      >
-                        {day}
-                      </span>
-
-                      {/* Tiny Badge Indicator if has POs */}
-                      {hasPOs && (
-                        <span 
-                          className="text-[9px] font-black text-amber-700 dark:text-indigo-200 bg-amber-200/80 dark:bg-indigo-500/30 px-1.5 py-0.5 rounded-md leading-none"
-                          title={`${pos.length} PO Terjadwal`}
-                        >
-                          {pos.length}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Embedded Total Kg Data */}
-                    {hasPOs && (
-                      <div className="mt-0.5 relative z-10">
-                        <span className="text-[10px] sm:text-[11px] font-black text-amber-800 dark:text-indigo-300 tracking-tight leading-none block">
-                          {totalKg.toLocaleString("id-ID")} <span className="text-[8px] font-bold text-amber-700/70 dark:text-indigo-400/80">KG</span>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ─── Inline Detail Section ─── */}
-      {selectedDateKey && (
-        <div className="mt-8 border-t pt-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div
-                className={`p-2.5 rounded-xl ${groupedPOs[selectedDateKey]?.length > 0 ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" : "bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500"}`}
-              >
-                <Truck size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                  Jadwal Pengiriman: {selectedDateLabel}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
-                  {filteredDetailPOs.length} /{" "}
-                  {groupedPOs[selectedDateKey]?.length || 0} Purchase Orders
-                  Terjadwal
-                  {inlineSearch && ` (Filter: "${inlineSearch}")`}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setSelectedDateKey(null)}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* TOOLBAR TABEL */}
-          <div className="flex flex-col lg:flex-row gap-3 mb-4 items-center justify-between bg-slate-50/80 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
-            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-              <div className="relative w-full sm:w-64">
-                <Search
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-                <input
-                  type="text"
-                  value={inlineSearch}
-                  onChange={(e) => setInlineSearch(e.target.value)}
-                  placeholder="Cari No PO, Inv, Company, Inisial..."
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <DateInputHybrid
-                  value={inlineDateFrom}
-                  onChange={setInlineDateFrom}
-                  placeholder="Date From"
-                  className="w-36"
-                />
-                <span className="text-slate-300 dark:text-slate-600 font-bold">to</span>
-                <DateInputHybrid
-                  value={inlineDateTo}
-                  onChange={setInlineDateTo}
-                  placeholder="Date To"
-                  className="w-36"
-                />
-              </div>
-            </div>
-            <div className="relative w-full sm:w-auto">
-              <button
-                onClick={() => setColsOpen(!colsOpen)}
-                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2"
-              >
-                Customize Columns <ChevronDown size={14} />
-              </button>
-              {colsOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-[40]"
-                    onClick={() => setColsOpen(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-[600px] max-w-[90vw] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl p-4 z-50">
-                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-700/50">
-                      <span className="text-sm font-black text-slate-800 dark:text-slate-200">
-                        Pilih Kolom
-                      </span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => toggleAllCols(true)}
-                          className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
-                        >
-                          Show All
-                        </button>
-                        <button
-                          onClick={() => toggleAllCols(false)}
-                          className="px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-xs font-bold rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50"
-                        >
-                          Hide All
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4 max-h-72 overflow-y-auto p-1">
-                      {Object.keys(visibleCols).map((key) => (
-                        <label
-                          key={key}
-                          className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 cursor-pointer capitalize"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={(visibleCols as any)[key]}
-                            onChange={() =>
-                              setVisibleCols((prev) => ({
-                                ...prev,
-                                [key]: !(prev as any)[key],
-                              }))
-                            }
-                            className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          {key.replace(/([A-Z])/g, " $1").trim()}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-            <DataTable
-              columns={[
-                {
-                  key: "noPo",
-                  label: "No PO",
-                  hidden: !visibleCols.noPo,
-                  render: (_v: any, po: any) => (
-                    <span className="font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{po.noPo || "-"}</span>
-                  ),
-                },
-                {
-                  key: "tglPo",
-                  label: "Tgl PO",
-                  hidden: !visibleCols.tglPo,
-                  render: (_v: any, po: any) => (
-                    <PoDateBadge 
-                      dateNode={<span className="whitespace-nowrap">{formatDateId(po.tglPo)}</span>}
-                      type="TAGIH"
-                      buktiData={po.buktiTagih}
-                    />
-                  ),
-                },
-                {
-                  key: "expired",
-                  label: "Expired",
-                  hidden: !visibleCols.expired,
-                  render: (_v: any, po: any) => (
-                    <PoDateBadge 
-                      dateNode={<span className="whitespace-nowrap text-rose-600 font-semibold">{formatDateId(po.expiredTgl)}</span>}
-                      type="PAID"
-                      buktiData={po.buktiBayar}
-                    />
-                  ),
-                },
-                {
-                  key: "produk",
-                  label: "Produk",
-                  hidden: !visibleCols.produk,
-                  render: (_v: any, po: any) => {
-                    const names = (po.Items || []).map((it: any) => it.Product?.name || "-").join(", ");
-                    return (
-                      <span className="max-w-[200px] truncate inline-block" title={names}>{names || "-"}</span>
-                    );
-                  },
-                },
-                {
-                  key: "tglKirim",
-                  label: "Tgl Kirim",
-                  hidden: !visibleCols.tglKirim,
-                  render: (_v: any, po: any) => (
-                    <span className="whitespace-nowrap text-amber-600 font-semibold">{formatDateId(po.tglkirim || po.tglKirim)}</span>
-                  ),
-                },
-                {
-                  key: "pcs",
-                  label: "Pcs",
-                  align: "right" as const,
-                  hidden: !visibleCols.pcs,
-                  render: (_v: any, po: any) => {
-                    const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.pcs) || 0), 0);
-                    return <span className="whitespace-nowrap font-medium">{total.toLocaleString("id-ID")}</span>;
-                  },
-                },
-                {
-                  key: "pcsKirim",
-                  label: "Pcs Kirim",
-                  align: "right" as const,
-                  hidden: !visibleCols.pcsKirim,
-                  render: (_v: any, po: any) => {
-                    const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.pcsKirim) || 0), 0);
-                    return <span className="whitespace-nowrap font-bold text-amber-600">{total.toLocaleString("id-ID")}</span>;
-                  },
-                },
-                {
-                  key: "namaSupir",
-                  label: "Nama Supir",
-                  hidden: !visibleCols.namaSupir,
-                  render: (_v: any, po: any) => (
-                    <span className="whitespace-nowrap uppercase">{po.namaSupir || "-"}</span>
-                  ),
-                },
-                {
-                  key: "platNomor",
-                  label: "Plat Nomor",
-                  hidden: !visibleCols.platNomor,
-                  render: (_v: any, po: any) => (
-                    <span className="whitespace-nowrap uppercase font-bold">{po.platNomor || "-"}</span>
-                  ),
-                },
-                {
-                  key: "totalKg",
-                  label: "Total Kg",
-                  align: "right" as const,
-                  hidden: !visibleCols.totalKg,
-                  render: (_v: any, po: any) => {
-                    const total = (po.Items || []).reduce(
-                      (s: number, it: any) => s + (Number(it.pcsKirim) || Number(it.pcs) || 0) * Number(it.Product?.satuanKg || 1), 0
-                    );
-                    return <span className="whitespace-nowrap font-semibold">{total.toLocaleString("id-ID")}</span>;
-                  },
-                },
-                {
-                  key: "tujuan",
-                  label: "Tujuan",
-                  hidden: !visibleCols.tujuan,
-                  render: (_v: any, po: any) => (
-                    <span className="whitespace-nowrap text-xs">{po.tujuanDetail || po.RitelModern?.tujuan || "-"}</span>
-                  ),
-                },
-                {
-                  key: "regional",
-                  label: "Regional",
-                  hidden: !visibleCols.regional,
-                  render: (_v: any, po: any) => (
-                    <span className="whitespace-nowrap">{po.regional || "-"}</span>
-                  ),
-                },
-                {
-                  key: "siteArea",
-                  label: "Site Area",
-                  hidden: !visibleCols.siteArea,
-                  render: (_v: any, po: any) => (
-                    <span className="whitespace-nowrap">{po.UnitProduksi?.siteArea || "-"}</span>
-                  ),
-                },
-                {
-                  key: "nominal",
-                  label: "Nominal",
-                  align: "right" as const,
-                  hidden: !visibleCols.nominal,
-                  render: (_v: any, po: any) => {
-                    const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.nominal) || 0), 0);
-                    return <span className="whitespace-nowrap font-bold text-indigo-700">Rp {total.toLocaleString("id-ID")}</span>;
-                  },
-                },
-              ]}
-              data={filteredDetailPOs}
-              rowKey={(po: any, idx) => po.id || idx}
-              hidePagination
-              loading={false}
-              onRowClick={(po: any) => {
-                const items = po.Items || [];
-                const isShipped = items.some((it: any) => (Number(it.pcsKirim) || 0) > 0);
-                setSelectedDetailPO({
-                  ...po,
-                  buktiKirim: po.buktiKirim,
-                  buktiFp: po.buktiFp,
-                  company: po.RitelModern?.namaPt || po.company || "Unknown",
-                  siteArea: po.UnitProduksi?.siteArea || "-",
-                  status: {
-                    kirim: !!po.statusKirim || isShipped,
-                    sdif: !!po.statusSdif,
-                    po: !!po.statusPo,
-                    fp: !!po.statusFp,
-                    kwi: !!po.statusKwi,
-                    inv: !!po.statusInv,
-                    tagih: !!po.statusTagih,
-                    bayar: !!po.statusBayar,
-                  },
-                });
-              }}
-              variant="rounded"
-              className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden"
-              emptyMessage="Tidak ada pengiriman"
-            />
-        </div>
-      )}
-
-      {/* ─── Legend ─── */}
-
-      {/* KOMPONEN MODAL DETAIL PO */}
       <PODetailModal
         open={!!selectedDetailPO}
         onClose={() => setSelectedDetailPO(null)}

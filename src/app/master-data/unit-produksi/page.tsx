@@ -57,6 +57,7 @@ export default function UnitProduksiPage() {
   const [selectedRegional, setSelectedRegional] = useState("");
   const [siteName, setSiteName] = useState("");
   const [siteAlamat, setSiteAlamat] = useState("");
+  const [siteManager, setSiteManager] = useState("");
   const [viewedSite, setViewedSite] = useState<any>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,6 +84,7 @@ export default function UnitProduksiPage() {
     regional: string;
     site: string;
     alamat: string;
+    managerOperasional?: string;
   } | null>(null);
   const [deleteSite, setDeleteSite] = useState<{
     regional: string;
@@ -90,6 +92,7 @@ export default function UnitProduksiPage() {
   } | null>(null);
   const [newSiteName, setNewSiteName] = useState("");
   const [newSiteAlamat, setNewSiteAlamat] = useState("");
+  const [newSiteManager, setNewSiteManager] = useState("");
   const [newRegionalName, setNewRegionalName] = useState("");
 
   // 1. Helper: Cari Header Excel secara fleksibel
@@ -146,6 +149,7 @@ export default function UnitProduksiPage() {
     const siteObj = {
       name: item?.siteArea ?? item?.site ?? "",
       alamat: item?.alamat ?? "",
+      managerOperasional: item?.managerOperasional ?? "",
     };
     const existingGroup = acc.find((g) => g.nama === regionalName);
     if (existingGroup) {
@@ -159,6 +163,13 @@ export default function UnitProduksiPage() {
     }
     return acc;
   }, []);
+
+  // Sort grouped data alphabetically (A-Z) by regional name
+  groupedData.sort((a: any, b: any) => a.nama.localeCompare(b.nama));
+  // Sort sites within each regional alphabetically by site name
+  groupedData.forEach((group: any) => {
+    group.sites.sort((a: any, b: any) => a.name.localeCompare(b.name));
+  });
 
   const regionalOptions = useMemo(() => {
     return Array.from(new Set(groupedData.map((g: any) => g.nama)))
@@ -304,11 +315,15 @@ export default function UnitProduksiPage() {
       await saveUnitProduksi({
         regional: selectedRegional,
         siteArea: siteName,
+        alamat: siteAlamat,
+        managerOperasional: siteManager,
       });
       alert("Site berhasil ditambahkan!");
       setIsModalOpen(false);
       setSelectedRegional("");
       setSiteName("");
+      setSiteAlamat("");
+      setSiteManager("");
       window.location.reload();
     } catch (error) {
       alert("Gagal simpan data");
@@ -519,10 +534,12 @@ export default function UnitProduksiPage() {
                               regional: reg.nama,
                               site: site.name,
                               alamat: site.alamat,
+                              managerOperasional: site.managerOperasional,
                             });
                             setNewRegionalName(reg.nama);
                             setNewSiteName(site.name);
                             setNewSiteAlamat(site.alamat);
+                            setNewSiteManager(site.managerOperasional || "");
                           }}
                           className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all"
                           title="Edit Site"
@@ -625,10 +642,23 @@ export default function UnitProduksiPage() {
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <Edit2 size={12} /> Manager Operasional
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Nama Manager (Opsional)"
+                      value={siteManager}
+                      onChange={(e) => setSiteManager(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                       <Edit2 size={12} /> Alamat Site Area
                     </label>
                     <textarea
-                      rows={3}
+                      rows={2}
                       placeholder="Masukkan alamat lengkap gudang/pabrik..."
                       value={siteAlamat}
                       onChange={(e) => setSiteAlamat(e.target.value)}
@@ -713,12 +743,14 @@ export default function UnitProduksiPage() {
                         regional: selectedRegional,
                         siteArea: modalMode === "addRegional" ? "-" : siteName,
                         alamat: modalMode === "addRegional" ? "" : siteAlamat,
+                        managerOperasional: modalMode === "addRegional" ? "" : siteManager,
                       };
                       const created = await saveUnitProduksi(payload);
                       setIsModalOpen(false);
                       setSelectedRegional("");
                       setSiteName("");
                       setSiteAlamat("");
+                      setSiteManager("");
 
                       // Biar langsung update di UI, pastikan endpoint mengembalikan raw yg benar
                       const isRegionalExist = dataUnit.some(
@@ -734,7 +766,7 @@ export default function UnitProduksiPage() {
                           : `Site '${payload.siteArea}' berhasil ditambahkan!`,
                       );
 
-                      setTimeout(() => window.location.reload(), 1000);
+                      await loadData();
                     } catch (err: any) {
                       showToast(
                         err?.message || "Gagal menyimpan data",
@@ -887,6 +919,157 @@ export default function UnitProduksiPage() {
           </div>
         </div>
       )}
+
+      {/* Edit Site Modal */}
+      {editSite && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setEditSite(null)}
+          ></div>
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                Edit Site Area
+              </h3>
+              <button
+                onClick={() => setEditSite(null)}
+                className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-400 hover:text-red-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => e.preventDefault()}
+              className="p-6 space-y-5"
+            >
+              <div className="space-y-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Globe2 size={12} /> Regional
+                  </label>
+                  <SmoothSelect
+                    value={newRegionalName}
+                    onChange={(v) => setNewRegionalName(v)}
+                    options={regionalOptions}
+                    width={400}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <MapPin size={12} /> Nama Site
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={newSiteName}
+                    onChange={(e) => setNewSiteName(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Edit2 size={12} /> Manager Operasional
+                  </label>
+                  <input
+                    type="text"
+                    value={newSiteManager}
+                    onChange={(e) => setNewSiteManager(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Edit2 size={12} /> Alamat Site Area
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={newSiteAlamat}
+                    onChange={(e) => setNewSiteAlamat(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200 resize-none"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <StatefulButton variant="cancel" onClick={() => setEditSite(null)} className="flex-1">Batal</StatefulButton>
+                <StatefulButton variant="submit" onClick={async () => {
+                  try {
+                    const res = await fetch("/api/unit-produksi", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        namaRegional: editSite.regional,
+                        siteArea: editSite.site,
+                        newRegionalName: newRegionalName,
+                        newSiteArea: newSiteName,
+                        alamat: newSiteAlamat,
+                        managerOperasional: newSiteManager,
+                      }),
+                    });
+                    if (!res.ok) {
+                      const err = await res.json().catch(() => ({}));
+                      throw new Error(err.error || "Gagal update data");
+                    }
+                    showToast("Data berhasil diupdate!");
+                    setEditSite(null);
+                    await loadData();
+                  } catch (err: any) {
+                    showToast(err.message, "error");
+                    throw err; // Lempar ulang error agar StatefulButton bisa memunculkan status "Gagal"
+                  }
+                }} className="flex-1">Simpan</StatefulButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Site Confirm */}
+      {deleteSite && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setDeleteSite(null)}
+          />
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-rose-50/50 dark:bg-rose-500/10">
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
+                Hapus site {deleteSite.site}?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Tindakan ini akan menghapus site tersebut secara permanen.
+              </p>
+            </div>
+            <div className="p-5 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setDeleteSite(null)}
+                className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700"
+              >
+                Batal
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(
+                      `/api/unit-produksi?namaRegional=${encodeURIComponent(deleteSite.regional)}&siteArea=${encodeURIComponent(deleteSite.site)}`,
+                      { method: "DELETE" }
+                    );
+                    if (!res.ok) throw new Error("Gagal menghapus data.");
+                    showToast("Site berhasil dihapus!");
+                    setDeleteSite(null);
+                    await loadData();
+                  } catch (error: any) {
+                    showToast(error.message, "error");
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-700"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {viewedSite && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           <div
@@ -922,6 +1105,14 @@ export default function UnitProduksiPage() {
                 </label>
                 <p className="text-xl font-black text-slate-800 dark:text-slate-100">
                   {viewedSite.name}
+                </p>
+              </div>
+              <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  Manager Operasional
+                </label>
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                  {viewedSite.managerOperasional || "Manager belum ditambahkan."}
                 </p>
               </div>
               <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">

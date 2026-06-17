@@ -126,8 +126,9 @@ model UnitProduksi {
   namaRegional     String
   siteArea         String
   createdAt        DateTime        @default(now())
-  updatedAt        DateTime
+  updatedAt        DateTime        @updatedAt
   alamat           String?         @default("")
+  managerOperasional String?       @default("")
   kodeRegional     String?
   PurchaseOrder    PurchaseOrder[]
   LokasiReturs     DataRetur[]     @relation("LokasiRetur")

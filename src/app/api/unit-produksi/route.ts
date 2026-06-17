@@ -20,7 +20,7 @@ export async function GET() {
     const data = await singleFlight(cacheKey, () =>
       db.unitProduksi.findMany({
         // [PERF] Only select fields needed by the client
-        select: { idRegional: true, namaRegional: true, siteArea: true, alamat: true, createdAt: true, updatedAt: true },
+        select: { idRegional: true, namaRegional: true, siteArea: true, alamat: true, managerOperasional: true, createdAt: true, updatedAt: true },
         where: {
           // [GUARD] Exclude placeholder/junk rows from Master Data dropdown
           NOT: {
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     }
     // Destructuring sesuai apa yang dikirim frontend (page.tsx)
     let { regional, siteArea } = parsed.data;
-    const { alamat } = parsed.data;
+    const { alamat, managerOperasional } = parsed.data;
     // Normalisasi ringan di sisi server untuk robustness
     const v = String(regional).trim().toLowerCase();
     if (v.includes("bandung") || v.includes("reg 1") || /\b1\b/.test(v)) {
@@ -89,6 +89,7 @@ export async function POST(req: Request) {
         namaRegional: regional, 
         siteArea: siteArea,
         alamat: alamat || "",
+        managerOperasional: managerOperasional || "",
         updatedAt: new Date(),
       },
     });
@@ -227,13 +228,14 @@ export async function PATCH(req: Request) {
         { status: 400 },
       );
     }
-    const { namaRegional, siteArea, newRegionalName, newSiteArea, alamat } = parsed.data;
+    const { namaRegional, siteArea, newRegionalName, newSiteArea, alamat, managerOperasional } = parsed.data;
     await db.unitProduksi.updateMany({
       where: { namaRegional, siteArea },
       data: { 
         namaRegional: newRegionalName ? String(newRegionalName).trim() : namaRegional,
         siteArea: newSiteArea ? String(newSiteArea).trim() : siteArea, 
         alamat: alamat !== undefined ? String(alamat).trim() : undefined,
+        managerOperasional: managerOperasional !== undefined ? String(managerOperasional).trim() : undefined,
         updatedAt: new Date() 
       },
     });

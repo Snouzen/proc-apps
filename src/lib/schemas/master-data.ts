@@ -82,6 +82,7 @@ export const UnitProduksiCreateSchema = z.object({
   regional: z.string().min(1, "Regional wajib diisi"),
   siteArea: z.string().default(""),
   alamat: z.string().optional(),
+  managerOperasional: z.string().optional(),
 });
 
 export const UnitProduksiPatchSchema = z.object({
@@ -90,4 +91,5 @@ export const UnitProduksiPatchSchema = z.object({
   newRegionalName: z.string().optional(),
   newSiteArea: z.string().min(1, "newSiteArea wajib diisi"),
   alamat: z.string().optional(),
+  managerOperasional: z.string().optional(),
 });

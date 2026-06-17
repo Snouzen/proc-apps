@@ -202,6 +202,17 @@ export const generateInvoicePdf = (
     console.error("Gagal memuat stempel di PDF:", e);
   }
 
+  // --- [FITUR BARU] NAMA MANAGER OPERASIONAL (di bawah logo) ---
+  const managerName = data?.UnitProduksi?.managerOperasional || "";
+  if (managerName) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text(managerName, 167.5, finalY + 43, { align: "center" });
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.text("Manager Operasional", 167.5, finalY + 46, { align: "center" });
+  }
+
   // --- [FITUR BARU] DITERIMA OLEH ---
   const namaPt = data?.RitelModern?.namaPt || "-";
   doc.setFontSize(8);

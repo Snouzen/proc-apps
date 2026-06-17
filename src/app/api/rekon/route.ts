@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const idParam = searchParams.get("id");
+    const statusParam = searchParams.get("status");
     
     // --- CASE 1: Fetch Single Reconcile by ID (For Edit/Draft) ---
     if (idParam) {
@@ -131,10 +132,17 @@ export async function GET(request: Request) {
     }
 
     // Fetch Count & Data
-    const [total, reconciles] = await Promise.all([
+    const findManyWhere = { ...where };
+    if (statusParam === "draft" || statusParam === "final") {
+      findManyWhere.status = statusParam;
+    }
+
+    const [total, totalDraft, totalCompleted, reconciles] = await Promise.all([
       prisma.reconcile.count({ where }),
+      prisma.reconcile.count({ where: { ...where, status: "draft" } }),
+      prisma.reconcile.count({ where: { ...where, status: "final" } }),
       prisma.reconcile.findMany({
-        where,
+        where: findManyWhere,
         include: { RitelModern: true },
         orderBy: { createdAt: "desc" },
         skip,
@@ -253,7 +261,7 @@ export async function GET(request: Request) {
       console.error("Backfill buktiBayar setup error:", e);
     }
 
-    return NextResponse.json({ data, total });
+    return NextResponse.json({ data, total, totalDraft, totalCompleted });
   } catch (error: any) {
     console.error("GET Rekon Data Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

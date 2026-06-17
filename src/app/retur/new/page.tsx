@@ -1,734 +1,65 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  useCallback,
-  memo,
-  Suspense,
-} from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Save,
-  Building2,
-  Package,
-  Truck,
-  CreditCard,
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
-  Search,
-  Check,
-  X,
-  Loader2,
-  ChevronDown,
+import React, { Suspense } from "react";
+import { 
+  ArrowLeft, 
+  Save, 
+  Building2, 
+  Package, 
+  Truck, 
+  CreditCard, 
+  Search, 
+  Check, 
+  X, 
+  Loader2, 
+  ChevronDown, 
+  ChevronRight 
 } from "lucide-react";
-import {
-  format,
-  addMonths,
-  subMonths,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameMonth,
-  isSameDay,
-  isToday,
-} from "date-fns";
-import { id } from "date-fns/locale";
 import * as Popover from "@radix-ui/react-popover";
-import Swal from "sweetalert2";
+import { useNewRetur, formatRupiahDisplay } from "./hooks/useNewRetur";
+import { EliteSearchableInput, EliteProductInput, CustomInlineDatePicker } from "./components/NewReturInputs";
 
-// --- GLOBAL HELPERS ---
-const highlightMatch = (text: string, query: string) => {
-  if (!query) return text;
-  const parts = text.split(new RegExp(`(${query})`, "gi"));
-  return (
-    <span>
-      {parts.map((part, i) =>
-        part.toLowerCase() === query.toLowerCase() ? (
-          <mark
-            key={i}
-            className="bg-yellow-200 text-black px-0.5 rounded-sm font-bold"
-          >
-            {part}
-          </mark>
-        ) : (
-          part
-        ),
-      )}
-    </span>
-  );
-};
-
-const formatRupiahDisplay = (val: number | string) => {
-  const num =
-    typeof val === "string" ? parseInt(val.replace(/[^0-9]/g, "")) || 0 : val;
-  return new Intl.NumberFormat("id-ID").format(num);
-};
-
-// --- ELITE SEARCHABLE INPUT (Debounced & Focal-Stable) ---
-const EliteSearchableInput = memo(
-  ({
-    label,
-    placeholder,
-    icon: Icon,
-    value,
-    onSearch,
-    onCommit,
-    items,
-    open,
-    onOpenChange,
-  }: any) => {
-    const [internalVal, setInternalVal] = useState(value || "");
-    const [activeIndex, setActiveIndex] = useState(-1);
-
-    useEffect(() => {
-      setInternalVal(value || "");
-    }, [value]);
-
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        onSearch(internalVal);
-      }, 500);
-      return () => clearTimeout(timer);
-    }, [internalVal, onSearch]);
-
-    useEffect(() => {
-      if (!open) {
-        setActiveIndex(-1);
-      } else if (items.length > 0) {
-        setActiveIndex(0);
-      } else {
-        setActiveIndex(-1);
-      }
-    }, [open, items.length]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setInternalVal(e.target.value);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (!open) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setActiveIndex((p) => (p < items.length - 1 ? p + 1 : p));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActiveIndex((p) => (p > 0 ? p - 1 : p));
-      } else if (e.key === "Enter") {
-        if (activeIndex !== -1 && items[activeIndex]) {
-          e.preventDefault();
-          const selected = items[activeIndex];
-          setInternalVal(selected);
-          onCommit(selected);
-          onOpenChange(false);
-        }
-      }
-    };
-
-    return (
-      <div className="space-y-2 overflow-visible">
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-          {label}
-        </label>
-        <Popover.Root open={open} onOpenChange={onOpenChange}>
-          <Popover.Trigger asChild>
-            <div className="relative group">
-              <input
-                type="text"
-                value={internalVal}
-                placeholder={placeholder}
-                onKeyDown={handleKeyDown}
-                className="w-full px-5 py-4 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl transition-all outline-none pr-12 cursor-pointer"
-                onChange={handleChange}
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                {internalVal && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInternalVal("");
-                      onCommit("");
-                    }}
-                    className="p-1 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-all cursor-pointer"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-                <Icon
-                  size={18}
-                  className="text-slate-300 pointer-events-none"
-                />
-              </div>
-            </div>
-          </Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Content
-              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl dark:shadow-slate-900/50 py-2 w-[var(--radix-popover-trigger-width)] max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
-              sideOffset={5}
-              align="start"
-              sticky="always"
-              onOpenAutoFocus={(e) => e.preventDefault()}
-            >
-              {items.map((tj: string, idx: number) => (
-                <button
-                  key={tj}
-                  type="button"
-                  onClick={() => {
-                    setInternalVal(tj);
-                    onCommit(tj);
-                    onOpenChange(false);
-                  }}
-                  className={`w-full px-6 py-3 text-left text-xs font-bold transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-0 cursor-pointer ${idx === activeIndex ? "bg-indigo-600 text-white" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
-                >
-                  {highlightMatch(tj, internalVal)}
-                </button>
-              ))}
-            </Popover.Content>
-          </Popover.Portal>
-        </Popover.Root>
-      </div>
-    );
-  },
-);
-
-EliteSearchableInput.displayName = "EliteSearchableInput";
-
-const EliteProductInput = memo(
-  ({
-    label,
-    placeholder,
-    value,
-    onSearch,
-    onCommit,
-    items,
-    open,
-    onOpenChange,
-  }: any) => {
-    const [internalVal, setInternalVal] = useState(value || "");
-    const [activeIndex, setActiveIndex] = useState(-1);
-
-    useEffect(() => {
-      setInternalVal(value || "");
-    }, [value]);
-
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        onSearch(internalVal);
-      }, 500);
-      return () => clearTimeout(timer);
-    }, [internalVal, onSearch]);
-
-    useEffect(() => {
-      if (!open) {
-        setActiveIndex(-1);
-      } else if (items.length > 0) {
-        setActiveIndex(0);
-      } else {
-        setActiveIndex(-1);
-      }
-    }, [open, items.length]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setInternalVal(e.target.value);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (!open) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setActiveIndex((p) => (p < items.length - 1 ? p + 1 : p));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActiveIndex((p) => (p > 0 ? p - 1 : p));
-      } else if (e.key === "Enter") {
-        if (activeIndex !== -1 && items[activeIndex]) {
-          e.preventDefault();
-          const selected = items[activeIndex].name;
-          setInternalVal(selected);
-          onCommit(selected);
-          onOpenChange(false);
-        }
-      }
-    };
-
-    return (
-      <div className="space-y-2 overflow-visible">
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-          {label}
-        </label>
-        <Popover.Root open={open} onOpenChange={onOpenChange}>
-          <Popover.Trigger asChild>
-            <div className="relative group">
-              <input
-                type="text"
-                value={internalVal}
-                placeholder={placeholder}
-                onKeyDown={handleKeyDown}
-                className="w-full px-5 py-4 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl transition-all outline-none pr-12 cursor-pointer"
-                onChange={handleChange}
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                {internalVal && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInternalVal("");
-                      onCommit("");
-                    }}
-                    className="p-1 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-all cursor-pointer"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-                <Package
-                  size={18}
-                  className="text-slate-300 pointer-events-none"
-                />
-              </div>
-            </div>
-          </Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Content
-              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl dark:shadow-slate-900/50 py-2 w-[var(--radix-popover-trigger-width)] max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
-              sideOffset={5}
-              align="start"
-              sticky="always"
-              onOpenAutoFocus={(e) => e.preventDefault()}
-            >
-              {items.map((p: any, idx: number) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    setInternalVal(p.name);
-                    onCommit(p.name);
-                    onOpenChange(false);
-                  }}
-                  className={`w-full px-6 py-4 text-left border-b border-slate-50 dark:border-slate-700/50 last:border-0 transition-all cursor-pointer group ${idx === activeIndex ? "bg-indigo-600" : "hover:bg-indigo-600"}`}
-                >
-                  <span
-                    className={`text-xs font-bold block transition-all ${idx === activeIndex ? "text-white" : "text-slate-700 dark:text-slate-400 group-hover:text-white dark:group-hover:text-white"}`}
-                  >
-                    {highlightMatch(p.name, internalVal)}
-                  </span>
-                </button>
-              ))}
-            </Popover.Content>
-          </Popover.Portal>
-        </Popover.Root>
-      </div>
-    );
-  },
-);
-
-EliteProductInput.displayName = "EliteProductInput";
-
-function CustomInlineDatePicker({
-  value,
-  onChange,
-  placeholder = "Pilih Tanggal",
-  colorScheme = "indigo",
-}: {
-  value: any;
-  onChange: (date: string) => void;
-  placeholder?: string;
-  colorScheme?: "indigo" | "rose" | "slate";
-}) {
-  const [open, setOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(
-    value ? new Date(value) : new Date(),
-  );
-  const days = useMemo(() => {
-    const start = startOfWeek(startOfMonth(currentMonth));
-    const end = endOfWeek(endOfMonth(currentMonth));
-    return eachDayOfInterval({ start, end });
-  }, [currentMonth]);
-  const colors = {
-    indigo: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800/50 ring-indigo-500/10 dark:ring-indigo-500/20 hover:border-indigo-300 dark:hover:border-indigo-700",
-    rose: "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800/50 ring-rose-500/10 dark:ring-rose-500/20 hover:border-rose-300 dark:hover:border-rose-700",
-    slate: "text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-700 ring-slate-500/10 dark:ring-slate-500/20 hover:border-slate-300 dark:hover:border-slate-600",
-  };
-
-  return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={`flex items-center justify-between w-full px-4 py-3 text-xs font-bold rounded-2xl border-2 focus:outline-none focus:ring-4 transition-all shadow-sm bg-white dark:bg-slate-900/50 cursor-pointer ${colors[colorScheme as keyof typeof colors]}`}
-        >
-          <span
-            className={value ? "text-slate-700 dark:text-slate-200" : "text-slate-300 dark:text-slate-500 font-medium"}
-          >
-            {value
-              ? format(new Date(value), "dd MMM yyyy", { locale: id })
-              : placeholder}
-          </span>
-          <Calendar
-            size={18}
-            className={
-              colorScheme === "rose" ? "text-rose-400" : "text-indigo-400"
-            }
-          />
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          className="z-[9999] w-72 bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 p-4 animate-in fade-in zoom-in-95 duration-200"
-          align="start"
-          sideOffset={5}
-        >
-          <div className="flex items-center justify-between mb-4 px-1">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                setCurrentMonth(subMonths(currentMonth, 1));
-              }}
-              className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-slate-400 dark:text-slate-500 cursor-pointer transition-colors"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <h4 className="text-[11px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
-              {format(currentMonth, "MMMM yyyy", { locale: id })}
-            </h4>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                setCurrentMonth(addMonths(currentMonth, 1));
-              }}
-              className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-slate-400 dark:text-slate-500 cursor-pointer transition-colors"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 mb-2">
-            {["S", "S", "R", "K", "J", "S", "M"].map((day, i) => (
-              <div
-                key={i}
-                className="text-center text-[9px] font-black text-slate-300 dark:text-slate-500 uppercase py-1"
-              >
-                {day}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {days.map((day) => {
-              const isSelected = value && isSameDay(day, new Date(value));
-              const isCurrentMonth = isSameMonth(day, currentMonth);
-              return (
-                <button
-                  key={day.toISOString()}
-                  type="button"
-                  onClick={() => {
-                    onChange(day.toISOString());
-                    setOpen(false);
-                  }}
-                  className={`h-8 w-8 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all cursor-pointer ${!isCurrentMonth ? "text-slate-200 dark:text-slate-700 pointer-events-none" : isSelected ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
-                >
-                  {format(day, "d")}
-                </button>
-              );
-            })}
-          </div>
-          <Popover.Arrow className="fill-white dark:fill-slate-800" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
-// --- MAIN CONTENT ---
 function NewReturPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const ritelId = searchParams.get("ritelId");
-
-  const [loading, setLoading] = useState(false);
-  const [retailers, setRetailers] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [retailerName, setRetailerName] = useState<string>("");
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const [formData, setFormData] = useState<any>({
-    rtvCn: "",
-    tanggalRtv: new Date().toISOString(),
-    maxPickup: new Date().toISOString(),
-    kodeToko: "",
-    namaCompany: "",
-    inisial: "",
-    link: "",
-    statusBarang: "Belum Diambil",
-    refKetStatus: "",
-    lokasiBarangId: "",
-    pembebananReturnId: "",
-    invoiceRekon: "",
-    referensiPembayaran: "",
-    tanggalPembayaran: null,
-    remarks: "",
-    sdiReturn: "",
-  });
-
-  const [items, setItems] = useState<any[]>([]);
-  const [currentItem, setCurrentItem] = useState({
-    produk: "",
-    qtyReturn: 0,
-    nominal: 0,
-    rpKg: 0,
-  });
-
-  const [tujuanFilter, setTujuanFilter] = useState("");
-  const [inisialFilter, setInisialFilter] = useState("");
-  const [produkFilter, setProdukFilter] = useState("");
-  const [lokasiFilter, setLokasiFilter] = useState("");
-  const [pembebananFilter, setPembebananFilter] = useState("");
-  const [units, setUnits] = useState<any[]>([]);
-  const [isTujuanOpen, setIsTujuanOpen] = useState(false);
-  const [isInisialOpen, setIsInisialOpen] = useState(false);
-  const [isProdukOpen, setIsProdukOpen] = useState(false);
-  const [isLokasiOpen, setIsLokasiOpen] = useState(false);
-  const [isPembebananOpen, setIsPembebananOpen] = useState(false);
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
-  const [activeStatusIndex, setActiveStatusIndex] = useState(-1);
-  const STATUS_OPTIONS = ["Belum Diambil", "Sudah Diambil", "Dimusnahkan"];
-
-  const PRIORITY_PRODUCTS = useMemo(
-    () => ["PUNOKAWAN 5 KG", "BEFOOD SETRA RAMOS 5 KG"],
-    [],
-  );
-
-  useEffect(() => {
-    if (!ritelId) {
-      router.replace("/retur");
-      return;
-    }
-    Promise.all([
-      fetch("/api/ritel").then((res) => res.json()),
-      fetch("/api/product").then((res) => res.json()),
-      fetch("/api/unit-produksi").then((res) => res.json()),
-    ]).then(([ritelJson, productJson, unitJson]) => {
-      const rList = Array.isArray(ritelJson)
-        ? ritelJson
-        : ritelJson?.data || [];
-      const pList = Array.isArray(productJson)
-        ? productJson
-        : productJson?.data || [];
-      const uList = Array.isArray(unitJson) ? unitJson : unitJson?.data || [];
-      setRetailers(rList);
-      setProducts(pList);
-      setUnits(uList);
-      const rCurrent = rList.find((r: any) => r.id === ritelId);
-      if (rCurrent) setRetailerName(rCurrent.namaPt);
-      else setRetailerName("Ritel Tidak Terdeteksi");
-    });
-  }, [ritelId, router]);
-
-  const masterInisialList = useMemo(() => {
-    if (!ritelId || retailers.length === 0) return [];
-    const r = retailers.find((x) => x.id === ritelId);
-    if (!r) return [];
-    
-    const targetPt = r.namaPt.trim().toLowerCase();
-
-    return Array.from(
-      new Set(
-        retailers
-          .filter((x) => x.namaPt.trim().toLowerCase() === targetPt && x.inisial)
-          .map((x) => x.inisial?.trim())
-      )
-    ).filter(Boolean) as string[];
-  }, [ritelId, retailers]);
-
-  const masterTujuanList = useMemo(() => {
-    if (!ritelId || retailers.length === 0) return [];
-    const r = retailers.find((x) => x.id === ritelId);
-    if (!r) return [];
-
-    const targetPt = r.namaPt.trim().toLowerCase();
-
-    return Array.from(
-      new Set(
-        retailers
-          .filter((x) => {
-             const matchPt = x.namaPt.trim().toLowerCase() === targetPt;
-             const matchInisial = formData.inisial 
-               ? x.inisial?.trim().toLowerCase() === formData.inisial.trim().toLowerCase() 
-               : true;
-             return matchPt && matchInisial && x.tujuan;
-          })
-          .map((x) => x.tujuan),
-      ),
-    );
-  }, [ritelId, retailers, formData.inisial]);
-
-  const filteredInisial = useMemo(
-    () =>
-      masterInisialList.filter((ini) =>
-        ini.toLowerCase().includes(inisialFilter.toLowerCase()),
-      ),
-    [masterInisialList, inisialFilter],
-  );
-
-  const filteredTujuan = useMemo(
-    () =>
-      masterTujuanList.filter((tj) =>
-        tj.toLowerCase().includes(tujuanFilter.toLowerCase()),
-      ),
-    [masterTujuanList, tujuanFilter],
-  );
-
-  const filteredLokasi = useMemo(
-    () =>
-      units.filter((u) =>
-        u.siteArea.toLowerCase().includes(lokasiFilter.toLowerCase()),
-      ),
-    [units, lokasiFilter],
-  );
-
-  const filteredPembebanan = useMemo(
-    () =>
-      units.filter((u) =>
-        u.siteArea.toLowerCase().includes(pembebananFilter.toLowerCase()),
-      ),
-    [units, pembebananFilter],
-  );
-
-  const filteredProducts = useMemo(() => {
-    const rawFiltered = products.filter((p) =>
-      p.name.toLowerCase().includes(produkFilter.toLowerCase()),
-    );
-
-    return rawFiltered.sort((a, b) => {
-      const isAPriority = PRIORITY_PRODUCTS.includes(a.name.toUpperCase());
-      const isBPriority = PRIORITY_PRODUCTS.includes(b.name.toUpperCase());
-
-      if (isAPriority && !isBPriority) return -1;
-      if (!isAPriority && isBPriority) return 1;
-
-      return a.name.localeCompare(b.name);
-    });
-  }, [products, produkFilter, PRIORITY_PRODUCTS]);
-
-  const handleNumberChangeCurrent = (field: string, value: string) => {
-    const raw = value.replace(/[^0-9]/g, "");
-    const clean = raw.replace(/^0+/, "");
-    setCurrentItem((prev: any) => ({
-      ...prev,
-      [field]: clean === "" ? 0 : Number(clean),
-    }));
-  };
-
-  useEffect(() => {
-    const nominal = currentItem.nominal || 0;
-    const qty = currentItem.qtyReturn || 0;
-    const result = qty > 0 ? Math.round(nominal / qty) : 0;
-    setCurrentItem((prev: any) => ({ ...prev, rpKg: result }));
-  }, [currentItem.nominal, currentItem.qtyReturn]);
-
-  const addItem = () => {
-    if (!currentItem.produk) {
-      Swal.fire({
-        icon: "warning",
-        title: "Produk Kosong",
-        text: "Silakan pilih produk terlebih dahulu",
-        background: "#fff",
-        confirmButtonColor: "#4f46e5",
-      });
-      return;
-    }
-    setItems([...items, { ...currentItem }]);
-    setCurrentItem({
-      produk: "",
-      qtyReturn: 0,
-      nominal: 0,
-      rpKg: 0,
-    });
-    setProdukFilter("");
-  };
-
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (items.length === 0) {
-      Swal.fire({
-        icon: "error",
-        title: "Daftar Kosong",
-        text: "Minimal tambahkan satu barang ke daftar",
-        background: "#fff",
-        confirmButtonColor: "#4f46e5",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Map all items with the header data
-      const records = items.map((item) => ({
-        ...formData,
-        ...item,
-        ritelId,
-      }));
-
-      const res = await fetch("/api/retur", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(records),
-      });
-
-      if (res.ok) {
-        const result = await res.json();
-        const savedCount = result.count ?? items.length;
-        
-        if (savedCount === 0) {
-          Swal.fire({
-            icon: "warning",
-            title: "Data Sudah Ada",
-            text: "Semua data retur yang diinput sudah pernah ada sebelumnya (duplikat RTV + Produk). Tidak ada data baru yang disimpan.",
-            confirmButtonColor: "#4f46e5",
-          });
-        } else if (savedCount < items.length) {
-          Swal.fire({
-            icon: "info",
-            title: "Sebagian Berhasil",
-            text: `${savedCount} dari ${items.length} data retur berhasil disimpan. ${items.length - savedCount} data lainnya sudah ada sebelumnya (duplikat).`,
-            confirmButtonColor: "#4f46e5",
-          });
-          setTimeout(() => router.push(`/retur?ritelId=${ritelId}`), 2000);
-        } else {
-          Swal.fire({
-            icon: "success",
-            title: "Berhasil!",
-            text: `${savedCount} Data retur berhasil disimpan`,
-            timer: 2000,
-            showConfirmButton: false,
-          });
-          setTimeout(() => router.push(`/retur?ritelId=${ritelId}`), 2000);
-        }
-      } else {
-        const err = await res.json();
-        throw new Error(err.error || "Gagal menyimpan data");
-      }
-    } catch (error: any) {
-      Swal.fire({
-        icon: "error",
-        title: "Gagal Simpan",
-        text: error.message,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    router,
+    loading,
+    isMounted,
+    retailerName,
+    formData,
+    setFormData,
+    items,
+    currentItem,
+    setCurrentItem,
+    setTujuanFilter,
+    setInisialFilter,
+    setProdukFilter,
+    setLokasiFilter,
+    setPembebananFilter,
+    units,
+    isTujuanOpen,
+    setIsTujuanOpen,
+    isInisialOpen,
+    setIsInisialOpen,
+    isProdukOpen,
+    setIsProdukOpen,
+    isLokasiOpen,
+    setIsLokasiOpen,
+    isPembebananOpen,
+    setIsPembebananOpen,
+    isStatusOpen,
+    setIsStatusOpen,
+    activeStatusIndex,
+    setActiveStatusIndex,
+    STATUS_OPTIONS,
+    filteredInisial,
+    filteredTujuan,
+    filteredLokasi,
+    filteredPembebanan,
+    filteredProducts,
+    addItem,
+    removeItem,
+    handleSubmit,
+  } = useNewRetur();
 
   if (!isMounted)
     return (
@@ -739,7 +70,6 @@ function NewReturPageContent() {
 
   return (
     <div className="min-h-screen overflow-x-hidden">
-      {/* --- ELITE STICKY HEADER --- */}
       <div className="sticky top-0 z-[50] bg-white/70 dark:bg-transparent border-b border-slate-100 dark:border-transparent shadow-sm dark:shadow-none transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between gap-6">
@@ -802,9 +132,7 @@ function NewReturPageContent() {
                 <input
                   type="text"
                   value={formData.rtvCn || ""}
-                  onChange={(e) => {
-                    setFormData({ ...formData, rtvCn: e.target.value });
-                  }}
+                  onChange={(e) => setFormData({ ...formData, rtvCn: e.target.value })}
                   placeholder="Masukkan nomor RTV/CN"
                   className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
@@ -816,11 +144,7 @@ function NewReturPageContent() {
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={
-                    formData.kodeToko === 0 || formData.kodeToko === null
-                      ? ""
-                      : formData.kodeToko
-                  }
+                  value={formData.kodeToko === 0 || formData.kodeToko === null ? "" : formData.kodeToko}
                   onChange={(e) => {
                     const cleanVal = e.target.value.replace(/[^0-9]/g, "");
                     setFormData({ ...formData, kodeToko: cleanVal });
@@ -835,9 +159,7 @@ function NewReturPageContent() {
                 icon={Search}
                 value={formData.inisial}
                 onSearch={setInisialFilter}
-                onCommit={(val: string) =>
-                  setFormData((p: any) => ({ ...p, inisial: val, namaCompany: "" }))
-                }
+                onCommit={(val: string) => setFormData((p: any) => ({ ...p, inisial: val, namaCompany: "" }))}
                 items={filteredInisial}
                 open={isInisialOpen}
                 onOpenChange={setIsInisialOpen}
@@ -848,16 +170,13 @@ function NewReturPageContent() {
                 icon={Search}
                 value={formData.namaCompany}
                 onSearch={setTujuanFilter}
-                onCommit={(val: string) =>
-                  setFormData((p: any) => ({ ...p, namaCompany: val }))
-                }
+                onCommit={(val: string) => setFormData((p: any) => ({ ...p, namaCompany: val }))}
                 items={filteredTujuan}
                 open={isTujuanOpen}
                 onOpenChange={setIsTujuanOpen}
               />
               <div className="md:col-span-1" />
 
-              {/* ITEM INPUT BUFFER */}
               <div className="md:col-span-2 pt-6 border-t border-slate-50">
                 <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-6 flex items-center gap-2">
                   <Package size={14} /> Input Barang Retur
@@ -869,9 +188,7 @@ function NewReturPageContent() {
                       placeholder="Cari Nama Produk..."
                       value={currentItem.produk}
                       onSearch={setProdukFilter}
-                      onCommit={(val: string) =>
-                        setCurrentItem((p: any) => ({ ...p, produk: val }))
-                      }
+                      onCommit={(val: string) => setCurrentItem((p: any) => ({ ...p, produk: val }))}
                       items={filteredProducts}
                       open={isProdukOpen}
                       onOpenChange={setIsProdukOpen}
@@ -888,10 +205,7 @@ function NewReturPageContent() {
                       value={currentItem.qtyReturn === 0 ? "" : currentItem.qtyReturn}
                       onChange={(e) => {
                         const v = e.target.value;
-                        setCurrentItem({
-                          ...currentItem,
-                          qtyReturn: v === "" ? 0 : Number(v),
-                        });
+                        setCurrentItem({ ...currentItem, qtyReturn: v === "" ? 0 : Number(v) });
                       }}
                     />
                   </div>
@@ -910,10 +224,7 @@ function NewReturPageContent() {
                         value={currentItem.nominal === 0 ? "" : currentItem.nominal}
                         onChange={(e) => {
                           const v = e.target.value;
-                          setCurrentItem({
-                            ...currentItem,
-                            nominal: v === "" ? 0 : Number(v),
-                          });
+                          setCurrentItem({ ...currentItem, nominal: v === "" ? 0 : Number(v) });
                         }}
                       />
                     </div>
@@ -923,9 +234,7 @@ function NewReturPageContent() {
                       RP / KG
                     </label>
                     <div className="px-5 py-4 text-[10px] font-black text-indigo-400 bg-indigo-50/30 rounded-2xl border-2 border-transparent h-[52px] flex items-center">
-                      {currentItem.rpKg > 0
-                        ? `Rp ${formatRupiahDisplay(currentItem.rpKg)}`
-                        : "—"}
+                      {currentItem.rpKg > 0 ? `Rp ${formatRupiahDisplay(currentItem.rpKg)}` : "—"}
                     </div>
                   </div>
                 </div>
@@ -943,7 +252,6 @@ function NewReturPageContent() {
             </div>
           </div>
 
-          {/* PREVIEW TABLE */}
           {items.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-500">
               <div className="px-10 py-6 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/20 dark:bg-slate-800/50 flex items-center justify-between">
@@ -958,55 +266,26 @@ function NewReturPageContent() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-slate-800/50">
-                      <th className="px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">
-                        No
-                      </th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Nama Produk
-                      </th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                        Qty
-                      </th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                        Nominal (IDR)
-                      </th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                        RP/KG
-                      </th>
-                      <th className="px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-24">
-                        Aksi
-                      </th>
+                      <th className="px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">No</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Produk</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Qty</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Nominal (IDR)</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">RP/KG</th>
+                      <th className="px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-24">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                     {items.map((item, idx) => (
-                      <tr
-                        key={idx}
-                        className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors group"
-                      >
-                        <td className="px-10 py-5 text-xs font-black text-slate-300">
-                          {String(idx + 1).padStart(2, "0")}
-                        </td>
+                      <tr key={idx} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors group">
+                        <td className="px-10 py-5 text-xs font-black text-slate-300">{String(idx + 1).padStart(2, "0")}</td>
                         <td className="px-6 py-5">
-                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
-                            {item.produk}
-                          </p>
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">{item.produk}</p>
                         </td>
-                        <td className="px-6 py-5 text-right text-xs font-black text-slate-900 dark:text-slate-100">
-                          {item.qtyReturn}
-                        </td>
-                        <td className="px-6 py-5 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">
-                          Rp {formatRupiahDisplay(item.nominal)}
-                        </td>
-                        <td className="px-6 py-5 text-right text-xs font-bold text-slate-400">
-                          Rp {formatRupiahDisplay(item.rpKg)}
-                        </td>
+                        <td className="px-6 py-5 text-right text-xs font-black text-slate-900 dark:text-slate-100">{item.qtyReturn}</td>
+                        <td className="px-6 py-5 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">Rp {formatRupiahDisplay(item.nominal)}</td>
+                        <td className="px-6 py-5 text-right text-xs font-bold text-slate-400">Rp {formatRupiahDisplay(item.rpKg)}</td>
                         <td className="px-10 py-5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => removeItem(idx)}
-                            className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all active:scale-90"
-                          >
+                          <button type="button" onClick={() => removeItem(idx)} className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all active:scale-90">
                             <X size={16} />
                           </button>
                         </td>
@@ -1015,18 +294,8 @@ function NewReturPageContent() {
                   </tbody>
                   <tfoot>
                     <tr className="bg-indigo-50/30 dark:bg-indigo-900/20">
-                      <td
-                        colSpan={3}
-                        className="px-10 py-5 text-[10px] font-black text-indigo-700 uppercase tracking-widest text-right"
-                      >
-                        Total Nominal
-                      </td>
-                      <td className="px-6 py-5 text-right text-sm font-black text-indigo-700">
-                        Rp{" "}
-                        {formatRupiahDisplay(
-                          items.reduce((sum, it) => sum + (it.nominal || 0), 0),
-                        )}
-                      </td>
+                      <td colSpan={3} className="px-10 py-5 text-[10px] font-black text-indigo-700 uppercase tracking-widest text-right">Total Nominal</td>
+                      <td className="px-6 py-5 text-right text-sm font-black text-indigo-700">Rp {formatRupiahDisplay(items.reduce((sum, it) => sum + (it.nominal || 0), 0))}</td>
                       <td colSpan={2} />
                     </tr>
                   </tfoot>
@@ -1041,12 +310,8 @@ function NewReturPageContent() {
                 <Truck className="text-white" size={24} />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-                  Logistik & Administrasi
-                </h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                  Status pengiriman
-                </p>
+                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Logistik & Administrasi</h2>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Status pengiriman</p>
               </div>
             </div>
             <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 overflow-visible">
@@ -1054,17 +319,11 @@ function NewReturPageContent() {
                 label="Lokasi Barang"
                 placeholder="Pilih Lokasi..."
                 icon={Search}
-                value={
-                  units.find((u) => u.idRegional === formData.lokasiBarangId)
-                    ?.siteArea || ""
-                }
+                value={units.find((u) => u.idRegional === formData.lokasiBarangId)?.siteArea || ""}
                 onSearch={setLokasiFilter}
                 onCommit={(val: string) => {
                   const u = units.find((x) => x.siteArea === val);
-                  setFormData((p: any) => ({
-                    ...p,
-                    lokasiBarangId: u?.idRegional || "",
-                  }));
+                  setFormData((p: any) => ({ ...p, lokasiBarangId: u?.idRegional || "" }));
                 }}
                 items={filteredLokasi.map((u) => u.siteArea)}
                 open={isLokasiOpen}
@@ -1074,49 +333,33 @@ function NewReturPageContent() {
                 label="Pembebanan Retur"
                 placeholder="Pilih Pembebanan..."
                 icon={Search}
-                value={
-                  units.find((u) => u.idRegional === formData.pembebananReturnId)
-                    ?.siteArea || ""
-                }
+                value={units.find((u) => u.idRegional === formData.pembebananReturnId)?.siteArea || ""}
                 onSearch={setPembebananFilter}
                 onCommit={(val: string) => {
                   const u = units.find((x) => x.siteArea === val);
-                  setFormData((p: any) => ({
-                    ...p,
-                    pembebananReturnId: u?.idRegional || "",
-                  }));
+                  setFormData((p: any) => ({ ...p, pembebananReturnId: u?.idRegional || "" }));
                 }}
                 items={filteredPembebanan.map((u) => u.siteArea)}
                 open={isPembebananOpen}
                 onOpenChange={setIsPembebananOpen}
               />
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Tanggal RTV
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Tanggal RTV</label>
                 <CustomInlineDatePicker
                   value={formData.tanggalRtv}
-                  onChange={(date) =>
-                    setFormData({ ...formData, tanggalRtv: date })
-                  }
+                  onChange={(date) => setFormData({ ...formData, tanggalRtv: date })}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Max Pickup
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Max Pickup</label>
                 <CustomInlineDatePicker
                   value={formData.maxPickup}
-                  onChange={(date) =>
-                    setFormData({ ...formData, maxPickup: date })
-                  }
+                  onChange={(date) => setFormData({ ...formData, maxPickup: date })}
                   colorScheme="rose"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Status Barang
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Status Barang</label>
                 <Popover.Root
                   open={isStatusOpen}
                   onOpenChange={(open) => {
@@ -1131,31 +374,21 @@ function NewReturPageContent() {
                         if (!isStatusOpen) return;
                         if (e.key === "ArrowDown") {
                           e.preventDefault();
-                          setActiveStatusIndex((p) =>
-                            p < STATUS_OPTIONS.length - 1 ? p + 1 : p,
-                          );
+                          setActiveStatusIndex((p) => p < STATUS_OPTIONS.length - 1 ? p + 1 : p);
                         } else if (e.key === "ArrowUp") {
                           e.preventDefault();
                           setActiveStatusIndex((p) => (p > 0 ? p - 1 : p));
                         } else if (e.key === "Enter") {
-                          if (
-                            activeStatusIndex !== -1 &&
-                            STATUS_OPTIONS[activeStatusIndex]
-                          ) {
+                          if (activeStatusIndex !== -1 && STATUS_OPTIONS[activeStatusIndex]) {
                             e.preventDefault();
-                            setFormData({
-                              ...formData,
-                              statusBarang: STATUS_OPTIONS[activeStatusIndex],
-                            });
+                            setFormData({ ...formData, statusBarang: STATUS_OPTIONS[activeStatusIndex] });
                             setIsStatusOpen(false);
                           }
                         }
                       }}
                       className="w-full flex items-center justify-between px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent hover:border-emerald-200 dark:hover:border-emerald-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                     >
-                      <span className="uppercase tracking-widest">
-                        {formData.statusBarang}
-                      </span>
+                      <span className="uppercase tracking-widest">{formData.statusBarang}</span>
                       <ChevronDown size={18} className="text-slate-300" />
                     </button>
                   </Popover.Trigger>
@@ -1178,8 +411,7 @@ function NewReturPageContent() {
                             className={`w-full px-6 py-4 text-left text-xs font-black uppercase tracking-widest flex items-center justify-between rounded-xl transition-all cursor-pointer ${formData.statusBarang === st || idx === activeStatusIndex ? "bg-emerald-600 text-white shadow-lg shadow-emerald-100 dark:shadow-emerald-900/50" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"}`}
                           >
                             {st}
-                            {(formData.statusBarang === st ||
-                              idx === activeStatusIndex) && <Check size={16} />}
+                            {(formData.statusBarang === st || idx === activeStatusIndex) && <Check size={16} />}
                           </button>
                         ))}
                       </div>
@@ -1190,15 +422,11 @@ function NewReturPageContent() {
               <div className="md:col-span-1 space-y-2 invisible" />
 
               <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Link RTV
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Link RTV</label>
                 <input
                   type="text"
                   value={formData.link}
-                  onChange={(e) =>
-                    setFormData({ ...formData, link: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                   className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-400 dark:focus:border-emerald-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
@@ -1211,80 +439,53 @@ function NewReturPageContent() {
                 <CreditCard className="text-white" size={24} />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-                  Pembayaran
-                </h2>
-                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
-                  Catatan tambahan
-                </p>
+                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Pembayaran</h2>
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Catatan tambahan</p>
               </div>
             </div>
             <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 overflow-visible">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Referensi Pembayaran
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Referensi Pembayaran</label>
                 <input
                   type="text"
                   value={formData.referensiPembayaran}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      referensiPembayaran: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, referensiPembayaran: e.target.value })}
                   className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-amber-400 dark:focus:border-amber-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Tanggal Pembayaran
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Tanggal Pembayaran</label>
                 <CustomInlineDatePicker
                   value={formData.tanggalPembayaran}
-                  onChange={(date) =>
-                    setFormData({ ...formData, tanggalPembayaran: date })
-                  }
+                  onChange={(date) => setFormData({ ...formData, tanggalPembayaran: date })}
                   colorScheme="slate"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  SDI Return Status
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">SDI Return Status</label>
                 <input
                   type="text"
                   value={formData.sdiReturn}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sdiReturn: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, sdiReturn: e.target.value })}
                   className="w-full px-5 py-4 text-xs font-black text-amber-600 dark:text-amber-500 bg-amber-50/30 dark:bg-amber-900/20 border-2 border-transparent rounded-2xl outline-none cursor-pointer"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Invoice Rekon (No. Invoice)
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Invoice Rekon (No. Invoice)</label>
                 <input
                   type="text"
                   value={formData.invoiceRekon || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, invoiceRekon: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, invoiceRekon: e.target.value })}
                   placeholder="Isi jika sudah direkon"
                   className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl outline-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
-                  Remarks / Catatan
-                </label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Remarks / Catatan</label>
                 <textarea
                   rows={3}
                   value={formData.remarks}
-                  onChange={(e) =>
-                    setFormData({ ...formData, remarks: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                   className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-[28px] outline-none resize-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
@@ -1307,10 +508,7 @@ function NewReturPageContent() {
               {loading ? (
                 <Loader2 className="animate-spin" size={20} />
               ) : (
-                <Save
-                  size={20}
-                  className="group-hover:-translate-y-0.5 transition-transform"
-                />
+                <Save size={20} className="group-hover:-translate-y-0.5 transition-transform" />
               )}
               {"Simpan Data Retur"}
             </button>
@@ -1321,7 +519,6 @@ function NewReturPageContent() {
   );
 }
 
-// --- FINAL EXPORT ---
 export default function NewReturPage() {
   return (
     <Suspense

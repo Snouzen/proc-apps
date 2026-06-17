@@ -37,6 +37,7 @@ export const saveUnitProduksi = async (payload: {
   regional: string;
   siteArea: string;
   alamat?: string;
+  managerOperasional?: string;
 }) => {
   const response = await fetch("/api/unit-produksi", {
     method: "POST",
