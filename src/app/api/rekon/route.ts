@@ -423,7 +423,7 @@ export async function POST(request: Request) {
           });
         });
         
-        await prisma.$transaction(updatePromises, { timeout: 15000 });
+        await prisma.$transaction(updatePromises);
       }
     }
 
