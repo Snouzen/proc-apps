@@ -310,42 +310,42 @@ export default function DataTable<T = any>({
 
   const wrapperCls = isRounded
     ? "bg-white dark:bg-slate-800 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/40 overflow-hidden relative animate-in zoom-in-95 duration-500"
-    : "bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden";
+    : "bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative flex flex-col overflow-hidden";
 
   const headerRowCls = isRounded
     ? "bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700 text-[10px] font-black text-slate-400 uppercase tracking-widest"
-    : "text-gray-700 dark:text-slate-300 text-sm uppercase tracking-wider border-b border-gray-100 dark:border-slate-700";
+    : "text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700";
 
   const headerCellCls = isRounded
     ? "px-6 py-5 whitespace-nowrap"
-    : "px-6 py-3 font-semibold sticky top-0 z-10 bg-white dark:bg-slate-800";
+    : "px-4 py-4 whitespace-nowrap";
 
   const bodyCls = isRounded
     ? `divide-y divide-slate-50 dark:divide-slate-700 transition-all duration-300 ${isFetchingPage ? "opacity-50 pointer-events-none scale-[0.998]" : "opacity-100"}`
-    : `divide-y divide-gray-100 dark:divide-slate-700 text-[0.95rem] transition-opacity duration-200 ${isFetchingPage ? "opacity-50 pointer-events-none" : "opacity-100"}`;
+    : `divide-y divide-slate-100 dark:divide-slate-800/50 text-sm text-black dark:text-slate-200 transition-opacity duration-300 ${isFetchingPage ? "opacity-50 pointer-events-none" : "opacity-100"}`;
 
   const rowCls = isRounded
     ? "hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors group cursor-pointer"
-    : "hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer group";
+    : "hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-colors group cursor-pointer";
 
-  const cellCls = isRounded ? "px-6 py-4" : "px-6 py-4 align-top";
+  const cellCls = isRounded ? "px-6 py-4" : "px-4 py-3 align-middle";
 
   // Sticky column styles
   const stickyFirstThCls = isRounded
     ? "sticky left-0 z-20 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur px-6 py-5 w-20 text-center border-r border-slate-100 dark:border-slate-700"
-    : "px-6 py-3 font-semibold sticky top-0 left-0 z-20 bg-white dark:bg-slate-800 w-16 border-r border-gray-50 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]";
+    : "sticky left-0 z-20 px-4 py-4 whitespace-nowrap bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]";
 
   const stickyFirstTdCls = isRounded
     ? "sticky left-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-slate-50/95 dark:group-hover:bg-slate-700/95 backdrop-blur px-6 py-4 text-xs font-black text-slate-400 text-center tabular-nums border-r border-slate-100 dark:border-slate-700 transition-colors"
-    : "px-6 py-4 align-top text-slate-600 dark:text-slate-300 font-semibold tabular-nums sticky left-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-gray-50 dark:group-hover:bg-slate-700 border-r border-gray-50 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]";
+    : "sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 px-4 py-3 text-center font-bold text-slate-600 dark:text-slate-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] transition-colors align-middle w-10";
 
   const stickyLastThCls = isRounded
     ? "sticky right-0 z-20 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur px-6 py-5 text-right border-l border-slate-100 dark:border-slate-700"
-    : "px-6 py-3 font-semibold text-center sticky top-0 z-10 bg-white dark:bg-slate-800";
+    : "sticky right-0 z-20 px-4 py-4 whitespace-nowrap bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.5)]";
 
   const stickyLastTdCls = isRounded
     ? "sticky right-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-slate-50/95 dark:group-hover:bg-slate-700/95 backdrop-blur px-6 py-4 text-right border-l border-slate-100 dark:border-slate-700 transition-colors"
-    : "px-6 py-4 align-top sticky right-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-gray-50 dark:group-hover:bg-slate-700";
+    : "sticky right-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 px-4 py-3 text-right shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.5)] transition-colors align-middle";
 
   // Alignment helper
   const alignCls = (align?: string) =>
@@ -362,7 +362,7 @@ export default function DataTable<T = any>({
         style={maxHeight ? { maxHeight, overflowY: "auto" } : undefined}
       >
         <table
-          className={`w-full text-left border-collapse ${isRounded ? "table-auto" : "table-fixed text-sm min-w-[1200px]"}`}
+          className={`w-full text-left border-collapse ${isRounded ? "table-auto" : "table-fixed text-sm min-w-[1800px]"}`}
         >
           {/* ── THEAD ──────────────────────────────────────── */}
           <thead>

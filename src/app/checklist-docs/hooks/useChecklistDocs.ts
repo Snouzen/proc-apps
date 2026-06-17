@@ -16,6 +16,7 @@ type Row = {
   tglkirim?: string | null;
   linkPo?: string | null;
   statusKirim?: boolean;
+  buktiKirim?: string | null;
   statusSdif?: boolean;
   statusPo?: boolean;
   statusFp?: boolean;
@@ -40,7 +41,7 @@ export function useChecklistDocs() {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState({ totalPo: 0, pendingTagih: 0, completedTagih: 0, pendingBayar: 0, completedBayar: 0 });
+  const [summary, setSummary] = useState({ totalPo: 0, pendingTagih: 0, completedTagih: 0, pendingKirim: 0, completedKirim: 0, pendingBayar: 0, completedBayar: 0 });
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("pending");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -59,7 +60,8 @@ export function useChecklistDocs() {
     buktiTagih: true,
     actions: true,
     tglkirim: false,
-    statusKirim: false,
+    statusKirim: true,
+    buktiKirim: true,
     statusSdif: false,
     statusPo: false,
     statusFp: false,
@@ -79,7 +81,7 @@ export function useChecklistDocs() {
   const [detailData, setDetailData] = useState<any | null>(null);
 
   const [isEditAll, setIsEditAll] = useState(false);
-  const [editingRows, setEditingRows] = useState<Record<string, { statusTagih: boolean; buktiTagih: string; statusBayar: boolean; buktiBayar: string; saving?: boolean; error?: string }>>({});
+  const [editingRows, setEditingRows] = useState<Record<string, { statusTagih: boolean; buktiTagih: string; statusKirim: boolean; buktiKirim: string; statusBayar: boolean; buktiBayar: string; saving?: boolean; error?: string }>>({});
 
   useEffect(() => {
     (async () => {
@@ -94,16 +96,29 @@ export function useChecklistDocs() {
       if (activeFilter === "pending_bayar" || activeFilter === "completed_bayar") {
         next.statusTagih = false;
         next.buktiTagih = false;
+        next.statusKirim = false;
+        next.buktiKirim = false;
         next.statusBayar = true;
         next.buktiBayar = true;
+      } else if (activeFilter === "pending_kirim" || activeFilter === "completed_kirim") {
+        next.statusTagih = false;
+        next.buktiTagih = false;
+        next.statusKirim = true;
+        next.buktiKirim = true;
+        next.statusBayar = false;
+        next.buktiBayar = false;
       } else if (activeFilter === "pending" || activeFilter === "completed") {
         next.statusTagih = true;
         next.buktiTagih = true;
+        next.statusKirim = true;
+        next.buktiKirim = true;
         next.statusBayar = false;
         next.buktiBayar = false;
       } else if (activeFilter === "total") {
         next.statusTagih = true;
         next.buktiTagih = true;
+        next.statusKirim = true;
+        next.buktiKirim = true;
         next.statusBayar = true;
         next.buktiBayar = true;
       }
@@ -164,6 +179,8 @@ export function useChecklistDocs() {
           totalPo: Number(json.summary.totalPo) || 0,
           pendingTagih: Number(json.summary.pendingTagih) || 0,
           completedTagih: Number(json.summary.completedTagih) || 0,
+          pendingKirim: Number(json.summary.pendingKirim) || 0,
+          completedKirim: Number(json.summary.completedKirim) || 0,
           pendingBayar: Number(json.summary.pendingBayar) || 0,
           completedBayar: Number(json.summary.completedBayar) || 0,
         });
@@ -188,14 +205,14 @@ export function useChecklistDocs() {
     fetchData();
   }, [fetchData, role, debouncedSearch, page, rowsPerPage, activeFilter]);
 
-  const formatDate = (d: any) => {
+  const formatDate = useCallback((d: any) => {
     const date = d ? new Date(d) : null;
     if (!date || isNaN(date.getTime())) return "-";
     const day = date.getDate().toString().padStart(2, "0");
     const month = date.toLocaleDateString("id-ID", { month: "short" });
     const year = date.getFullYear().toString();
     return `${day} ${month} ${year}`;
-  };
+  }, []);
 
   const openModal = async (po: Row) => {
     const nopo = String(po?.noPo || "").trim();
@@ -246,6 +263,8 @@ export function useChecklistDocs() {
         [row.id]: {
           statusTagih: !!row.statusTagih,
           buktiTagih: row.buktiTagih || "",
+          statusKirim: !!row.statusKirim,
+          buktiKirim: row.buktiKirim || "",
           statusBayar: !!row.statusBayar,
           buktiBayar: row.buktiBayar || "",
         }
@@ -259,20 +278,24 @@ export function useChecklistDocs() {
       setEditingRows({});
     } else {
       setIsEditAll(true);
-      const allDrafts: Record<string, any> = {};
-      rows.forEach(r => {
-        allDrafts[r.id] = {
-          statusTagih: !!r.statusTagih,
-          buktiTagih: r.buktiTagih || "",
-          statusBayar: !!r.statusBayar,
-          buktiBayar: r.buktiBayar || "",
-        };
+      setEditingRows(prev => {
+        const next = { ...prev };
+        rows.forEach(r => {
+          next[r.id] = {
+            statusTagih: !!r.statusTagih,
+            buktiTagih: r.buktiTagih || "",
+            statusKirim: !!r.statusKirim,
+            buktiKirim: r.buktiKirim || "",
+            statusBayar: !!r.statusBayar,
+            buktiBayar: r.buktiBayar || "",
+          };
+        });
+        return next;
       });
-      setEditingRows(allDrafts);
     }
   };
 
-  const handleFieldChange = (id: string, field: "statusTagih" | "buktiTagih" | "statusBayar" | "buktiBayar", value: any) => {
+  const handleFieldChange = (id: string, field: "statusTagih" | "buktiTagih" | "statusKirim" | "buktiKirim" | "statusBayar" | "buktiBayar", value: any) => {
     setEditingRows(prev => ({
       ...prev,
       [id]: {
@@ -300,6 +323,8 @@ export function useChecklistDocs() {
         id,
         statusTagih: editingRows[id].statusTagih,
         buktiTagih: editingRows[id].buktiTagih,
+        statusKirim: editingRows[id].statusKirim,
+        buktiKirim: editingRows[id].buktiKirim,
         statusBayar: editingRows[id].statusBayar,
         buktiBayar: editingRows[id].buktiBayar,
       }));

@@ -7,7 +7,7 @@ export default function ChecklistSummaryCards({
   setPage 
 }: any) {
   return (
-    <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
       <div 
         onClick={() => { setActiveFilter("total"); setPage(1); }}
         className={`cursor-pointer rounded-2xl border shadow-sm p-5 flex flex-col justify-center transition-all ${activeFilter === "total" ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"}`}
@@ -28,6 +28,20 @@ export default function ChecklistSummaryCards({
       >
         <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Completed Tagih</span>
         <span className="text-2xl lg:text-3xl font-bold text-emerald-600 dark:text-emerald-500">{summary.completedTagih}</span>
+      </div>
+      <div 
+        onClick={() => { setActiveFilter("pending_kirim"); setPage(1); }}
+        className={`cursor-pointer rounded-2xl border shadow-sm p-5 flex flex-col justify-center transition-all ${activeFilter === "pending_kirim" ? "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"}`}
+      >
+        <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Pending Kirim</span>
+        <span className="text-2xl lg:text-3xl font-bold text-purple-600 dark:text-purple-500">{summary.pendingKirim}</span>
+      </div>
+      <div 
+        onClick={() => { setActiveFilter("completed_kirim"); setPage(1); }}
+        className={`cursor-pointer rounded-2xl border shadow-sm p-5 flex flex-col justify-center transition-all ${activeFilter === "completed_kirim" ? "bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"}`}
+      >
+        <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Completed Kirim</span>
+        <span className="text-2xl lg:text-3xl font-bold text-cyan-600 dark:text-cyan-500">{summary.completedKirim}</span>
       </div>
       <div 
         onClick={() => { setActiveFilter("pending_bayar"); setPage(1); }}

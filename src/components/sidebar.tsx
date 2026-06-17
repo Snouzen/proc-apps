@@ -267,8 +267,8 @@ export default function Sidebar({
           {/* 2. Purchase Order */}
           {role !== "sitearea" && <RenderLink item={poItem} pathname={pathname} isOpen={isOpen} />}
           
-          {/* 2.5 Checklist Docs (Magang) */}
-          {(role === "magang" || role === "pusat") && <RenderLink item={checklistDocsItem} pathname={pathname} isOpen={isOpen} />}
+          {/* 2.5 Checklist Docs */}
+          <RenderLink item={checklistDocsItem} pathname={pathname} isOpen={isOpen} />
 
           {/* 3. Action Plan */}
           {role !== "magang" && (

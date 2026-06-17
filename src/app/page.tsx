@@ -441,46 +441,34 @@ function TableUnderChart({
             render: (_val: any, po: any) => {
               const dt = toDate(po?.createdAt) || toDate(po?.updatedAt) || toDate(po?.tglPo);
               return (
-                <>
-                  <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">Submitted</span>
-                  <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap mt-0.5">{dt ? dt.toLocaleDateString("id-ID") : "-"}</span>
-                </>
+                <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap">{dt ? dt.toLocaleDateString("id-ID") : "-"}</span>
               );
             },
           },
           {
             key: "tglPo", label: "Tgl PO", width: "w-32", hidden: !visibleCols.tglPo,
             render: (_val: any, po: any) => (
-              <>
-                <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">Tgl PO</span>
-                <PoDateBadge 
-                  dateNode={<span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap mt-0.5">{toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}</span>}
-                  type="TAGIH"
-                  buktiData={po.buktiTagih}
-                />
-              </>
+              <PoDateBadge 
+                dateNode={<span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap">{toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}</span>}
+                type="TAGIH"
+                buktiData={po.buktiTagih}
+              />
             ),
           },
           {
             key: "tglKirim", label: "Tgl Kirim", width: "w-32", hidden: !visibleCols.tglKirim,
             render: (_val: any, po: any) => (
-              <>
-                <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">Tgl Kirim</span>
-                <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap mt-0.5">{toDate((po as any).tglkirim || (po as any).tglKirim)?.toLocaleDateString("id-ID") || "-"}</span>
-              </>
+              <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap">{toDate((po as any).tglkirim || (po as any).tglKirim)?.toLocaleDateString("id-ID") || "-"}</span>
             ),
           },
           {
             key: "dueDate", label: "Tgl Expired", width: "w-32", hidden: !visibleCols.dueDate,
             render: (_val: any, po: any) => (
-              <>
-                <span className="block text-xs text-gray-500 uppercase font-semibold leading-tight whitespace-nowrap">Tgl Expired</span>
-                <PoDateBadge 
-                  dateNode={<span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap mt-0.5">{toDate(po.expiredTgl)?.toLocaleDateString("id-ID") || "-"}</span>}
-                  type="PAID"
-                  buktiData={po.buktiBayar}
-                />
-              </>
+              <PoDateBadge 
+                dateNode={<span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap">{toDate(po.expiredTgl)?.toLocaleDateString("id-ID") || "-"}</span>}
+                type="PAID"
+                buktiData={po.buktiBayar}
+              />
             ),
           },
           {

@@ -10,10 +10,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { session, role: safeRole, dbUser } = auth;
-    
-    if (safeRole !== "magang" && safeRole !== "pusat") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const { searchParams } = new URL(req.url);
     const limit = Number(searchParams.get("limit") || "10");
@@ -33,6 +29,22 @@ export async function GET(req: NextRequest) {
         { statusTagih: true },
         { buktiTagih: { not: null } },
         { buktiTagih: { not: "" } }
+      ]
+    };
+
+    const pendingKirimCondition = {
+      OR: [
+        { statusKirim: false },
+        { buktiKirim: null },
+        { buktiKirim: "" }
+      ]
+    };
+
+    const completedKirimCondition = {
+      AND: [
+        { statusKirim: true },
+        { buktiKirim: { not: null } },
+        { buktiKirim: { not: "" } }
       ]
     };
 
@@ -63,12 +75,16 @@ export async function GET(req: NextRequest) {
 
     const wherePending: any = { AND: [pendingCondition, ...(q ? [searchCondition] : [])] };
     const whereCompleted: any = { AND: [completedCondition, ...(q ? [searchCondition] : [])] };
+    const wherePendingKirim: any = { AND: [pendingKirimCondition, ...(q ? [searchCondition] : [])] };
+    const whereCompletedKirim: any = { AND: [completedKirimCondition, ...(q ? [searchCondition] : [])] };
     const wherePendingBayar: any = { AND: [pendingBayarCondition, ...(q ? [searchCondition] : [])] };
     const whereCompletedBayar: any = { AND: [completedBayarCondition, ...(q ? [searchCondition] : [])] };
     const whereTotal: any = q ? searchCondition : {};
 
     const filter = searchParams.get("filter") || "pending";
     const activeWhere = filter === "completed" ? whereCompleted : 
+                        filter === "pending_kirim" ? wherePendingKirim : 
+                        filter === "completed_kirim" ? whereCompletedKirim : 
                         filter === "pending_bayar" ? wherePendingBayar : 
                         filter === "completed_bayar" ? whereCompletedBayar : 
                         filter === "total" ? whereTotal : wherePending;
@@ -94,6 +110,7 @@ export async function GET(req: NextRequest) {
         tglkirim: true,
         linkPo: true,
         statusKirim: true,
+        buktiKirim: true,
         statusSdif: true,
         statusPo: true,
         statusFp: true,
@@ -113,15 +130,17 @@ export async function GET(req: NextRequest) {
     if (summary) {
       data = await findManyPromise;
     } else {
-      const [totalPo, pendingTagih, completedTagih, pendingBayar, completedBayar, fetchedData] = await Promise.all([
+      const [totalPo, pendingTagih, completedTagih, pendingKirim, completedKirim, pendingBayar, completedBayar, fetchedData] = await Promise.all([
         prisma.purchaseOrder.count({ where: whereTotal }),
         prisma.purchaseOrder.count({ where: wherePending }),
         prisma.purchaseOrder.count({ where: whereCompleted }),
+        prisma.purchaseOrder.count({ where: wherePendingKirim }),
+        prisma.purchaseOrder.count({ where: whereCompletedKirim }),
         prisma.purchaseOrder.count({ where: wherePendingBayar }),
         prisma.purchaseOrder.count({ where: whereCompletedBayar }),
         findManyPromise
       ]);
-      summary = { totalPo, pendingTagih, completedTagih, pendingBayar, completedBayar };
+      summary = { totalPo, pendingTagih, completedTagih, pendingKirim, completedKirim, pendingBayar, completedBayar };
       data = fetchedData;
       cacheSet(totalCacheKey, summary, 60000); // 1 minute cache
     }
@@ -129,6 +148,8 @@ export async function GET(req: NextRequest) {
     let activeTotal = summary.pendingTagih;
     if (filter === "completed") activeTotal = summary.completedTagih;
     else if (filter === "total") activeTotal = summary.totalPo;
+    else if (filter === "pending_kirim") activeTotal = summary.pendingKirim;
+    else if (filter === "completed_kirim") activeTotal = summary.completedKirim;
     else if (filter === "pending_bayar") activeTotal = summary.pendingBayar;
     else if (filter === "completed_bayar") activeTotal = summary.completedBayar;
 
@@ -149,10 +170,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { session, role: safeRole, dbUser } = auth;
-    
-    if (safeRole !== "magang" && safeRole !== "pusat") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const body = await req.json();
     const { updates } = body;
@@ -169,6 +186,8 @@ export async function POST(req: NextRequest) {
         if (update.buktiTagih !== undefined) dataToUpdate.buktiTagih = update.buktiTagih;
         if (update.statusBayar !== undefined) dataToUpdate.statusBayar = update.statusBayar;
         if (update.buktiBayar !== undefined) dataToUpdate.buktiBayar = update.buktiBayar;
+        if (update.statusKirim !== undefined) dataToUpdate.statusKirim = update.statusKirim;
+        if (update.buktiKirim !== undefined) dataToUpdate.buktiKirim = update.buktiKirim;
         
         return prisma.purchaseOrder.update({
           where: { id: update.id },

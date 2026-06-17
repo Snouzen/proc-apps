@@ -180,10 +180,10 @@ export function getPurchaseOrderColumns({
     {
       key: "aksi",
       label: "AKSI",
-      align: "right" as const,
-      width: "w-[90px] min-w-[90px]",
+      align: "center" as const,
+      width: "w-[110px] min-w-[110px]",
       render: (_v: any, po: any) => (
-        <div className="flex justify-end gap-1">
+        <div className="flex justify-center gap-2">
           <button
             title="Edit"
             onClick={(e) => {
