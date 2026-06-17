@@ -3,15 +3,7 @@
 import { useMemo, useState } from "react";
 import PODetailModal from "@/components/po-detail-modal";
 import { Search } from "lucide-react";
-import {
-  ColumnDef,
-  getCoreRowModel,
-  useReactTable,
-  flexRender,
-} from "@tanstack/react-table";
-import * as Popover from "@radix-ui/react-popover";
-import { GlobalPagination } from "@/components/global-pagination";
-import { CustomSelect } from "@/components/ui/custom-select";
+import { DataTable } from "@/components/data-table";
 import { PoDateBadge } from "@/components/PoDateBadge";
 
 import { useAuthData } from "@/hooks/useAuthData";
@@ -39,7 +31,6 @@ export default function NeedAssignPage() {
   };
 
   const filteredRows = useMemo(() => tableState.rows, [tableState.rows]);
-  const totalPages = Math.max(1, Math.ceil(tableState.total / tableState.rowsPerPage));
 
   const keyify = (s: any) =>
     String(s ?? "")
@@ -84,12 +75,6 @@ export default function NeedAssignPage() {
     formatDate,
   });
 
-  const table = useReactTable({
-    data: filteredRows,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -113,108 +98,23 @@ export default function NeedAssignPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden relative min-h-[400px] flex flex-col">
-        {tableState.loading && (
-          <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center transition-all duration-300">
-            <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700">
-              <div className="h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                Memuat data...
-              </span>
-            </div>
-          </div>
-        )}
-
-        <div className={`transition-opacity duration-300 flex-1 flex flex-col ${tableState.isTransitioning ? "opacity-50" : "opacity-100"}`}>
-          <div className="overflow-x-auto w-full flex-1">
-            {tableState.error ? (
-              <div className="p-8 text-center text-rose-500 font-medium">
-                {tableState.error}
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse min-w-max xl:min-w-[1400px]">
-                <thead>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id} className="border-b border-slate-100 dark:border-slate-800">
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="px-6 py-4 text-[13px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/50"
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                  {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group">
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-6 py-4 align-top">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                  {!tableState.loading && filteredRows.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={columns.length}
-                        className="py-12 text-center text-slate-400 dark:text-slate-500 font-medium"
-                      >
-                        Tidak ada data yang perlu di-assign
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {!tableState.loading && !tableState.error && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900/40 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
-            Total Data: <span className="text-slate-900 dark:text-slate-100 font-bold">{tableState.total.toLocaleString("id-ID")}</span> baris
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Rows per page
-            </span>
-            <CustomSelect
-              value={tableState.rowsPerPage}
-              onChange={(val) => {
-                tableState.setRowsPerPage(Number(val));
-                tableState.setPage(1);
-              }}
-              options={[
-                { value: 10, label: "10" },
-                { value: 25, label: "25" },
-                { value: 50, label: "50" },
-                { value: 100, label: "100" },
-              ]}
-              className="w-20 shadow-sm dark:shadow-none"
-            />
-          </div>
-
-          <GlobalPagination
-            currentPage={tableState.page}
-            totalPages={totalPages}
-            onPageChange={tableState.setPage}
-            itemsCount={filteredRows.length}
-            totalItems={tableState.total}
-            itemName="po"
-          />
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={filteredRows}
+        rowKey={(row: any) => row.id || row.noPo}
+        total={tableState.total}
+        page={tableState.page}
+        rowsPerPage={tableState.rowsPerPage}
+        rowsPerPageOptions={[10, 25, 50, 100]}
+        onPageChange={tableState.setPage}
+        onRowsPerPageChange={(rpp) => {
+          tableState.setRowsPerPage(rpp);
+          tableState.setPage(1);
+        }}
+        loading={tableState.loading}
+        isFetchingPage={tableState.isTransitioning}
+        rowNumber={true}
+      />
 
       <PODetailModal
         open={detailModal.openDetail}

@@ -371,7 +371,7 @@ export default function DataTable<T = any>({
               {rowNumber && (
                 <th
                   className={
-                    stickyFirstCol ? stickyFirstThCls : `${headerCellCls} w-16 text-center`
+                    stickyFirstCol ? stickyFirstThCls : `${isRounded ? 'py-5 px-3' : 'py-4 px-2'} whitespace-nowrap w-10 text-center`
                   }
                 >
                   NO
@@ -429,7 +429,7 @@ export default function DataTable<T = any>({
                       {rowNumber && (
                         <td
                           className={
-                            stickyFirstCol ? stickyFirstTdCls : `${cellCls} text-center text-slate-500 font-semibold tabular-nums`
+                            stickyFirstCol ? stickyFirstTdCls : `${isRounded ? 'py-4 px-3' : 'py-3 px-2'} align-middle text-center text-slate-500 font-semibold tabular-nums`
                           }
                         >
                           {(page - 1) * rowsPerPage + idx + 1}

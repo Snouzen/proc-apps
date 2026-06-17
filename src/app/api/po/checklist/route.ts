@@ -15,6 +15,13 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get("limit") || "10");
     const offset = Number(searchParams.get("offset") || "0");
     const q = searchParams.get("q") || "";
+    
+    // NEW FILTERS
+    const ritel = searchParams.get("ritel") || "";
+    const inisial = searchParams.get("inisial") || "";
+    const tujuan = searchParams.get("tujuan") || "";
+    const tglFrom = searchParams.get("tglFrom") || "";
+    const tglTo = searchParams.get("tglTo") || "";
 
     const pendingCondition = {
       OR: [
@@ -73,13 +80,31 @@ export async function GET(req: NextRequest) {
       ]
     } : {};
 
-    const wherePending: any = { AND: [pendingCondition, ...(q ? [searchCondition] : [])] };
-    const whereCompleted: any = { AND: [completedCondition, ...(q ? [searchCondition] : [])] };
-    const wherePendingKirim: any = { AND: [pendingKirimCondition, ...(q ? [searchCondition] : [])] };
-    const whereCompletedKirim: any = { AND: [completedKirimCondition, ...(q ? [searchCondition] : [])] };
-    const wherePendingBayar: any = { AND: [pendingBayarCondition, ...(q ? [searchCondition] : [])] };
-    const whereCompletedBayar: any = { AND: [completedBayarCondition, ...(q ? [searchCondition] : [])] };
-    const whereTotal: any = q ? searchCondition : {};
+    const baseConditions: any[] = [];
+    if (q) baseConditions.push(searchCondition);
+    if (ritel) baseConditions.push({ RitelModern: { namaPt: ritel } });
+    if (inisial) baseConditions.push({ RitelModern: { inisial } });
+    if (tujuan) baseConditions.push({ RitelModern: { tujuan } });
+    if (tglFrom && tglTo) {
+      baseConditions.push({
+        tglPo: {
+          gte: new Date(tglFrom),
+          lte: new Date(tglTo),
+        },
+      });
+    } else if (tglFrom) {
+      baseConditions.push({ tglPo: { gte: new Date(tglFrom) } });
+    } else if (tglTo) {
+      baseConditions.push({ tglPo: { lte: new Date(tglTo) } });
+    }
+
+    const wherePending: any = { AND: [pendingCondition, ...baseConditions] };
+    const whereCompleted: any = { AND: [completedCondition, ...baseConditions] };
+    const wherePendingKirim: any = { AND: [pendingKirimCondition, ...baseConditions] };
+    const whereCompletedKirim: any = { AND: [completedKirimCondition, ...baseConditions] };
+    const wherePendingBayar: any = { AND: [pendingBayarCondition, ...baseConditions] };
+    const whereCompletedBayar: any = { AND: [completedBayarCondition, ...baseConditions] };
+    const whereTotal: any = baseConditions.length > 0 ? { AND: baseConditions } : {};
 
     const filter = searchParams.get("filter") || "pending";
     const activeWhere = filter === "completed" ? whereCompleted : 
@@ -89,7 +114,7 @@ export async function GET(req: NextRequest) {
                         filter === "completed_bayar" ? whereCompletedBayar : 
                         filter === "total" ? whereTotal : wherePending;
 
-    const totalCacheKey = `checklist_summary:${q}`;
+    const totalCacheKey = `checklist_summary:${q}:${ritel}:${inisial}:${tujuan}:${tglFrom}:${tglTo}`;
     let summary = cacheGet<any>(totalCacheKey);
     let data;
 

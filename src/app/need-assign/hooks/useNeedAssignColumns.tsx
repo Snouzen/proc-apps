@@ -1,4 +1,4 @@
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef } from "@/components/data-table/types";
 import { NeedAssignRow } from "@/hooks/useNeedAssignTable";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { PoDateBadge } from "@/components/PoDateBadge";
@@ -33,59 +33,54 @@ export function useNeedAssignColumns({
 }: UseNeedAssignColumnsProps): ColumnDef<NeedAssignRow>[] {
   return [
     {
-      header: "No",
-      id: "index",
-      cell: ({ row }) => (
-        <span className="text-black dark:text-slate-200 font-bold">
-          {(tableState.page - 1) * tableState.rowsPerPage + row.index + 1}
-        </span>
-      ),
-    },
-    {
-      header: "No PO",
-      accessorKey: "noPo",
-      cell: ({ row }) => (
+      label: "No PO",
+      key: "noPo",
+      width: "w-[160px]",
+      render: (_val: any, row: NeedAssignRow) => (
         <div
           className="font-semibold text-black dark:text-slate-200 uppercase max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-          title={String(row.original.noPo || "-")}
+          title={String(row.noPo || "-")}
         >
-          {row.original.noPo || "-"}
+          {row.noPo || "-"}
         </div>
       ),
     },
     {
-      header: "Company",
-      accessorKey: "company",
-      cell: ({ row }) => (
+      label: "Company",
+      key: "company",
+      width: "w-[200px]",
+      render: (_val: any, row: NeedAssignRow) => (
         <div
           className="text-slate-800 dark:text-slate-200 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-          title={String(row.original.company || row.original?.RitelModern?.namaPt || "-")}
+          title={String(row.company || row?.RitelModern?.namaPt || "-")}
         >
-          {row.original.company || row.original?.RitelModern?.namaPt || "-"}
+          {row.company || row?.RitelModern?.namaPt || "-"}
         </div>
       ),
     },
     {
-      header: "Tujuan (Toko/DC)",
-      accessorKey: "tujuanDetail",
-      cell: ({ row }) => (
+      label: "Tujuan (Toko/DC)",
+      key: "tujuanDetail",
+      width: "w-[200px]",
+      render: (_val: any, row: NeedAssignRow) => (
         <div
           className="text-slate-800 dark:text-slate-200 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-          title={String(row.original.tujuanDetail || "-")}
+          title={String(row.tujuanDetail || "-")}
         >
-          {row.original.tujuanDetail || "-"}
+          {row.tujuanDetail || "-"}
         </div>
       ),
     },
     {
-      header: "Regional",
-      accessorKey: "regional",
-      cell: ({ row }) => {
-        const noPo = row.original.noPo;
+      label: "Regional",
+      key: "regional",
+      width: "w-[220px]",
+      render: (_val: any, row: NeedAssignRow) => {
+        const noPo = row.noPo;
         const current =
           tableState.edited[noPo]?.regional ??
-          (row.original.regional && row.original.regional !== "UNKNOWN"
-            ? row.original.regional
+          (row.regional && row.regional !== "UNKNOWN"
+            ? row.regional
             : "") ??
           "";
 
@@ -105,7 +100,7 @@ export function useNeedAssignColumns({
                     },
                   }))
                 }
-                placeholder={row.original.regional ? "—" : "Pilih…"}
+                placeholder={row.regional ? "—" : "Pilih…"}
                 options={Array.from(new Set(units.map((u) => u.namaRegional)))
                   .filter(Boolean)
                   .sort()
@@ -121,15 +116,15 @@ export function useNeedAssignColumns({
                     },
                   }))
                 }
-                className="min-w-[220px]"
+                className="w-full"
               />
             </div>
           );
         }
 
         const lockedRegional =
-          (row.original.regional && row.original.regional !== "UNKNOWN"
-            ? row.original.regional
+          (row.regional && row.regional !== "UNKNOWN"
+            ? row.regional
             : null) ??
           regional ??
           "";
@@ -142,17 +137,18 @@ export function useNeedAssignColumns({
       },
     },
     {
-      header: "Site Area",
-      accessorKey: "siteArea",
-      cell: ({ row }) => {
-        const noPo = row.original.noPo;
-        const currRegionalRaw = tableState.edited[noPo]?.regional ?? row.original.regional ?? "";
+      label: "Site Area",
+      key: "siteArea",
+      width: "w-[200px]",
+      render: (_val: any, row: NeedAssignRow) => {
+        const noPo = row.noPo;
+        const currRegionalRaw = tableState.edited[noPo]?.regional ?? row.regional ?? "";
 
         const effectiveRegional =
           (regional && regional !== "UNKNOWN" ? regional : null) ||
           (currRegionalRaw && currRegionalRaw !== "UNKNOWN" ? currRegionalRaw : "");
 
-        const currentSite = tableState.edited[noPo]?.siteArea ?? row.original.siteArea ?? "";
+        const currentSite = tableState.edited[noPo]?.siteArea ?? row.siteArea ?? "";
 
         const regKey = keyify(effectiveRegional);
         const resolvedKey =
@@ -180,7 +176,7 @@ export function useNeedAssignColumns({
                 }))
               }
               placeholder={
-                row.original.siteArea
+                row.siteArea
                   ? "—"
                   : disabled
                     ? effectiveRegional
@@ -199,68 +195,63 @@ export function useNeedAssignColumns({
                   },
                 }))
               }
-              className="min-w-40"
+              className="w-full"
             />
           </div>
         );
       },
     },
     {
-      header: "Tgl PO",
-      accessorKey: "tglPo",
-      cell: ({ row }) => (
+      label: "Tgl PO",
+      key: "tglPo",
+      width: "w-[120px]",
+      render: (_val: any, row: NeedAssignRow) => (
         <PoDateBadge
           dateNode={
             <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
-              {formatDate(row.original.tglPo)}
+              {formatDate(row.tglPo)}
             </span>
           }
           type="TAGIH"
-          buktiData={row.original.buktiTagih}
+          buktiData={row.buktiTagih}
         />
       ),
     },
     {
-      header: "Expired",
-      accessorKey: "expiredTgl",
-      cell: ({ row }) => (
+      label: "Expired",
+      key: "expiredTgl",
+      width: "w-[120px]",
+      render: (_val: any, row: NeedAssignRow) => (
         <PoDateBadge
           dateNode={
             <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
-              {formatDate(row.original.expiredTgl)}
+              {formatDate(row.expiredTgl)}
             </span>
           }
           type="PAID"
-          buktiData={row.original.buktiBayar}
+          buktiData={row.buktiBayar}
         />
       ),
     },
+
     {
-      header: "No Invoice",
-      accessorKey: "noInvoice",
-      cell: ({ row }) => (
-        <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px]">
-          {row.original.noInvoice || "-"}
-        </span>
-      ),
-    },
-    {
-      header: "Remarks",
-      accessorKey: "remarks",
-      cell: ({ row }) => {
-        const remarks = row.original.remarks;
+      label: "Remarks",
+      key: "remarks",
+      width: "w-[120px]",
+      render: (_val: any, row: NeedAssignRow) => {
+        const remarks = row.remarks;
         if (!remarks) return <span className="text-slate-300 dark:text-slate-500 text-[12px]">-</span>;
 
         return (
           <div className="flex justify-center py-2">
             <Popover.Root
-              open={hoveredPoId === row.original.id}
+              open={hoveredPoId === row.id}
               onOpenChange={(open) => !open && setHoveredPoId(null)}
             >
               <Popover.Trigger asChild>
                 <div
                   className="max-w-[120px] cursor-help outline-none"
-                  onMouseEnter={() => setHoveredPoId(row.original.id)}
+                  onMouseEnter={() => setHoveredPoId(row.id)}
                   onMouseLeave={() => setHoveredPoId(null)}
                 >
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 rounded-lg text-[10px] font-bold transition-all duration-300 hover:bg-rose-100/80 truncate w-full shadow-sm">
@@ -285,10 +276,12 @@ export function useNeedAssignColumns({
       },
     },
     {
-      header: "Jml Pcs",
-      id: "pcsTotal",
-      cell: ({ row }) => {
-        const total = (Array.isArray(row.original.Items) ? row.original.Items : []).reduce(
+      label: "Jml Pcs",
+      key: "pcsTotal",
+      width: "w-[100px]",
+      align: "right",
+      render: (_val: any, row: NeedAssignRow) => {
+        const total = (Array.isArray(row.Items) ? row.Items : []).reduce(
           (acc: number, it: any) => acc + (Number(it?.pcs) || 0),
           0,
         );
@@ -300,13 +293,16 @@ export function useNeedAssignColumns({
       },
     },
     {
-      header: "Actions",
-      cell: ({ row }) => {
-        const noPo = row.original.noPo;
+      label: "Actions",
+      key: "actions",
+      width: "w-[160px]",
+      align: "right",
+      render: (_val: any, row: NeedAssignRow) => {
+        const noPo = row.noPo;
         const st = tableState.edited[noPo] || {};
 
-        const selectedReg = st.regional !== undefined ? st.regional : row.original.regional;
-        const selectedSite = st.siteArea !== undefined ? st.siteArea : row.original.siteArea;
+        const selectedReg = st.regional !== undefined ? st.regional : row.regional;
+        const selectedSite = st.siteArea !== undefined ? st.siteArea : row.siteArea;
 
         const cleanStr = (val: any) => {
           if (!val) return "";
@@ -317,8 +313,8 @@ export function useNeedAssignColumns({
 
         const currentReg = cleanStr(selectedReg);
         const currentSite = cleanStr(selectedSite);
-        const originalReg = cleanStr(row.original.regional);
-        const originalSite = cleanStr(row.original.siteArea);
+        const originalReg = cleanStr(row.regional);
+        const originalSite = cleanStr(row.siteArea);
 
         const hasChanges = currentReg !== originalReg || currentSite !== originalSite;
         const isValid = role === "pusat" ? currentReg !== "" : currentReg !== "" && currentSite !== "";
@@ -328,9 +324,9 @@ export function useNeedAssignColumns({
           const reg =
             role === "pusat"
               ? tableState.edited[noPo]?.regional ||
-                (row.original.regional && row.original.regional !== "UNKNOWN" ? row.original.regional : null)
+                (row.regional && row.regional !== "UNKNOWN" ? row.regional : null)
               : (regional && regional !== "UNKNOWN" ? regional : null) ||
-                (row.original.regional && row.original.regional !== "UNKNOWN" ? row.original.regional : null);
+                (row.regional && row.regional !== "UNKNOWN" ? row.regional : null);
 
           if (!reg) {
             tableState.setEdited((prev: any) => ({
@@ -402,7 +398,7 @@ export function useNeedAssignColumns({
               </button>
               <button
                 className="inline-flex h-9 px-3 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold whitespace-nowrap"
-                onClick={() => detailModal.openModal(row.original)}
+                onClick={() => detailModal.openModal(row)}
               >
                 View
               </button>

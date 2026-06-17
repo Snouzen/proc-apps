@@ -554,7 +554,6 @@ function TableUnderChart({
         isFetchingPage={poTable.isFetchingPage}
         onRowClick={(po) => openDetail(po)}
         rowNumber
-        stickyFirstCol
         maxHeight="70vh"
       />
       <PODetailModal open={detailOpen} onClose={() => setDetailOpen(false)} data={detailData} />

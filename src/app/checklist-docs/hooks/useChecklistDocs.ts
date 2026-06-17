@@ -33,7 +33,13 @@ type Row = {
   UnitProduksi?: any;
 };
 
-export function useChecklistDocs() {
+export function useChecklistDocs(advancedFilters?: {
+  ritel?: string;
+  inisial?: string;
+  tujuan?: string;
+  tglFrom?: string;
+  tglTo?: string;
+}) {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -162,6 +168,12 @@ export function useChecklistDocs() {
       params.set("filter", activeFilter);
       if (debouncedSearch) params.set("q", debouncedSearch);
       
+      if (advancedFilters?.ritel) params.set("ritel", advancedFilters.ritel);
+      if (advancedFilters?.inisial) params.set("inisial", advancedFilters.inisial);
+      if (advancedFilters?.tujuan) params.set("tujuan", advancedFilters.tujuan);
+      if (advancedFilters?.tglFrom) params.set("tglFrom", advancedFilters.tglFrom);
+      if (advancedFilters?.tglTo) params.set("tglTo", advancedFilters.tglTo);
+      
       const res = await fetch(`/api/po/checklist?${params.toString()}`, {
         cache: "no-store",
         signal: controller.signal,
@@ -198,12 +210,12 @@ export function useChecklistDocs() {
       setLoading(false);
       setIsTransitioning(false);
     }
-  }, [debouncedSearch, page, role, rowsPerPage, isEditAll, activeFilter]);
+  }, [debouncedSearch, page, role, rowsPerPage, isEditAll, activeFilter, advancedFilters?.ritel, advancedFilters?.inisial, advancedFilters?.tujuan, advancedFilters?.tglFrom, advancedFilters?.tglTo]);
 
   useEffect(() => {
     if (!role) return;
     fetchData();
-  }, [fetchData, role, debouncedSearch, page, rowsPerPage, activeFilter]);
+  }, [fetchData]);
 
   const formatDate = useCallback((d: any) => {
     const date = d ? new Date(d) : null;

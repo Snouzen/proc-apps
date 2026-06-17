@@ -399,6 +399,8 @@ export async function PUT(request: Request) {
       maxPickup: updateData.maxPickup ? new Date(updateData.maxPickup) : null,
       tanggalPembayaran: updateData.tanggalPembayaran ? new Date(updateData.tanggalPembayaran) : null,
       invoiceRekon: updateData.invoiceRekon !== undefined ? updateData.invoiceRekon : undefined,
+      lokasiBarangId: updateData.lokasiBarangId !== undefined ? (updateData.lokasiBarangId || null) : undefined,
+      pembebananReturnId: updateData.pembebananReturnId !== undefined ? (updateData.pembebananReturnId || null) : undefined,
     };
 
     const updated = await prisma.dataRetur.update({
