@@ -330,7 +330,7 @@ export async function POST(request: Request) {
           generatedNo: `R-${String(nextNumber).padStart(3, '0')}/${datePattern}`,
           generatedId: crypto.randomUUID().replace(/-/g, "").substring(0, 12).toUpperCase(),
         };
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
 
       GeneratedNoRekon = generatedNo;
       finalId = generatedId;
@@ -389,8 +389,10 @@ export async function POST(request: Request) {
         const whereOr = validRtvs.map((r: any) => r.id ? { id: r.id } : { rtvCn: r.noRtv });
         const allOldData = await prisma.dataRetur.findMany({ where: { OR: whereOr } });
         
-        const updatePromises = validRtvs.map((r: any) => {
-          const whereClause: any = r.id ? { id: r.id } : { rtvCn: r.noRtv };
+        // OPTIMIZATION: Group identical payloads to minimize database queries
+        const updatesByPayload = new Map<string, { payload: any, ids: string[], rtvCns: string[] }>();
+
+        for (const r of validRtvs) {
           const oldData = allOldData.find((d: any) => r.id ? d.id === r.id : d.rtvCn === r.noRtv);
           
           const updatePayload: any = { invoiceRekon: r.refInvoice };
@@ -398,13 +400,30 @@ export async function POST(request: Request) {
              updatePayload.referensiPembayaran = oldData.invoiceRekon;
           }
           
+          const payloadKey = JSON.stringify(updatePayload);
+          if (!updatesByPayload.has(payloadKey)) {
+             updatesByPayload.set(payloadKey, { payload: updatePayload, ids: [], rtvCns: [] });
+          }
+          
+          if (r.id) {
+             updatesByPayload.get(payloadKey)!.ids.push(r.id);
+          } else {
+             updatesByPayload.get(payloadKey)!.rtvCns.push(r.noRtv);
+          }
+        }
+
+        const updatePromises = Array.from(updatesByPayload.values()).map(group => {
+          const condition = group.ids.length > 0 && group.rtvCns.length > 0 
+              ? { OR: [{ id: { in: group.ids } }, { rtvCn: { in: group.rtvCns } }] }
+              : group.ids.length > 0 ? { id: { in: group.ids } } : { rtvCn: { in: group.rtvCns } };
+
           return prisma.dataRetur.updateMany({
-            where: whereClause,
-            data: updatePayload
+            where: condition,
+            data: group.payload
           });
         });
         
-        await prisma.$transaction(updatePromises);
+        await prisma.$transaction(updatePromises, { timeout: 15000 });
       }
     }
 
