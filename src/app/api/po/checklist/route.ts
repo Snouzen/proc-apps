@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionWithRole } from "@/lib/auth";
 import { cacheGet, cacheSet, cacheClearPrefix } from "@/lib/ttl-cache";
+import { getRegionalSynonyms } from "@/lib/utils/regional";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,6 +13,16 @@ export async function GET(req: NextRequest) {
     const { session, role: safeRole, dbUser } = auth;
 
     const { searchParams } = new URL(req.url);
+
+    // --- RBAC LOGIC ---
+    let overrideRegional: string | null = null;
+    let overrideSiteArea: string | null = null;
+    if (safeRole === 'sitearea') {
+      overrideRegional = dbUser?.regional || (session as any)?.user_metadata?.regional || null;
+      overrideSiteArea = dbUser?.siteArea || (session as any)?.user_metadata?.siteArea || null;
+    } else if (safeRole === 'rm') {
+      overrideRegional = dbUser?.regional || (session as any)?.regional || null;
+    }
     const limit = Number(searchParams.get("limit") || "10");
     const offset = Number(searchParams.get("offset") || "0");
     const q = searchParams.get("q") || "";
@@ -98,6 +109,33 @@ export async function GET(req: NextRequest) {
       baseConditions.push({ tglPo: { lte: new Date(tglTo) } });
     }
 
+    // Apply RBAC filters
+    if (safeRole === "rm" && overrideRegional) {
+      const syn = getRegionalSynonyms(overrideRegional);
+      baseConditions.push({
+        OR: [
+          ...syn.map((s) => ({ regional: { contains: s, mode: "insensitive" as const } })),
+          { UnitProduksi: { OR: syn.map((s) => ({ namaRegional: { contains: s, mode: "insensitive" as const } })) } }
+        ]
+      });
+    }
+
+    if (safeRole === "sitearea" && overrideSiteArea) {
+      const sa = overrideSiteArea.trim();
+      baseConditions.push({
+        UnitProduksi: { siteArea: { contains: sa, mode: "insensitive" as const } }
+      });
+      if (overrideRegional) {
+        const syn = getRegionalSynonyms(overrideRegional);
+        baseConditions.push({
+          OR: [
+            ...syn.map((s) => ({ regional: { contains: s, mode: "insensitive" as const } })),
+            { UnitProduksi: { OR: syn.map((s) => ({ namaRegional: { contains: s, mode: "insensitive" as const } })) } }
+          ]
+        });
+      }
+    }
+
     const wherePending: any = { AND: [pendingCondition, ...baseConditions] };
     const whereCompleted: any = { AND: [completedCondition, ...baseConditions] };
     const wherePendingKirim: any = { AND: [pendingKirimCondition, ...baseConditions] };
@@ -114,7 +152,7 @@ export async function GET(req: NextRequest) {
                         filter === "completed_bayar" ? whereCompletedBayar : 
                         filter === "total" ? whereTotal : wherePending;
 
-    const totalCacheKey = `checklist_summary:${q}:${ritel}:${inisial}:${tujuan}:${tglFrom}:${tglTo}`;
+    const totalCacheKey = `checklist_summary:${safeRole}:${overrideRegional || "all"}:${overrideSiteArea || "all"}:${q}:${ritel}:${inisial}:${tujuan}:${tglFrom}:${tglTo}`;
     let summary = cacheGet<any>(totalCacheKey);
     let data;
 

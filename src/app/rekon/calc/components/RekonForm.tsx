@@ -391,7 +391,6 @@ export default function RekonForm({ calc }: { calc: any }) {
                                 <th className="px-2 py-5 min-w-[50px] text-center font-black">Pcs</th>
                                   <th className="px-4 py-5 min-w-[150px] font-black">Ref Invoice</th>
                                   <th className="px-4 py-5 min-w-[140px] font-black">Unit Produksi</th>
-                                  <th className="px-4 py-5 min-w-[140px] font-black">Pembebanan</th>
                                   <th className="px-4 py-5 min-w-[140px] font-black">Lokasi Barang</th>
                                   <th className="px-4 py-5 min-w-[140px] font-black">Tujuan</th>
                                   <th className="px-4 py-5 min-w-[120px] font-black">Produk</th>
@@ -474,7 +473,6 @@ export default function RekonForm({ calc }: { calc: any }) {
                                         </Popover.Root>
                                     </td>
                                     <td className="px-4 py-4 text-slate-500 dark:text-slate-400 text-[10px] whitespace-nowrap">{unitProduksiFromInv}</td>
-                                      <td className="px-4 py-4 text-slate-500 dark:text-slate-400 text-[10px] whitespace-nowrap">{rtv.pembebananRetur || "-"}</td>
                                       <td className="px-4 py-4 text-slate-500 dark:text-slate-400 text-[10px] whitespace-nowrap">{rtv.lokasiBarang || "-"}</td>
                                       <td className="px-4 py-4 text-slate-500 dark:text-slate-400 text-[10px] whitespace-nowrap">{rtv.tujuan || "-"}</td>
                                       <td className="px-4 py-4 text-slate-500 dark:text-slate-400 text-[10px] max-w-[120px] truncate" title={rtv.produk}>{rtv.produk || "-"}</td>

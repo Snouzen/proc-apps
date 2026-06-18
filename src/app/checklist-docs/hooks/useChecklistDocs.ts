@@ -49,7 +49,7 @@ export function useChecklistDocs(advancedFilters?: {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ totalPo: 0, pendingTagih: 0, completedTagih: 0, pendingKirim: 0, completedKirim: 0, pendingBayar: 0, completedBayar: 0 });
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("pending");
+  const [activeFilter, setActiveFilter] = useState("total");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const lastCtrlRef = useRef<AbortController | null>(null);
 

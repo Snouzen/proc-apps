@@ -328,7 +328,6 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                                           <th className="px-5 py-3">#</th>
                                           <th className="px-5 py-3">NO. RTV</th>
                                           <th className="px-5 py-3">REF. INVOICE</th>
-                                          <th className="px-5 py-3">PEMBEBANAN</th>
                                           <th className="px-5 py-3">LOKASI BARANG</th>
                                           <th className="px-5 py-3">TUJUAN</th>
                                           <th className="px-5 py-3">PRODUK</th>
@@ -340,7 +339,6 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                                           const rtvNo = typeof rtv === 'string' ? rtv : rtv.noRtv;
                                           const refInv = typeof rtv === 'object' ? rtv.refInvoice : '-';
                                           const nominal = typeof rtv === 'object' ? rtv.nominal : 0;
-                                          const pembebanan = typeof rtv === 'object' ? (rtv.pembebananRetur || '-') : '-';
                                           const lokasi = typeof rtv === 'object' ? (rtv.lokasiBarang || '-') : '-';
                                           const tujuan = typeof rtv === 'object' ? (rtv.tujuan || '-') : '-';
                                           const produk = typeof rtv === 'object' ? (rtv.produk || '-') : '-';
@@ -359,9 +357,6 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                                                 ) : (
                                                   <span className="text-[9px] text-slate-200 dark:text-slate-600 italic">belum di-set</span>
                                                 )}
-                                              </td>
-                                              <td className="px-5 py-3">
-                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{pembebanan}</span>
                                               </td>
                                               <td className="px-5 py-3">
                                                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{lokasi}</span>

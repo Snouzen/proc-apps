@@ -276,7 +276,6 @@ export const generateRekonPdf = (
       const rtvNo = typeof rtv === "string" ? rtv : rtv.noRtv;
       const refInv = typeof rtv === "object" ? rtv.refInvoice : "-";
       const nominal = typeof rtv === "object" ? rtv.nominal : 0;
-      const pembebanan = typeof rtv === "object" ? (rtv.pembebananRetur || "-") : "-";
       const lokasi = typeof rtv === "object" ? (rtv.lokasiBarang || "-") : "-";
       const produk = typeof rtv === "object" ? (rtv.produk || "-") : "-";
       const tujuan = typeof rtv === "object" ? (rtv.tujuan || "-") : "-";
@@ -287,11 +286,11 @@ export const generateRekonPdf = (
       const relatedInv = (item.invoices || []).find((inv: any) => inv.noInvoice === refInv);
       const unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
       
-      return [String(i + 1), rtvNo || "-", String(pcs), refInv || "-", unitProduksi, pembebanan, lokasi, tujuan, produk, formatRp(rpKg), formatRp(nominal || 0)];
+      return [String(i + 1), rtvNo || "-", String(pcs), refInv || "-", unitProduksi, lokasi, tujuan, produk, formatRp(rpKg), formatRp(nominal || 0)];
     });
 
     if (rtvBody.length === 0) {
-      rtvBody.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+      rtvBody.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-", "-", "-"]);
     }
 
     rtvBody.push([
@@ -304,13 +303,12 @@ export const generateRekonPdf = (
       "",
       "",
       "",
-      "",
       formatRp(item.totalRtvs || 0),
     ]);
 
     autoTable(doc, {
       startY: nextY + 3,
-      head: [["#", "No. RTV", "Pcs", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Tujuan", "Produk", "Rp/Kg", "Nominal"]],
+      head: [["#", "No. RTV", "Pcs", "Ref. Invoice", "Unit Produksi", "Lokasi Barang", "Tujuan", "Produk", "Rp/Kg", "Nominal"]],
       body: rtvBody,
       theme: "striped",
       styles: { fontSize: 6.5, cellPadding: 1.8, overflow: "linebreak" },
@@ -327,10 +325,9 @@ export const generateRekonPdf = (
         4: { cellWidth: 22 },
         5: { cellWidth: 22 },
         6: { cellWidth: 22 },
-        7: { cellWidth: 22 },
-        8: { cellWidth: 22 },
-        9: { halign: "right", cellWidth: 20 },
-        10: { halign: "right", cellWidth: 25 },
+        7: { cellWidth: 30 }, // Expanded width slightly to fill gap
+        8: { halign: "right", cellWidth: 20 },
+        9: { halign: "right", cellWidth: 25 },
       },
       didParseCell: (hookData: any) => {
         if (hookData.row.index === rtvBody.length - 1) {
