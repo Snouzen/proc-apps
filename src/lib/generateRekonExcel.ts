@@ -55,13 +55,12 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
 
       // --- RTVs ---
       wsData.push(["Detail RTV"]);
-      wsData.push(["#", "No. RTV", "Tgl RTV", "Pcs", "Ref. Invoice", "Unit Produksi", "Pembebanan", "Lokasi Barang", "Tujuan", "Produk", "Rp/Kg", "Nominal"]);
+      wsData.push(["#", "No. RTV", "Tgl RTV", "Pcs", "Ref. Invoice", "Unit Produksi", "Lokasi Barang", "Tujuan", "Produk", "Rp/Kg", "Nominal"]);
       if (item.rtvs && item.rtvs.length > 0) {
         item.rtvs.forEach((rtv: any, i: number) => {
           const rtvNo = typeof rtv === "string" ? rtv : rtv.noRtv;
           const refInv = typeof rtv === "object" ? rtv.refInvoice : "-";
           const nominal = typeof rtv === "object" ? rtv.nominal : 0;
-          const pembebanan = typeof rtv === "object" ? (rtv.pembebananRetur || "-") : "-";
           const lokasi = typeof rtv === "object" ? (rtv.lokasiBarang || "-") : "-";
           const produk = typeof rtv === "object" ? (rtv.produk || "-") : "-";
           const tujuan = typeof rtv === "object" ? (rtv.tujuan || "-") : "-";
@@ -79,7 +78,6 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
             Number(pcs),
             refInv || "-",
             unitProduksi,
-            pembebanan,
             lokasi,
             tujuan,
             produk,
@@ -88,7 +86,24 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
           ]);
         });
       } else {
-        wsData.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+        wsData.push(["-", "Tidak ada RTV", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+      }
+      wsData.push([]);
+
+      // --- Promos ---
+      wsData.push(["Detail Promo"]);
+      wsData.push(["#", "No. Promo", "Kegiatan", "Nominal"]);
+      if (item.promos && item.promos.length > 0) {
+        item.promos.forEach((p: any, i: number) => {
+          wsData.push([
+            i + 1,
+            p.nomor || "-",
+            p.kegiatan || "-",
+            Number(p.total || 0)
+          ]);
+        });
+      } else {
+        wsData.push(["-", "Tidak ada promo", "-", "-"]);
       }
       wsData.push([]);
 

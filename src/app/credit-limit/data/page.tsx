@@ -289,7 +289,7 @@ export default function CreditLimitDataPage() {
             key: "action",
             label: "Action",
             align: "center" as const,
-            width: "w-[140px]",
+            width: "w-[80px]",
             hidden: activeFilter === "submitted",
             render: (_v: any, po: any) => {
               const zone = getDueDateZone(po.expiredTgl);
@@ -317,12 +317,6 @@ export default function CreditLimitDataPage() {
               );
             },
           },
-          {
-            key: "spacer",
-            label: "",
-            width: "w-full min-w-[20px]",
-            render: () => null,
-          },
         ]}
         data={data.paginatedPOs}
         rowKey={(po: any) => po.id}
@@ -334,7 +328,7 @@ export default function CreditLimitDataPage() {
         onPageChange={data.setCurrentPage}
         hidePagination={data.totalPages <= 1}
         variant="default"
-        stickyLastCol={true}
+        stickyLastCol={false}
         rowNumber
         onRowClick={(po: any) => detail.handleViewRow(po)}
         emptyState={

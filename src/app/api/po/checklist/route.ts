@@ -251,6 +251,7 @@ export async function POST(req: NextRequest) {
         if (update.buktiBayar !== undefined) dataToUpdate.buktiBayar = update.buktiBayar;
         if (update.statusKirim !== undefined) dataToUpdate.statusKirim = update.statusKirim;
         if (update.buktiKirim !== undefined) dataToUpdate.buktiKirim = update.buktiKirim;
+        if (update.noInvoice !== undefined) dataToUpdate.noInvoice = update.noInvoice;
         
         return prisma.purchaseOrder.update({
           where: { id: update.id },

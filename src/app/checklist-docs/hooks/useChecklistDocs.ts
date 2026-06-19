@@ -87,7 +87,7 @@ export function useChecklistDocs(advancedFilters?: {
   const [detailData, setDetailData] = useState<any | null>(null);
 
   const [isEditAll, setIsEditAll] = useState(false);
-  const [editingRows, setEditingRows] = useState<Record<string, { statusTagih: boolean; buktiTagih: string; statusKirim: boolean; buktiKirim: string; statusBayar: boolean; buktiBayar: string; saving?: boolean; error?: string }>>({});
+  const [editingRows, setEditingRows] = useState<Record<string, { statusTagih: boolean; buktiTagih: string; statusKirim: boolean; buktiKirim: string; statusBayar: boolean; buktiBayar: string; noInvoice: string; saving?: boolean; error?: string }>>({});
 
   useEffect(() => {
     (async () => {
@@ -279,6 +279,7 @@ export function useChecklistDocs(advancedFilters?: {
           buktiKirim: row.buktiKirim || "",
           statusBayar: !!row.statusBayar,
           buktiBayar: row.buktiBayar || "",
+          noInvoice: row.noInvoice || "",
         }
       };
     });
@@ -300,6 +301,7 @@ export function useChecklistDocs(advancedFilters?: {
             buktiKirim: r.buktiKirim || "",
             statusBayar: !!r.statusBayar,
             buktiBayar: r.buktiBayar || "",
+            noInvoice: r.noInvoice || "",
           };
         });
         return next;
@@ -307,7 +309,7 @@ export function useChecklistDocs(advancedFilters?: {
     }
   };
 
-  const handleFieldChange = (id: string, field: "statusTagih" | "buktiTagih" | "statusKirim" | "buktiKirim" | "statusBayar" | "buktiBayar", value: any) => {
+  const handleFieldChange = (id: string, field: "statusTagih" | "buktiTagih" | "statusKirim" | "buktiKirim" | "statusBayar" | "buktiBayar" | "noInvoice", value: any) => {
     setEditingRows(prev => ({
       ...prev,
       [id]: {
@@ -339,6 +341,7 @@ export function useChecklistDocs(advancedFilters?: {
         buktiKirim: editingRows[id].buktiKirim,
         statusBayar: editingRows[id].statusBayar,
         buktiBayar: editingRows[id].buktiBayar,
+        noInvoice: editingRows[id].noInvoice,
       }));
 
       const res = await fetch("/api/po/checklist", {

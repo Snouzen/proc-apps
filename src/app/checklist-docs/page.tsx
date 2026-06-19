@@ -101,7 +101,7 @@ export default function ChecklistDocsPage() {
     { header: "NO", id: "index", cell: ({ row }) => <div className="text-slate-600 dark:text-slate-400 font-bold w-10 flex items-center justify-center">{(page - 1) * rowsPerPage + row.index + 1}</div> },
     { header: "COMPANY", id: "company", accessorKey: "company", cell: ({ row }) => <div className="w-[250px] truncate font-bold text-slate-800 dark:text-slate-200" title={row.original.company || row.original?.RitelModern?.namaPt || "-"}>{row.original.company || row.original?.RitelModern?.namaPt || "-"}</div> },
     { header: "NO PO", id: "noPo", accessorKey: "noPo", cell: ({ row }) => <div className="w-[200px] truncate font-semibold text-slate-700 dark:text-slate-300" title={row.original.noPo || "-"}>{row.original.noPo || "-"}</div> },
-    { header: "NO INVOICE", id: "noInvoice", accessorKey: "noInvoice", cell: ({ row }) => <span className="text-slate-800 dark:text-slate-200 font-semibold w-[150px] block truncate">{row.original.noInvoice || "-"}</span> },
+    { header: "NO INVOICE", id: "noInvoice", accessorKey: "noInvoice", cell: ({ row, table }) => { const { isEditAll, editingRows, handleFieldChange, role } = table.options.meta as any; const id = row.original.id; const isEditing = isEditAll || !!editingRows[id]; const canEdit = role === "pusat" || role === "rm"; if (isEditing && canEdit) { return <div className="w-[150px]"><input type="text" placeholder="No Invoice..." value={editingRows[id]?.noInvoice ?? ""} onChange={(e) => handleFieldChange(id, "noInvoice", e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner" /></div>; } return <span className="text-slate-800 dark:text-slate-200 font-semibold w-[150px] block truncate">{row.original.noInvoice || "-"}</span>; } },
     { header: "TGL PO", id: "tglPo", accessorKey: "tglPo", cell: ({ row }) => <div className="w-[120px]"><PoDateBadge dateNode={<span className="text-slate-800 dark:text-slate-300 text-[12px] font-medium">{formatDate(row.original.tglPo)}</span>} type="TAGIH" buktiData={row.original.buktiTagih} /></div> },
     { header: "EXPIRED", id: "expiredTgl", accessorKey: "expiredTgl", cell: ({ row }) => <div className="w-[120px]"><PoDateBadge dateNode={<span className="text-slate-800 dark:text-slate-300 text-[12px] font-medium">{formatDate(row.original.expiredTgl)}</span>} type="PAID" buktiData={row.original.buktiBayar} /></div> },
     { header: "REGIONAL", id: "regional", accessorKey: "regional", cell: ({ row }) => { const reg = row.original.regional || row.original?.UnitProduksi?.namaRegional || "-"; return <div className="flex items-center whitespace-nowrap"><span className="text-slate-700 dark:text-slate-300 font-semibold">{reg}</span></div>; } },
@@ -135,6 +135,7 @@ export default function ChecklistDocsPage() {
     columns: filteredColumns,
     getCoreRowModel: getCoreRowModel(),
     meta: {
+      role,
       isEditAll,
       editingRows,
       handleFieldChange,
