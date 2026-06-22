@@ -1131,7 +1131,7 @@ export async function GET(request: Request) {
                   platNomor: true,
                   RitelModern: { select: { namaPt: true, inisial: true } },
                   UnitProduksi: { select: { siteArea: true, namaRegional: true, managerOperasional: true } },
-                  CreditLimitBatch: { select: { batchCode: true, status: true } },
+                  CreditLimitBatch: { select: { batchCode: true, status: true, seqNumber: true } },
                 },
                 orderBy,
               } as any)
@@ -1194,7 +1194,7 @@ export async function GET(request: Request) {
                   UnitProduksi: {
                     select: { idRegional: true, namaRegional: true, siteArea: true, alamat: true, managerOperasional: true },
                   },
-                  CreditLimitBatch: { select: { batchCode: true, status: true } },
+                  CreditLimitBatch: { select: { batchCode: true, status: true, seqNumber: true } },
                 },
                 orderBy,
               } as any),
@@ -1247,7 +1247,7 @@ export async function GET(request: Request) {
                 // ----------------------
                 RitelModern: { select: { namaPt: true, inisial: true } },
                 UnitProduksi: { select: { siteArea: true, namaRegional: true, managerOperasional: true } },
-                CreditLimitBatch: { select: { batchCode: true, status: true } },
+                CreditLimitBatch: { select: { batchCode: true, status: true, seqNumber: true } },
               },
               orderBy,
               take,
@@ -1312,7 +1312,7 @@ export async function GET(request: Request) {
                 UnitProduksi: {
                   select: { idRegional: true, namaRegional: true, siteArea: true, managerOperasional: true },
                 },
-                CreditLimitBatch: { select: { batchCode: true, status: true } },
+                CreditLimitBatch: { select: { batchCode: true, status: true, seqNumber: true } },
               },
               orderBy,
               take,

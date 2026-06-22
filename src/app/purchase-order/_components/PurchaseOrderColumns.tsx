@@ -125,12 +125,12 @@ export function getPurchaseOrderColumns({
       ),
     },
     {
-      key: "unitProduksi",
-      label: "UNIT PRODUKSI",
+      key: "regional",
+      label: "REGIONAL",
       width: "w-[180px] min-w-[180px]",
       render: (_v: any, po: any) => (
         <span className="text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">
-          {po.UnitProduksi?.namaRegional || po.regional || "-"}
+          {po.regional || "-"}
         </span>
       ),
     },

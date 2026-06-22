@@ -437,17 +437,42 @@ export function useCreditLimitApproval({
   }, [poData, search, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
 
   const batchGroups = useMemo(() => {
-    const map = new Map<string, { batchCode: string; pos: any[]; isArchived: boolean }>();
+    const map = new Map<string, { batchCode: string; pos: any[]; isArchived: boolean; isBatchOpen: boolean; seqNumber: number; isBatchUncloseable: boolean }>();
+    let maxSeq = 0;
+
     filteredPo.forEach((po) => {
       const code = po.CreditLimitBatch?.batchCode || "Tanpa Batch";
-      if (!map.has(code)) map.set(code, { batchCode: code, pos: [], isArchived: true });
+      const seq = po.CreditLimitBatch?.seqNumber || 0;
+      if (seq > maxSeq) maxSeq = seq;
+      
+      if (!map.has(code)) {
+        map.set(code, { 
+          batchCode: code, 
+          pos: [], 
+          isArchived: true, 
+          isBatchOpen: po.CreditLimitBatch?.status === "OPEN",
+          seqNumber: seq,
+          isBatchUncloseable: false,
+        });
+      }
+      
       const group = map.get(code)!;
       group.pos.push(po);
       if (po.statusCreditLimit === "REQUESTED" || po.statusCreditLimit === "APPROVED") {
         group.isArchived = false;
       }
     });
-    return Array.from(map.values()).sort((a, b) => {
+
+    const groups = Array.from(map.values());
+    
+    // Set isBatchUncloseable: must be CLOSED, distance <= 1, and PO count < 50
+    groups.forEach((g) => {
+      if (!g.isBatchOpen && g.seqNumber >= maxSeq - 1 && g.pos.length < 50) {
+        g.isBatchUncloseable = true;
+      }
+    });
+
+    return groups.sort((a, b) => {
       if (a.isArchived && !b.isArchived) return 1;
       if (!a.isArchived && b.isArchived) return -1;
       return b.batchCode.localeCompare(a.batchCode);
@@ -477,6 +502,88 @@ export function useCreditLimitApproval({
     });
   };
 
+  const handleCloseBatch = async (batchCode: string) => {
+    const result = await Swal.fire({
+      title: "Close Batch?",
+      text: `Batch ${batchCode} akan ditutup. PO baru yang diajukan credit limit akan masuk ke batch berikutnya.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#f59e0b",
+      cancelButtonColor: "#94a3b8",
+      confirmButtonText: "Ya, Close Batch",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch("/api/po/credit-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "closeBatch", batchCode }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || "Gagal menutup batch");
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Batch Ditutup!",
+        text: `${batchCode} berhasil di-close.`,
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
+      await fetchData();
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "Gagal", text: err?.message || "Terjadi kesalahan sistem" });
+    }
+  };
+
+  const handleUncloseBatch = async (batchCode: string) => {
+    const result = await Swal.fire({
+      title: "Unclose Batch?",
+      text: `Batch ${batchCode} akan dibuka kembali. PO baru akan masuk ke batch ini.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3b82f6",
+      cancelButtonColor: "#94a3b8",
+      confirmButtonText: "Ya, Buka Batch",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch("/api/po/credit-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "uncloseBatch", batchCode }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || "Gagal membuka batch");
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Batch Dibuka!",
+        text: `${batchCode} berhasil di-unclose.`,
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
+      await fetchData();
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "Gagal", text: err?.message || "Terjadi kesalahan sistem" });
+    }
+  };
+
   return {
     loading,
     role,
@@ -493,5 +600,7 @@ export function useCreditLimitApproval({
     handleChecklistAllND,
     handleExportExcel,
     handleUpdateNDDetails,
+    handleCloseBatch,
+    handleUncloseBatch,
   };
 }

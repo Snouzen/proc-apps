@@ -94,6 +94,8 @@ export default function CreditLimitApprovalPage() {
               pos={batch.pos}
               isExpanded={data.expandedBatches.has(batch.batchCode)}
               isArchived={batch.isArchived}
+              isBatchOpen={batch.isBatchOpen}
+              isBatchUncloseable={batch.isBatchUncloseable}
               onToggle={() => data.toggleBatch(batch.batchCode)}
               onAction={data.handleAction}
               onViewRow={detail.handleViewRow}
@@ -102,6 +104,8 @@ export default function CreditLimitApprovalPage() {
               onToggleND={data.handleToggleND}
               onChecklistAllND={data.handleChecklistAllND}
               onUpdateNDDetails={data.handleUpdateNDDetails}
+              onCloseBatch={data.handleCloseBatch}
+              onUncloseBatch={data.handleUncloseBatch}
             />
           ))}
         </div>

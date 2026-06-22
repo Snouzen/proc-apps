@@ -30,11 +30,11 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const { poId, poIds, action, remarks } = body;
 
-    if (!poId && (!poIds || !Array.isArray(poIds))) {
+    if (action !== "closeBatch" && action !== "uncloseBatch" && !poId && (!poIds || !Array.isArray(poIds))) {
       return NextResponse.json({ error: "poId(s) and action are required" }, { status: 400 });
     }
 
-    const validActions = ["request", "reRequest", "approve", "approveDireksi", "reject", "approveAll", "approveDireksiAll", "updateKodeVendor", "toggleND", "toggleAllND", "updateNDDetails"];
+    const validActions = ["request", "reRequest", "approve", "approveDireksi", "reject", "approveAll", "approveDireksiAll", "updateKodeVendor", "toggleND", "toggleAllND", "updateNDDetails", "closeBatch", "uncloseBatch"];
     if (!validActions.includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
@@ -46,31 +46,30 @@ export async function POST(req: Request) {
     // ── REQUEST: Auto-assign to batch ──────────────────────────────────
     if (action === "request") {
       const result = await prisma.$transaction(async (tx: any) => {
-        // 1. Find an OPEN batch
+        // 1. Find an OPEN batch (oldest first, so reopened batch gets priority)
         let batch = await tx.creditLimitBatch.findFirst({
           where: { status: "OPEN" },
+          orderBy: { seqNumber: "asc" },
           include: { _count: { select: { PurchaseOrders: true } } },
         });
 
-        // 2. If batch exists but is full (>= 50), close it and clear reference
+        // 2. If batch exists but is full (>= 50), auto-close it
         if (batch && batch._count.PurchaseOrders >= 50) {
           await tx.creditLimitBatch.update({
             where: { id: batch.id },
             data: { status: "CLOSED" },
           });
-          batch = null; // force create new batch
+          batch = null;
         }
 
         // 3. If no open batch, create a new one
         if (!batch) {
-          // Get the next sequence number (never resets)
           const lastBatch = await tx.creditLimitBatch.findFirst({
             orderBy: { seqNumber: "desc" },
             select: { seqNumber: true },
           });
           const nextSeq = (lastBatch?.seqNumber || 0) + 1;
 
-          // Generate batch code: CL-001/05/2026
           const now = new Date();
           const mm = String(now.getMonth() + 1).padStart(2, "0");
           const yyyy = String(now.getFullYear());
@@ -96,7 +95,7 @@ export async function POST(req: Request) {
           },
         });
 
-        // 5. Check if batch is now full (50 POs)
+        // 5. Hard cap: auto-close at 50 POs
         const updatedCount = await tx.purchaseOrder.count({
           where: { creditLimitBatchId: batch.id },
         });
@@ -230,6 +229,79 @@ export async function POST(req: Request) {
         },
       });
       return NextResponse.json({ success: true, data: po });
+    }
+
+    // ── CLOSE BATCH (MANUAL) ─────────────────────────────────────────
+    if (action === "closeBatch") {
+      if (safeRole !== "pusat") {
+        return NextResponse.json({ error: "Hanya Pusat yang dapat menutup batch" }, { status: 403 });
+      }
+      const { batchCode } = body;
+      if (!batchCode) {
+        return NextResponse.json({ error: "batchCode is required" }, { status: 400 });
+      }
+      const batch = await prisma.creditLimitBatch.findUnique({
+        where: { batchCode },
+      });
+      if (!batch) {
+        return NextResponse.json({ error: "Batch tidak ditemukan" }, { status: 404 });
+      }
+      if (batch.status === "CLOSED") {
+        return NextResponse.json({ error: "Batch sudah ditutup" }, { status: 400 });
+      }
+      await prisma.creditLimitBatch.update({
+        where: { id: batch.id },
+        data: { status: "CLOSED" },
+      });
+      return NextResponse.json({ success: true, message: `Batch ${batchCode} berhasil ditutup` });
+    }
+
+    // ── UNCLOSE BATCH (MANUAL) ───────────────────────────────────────
+    if (action === "uncloseBatch") {
+      if (safeRole !== "pusat") {
+        return NextResponse.json({ error: "Hanya Pusat yang dapat membuka kembali batch" }, { status: 403 });
+      }
+      const { batchCode } = body;
+      if (!batchCode) {
+        return NextResponse.json({ error: "batchCode is required" }, { status: 400 });
+      }
+
+      // Check distance rule and PO count
+      const result = await prisma.$transaction(async (tx: any) => {
+        const batch = await tx.creditLimitBatch.findUnique({
+          where: { batchCode },
+          include: { _count: { select: { PurchaseOrders: true } } },
+        });
+
+        if (!batch) {
+          throw new Error("Batch tidak ditemukan");
+        }
+        if (batch.status === "OPEN") {
+          throw new Error("Batch masih terbuka");
+        }
+        if (batch._count.PurchaseOrders >= 50) {
+          throw new Error("Batch sudah mencapai batas maksimal 50 PO");
+        }
+
+        const lastBatch = await tx.creditLimitBatch.findFirst({
+          orderBy: { seqNumber: "desc" },
+          select: { seqNumber: true },
+        });
+
+        const maxSeq = lastBatch?.seqNumber || 0;
+        if (batch.seqNumber < maxSeq - 1) {
+          throw new Error("Batch terlalu lama, tidak bisa dibuka kembali (hanya jarak 1 batch)");
+        }
+
+        await tx.creditLimitBatch.update({
+          where: { id: batch.id },
+          data: { status: "OPEN" },
+        });
+
+        return batch;
+      });
+
+      return NextResponse.json({ success: true, message: `Batch ${batchCode} berhasil dibuka kembali` });
     }
 
     return NextResponse.json({ error: "Unhandled action" }, { status: 400 });
