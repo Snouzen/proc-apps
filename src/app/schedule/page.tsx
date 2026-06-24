@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, Fragment } from "react";
-import { DataTable } from "@/components/data-table";
+import { DataTableV2 } from "@/components/data-table/DataTableV2";
+import { getScheduleColumns } from "./components/ScheduleColumns";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -39,34 +40,7 @@ import ScheduleFilters from "./components/ScheduleFilters";
 import { ActionButton, StandardTooltip } from "@/components/ui/action-button";
 import ScheduleModals from "./components/ScheduleModals";
 
-// ── Helper: strip junk site area text ──────────────────────────────────────
-function cleanSiteArea(val?: string | null): string {
-  if (!val) return "-";
-  const lower = val.trim().toLowerCase();
-  if (
-    lower === "unknown" ||
-    lower === "" ||
-    lower.includes("unit produksi") ||
-    lower.includes("belum ada")
-  )
-    return "-";
-  return val.trim();
-}
-
-// ── Skeleton row ────────────────────────────────────────────────────────────
-function SkeletonRow() {
-  return (
-    <tr className="animate-pulse border-b border-slate-50">
-      {["w-8", "w-48", "w-16", "w-24", "w-24", "w-24", "w-28", "w-24"].map(
-        (w, i) => (
-          <td key={i} className="px-5 py-3.5">
-            <div className={`h-3.5 bg-slate-100 rounded-md ${w}`} />
-          </td>
-        ),
-      )}
-    </tr>
-  );
-}
+// SkeletonRow removed as DataTableV2 has its own skeleton
 
 export default function SchedulePage() {
   const hook = useSchedule();
@@ -103,6 +77,8 @@ export default function SchedulePage() {
     stats,
     totalPages
   } = hook;
+
+  const columns = useMemo(() => getScheduleColumns((d: any) => d ? format(new Date(d), "dd MMM yyyy") : "-"), []);
 
   if (loading) {
     return (
@@ -150,248 +126,42 @@ export default function SchedulePage() {
       <ScheduleFilters hook={hook} />
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
-      <DataTable
-          columns={[
-            {
-              key: "noPo",
-              label: "Purchase Order",
-              width: "w-[260px]",
-              render: (_v: any, po: any) => (
-                <div>
-                  <p className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">{po.noPo}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate max-w-[230px]">{po.RitelModern?.namaPt || "-"}</p>
-                </div>
-              ),
-            },
-            {
-              key: "inisial",
-              label: "Inisial",
-              width: "w-[90px]",
-              render: (_v: any, po: any) => (
-                <StandardTooltip content={po.RitelModern?.inisial || "-"}>
-                  <span 
-                    className="inline-block px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[80px] shadow-sm cursor-pointer"
-                  >
-                    {po.RitelModern?.inisial || "-"}
-                  </span>
-                </StandardTooltip>
-              ),
-            },
-            {
-              key: "siteArea",
-              label: "Site Area",
-              width: "w-[160px]",
-              render: (_v: any, po: any) => {
-                const site = cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea);
-                return (
-                  <div className="flex items-center gap-1.5">
-                    {site !== "-" && <MapPin size={11} className="text-slate-300 dark:text-slate-500 shrink-0" />}
-                    <span className={`text-xs font-medium ${site === "-" ? "text-slate-300 dark:text-slate-600" : "text-slate-600 dark:text-slate-300"}`}>{site}</span>
-                  </div>
-                );
-              },
-            },
-            {
-              key: "tujuanDetail",
-              label: "Tujuan",
-              width: "w-[200px]",
-              render: (_v: any, po: any) => (
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate max-w-[200px]" title={po.tujuanDetail || "-"}>{po.tujuanDetail || "-"}</p>
-              ),
-            },
-            {
-              key: "tglPo",
-              label: "Tgl PO",
-              width: "w-[120px]",
-              render: (_v: any, po: any) => (
-                <PoDateBadge 
-                  dateNode={<span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">{po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}</span>}
-                  type="TAGIH"
-                  buktiData={po.buktiTagih}
-                />
-              ),
-            },
-            {
-              key: "expiredTgl",
-              label: "Due Date",
-              width: "w-[110px]",
-              render: (_v: any, po: any) => (
-                <PoDateBadge 
-                  dateNode={
-                    <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${
-                      po.expiredTgl && new Date(po.expiredTgl).getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000
-                        ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"
-                    }`}>
-                      {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
-                    </span>
-                  }
-                  type="PAID"
-                  buktiData={po.buktiBayar}
-                />
-              ),
-            },
-            {
-              key: "tglkirim",
-              label: "Tgl Kirim",
-              width: "w-[130px]",
-              align: "center" as const,
-              render: (_v: any, po: any) => {
-                const isScheduled = !!po.tglkirim;
-                return isScheduled ? (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 rounded-md text-[10px] font-black uppercase tracking-tight">
-                    <CalendarDays size={11} className="shrink-0" />
-                    {format(new Date(po.tglkirim), "dd MMM yy")}
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-700 rounded-md text-[10px] font-bold uppercase tracking-tight italic">
-                    <Clock size={11} className="shrink-0" />
-                    Belum Ada
-                  </div>
-                );
-              },
-            },
-            {
-              key: "pcsTotal",
-              label: "Pcs",
-              align: "center" as const,
-              width: "w-[60px]",
-              render: (_v: any, po: any) => (
-                <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">{Number(po.pcsTotal || 0).toLocaleString("id-ID")}</span>
-              ),
-            },
-            {
-              key: "pcsKirim",
-              label: "Pcs Kirim",
-              align: "center" as const,
-              width: "w-[140px]",
-              render: (_v: any, po: any) => {
-                const itemsCount = Number(po.itemsCount || 0);
-                const isMulti = itemsCount > 1;
-                const isExpanded = expandedRows.has(po.id);
-                return (
-                  <div onClick={(e) => e.stopPropagation()}>
-                    {isMulti ? (
-                      <div className="flex items-center gap-2 justify-center">
-                        <span className="flex items-center justify-center w-24 h-9 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black tabular-nums shadow-sm">
-                          {Number(po.pcsKirimTotal || 0).toLocaleString("id-ID")}
-                        </span>
-                        <button 
-                          onClick={() => toggleRow(po.id)}
-                          className={`p-1.5 rounded-lg transition-all active:scale-95 shadow-sm border ${
-                            isExpanded 
-                            ? "bg-rose-500 text-white border-rose-600 shadow-rose-100" 
-                            : "bg-white dark:bg-slate-800 text-indigo-500 border-slate-200 dark:border-slate-700 hover:border-indigo-300 hover:text-indigo-600 shadow-slate-100"
-                          }`}
-                          title={isExpanded ? "Tutup" : "Breakdown PO"}
-                        >
-                          {isExpanded ? <X size={10} strokeWidth={4} /> : <PencilLine size={10} strokeWidth={3} />}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="relative inline-block group/input">
-                        <input
-                          type="number"
-                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                          min="0"
-                          max={po.pcsTotal || 0}
-                          value={po.pcsKirimTotal ?? 0}
-                          onFocus={(e) => e.target.select()}
-                          onBlur={(e) => {
-                            const val = parseInt(e.target.value.toString()) || 0;
-                            handleUpdatePcsKirim(po.id, val.toString());
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") e.currentTarget.blur();
-                          }}
-                          disabled={savingPcsId === po.id}
-                          className={`w-24 h-9 px-2 text-xs font-black text-center bg-slate-50 dark:bg-slate-800 border rounded-xl outline-none transition-all tabular-nums shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                            Number(po.pcsKirimTotal) > Number(po.pcsTotal)
-                              ? "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-900/20 shadow-[0_0_8px_rgba(225,29,72,0.2)]"
-                              : savingPcsId === po.id
-                              ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 animate-pulse"
-                              : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white dark:focus:bg-slate-900 text-slate-700 dark:text-slate-200 font-black"
-                          }`}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const numVal = Number(val);
-                            const max = Number(po.pcsTotal || 0);
-                            const finalVal = numVal > max ? max.toString() : val;
-                            setPoData((prev) => prev.map((p) => p.id === po.id ? { ...p, pcsKirimTotal: finalVal } : p));
-                          }}
-                        />
-                        {savingPcsId !== po.id && Number(po.pcsKirimTotal) > 0 && (
-                          <div className="absolute -right-1 -top-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" title="Tersimpan" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              },
-            },
-            {
-              key: "actions",
-              label: "Action",
-              align: "center" as const,
-              width: "w-[130px]",
-              render: (_v: any, po: any) => {
-                const isScheduled = !!po.tglkirim;
-                return (
-                  <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    <ActionButton
-                      icon={Calendar}
-                      tooltip={isScheduled ? "Ubah Jadwal" : "Set Jadwal"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedPo(po);
-                        setSelectedDate(po.tglkirim ? po.tglkirim.split("T")[0] : "");
-                        setNamaSupir(po.namaSupir || "");
-                        setPlatNomor(po.platNomor || "");
-                        setModalOpen(true);
-                      }}
-                      variant={isScheduled ? "slate" : "indigo"}
-                      loading={updatingId === po.id}
-                    />
-                    
-                    <ActionButton
-                      icon={RotateCcw}
-                      tooltip="Reject / Unassign"
-                      onClick={(e) => { e.stopPropagation(); handleRejectPo(po); }}
-                      variant="rose"
-                      loading={updatingId === po.id}
-                    />
-
-                    {isScheduled && (
-                      <ActionButton
-                        icon={Eye}
-                        tooltip="Preview & Download"
-                        onClick={(e) => { e.stopPropagation(); handlePreviewPdf(po); }}
-                        variant="indigo"
-                      />
-                    )}
-                  </div>
-                );
-              },
-            },
-          ]}
+      <DataTableV2
+          columns={columns}
           data={paginatedPOs}
-          rowKey={(po: any) => po.id}
+          getRowId={(row: any) => row.id}
           loading={loading}
-          skeletonRows={6}
-          total={filteredPo.length}
-          page={currentPage}
-          rowsPerPage={itemsPerPage}
-          onPageChange={setCurrentPage}
-          hidePagination={totalPages <= 1}
-          variant="default"
-          rowNumber
-          onRowClick={(po: any) => handleViewRow(po)}
+          isFetching={false}
+          manualPagination={true}
+          pageCount={totalPages}
+          pagination={{ pageIndex: Math.max(0, currentPage - 1), pageSize: itemsPerPage }}
+          onPaginationChange={(updater: any) => {
+            const next = typeof updater === "function" ? updater({ pageIndex: Math.max(0, currentPage - 1), pageSize: itemsPerPage }) : updater;
+            setCurrentPage(next.pageIndex + 1);
+          }}
+          meta={{
+            expandedRows,
+            toggleRow,
+            handleUpdateItemPcsKirim,
+            handleUpdatePcsKirim,
+            savingPcsId,
+            setPoData,
+            setSelectedPo,
+            setSelectedDate,
+            setNamaSupir,
+            setPlatNomor,
+            setModalOpen,
+            updatingId,
+            handleRejectPo,
+            handlePreviewPdf,
+          }}
           expandedKeys={expandedRows}
-          onToggleExpand={toggleRow}
+          onRowClick={(po: any) => handleViewRow(po)}
           renderExpandedRow={(po: any) => {
             if (!po.Items) return null;
             return (
               <tr className="bg-slate-50/10 dark:bg-slate-900/10" onClick={(e) => e.stopPropagation()}>
-                <td colSpan={14} className="px-5 py-6">
+                <td colSpan={14} className="px-5 py-6 border-b border-slate-100 dark:border-slate-800">
                   <div className="bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-[32px] overflow-x-auto overflow-y-hidden shadow-2xl shadow-indigo-200/10 dark:shadow-none mx-4">
                     <table className="w-full text-left">
                       <thead>
@@ -414,12 +184,12 @@ export default function SchedulePage() {
                                   onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                   min={0}
                                   max={item.pcs}
-                                  value={item.pcsKirim}
+                                  value={item.pcsKirim ?? ""}
                                   onChange={(e) => {
                                     const val = e.target.value;
                                     const numVal = Number(val);
-                                    const finalVal = numVal > item.pcs ? item.pcs : numVal;
-                                    setPoData(prev => prev.map(p => 
+                                    const finalVal = numVal > item.pcs ? item.pcs.toString() : val === "" ? "" : numVal.toString();
+                                    setPoData((prev: any) => prev.map((p: any) => 
                                       p.id === po.id 
                                       ? { ...p, Items: p.Items.map((it: any) => it.id === item.id ? { ...it, pcsKirim: finalVal } : it) } 
                                       : p
@@ -444,19 +214,7 @@ export default function SchedulePage() {
               </tr>
             );
           }}
-          emptyState={
-            <div className="flex flex-col items-center gap-3 py-16">
-              <div className="p-4 bg-slate-50 rounded-2xl">
-                <CalendarDays size={28} className="text-slate-300" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-500">Tidak ada data</p>
-                <p className="text-xs text-slate-400 mt-0.5">Semua PO sudah dijadwalkan atau tidak ada yang cocok.</p>
-              </div>
-            </div>
-          }
-          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden"
-        />
+      />
 
       <ScheduleModals
         modalOpen={modalOpen}

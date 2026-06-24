@@ -55,11 +55,6 @@ export default function BranchPage() {
     setInlineDateFrom,
     inlineDateTo,
     setInlineDateTo,
-    colsOpen,
-    setColsOpen,
-    visibleCols,
-    setVisibleCols,
-    toggleAllCols,
     selectedDetailPO,
     setSelectedDetailPO,
     regionalOptions,
@@ -186,11 +181,6 @@ export default function BranchPage() {
         setInlineDateFrom={setInlineDateFrom}
         inlineDateTo={inlineDateTo}
         setInlineDateTo={setInlineDateTo}
-        colsOpen={colsOpen}
-        setColsOpen={setColsOpen}
-        visibleCols={visibleCols}
-        setVisibleCols={setVisibleCols}
-        toggleAllCols={toggleAllCols}
         setSelectedDateKey={setSelectedDateKey}
         setSelectedDetailPO={setSelectedDetailPO}
       />

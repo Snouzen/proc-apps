@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import PODetailModal from "@/components/po-detail-modal";
 import { Search } from "lucide-react";
-import { DataTable } from "@/components/data-table";
+import { DataTableV2 } from "@/components/data-table/DataTableV2";
 import { PoDateBadge } from "@/components/PoDateBadge";
 
 import { useAuthData } from "@/hooks/useAuthData";
@@ -98,22 +98,26 @@ export default function NeedAssignPage() {
         </div>
       </div>
 
-      <DataTable
-        columns={columns}
+      <DataTableV2
+        columns={columns as any}
         data={filteredRows}
-        rowKey={(row: any) => row.id || row.noPo}
-        total={tableState.total}
-        page={tableState.page}
-        rowsPerPage={tableState.rowsPerPage}
-        rowsPerPageOptions={[10, 25, 50, 100]}
-        onPageChange={tableState.setPage}
-        onRowsPerPageChange={(rpp) => {
-          tableState.setRowsPerPage(rpp);
-          tableState.setPage(1);
-        }}
+        getRowId={(row: any) => row.id || row.noPo}
         loading={tableState.loading}
-        isFetchingPage={tableState.isTransitioning}
-        rowNumber={true}
+        isFetching={tableState.isTransitioning}
+        manualPagination={true}
+        pageCount={Math.max(1, Math.ceil(tableState.total / tableState.rowsPerPage))}
+        pagination={{ pageIndex: Math.max(0, tableState.page - 1), pageSize: tableState.rowsPerPage }}
+        onPaginationChange={(updater: any) => {
+          const next = typeof updater === "function" 
+            ? updater({ pageIndex: Math.max(0, tableState.page - 1), pageSize: tableState.rowsPerPage }) 
+            : updater;
+          if (next.pageSize !== tableState.rowsPerPage) {
+            tableState.setRowsPerPage(next.pageSize);
+            tableState.setPage(1);
+          } else {
+            tableState.setPage(next.pageIndex + 1);
+          }
+        }}
       />
 
       <PODetailModal

@@ -1,4 +1,5 @@
-import { ColumnDef } from "@/components/data-table/types";
+import React from "react";
+import { createColumnHelper } from "@tanstack/react-table";
 import { NeedAssignRow } from "@/hooks/useNeedAssignTable";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { PoDateBadge } from "@/components/PoDateBadge";
@@ -18,6 +19,8 @@ interface UseNeedAssignColumnsProps {
   formatDate: (d: any) => string;
 }
 
+const helper = createColumnHelper<NeedAssignRow>();
+
 export function useNeedAssignColumns({
   role,
   regional,
@@ -30,57 +33,67 @@ export function useNeedAssignColumns({
   siteRegionalKeys,
   keyify,
   formatDate,
-}: UseNeedAssignColumnsProps): ColumnDef<NeedAssignRow>[] {
+}: UseNeedAssignColumnsProps) {
   return [
-    {
-      label: "No PO",
-      key: "noPo",
-      width: "w-[160px]",
-      render: (_val: any, row: NeedAssignRow) => (
+    helper.display({
+      id: "no",
+      header: "No",
+      size: 60,
+      meta: { align: "center" },
+      cell: ({ row }) => {
+        const no = (tableState.page - 1) * tableState.rowsPerPage + row.index + 1;
+        return (
+          <span className="text-slate-500 font-medium text-xs">
+            {no}
+          </span>
+        );
+      },
+    }),
+    helper.accessor("noPo", {
+      header: "No PO",
+      size: 160,
+      cell: ({ row }) => (
         <div
           className="font-semibold text-black dark:text-slate-200 uppercase max-w-[200px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-          title={String(row.noPo || "-")}
+          title={String(row.original.noPo || "-")}
         >
-          {row.noPo || "-"}
+          {row.original.noPo || "-"}
         </div>
       ),
-    },
-    {
-      label: "Company",
-      key: "company",
-      width: "w-[200px]",
-      render: (_val: any, row: NeedAssignRow) => (
+    }),
+    helper.accessor("company", {
+      header: "Company",
+      size: 200,
+      cell: ({ row }) => (
         <div
           className="text-slate-800 dark:text-slate-200 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-          title={String(row.company || row?.RitelModern?.namaPt || "-")}
+          title={String(row.original.company || row.original?.RitelModern?.namaPt || "-")}
         >
-          {row.company || row?.RitelModern?.namaPt || "-"}
+          {row.original.company || row.original?.RitelModern?.namaPt || "-"}
         </div>
       ),
-    },
-    {
-      label: "Tujuan (Toko/DC)",
-      key: "tujuanDetail",
-      width: "w-[200px]",
-      render: (_val: any, row: NeedAssignRow) => (
+    }),
+    helper.accessor("tujuanDetail", {
+      header: "Tujuan (Toko/DC)",
+      size: 200,
+      cell: ({ row }) => (
         <div
           className="text-slate-800 dark:text-slate-200 font-medium max-w-[250px] overflow-x-auto whitespace-nowrap scrollbar-hide"
-          title={String(row.tujuanDetail || "-")}
+          title={String(row.original.tujuanDetail || "-")}
         >
-          {row.tujuanDetail || "-"}
+          {row.original.tujuanDetail || "-"}
         </div>
       ),
-    },
-    {
-      label: "Regional",
-      key: "regional",
-      width: "w-[220px]",
-      render: (_val: any, row: NeedAssignRow) => {
-        const noPo = row.noPo;
+    }),
+    helper.accessor("regional", {
+      header: "Regional",
+      size: 220,
+      cell: ({ row }) => {
+        const noPo = row.original.noPo;
         const current =
           tableState.edited[noPo]?.regional ??
-          (row.regional && row.regional !== "UNKNOWN"
-            ? row.regional
+          (row.original.regional && row.original.regional !== "UNKNOWN"
+            ? row.original.regional
             : "") ??
           "";
 
@@ -100,7 +113,7 @@ export function useNeedAssignColumns({
                     },
                   }))
                 }
-                placeholder={row.regional ? "—" : "Pilih…"}
+                placeholder={row.original.regional ? "—" : "Pilih…"}
                 options={Array.from(new Set(units.map((u) => u.namaRegional)))
                   .filter(Boolean)
                   .sort()
@@ -123,8 +136,8 @@ export function useNeedAssignColumns({
         }
 
         const lockedRegional =
-          (row.regional && row.regional !== "UNKNOWN"
-            ? row.regional
+          (row.original.regional && row.original.regional !== "UNKNOWN"
+            ? row.original.regional
             : null) ??
           regional ??
           "";
@@ -135,20 +148,19 @@ export function useNeedAssignColumns({
           </span>
         );
       },
-    },
-    {
-      label: "Site Area",
-      key: "siteArea",
-      width: "w-[200px]",
-      render: (_val: any, row: NeedAssignRow) => {
-        const noPo = row.noPo;
-        const currRegionalRaw = tableState.edited[noPo]?.regional ?? row.regional ?? "";
+    }),
+    helper.accessor("siteArea", {
+      header: "Site Area",
+      size: 200,
+      cell: ({ row }) => {
+        const noPo = row.original.noPo;
+        const currRegionalRaw = tableState.edited[noPo]?.regional ?? row.original.regional ?? "";
 
         const effectiveRegional =
           (regional && regional !== "UNKNOWN" ? regional : null) ||
           (currRegionalRaw && currRegionalRaw !== "UNKNOWN" ? currRegionalRaw : "");
 
-        const currentSite = tableState.edited[noPo]?.siteArea ?? row.siteArea ?? "";
+        const currentSite = tableState.edited[noPo]?.siteArea ?? row.original.siteArea ?? "";
 
         const regKey = keyify(effectiveRegional);
         const resolvedKey =
@@ -176,7 +188,7 @@ export function useNeedAssignColumns({
                 }))
               }
               placeholder={
-                row.siteArea
+                row.original.siteArea
                   ? "—"
                   : disabled
                     ? effectiveRegional
@@ -200,58 +212,54 @@ export function useNeedAssignColumns({
           </div>
         );
       },
-    },
-    {
-      label: "Tgl PO",
-      key: "tglPo",
-      width: "w-[120px]",
-      render: (_val: any, row: NeedAssignRow) => (
+    }),
+    helper.accessor("tglPo", {
+      header: "Tgl PO",
+      size: 120,
+      cell: ({ row }) => (
         <PoDateBadge
           dateNode={
             <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
-              {formatDate(row.tglPo)}
+              {formatDate(row.original.tglPo)}
             </span>
           }
           type="TAGIH"
-          buktiData={row.buktiTagih}
+          buktiData={row.original.buktiTagih}
         />
       ),
-    },
-    {
-      label: "Expired",
-      key: "expiredTgl",
-      width: "w-[120px]",
-      render: (_val: any, row: NeedAssignRow) => (
+    }),
+    helper.accessor("expiredTgl", {
+      header: "Expired",
+      size: 120,
+      cell: ({ row }) => (
         <PoDateBadge
           dateNode={
             <span className="text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap text-[12px] min-w-[50px] inline-block text-left">
-              {formatDate(row.expiredTgl)}
+              {formatDate(row.original.expiredTgl)}
             </span>
           }
           type="PAID"
-          buktiData={row.buktiBayar}
+          buktiData={row.original.buktiBayar}
         />
       ),
-    },
-
-    {
-      label: "Remarks",
-      key: "remarks",
-      width: "w-[120px]",
-      render: (_val: any, row: NeedAssignRow) => {
-        const remarks = row.remarks;
+    }),
+    helper.accessor("remarks", {
+      header: "Remarks",
+      size: 120,
+      cell: ({ row }) => {
+        const remarks = row.original.remarks;
         if (!remarks) return <span className="text-slate-300 dark:text-slate-500 text-[12px]">-</span>;
 
         return (
           <div className="flex justify-center py-2">
             <Popover.Root
-              open={hoveredPoId === row.id}
+              open={hoveredPoId === row.original.id}
               onOpenChange={(open) => !open && setHoveredPoId(null)}
             >
               <Popover.Trigger asChild>
                 <div
                   className="max-w-[120px] cursor-help outline-none"
-                  onMouseEnter={() => setHoveredPoId(row.id)}
+                  onMouseEnter={() => setHoveredPoId(row.original.id)}
                   onMouseLeave={() => setHoveredPoId(null)}
                 >
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 rounded-lg text-[10px] font-bold transition-all duration-300 hover:bg-rose-100/80 truncate w-full shadow-sm">
@@ -274,14 +282,13 @@ export function useNeedAssignColumns({
           </div>
         );
       },
-    },
-    {
-      label: "Jml Pcs",
-      key: "pcsTotal",
-      width: "w-[100px]",
-      align: "right",
-      render: (_val: any, row: NeedAssignRow) => {
-        const total = (Array.isArray(row.Items) ? row.Items : []).reduce(
+    }),
+    helper.accessor("pcsTotal", {
+      header: "Jml Pcs",
+      size: 100,
+      meta: { align: "right" },
+      cell: ({ row }) => {
+        const total = (Array.isArray(row.original.Items) ? row.original.Items : []).reduce(
           (acc: number, it: any) => acc + (Number(it?.pcs) || 0),
           0,
         );
@@ -291,18 +298,19 @@ export function useNeedAssignColumns({
           </span>
         );
       },
-    },
-    {
-      label: "Actions",
-      key: "actions",
-      width: "w-[160px]",
-      align: "right",
-      render: (_val: any, row: NeedAssignRow) => {
-        const noPo = row.noPo;
+    }),
+    helper.display({
+      id: "actions",
+      header: "Actions",
+      size: 160,
+      meta: { align: "right" },
+      cell: ({ row }) => {
+        const po = row.original;
+        const noPo = po.noPo;
         const st = tableState.edited[noPo] || {};
 
-        const selectedReg = st.regional !== undefined ? st.regional : row.regional;
-        const selectedSite = st.siteArea !== undefined ? st.siteArea : row.siteArea;
+        const selectedReg = st.regional !== undefined ? st.regional : po.regional;
+        const selectedSite = st.siteArea !== undefined ? st.siteArea : po.siteArea;
 
         const cleanStr = (val: any) => {
           if (!val) return "";
@@ -313,8 +321,8 @@ export function useNeedAssignColumns({
 
         const currentReg = cleanStr(selectedReg);
         const currentSite = cleanStr(selectedSite);
-        const originalReg = cleanStr(row.regional);
-        const originalSite = cleanStr(row.siteArea);
+        const originalReg = cleanStr(po.regional);
+        const originalSite = cleanStr(po.siteArea);
 
         const hasChanges = currentReg !== originalReg || currentSite !== originalSite;
         const isValid = role === "pusat" ? currentReg !== "" : currentReg !== "" && currentSite !== "";
@@ -324,9 +332,9 @@ export function useNeedAssignColumns({
           const reg =
             role === "pusat"
               ? tableState.edited[noPo]?.regional ||
-                (row.regional && row.regional !== "UNKNOWN" ? row.regional : null)
+                (po.regional && po.regional !== "UNKNOWN" ? po.regional : null)
               : (regional && regional !== "UNKNOWN" ? regional : null) ||
-                (row.regional && row.regional !== "UNKNOWN" ? row.regional : null);
+                (po.regional && po.regional !== "UNKNOWN" ? po.regional : null);
 
           if (!reg) {
             tableState.setEdited((prev: any) => ({
@@ -398,24 +406,20 @@ export function useNeedAssignColumns({
               </button>
               <button
                 className="inline-flex h-9 px-3 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold whitespace-nowrap"
-                onClick={() => detailModal.openModal(row)}
+                onClick={() => {
+                  detailModal.setDetailData(po);
+                  detailModal.setOpenDetail(true);
+                }}
               >
-                View
+                Detail
               </button>
             </div>
             {st.error && (
-              <div className="mt-1 text-[11px] font-semibold text-rose-600">
-                {st.error}
-              </div>
-            )}
-            {st.ok && (
-              <div className="mt-1 text-[11px] font-semibold text-emerald-600">
-                Berhasil
-              </div>
+              <div className="text-rose-500 text-[10px] font-medium mt-1 pr-1">{st.error}</div>
             )}
           </div>
         );
       },
-    },
+    }),
   ];
 }

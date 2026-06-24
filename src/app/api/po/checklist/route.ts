@@ -248,7 +248,12 @@ export async function POST(req: NextRequest) {
         if (update.statusTagih !== undefined) dataToUpdate.statusTagih = update.statusTagih;
         if (update.buktiTagih !== undefined) dataToUpdate.buktiTagih = update.buktiTagih;
         if (update.statusBayar !== undefined) dataToUpdate.statusBayar = update.statusBayar;
-        if (update.buktiBayar !== undefined) dataToUpdate.buktiBayar = update.buktiBayar;
+        if (update.buktiBayar !== undefined) {
+          dataToUpdate.buktiBayar = update.buktiBayar;
+          if (update.buktiBayar && update.buktiBayar.trim() !== "") {
+            dataToUpdate.statusBayar = true;
+          }
+        }
         if (update.statusKirim !== undefined) dataToUpdate.statusKirim = update.statusKirim;
         if (update.buktiKirim !== undefined) dataToUpdate.buktiKirim = update.buktiKirim;
         if (update.noInvoice !== undefined) dataToUpdate.noInvoice = update.noInvoice;

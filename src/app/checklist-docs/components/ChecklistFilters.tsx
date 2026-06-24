@@ -21,11 +21,6 @@ import DateInputHybrid from "@/components/DateInputHybrid";
 export default function ChecklistFilters({
   search,
   setSearch,
-  showColumns,
-  setShowColumns,
-  columns,
-  visibleCols,
-  setVisibleCols,
   isEditAll,
   handleToggleEditAll,
   handleSave,

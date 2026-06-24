@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { ColumnFiltersState, SortingState } from "@tanstack/react-table";
 import { RoleType } from "./useAuthData";
 
 interface UsePoTableProps {
@@ -32,6 +33,9 @@ export function usePoTable({ role, regional, siteArea, initialGroup = "all" }: U
   const [isFetchingPage, setIsFetchingPage] = useState(false);
   const [serverTotal, setServerTotal] = useState(0);
 
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   // Sync page and limit to URL
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -54,7 +58,7 @@ export function usePoTable({ role, regional, siteArea, initialGroup = "all" }: U
   // Reset page to 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, dateFrom, dateTo, regionalFilter, siteAreaFilter, group, alphaSort, sortDesc]);
+  }, [debouncedSearch, dateFrom, dateTo, regionalFilter, siteAreaFilter, group, alphaSort, sortDesc, columnFilters, sorting]);
 
   const fetchTable = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -79,13 +83,25 @@ export function usePoTable({ role, regional, siteArea, initialGroup = "all" }: U
       if (dateTo) params.set("tglTo", dateTo);
       if (debouncedSearch) params.set("q", debouncedSearch);
       
-      const sort = alphaSort !== "none"
+      if (columnFilters.length > 0) {
+        const filtersRecord: Record<string, string[]> = {};
+        for (const f of columnFilters) {
+          filtersRecord[f.id] = [String(f.value)];
+        }
+        params.set("colFilters", JSON.stringify(filtersRecord));
+      }
+      
+      let sort = alphaSort !== "none"
         ? alphaSort === "asc"
           ? "company_asc"
           : "company_desc"
         : sortDesc
           ? "tglPo_desc"
           : "tglPo_asc";
+          
+      if (sorting.length > 0) {
+        sort = `${sorting[0].id}_${sorting[0].desc ? 'desc' : 'asc'}`;
+      }
       
       params.set("sort", sort);
       
@@ -122,7 +138,7 @@ export function usePoTable({ role, regional, siteArea, initialGroup = "all" }: U
   }, [
     role, regional, group, dateFrom, dateTo, debouncedSearch,
     regionalFilter, siteAreaFilter, siteArea, page, rowsPerPage,
-    sortDesc, alphaSort,
+    sortDesc, alphaSort, columnFilters, sorting,
   ]);
 
   useEffect(() => {
@@ -186,6 +202,10 @@ export function usePoTable({ role, regional, siteArea, initialGroup = "all" }: U
     allPoData, setAllPoData,
     loading, isFetchingPage,
     serverTotal, setServerTotal,
-    fetchTable
+    fetchTable,
+    columnFilters,
+    setColumnFilters,
+    sorting,
+    setSorting,
   };
 }

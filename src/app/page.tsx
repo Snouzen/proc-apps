@@ -10,8 +10,9 @@ const PODetailModal = dynamic(() => import("@/components/po-detail-modal"), { ss
 const POEditModal = dynamic(() => import("@/components/po-edit-modal"), { ssr: false });
 const POFilters = dynamic(() => import("@/components/po-filters"), { ssr: false });
 
-import { DataTable } from "@/components/data-table";
-import { Briefcase, Eye, Check, ClockAlert, CalendarClock, UserPlus, Pencil, RefreshCw } from "lucide-react";
+import { DataTableV2 } from "@/components/data-table/DataTableV2";
+import { getDashboardColumns } from "./_components/DashboardColumns";
+import { Briefcase, Eye, Check, ClockAlert, CalendarClock, UserPlus } from "lucide-react";
 import { useState, useMemo, Suspense } from "react";
 import SmoothSelect from "@/components/ui/smooth-select";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
@@ -179,12 +180,6 @@ function TableUnderChart({
   const [editOpen, setEditOpen] = useState(false);
   const [editNoPo, setEditNoPo] = useState<string | null>(null);
   
-  const [visibleCols, setVisibleCols] = useState({
-    company: true, nopo: true, pcsPo: true, nominal: true,
-    submitDate: true, tglPo: true, tglKirim: true, dueDate: true,
-    regional: true, status: true, actions: true,
-  });
-  const [colsOpen, setColsOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
   
@@ -312,8 +307,7 @@ function TableUnderChart({
     { key: "actions", label: "Actions" },
   ], []);
 
-  const toggleCol = (key: keyof typeof visibleCols) =>
-    setVisibleCols((v) => ({ ...v, [key]: !v[key] }));
+
 
   if (!role) {
     return <TableSkeleton />;
@@ -336,7 +330,6 @@ function TableUnderChart({
                     width={172}
                     value={poTable.group}
                     onChange={(v) => { poTable.setPage(1); poTable.setGroup(v as any); }}
-                    onOpen={() => setColsOpen(false)}
                     options={[
                       { value: "all", label: "All" },
                       { value: "active", label: "Active" },
@@ -383,178 +376,48 @@ function TableUnderChart({
                     onFilterChange={poTable.handleFilterChange}
                   />
                 </div>
-                <div className="relative w-full md:w-auto z-40">
-                  <Button variant="outline" size="sm" onClick={() => setColsOpen((o) => !o)}>
-                    Customize Columns
-                  </Button>
-                  {colsOpen && (
-                    <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-xl p-2 space-y-1 z-50">
-                      {columnDefs.map((c) => (
-                        <label key={c.key} className="flex items-center gap-2 text-xs px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer text-black dark:text-slate-200">
-                          <input type="checkbox" readOnly checked={(visibleCols as any)[c.key]} onClick={() => toggleCol(c.key as any)} />
-                          <span>{c.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </>
             )}
           </div>
         </div>
       </div>
       
-      <DataTable
-        columns={[
-          {
-            key: "company", label: "Company", width: "w-48", hidden: !visibleCols.company,
-            render: (_val: any, po: any) => (
-              <div className="text-base font-semibold text-slate-800 dark:text-slate-100 tracking-tight max-w-[14rem] overflow-x-auto whitespace-nowrap scrollbar-hide" title={getCompanyName(po)}>
-                {getCompanyName(po)}
-              </div>
-            ),
+      <DataTableV2
+        columns={getDashboardColumns({
+          role,
+          poTableGroup: poTable.group,
+          units,
+          regional,
+          onAssign: (po, unit) => {
+            poTable.setAllPoData((prev) =>
+              prev.map((x) => x.noPo === po.noPo ? { ...x, UnitProduksi: { ...(x.UnitProduksi || {}), siteArea: unit.siteArea, namaRegional: unit.namaRegional }, regional: unit.namaRegional } : x)
+            );
           },
-          {
-            key: "noPo", label: "No PO", width: "w-40", hidden: !visibleCols.nopo,
-            render: (_val: any, po: any) => (
-              <div className="text-base font-mono font-bold text-slate-800 dark:text-slate-100 max-w-[12rem] overflow-x-auto whitespace-nowrap scrollbar-hide" title={po.noPo || po.nopo || po.poNumber || "-"}>
-                {po.noPo || po.nopo || po.poNumber || "-"}
-              </div>
-            ),
-          },
-          {
-            key: "pcsPo", label: "PCS PO", align: "right" as const, width: "w-24", hidden: !visibleCols.pcsPo,
-            render: (_val: any, po: any) => {
-              const total = typeof po?.pcsTotal === "number" ? po.pcsTotal : (Array.isArray(po?.Items) ? po.Items : []).reduce((acc: number, it: any) => acc + (Number(it?.pcs) || 0), 0);
-              return <span className="text-base font-bold text-slate-700 dark:text-slate-200 tabular-nums whitespace-nowrap">{Number(total || 0).toLocaleString("id-ID")}</span>;
-            },
-          },
-          {
-            key: "nominal", label: "Nominal", align: "right" as const, width: "w-36", hidden: !visibleCols.nominal,
-            render: (_val: any, po: any) => {
-              const total = typeof po?.totalNominal === "number" ? po.totalNominal : (Array.isArray(po?.Items) ? po.Items : []).reduce((acc: number, it: any) => acc + (Number(it?.nominal) || 0), 0);
-              return <div className="text-base font-bold text-slate-700 dark:text-slate-200 tabular-nums max-w-[9rem] ml-auto overflow-x-auto whitespace-nowrap scrollbar-hide" title={`Rp ${Number(total || 0).toLocaleString("id-ID")}`}>{`Rp ${Number(total || 0).toLocaleString("id-ID")}`}</div>;
-            },
-          },
-          {
-            key: "submitDate", label: "Submit Date", width: "w-32", hidden: !visibleCols.submitDate,
-            render: (_val: any, po: any) => {
-              const dt = toDate(po?.createdAt) || toDate(po?.updatedAt) || toDate(po?.tglPo);
-              return (
-                <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap">{dt ? dt.toLocaleDateString("id-ID") : "-"}</span>
-              );
-            },
-          },
-          {
-            key: "tglPo", label: "Tgl PO", width: "w-32", hidden: !visibleCols.tglPo,
-            render: (_val: any, po: any) => (
-              <PoDateBadge 
-                dateNode={<span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap">{toDate(po.tglPo)?.toLocaleDateString("id-ID") || "-"}</span>}
-                type="TAGIH"
-                buktiData={po.buktiTagih}
-              />
-            ),
-          },
-          {
-            key: "tglKirim", label: "Tgl Kirim", width: "w-32", hidden: !visibleCols.tglKirim,
-            render: (_val: any, po: any) => (
-              <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight whitespace-nowrap">{toDate((po as any).tglkirim || (po as any).tglKirim)?.toLocaleDateString("id-ID") || "-"}</span>
-            ),
-          },
-          {
-            key: "dueDate", label: "Tgl Expired", width: "w-32", hidden: !visibleCols.dueDate,
-            render: (_val: any, po: any) => (
-              <PoDateBadge 
-                dateNode={<span className="block text-sm font-bold text-red-500 leading-tight whitespace-nowrap">{toDate(po.expiredTgl)?.toLocaleDateString("id-ID") || "-"}</span>}
-                type="PAID"
-                buktiData={po.buktiBayar}
-              />
-            ),
-          },
-          {
-            key: "regional", label: "Regional", width: "w-32", hidden: !visibleCols.regional,
-            render: (_val: any, po: any) => (
-              <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 max-w-[10rem] overflow-x-auto whitespace-nowrap scrollbar-hide" title={po?.regional || po?.UnitProduksi?.namaRegional || "-"}>
-                {po?.regional || po?.UnitProduksi?.namaRegional || "-"}
-              </div>
-            ),
-          },
-          {
-            key: "status", label: "Status", width: "w-44", hidden: !visibleCols.status,
-            render: (_val: any, po: any) => {
-              const flag = dueFlag(po);
-              return (
-                <div className="flex items-center gap-1.5 flex-wrap max-w-[10rem]">
-                  <span className={`inline-flex items-center gap-2 text-sm font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusChipClass(statusText(po))}`}>
-                    {statusText(po)}
-                  </span>
-                  {flag && <span title="Mendekati due date" className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${flag.className}`}>{flag.label}</span>}
-                </div>
-              );
-            },
-          },
-          {
-            key: "actions", label: "Actions", align: "center" as const, width: "w-36", hidden: !visibleCols.actions,
-            render: (_val: any, po: any) => (
-              <div className="flex items-center justify-center gap-2" onClick={(e: any) => e.stopPropagation()}>
-                {role === "rm" && poTable.group === "assign" ? (
-                  <AssignDropdown
-                    po={po}
-                    units={units}
-                    regional={regional}
-                    onAssigned={(unit: any) => {
-                      poTable.setAllPoData((prev) =>
-                        prev.map((x) => x.noPo === po.noPo ? { ...x, UnitProduksi: { ...(x.UnitProduksi || {}), siteArea: unit.siteArea, namaRegional: unit.namaRegional }, regional: unit.namaRegional } : x)
-                      );
-                    }}
-                  />
-                ) : (
-                  <>
-                    {(role === "pusat" || role === "rm" || role === "sitearea") && (
-                      <button
-                        className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
-                        title="Edit"
-                        onClick={(e) => { e.stopPropagation(); setEditNoPo(po.noPo); setEditOpen(true); }}
-                      >
-                        <Pencil size={14} className="text-amber-500" />
-                      </button>
-                    )}
-                    <button
-                      className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm"
-                      title="View Detail"
-                      onClick={(e) => { e.stopPropagation(); openDetail(po); }}
-                    >
-                      <Eye size={16} className="text-slate-600" />
-                    </button>
-                    {role === "pusat" && (
-                      <>
-                        <button className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm" title="Update" onClick={(e) => { e.stopPropagation(); openDetail(po); }}>
-                          <RefreshCw size={14} className="text-blue-600" />
-                        </button>
-                        <button className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm" title="Extend" onClick={(e) => { e.stopPropagation(); openDetail(po); }}>
-                          <CalendarClock size={14} className="text-emerald-600" />
-                        </button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            ),
-          },
-        ]}
+          onEdit: (po) => { setEditNoPo(po.noPo); setEditOpen(true); },
+          onView: (po) => openDetail(po),
+        }) as any}
         data={poTable.allPoData}
-        rowKey={(_row: any, idx: number) => idx}
-        total={poTable.serverTotal}
-        page={poTable.page}
-        rowsPerPage={poTable.rowsPerPage}
-        rowsPerPageOptions={[10, 25, 50]}
-        onPageChange={poTable.setPage}
-        onRowsPerPageChange={(rpp) => { poTable.setRowsPerPage(rpp); poTable.setPage(1); }}
         loading={poTable.loading}
-        isFetchingPage={poTable.isFetchingPage}
-        onRowClick={(po) => openDetail(po)}
-        rowNumber
-        maxHeight="70vh"
+        isFetching={poTable.isFetchingPage}
+        manualPagination={true}
+        pageCount={Math.ceil(poTable.serverTotal / poTable.rowsPerPage)}
+        pagination={{ pageIndex: poTable.page - 1, pageSize: poTable.rowsPerPage }}
+        onPaginationChange={(updater) => {
+          if (typeof updater === 'function') {
+            const newState = updater({ pageIndex: poTable.page - 1, pageSize: poTable.rowsPerPage });
+            poTable.setPage(newState.pageIndex + 1);
+            poTable.setRowsPerPage(newState.pageSize);
+          } else {
+            poTable.setPage(updater.pageIndex + 1);
+            poTable.setRowsPerPage(updater.pageSize);
+          }
+        }}
+        manualSorting={true}
+        sorting={poTable.sorting}
+        onSortingChange={poTable.setSorting}
+        manualFiltering={true}
+        columnFilters={poTable.columnFilters}
+        onColumnFiltersChange={poTable.setColumnFilters}
       />
       <PODetailModal open={detailOpen} onClose={() => setDetailOpen(false)} data={detailData} />
       <POEditModal

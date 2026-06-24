@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { DataTableV2 } from "@/components/data-table/DataTableV2";
+import { createColumnHelper } from "@tanstack/react-table";
 
 import {
   Layers,
@@ -71,6 +73,325 @@ export function BatchAccordion({
   
   const hasRequested = pos.some((po) => po.statusCreditLimit === "REQUESTED");
   const hasApproved = pos.some((po) => po.statusCreditLimit === "APPROVED");
+
+  const helper = createColumnHelper<any>();
+
+  const columns = useMemo(() => [
+    helper.display({
+      id: "no",
+      header: "NO",
+      size: 50,
+      meta: { align: "center" },
+      cell: ({ row }) => (
+        <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
+          {row.index + 1}
+        </span>
+      ),
+    }),
+    helper.accessor("noPo", {
+      header: "PURCHASE ORDER",
+      size: 220,
+      cell: ({ row }) => {
+        const po = row.original;
+        return (
+          <div>
+            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm leading-tight">
+              {po.noPo}
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate max-w-[200px]">
+              {po.RitelModern?.namaPt || "-"}
+            </p>
+          </div>
+        );
+      },
+    }),
+    helper.accessor((row) => row.RitelModern?.inisial, {
+      id: "inisial",
+      header: "INISIAL",
+      size: 140,
+      cell: ({ row }) => (
+        <span className="inline-block px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[130px] shadow-sm dark:shadow-none">
+          {row.original.RitelModern?.inisial || "-"}
+        </span>
+      ),
+    }),
+    helper.accessor("siteArea", {
+      header: "SITE AREA",
+      size: 120,
+      cell: ({ row }) => {
+        const po = row.original;
+        const site = cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea);
+        return (
+          <div className="flex items-center gap-1.5">
+            {site !== "-" && (
+              <MapPin size={11} className="text-slate-300 dark:text-slate-500 shrink-0" />
+            )}
+            <span className={`text-xs font-medium ${site === "-" ? "text-slate-300 dark:text-slate-600" : "text-slate-600 dark:text-slate-300"}`}>
+              {site}
+            </span>
+          </div>
+        );
+      },
+    }),
+    helper.accessor("tujuanDetail", {
+      header: "TUJUAN",
+      size: 120,
+      cell: ({ row }) => (
+        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate max-w-[110px]" title={row.original.tujuanDetail || "-"}>
+          {row.original.tujuanDetail || "-"}
+        </p>
+      ),
+    }),
+    helper.accessor("tglPo", {
+      header: "TGL PO",
+      size: 110,
+      cell: ({ row }) => (
+        <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">
+          {row.original.tglPo ? format(new Date(row.original.tglPo), "dd MMM yyyy") : "-"}
+        </span>
+      ),
+    }),
+    helper.accessor("expiredTgl", {
+      header: "DUE DATE",
+      size: 110,
+      cell: ({ row }) => {
+        const po = row.original;
+        const zone = getDueDateZone(po.expiredTgl);
+        const isWarning = needsRemarks(zone);
+        return (
+          <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${isWarning ? "text-amber-600 dark:text-amber-500" : "text-slate-600 dark:text-slate-300"}`}>
+            {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
+          </span>
+        );
+      },
+    }),
+    helper.accessor("tglkirim", {
+      header: "TGL KIRIM",
+      size: 120,
+      meta: { align: "center" },
+      cell: ({ row }) => {
+        const po = row.original;
+        return po.tglkirim ? (
+          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-md text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
+            <CalendarDays size={11} className="shrink-0" />
+            {format(new Date(po.tglkirim), "dd MMM yy")}
+          </div>
+        ) : (
+          <span className="text-slate-300 dark:text-slate-600">-</span>
+        );
+      },
+    }),
+    helper.accessor("pcsTotal", {
+      header: "PCS",
+      size: 60,
+      meta: { align: "center" },
+      cell: ({ row }) => (
+        <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">
+          {Number(row.original.pcsTotal || 0).toLocaleString("id-ID")}
+        </span>
+      ),
+    }),
+    helper.accessor("pcsKirimTotal", {
+      header: "PCS KIRIM",
+      size: 90,
+      meta: { align: "center" },
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg text-xs font-black tabular-nums">
+          <CheckCircle2 size={11} className="shrink-0" />
+          {Number(row.original.pcsKirimTotal || 0).toLocaleString("id-ID")}
+        </span>
+      ),
+    }),
+    helper.accessor("kodeVendor", {
+      header: "KODE VENDOR",
+      size: 130,
+      meta: { align: "center" },
+      cell: ({ row }) => (
+        <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider">
+          {row.original.kodeVendor || "-"}
+        </span>
+      ),
+    }),
+    helper.accessor("remarksCreditLimit", {
+      header: "REMARKS",
+      size: 180,
+      cell: ({ row }) => (
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic truncate max-w-[170px]" title={row.original.remarksCreditLimit || "-"}>
+          {row.original.remarksCreditLimit ? `"${row.original.remarksCreditLimit}"` : "-"}
+        </p>
+      ),
+    }),
+    helper.accessor("isNotaDinas", {
+      header: "ND",
+      size: 50,
+      meta: { align: "center" },
+      cell: ({ row }) => {
+        const po = row.original;
+        return (
+          <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={po.isNotaDinas || false}
+              onChange={() => onToggleND(po.id, po.isNotaDinas || false)}
+              className="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
+            />
+          </div>
+        );
+      },
+    }),
+    helper.accessor("noNd", {
+      header: "NO ND",
+      size: 150,
+      meta: { align: "center" },
+      cell: ({ row }) => {
+        const po = row.original;
+        return editNdId === po.id ? (
+          <input
+            type="text"
+            value={tempNoNd}
+            onChange={(e) => setTempNoNd(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
+            placeholder="Input No ND"
+          />
+        ) : (
+          <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+            {po.noNd || "-"}
+          </span>
+        );
+      },
+    }),
+    helper.accessor("linkNd", {
+      header: "LINK ND",
+      size: 150,
+      meta: { align: "center" },
+      cell: ({ row }) => {
+        const po = row.original;
+        return (
+          <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
+            {editNdId === po.id ? (
+              <input
+                type="text"
+                value={tempLinkNd}
+                onChange={(e) => setTempLinkNd(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Input Link"
+              />
+            ) : po.linkNd ? (
+              <a
+                href={po.linkNd.startsWith("http") ? po.linkNd : `https://${po.linkNd}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-7 h-7 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 rounded-lg transition-colors shadow-sm"
+                title="Buka Dokumen ND"
+              >
+                <ExternalLink size={14} />
+              </a>
+            ) : (
+              <span className="text-slate-300 dark:text-slate-600 font-medium">-</span>
+            )}
+          </div>
+        );
+      },
+    }),
+    helper.accessor("statusCreditLimit", {
+      id: "zone",
+      header: "STATUS",
+      size: 120,
+      meta: { align: "center" },
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.statusCreditLimit} />
+      ),
+    }),
+    helper.display({
+      id: "action",
+      header: "ACTION",
+      size: 140,
+      meta: { align: "center" },
+      cell: ({ row }) => {
+        const po = row.original;
+        return (
+          <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            {editNdId === po.id ? (
+              <ActionButton
+                icon={Check}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateNDDetails(po.id, tempNoNd, tempLinkNd);
+                  setEditNdId(null);
+                }}
+                tooltip="Simpan ND"
+                variant="indigo"
+              />
+            ) : (
+              <ActionButton
+                icon={Edit3}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTempNoNd(po.noNd || "");
+                  setTempLinkNd(po.linkNd || "");
+                  setEditNdId(po.id);
+                }}
+                tooltip="Edit ND"
+                variant="slate"
+              />
+            )}
+            {po.statusCreditLimit === "REQUESTED" ? (
+              <>
+                <ActionButton
+                  icon={CheckCircle2}
+                  onClick={(e) => { e.stopPropagation(); onAction(po, "approve"); }}
+                  tooltip="Setujui Credit Limit"
+                  variant="emerald"
+                />
+                <ActionButton
+                  icon={X}
+                  onClick={(e) => { e.stopPropagation(); onAction(po, "reject"); }}
+                  tooltip="Tolak Credit Limit"
+                  variant="rose"
+                />
+              </>
+            ) : po.statusCreditLimit === "APPROVED" ? (
+              <>
+                <ActionButton
+                  icon={CheckCircle2}
+                  onClick={(e) => { e.stopPropagation(); onAction(po, "approveDireksi"); }}
+                  tooltip="Setujui Credit Limit (Direksi)"
+                  variant="indigo"
+                />
+                <ActionButton
+                  icon={X}
+                  onClick={(e) => { e.stopPropagation(); onAction(po, "reject"); }}
+                  tooltip="Tolak Credit Limit"
+                  variant="rose"
+                />
+              </>
+            ) : po.statusCreditLimit === "APPROVED_DIREKSI" ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                <CheckCircle2 size={12} /> Approved (Direksi)
+              </span>
+            ) : po.statusCreditLimit === "REJECTED" ? (
+              <>
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                  <X size={12} /> Rejected
+                </span>
+                <ActionButton
+                  icon={CheckCircle2}
+                  onClick={(e) => { e.stopPropagation(); onAction(po, "reRequest"); }}
+                  tooltip="Ajukan Ulang"
+                  variant="emerald"
+                />
+              </>
+            ) : (
+              <span className="text-slate-400">-</span>
+            )}
+          </div>
+        );
+      },
+    }),
+  ], [editNdId, tempNoNd, tempLinkNd, onToggleND, onUpdateNDDetails, onAction]);
+
 
   return (
     <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden transition-all duration-300">
@@ -226,251 +547,13 @@ export function BatchAccordion({
         }`}
       >
         <div className="border-t border-slate-100 dark:border-slate-800/50">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left min-w-[1000px]">
-              <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-black uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="px-4 py-3 w-[50px] text-center">#</th>
-                  <th className="px-4 py-3 w-[220px]">Purchase Order</th>
-                  <th className="px-4 py-3 w-[140px]">Inisial</th>
-                  <th className="px-4 py-3 w-[120px]">Site Area</th>
-                  <th className="px-4 py-3 w-[120px]">Tujuan</th>
-                  <th className="px-4 py-3 w-[110px]">Tgl PO</th>
-                  <th className="px-4 py-3 w-[110px]">Due Date</th>
-                  <th className="px-4 py-3 w-[120px] text-center">Tgl Kirim</th>
-                  <th className="px-4 py-3 w-[60px] text-center">Pcs</th>
-                  <th className="px-4 py-3 w-[90px] text-center">Pcs Kirim</th>
-                  <th className="px-4 py-3 w-[130px] text-center">Kode Vendor</th>
-                  <th className="px-4 py-3 w-[180px]">Remarks</th>
-                  <th className="px-4 py-3 w-[50px] text-center">ND</th>
-                  <th className="px-4 py-3 w-[150px] min-w-[150px] text-center">No ND</th>
-                  <th className="px-4 py-3 w-[150px] min-w-[150px] text-center">Link ND</th>
-                  <th className="px-4 py-3 w-[80px] text-center">Status</th>
-                  <th className="px-4 py-3 w-[140px] text-center sticky right-0 z-10 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur border-l border-slate-100 dark:border-slate-800/50">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pos.map((po, idx) => {
-                  const zone = getDueDateZone(po.expiredTgl);
-                  const isWarning = needsRemarks(zone);
-                  const site = cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea);
-
-                  return (
-                    <tr
-                      key={po.id}
-                      onClick={() => onViewRow(po)}
-                      className="group border-t border-slate-50 dark:border-slate-800/50 hover:bg-indigo-50/30 dark:hover:bg-slate-800/30 cursor-pointer transition-colors duration-150"
-                    >
-                      <td className="px-4 py-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
-                        {idx + 1}
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-slate-800 dark:text-slate-200 text-sm leading-tight">
-                          {po.noPo}
-                        </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate max-w-[200px]">
-                          {po.RitelModern?.namaPt || "-"}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-block px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[130px] shadow-sm dark:shadow-none">
-                          {po.RitelModern?.inisial || "-"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          {site !== "-" && (
-                            <MapPin size={11} className="text-slate-300 dark:text-slate-500 shrink-0" />
-                          )}
-                          <span className={`text-xs font-medium ${site === "-" ? "text-slate-300 dark:text-slate-600" : "text-slate-600 dark:text-slate-300"}`}>
-                            {site}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate max-w-[110px]" title={po.tujuanDetail || "-"}>
-                          {po.tujuanDetail || "-"}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">
-                          {po.tglPo ? format(new Date(po.tglPo), "dd MMM yyyy") : "-"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs tabular-nums whitespace-nowrap font-bold ${isWarning ? "text-amber-600 dark:text-amber-500" : "text-slate-600 dark:text-slate-300"}`}>
-                          {po.expiredTgl ? format(new Date(po.expiredTgl), "dd MMM yyyy") : "-"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {po.tglkirim ? (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-md text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
-                            <CalendarDays size={11} className="shrink-0" />
-                            {format(new Date(po.tglkirim), "dd MMM yy")}
-                          </div>
-                        ) : (
-                          <span className="text-slate-300 dark:text-slate-600">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">
-                          {Number(po.pcsTotal || 0).toLocaleString("id-ID")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg text-xs font-black tabular-nums">
-                          <CheckCircle2 size={11} className="shrink-0" />
-                          {Number(po.pcsKirimTotal || 0).toLocaleString("id-ID")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider">
-                          {po.kodeVendor || "-"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic truncate max-w-[170px]" title={po.remarksCreditLimit || "-"}>
-                          {po.remarksCreditLimit ? `"${po.remarksCreditLimit}"` : "-"}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={po.isNotaDinas || false}
-                            onChange={() => onToggleND(po.id, po.isNotaDinas || false)}
-                            className="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {editNdId === po.id ? (
-                          <input
-                            type="text"
-                            value={tempNoNd}
-                            onChange={(e) => setTempNoNd(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
-                            placeholder="Input No ND"
-                          />
-                        ) : (
-                          <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-                            {po.noNd || "-"}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
-                          {editNdId === po.id ? (
-                            <input
-                              type="text"
-                              value={tempLinkNd}
-                              onChange={(e) => setTempLinkNd(e.target.value)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                              placeholder="Input Link"
-                            />
-                          ) : po.linkNd ? (
-                            <a
-                              href={po.linkNd.startsWith("http") ? po.linkNd : `https://${po.linkNd}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center w-7 h-7 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 rounded-lg transition-colors shadow-sm"
-                              title="Buka Dokumen ND"
-                            >
-                              <ExternalLink size={14} />
-                            </a>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-600 font-medium">-</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <StatusBadge status={po.statusCreditLimit} />
-                      </td>
-                      <td className="px-4 py-3 text-center sticky right-0 z-10 bg-white dark:bg-slate-900/40 group-hover:bg-indigo-50/30 dark:group-hover:bg-slate-800/30 backdrop-blur border-l border-slate-50 dark:border-slate-800/50 transition-colors duration-150">
-                        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          {editNdId === po.id ? (
-                            <ActionButton
-                              icon={Check}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onUpdateNDDetails(po.id, tempNoNd, tempLinkNd);
-                                setEditNdId(null);
-                              }}
-                              tooltip="Simpan ND"
-                              variant="indigo"
-                            />
-                          ) : (
-                            <ActionButton
-                              icon={Edit3}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTempNoNd(po.noNd || "");
-                                setTempLinkNd(po.linkNd || "");
-                                setEditNdId(po.id);
-                              }}
-                              tooltip="Edit ND"
-                              variant="slate"
-                            />
-                          )}
-                          {po.statusCreditLimit === "REQUESTED" ? (
-                            <>
-                              <ActionButton
-                                icon={CheckCircle2}
-                                onClick={(e) => { e.stopPropagation(); onAction(po, "approve"); }}
-                                tooltip="Setujui Credit Limit"
-                                variant="emerald"
-                              />
-                              <ActionButton
-                                icon={X}
-                                onClick={(e) => { e.stopPropagation(); onAction(po, "reject"); }}
-                                tooltip="Tolak Credit Limit"
-                                variant="rose"
-                              />
-                            </>
-                          ) : po.statusCreditLimit === "APPROVED" ? (
-                            <>
-                              <ActionButton
-                                icon={CheckCircle2}
-                                onClick={(e) => { e.stopPropagation(); onAction(po, "approveDireksi"); }}
-                                tooltip="Setujui Credit Limit (Direksi)"
-                                variant="indigo"
-                              />
-                              <ActionButton
-                                icon={X}
-                                onClick={(e) => { e.stopPropagation(); onAction(po, "reject"); }}
-                                tooltip="Tolak Credit Limit"
-                                variant="rose"
-                              />
-                            </>
-                          ) : po.statusCreditLimit === "APPROVED_DIREKSI" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                              <CheckCircle2 size={12} /> Approved (Direksi)
-                            </span>
-                          ) : po.statusCreditLimit === "REJECTED" ? (
-                            <>
-                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                                <X size={12} /> Rejected
-                              </span>
-                              <ActionButton
-                                icon={CheckCircle2}
-                                onClick={(e) => { e.stopPropagation(); onAction(po, "reRequest"); }}
-                                tooltip="Ajukan Ulang"
-                                variant="emerald"
-                              />
-                            </>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTableV2
+            columns={columns}
+            data={pos}
+            getRowId={(row: any) => row.id}
+            hidePagination={true}
+            onRowClick={onViewRow}
+          />
         </div>
       </div>
     </div>

@@ -250,7 +250,7 @@ export async function GET(request: Request) {
                 { buktiBayar: "-" },
               ],
             },
-            data: { buktiBayar: r.noRekonsiliasi },
+            data: { buktiBayar: r.noRekonsiliasi, statusBayar: true },
           })
         );
         // Fire-and-forget — don't block the response
@@ -440,6 +440,7 @@ export async function POST(request: Request) {
         },
         data: {
           buktiBayar: rekonNo,
+          statusBayar: true,
         },
       });
     }

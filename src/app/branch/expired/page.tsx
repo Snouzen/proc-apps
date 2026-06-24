@@ -41,11 +41,6 @@ export default function ExpiredCalendarPage() {
     setInlineDateFrom,
     inlineDateTo,
     setInlineDateTo,
-    colsOpen,
-    setColsOpen,
-    visibleCols,
-    setVisibleCols,
-    toggleAllCols,
     filteredDetailPOs,
   } = useExpiredCalendar();
 
@@ -126,11 +121,6 @@ export default function ExpiredCalendarPage() {
         setInlineDateFrom={setInlineDateFrom}
         inlineDateTo={inlineDateTo}
         setInlineDateTo={setInlineDateTo}
-        colsOpen={colsOpen}
-        setColsOpen={setColsOpen}
-        toggleAllCols={toggleAllCols}
-        visibleCols={visibleCols}
-        setVisibleCols={setVisibleCols}
       />
 
       {!selectedSiteArea && selectedRegional !== "ALL" && (

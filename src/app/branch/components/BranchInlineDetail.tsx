@@ -1,9 +1,12 @@
-import React from "react";
-import { Truck, X, Search, ChevronDown } from "lucide-react";
+import React, { useMemo } from "react";
+import { Truck, X, Search } from "lucide-react";
 import DateInputHybrid from "@/components/DateInputHybrid";
-import { DataTable } from "@/components/data-table";
+import { DataTableV2 } from "@/components/data-table/DataTableV2";
+import { createColumnHelper } from "@tanstack/react-table";
 import { PoDateBadge } from "@/components/PoDateBadge";
 import { MONTH_NAMES, formatDateId } from "../hooks/useBranchCalendar";
+
+const helper = createColumnHelper<any>();
 
 export function BranchInlineDetail({
   selectedDateKey,
@@ -15,11 +18,6 @@ export function BranchInlineDetail({
   setInlineDateFrom,
   inlineDateTo,
   setInlineDateTo,
-  colsOpen,
-  setColsOpen,
-  visibleCols,
-  setVisibleCols,
-  toggleAllCols,
   setSelectedDateKey,
   setSelectedDetailPO,
 }: any) {
@@ -29,6 +27,128 @@ export function BranchInlineDetail({
     const parts = selectedDateKey.split("-");
     return `${Number(parts[2])} ${MONTH_NAMES[Number(parts[1]) - 1]} ${parts[0]}`;
   })();
+
+  const columns = useMemo(() => [
+    helper.accessor("noPo", {
+      header: "No PO",
+      size: 160,
+      cell: ({ row }) => (
+        <span className="font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{row.original.noPo || "-"}</span>
+      ),
+    }),
+    helper.accessor("tglPo", {
+      header: "Tgl PO",
+      size: 120,
+      cell: ({ row }) => (
+        <PoDateBadge 
+          dateNode={<span className="whitespace-nowrap">{formatDateId(row.original.tglPo)}</span>}
+          type="TAGIH"
+          buktiData={row.original.buktiTagih}
+        />
+      ),
+    }),
+    helper.accessor("expiredTgl", {
+      header: "Expired",
+      size: 120,
+      cell: ({ row }) => (
+        <PoDateBadge 
+          dateNode={<span className="whitespace-nowrap text-rose-600 font-semibold">{formatDateId(row.original.expiredTgl)}</span>}
+          type="PAID"
+          buktiData={row.original.buktiBayar}
+        />
+      ),
+    }),
+    helper.accessor("produk", {
+      header: "Produk",
+      size: 200,
+      cell: ({ row }) => {
+        const names = (row.original.Items || []).map((it: any) => it.Product?.name || "-").join(", ");
+        return (
+          <span className="max-w-[200px] truncate inline-block" title={names}>{names || "-"}</span>
+        );
+      },
+    }),
+    helper.accessor("tglKirim", {
+      header: "Tgl Kirim",
+      size: 120,
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap text-amber-600 font-semibold">{formatDateId(row.original.tglkirim || row.original.tglKirim)}</span>
+      ),
+    }),
+    helper.accessor("pcs", {
+      header: "Pcs",
+      size: 100,
+      meta: { align: "right" },
+      cell: ({ row }) => {
+        const total = (row.original.Items || []).reduce((s: number, it: any) => s + (Number(it.pcs) || 0), 0);
+        return <span className="whitespace-nowrap font-medium">{total.toLocaleString("id-ID")}</span>;
+      },
+    }),
+    helper.accessor("pcsKirim", {
+      header: "Pcs Kirim",
+      size: 100,
+      meta: { align: "right" },
+      cell: ({ row }) => {
+        const total = (row.original.Items || []).reduce((s: number, it: any) => s + (Number(it.pcsKirim) || 0), 0);
+        return <span className="whitespace-nowrap font-bold text-amber-600">{total.toLocaleString("id-ID")}</span>;
+      },
+    }),
+    helper.accessor("namaSupir", {
+      header: "Nama Supir",
+      size: 150,
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap uppercase">{row.original.namaSupir || "-"}</span>
+      ),
+    }),
+    helper.accessor("platNomor", {
+      header: "Plat Nomor",
+      size: 120,
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap uppercase font-bold">{row.original.platNomor || "-"}</span>
+      ),
+    }),
+    helper.accessor("totalKg", {
+      header: "Total Kg",
+      size: 120,
+      meta: { align: "right" },
+      cell: ({ row }) => {
+        const total = (row.original.Items || []).reduce(
+          (s: number, it: any) => s + (Number(it.pcsKirim) || Number(it.pcs) || 0) * Number(it.Product?.satuanKg || 1), 0
+        );
+        return <span className="whitespace-nowrap font-semibold">{total.toLocaleString("id-ID")}</span>;
+      },
+    }),
+    helper.accessor("tujuan", {
+      header: "Tujuan",
+      size: 200,
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap text-xs">{row.original.tujuanDetail || row.original.RitelModern?.tujuan || "-"}</span>
+      ),
+    }),
+    helper.accessor("regional", {
+      header: "Regional",
+      size: 150,
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">{row.original.regional || "-"}</span>
+      ),
+    }),
+    helper.accessor("siteArea", {
+      header: "Site Area",
+      size: 150,
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">{row.original.UnitProduksi?.siteArea || "-"}</span>
+      ),
+    }),
+    helper.accessor("nominal", {
+      header: "Nominal",
+      size: 150,
+      meta: { align: "right" },
+      cell: ({ row }) => {
+        const total = (row.original.Items || []).reduce((s: number, it: any) => s + (Number(it.nominal) || 0), 0);
+        return <span className="whitespace-nowrap font-bold text-indigo-700">Rp {total.toLocaleString("id-ID")}</span>;
+      },
+    }),
+  ], []);
 
   return (
     <div className="mt-8 border-t pt-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -91,206 +211,15 @@ export function BranchInlineDetail({
             />
           </div>
         </div>
-        <div className="relative w-full sm:w-auto">
-          <button
-            onClick={() => setColsOpen(!colsOpen)}
-            className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2"
-          >
-            Customize Columns <ChevronDown size={14} />
-          </button>
-          {colsOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-[40]"
-                onClick={() => setColsOpen(false)}
-              />
-              <div className="absolute right-0 mt-2 w-[600px] max-w-[90vw] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl p-4 z-50">
-                <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-700/50">
-                  <span className="text-sm font-black text-slate-800 dark:text-slate-200">
-                    Pilih Kolom
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => toggleAllCols(true)}
-                      className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
-                    >
-                      Show All
-                    </button>
-                    <button
-                      onClick={() => toggleAllCols(false)}
-                      className="px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-xs font-bold rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50"
-                    >
-                      Hide All
-                    </button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4 max-h-72 overflow-y-auto p-1">
-                  {Object.keys(visibleCols).map((key) => (
-                    <label
-                      key={key}
-                      className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 cursor-pointer capitalize"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={(visibleCols as any)[key]}
-                        onChange={() =>
-                          setVisibleCols((prev: any) => ({
-                            ...prev,
-                            [key]: !(prev as any)[key],
-                          }))
-                        }
-                        className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                      />
-                      {key.replace(/([A-Z])/g, " $1").trim()}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
-      <DataTable
-        columns={[
-          {
-            key: "noPo",
-            label: "No PO",
-            hidden: !visibleCols.noPo,
-            render: (_v: any, po: any) => (
-              <span className="font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{po.noPo || "-"}</span>
-            ),
-          },
-          {
-            key: "tglPo",
-            label: "Tgl PO",
-            hidden: !visibleCols.tglPo,
-            render: (_v: any, po: any) => (
-              <PoDateBadge 
-                dateNode={<span className="whitespace-nowrap">{formatDateId(po.tglPo)}</span>}
-                type="TAGIH"
-                buktiData={po.buktiTagih}
-              />
-            ),
-          },
-          {
-            key: "expired",
-            label: "Expired",
-            hidden: !visibleCols.expired,
-            render: (_v: any, po: any) => (
-              <PoDateBadge 
-                dateNode={<span className="whitespace-nowrap text-rose-600 font-semibold">{formatDateId(po.expiredTgl)}</span>}
-                type="PAID"
-                buktiData={po.buktiBayar}
-              />
-            ),
-          },
-          {
-            key: "produk",
-            label: "Produk",
-            hidden: !visibleCols.produk,
-            render: (_v: any, po: any) => {
-              const names = (po.Items || []).map((it: any) => it.Product?.name || "-").join(", ");
-              return (
-                <span className="max-w-[200px] truncate inline-block" title={names}>{names || "-"}</span>
-              );
-            },
-          },
-          {
-            key: "tglKirim",
-            label: "Tgl Kirim",
-            hidden: !visibleCols.tglKirim,
-            render: (_v: any, po: any) => (
-              <span className="whitespace-nowrap text-amber-600 font-semibold">{formatDateId(po.tglkirim || po.tglKirim)}</span>
-            ),
-          },
-          {
-            key: "pcs",
-            label: "Pcs",
-            align: "right" as const,
-            hidden: !visibleCols.pcs,
-            render: (_v: any, po: any) => {
-              const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.pcs) || 0), 0);
-              return <span className="whitespace-nowrap font-medium">{total.toLocaleString("id-ID")}</span>;
-            },
-          },
-          {
-            key: "pcsKirim",
-            label: "Pcs Kirim",
-            align: "right" as const,
-            hidden: !visibleCols.pcsKirim,
-            render: (_v: any, po: any) => {
-              const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.pcsKirim) || 0), 0);
-              return <span className="whitespace-nowrap font-bold text-amber-600">{total.toLocaleString("id-ID")}</span>;
-            },
-          },
-          {
-            key: "namaSupir",
-            label: "Nama Supir",
-            hidden: !visibleCols.namaSupir,
-            render: (_v: any, po: any) => (
-              <span className="whitespace-nowrap uppercase">{po.namaSupir || "-"}</span>
-            ),
-          },
-          {
-            key: "platNomor",
-            label: "Plat Nomor",
-            hidden: !visibleCols.platNomor,
-            render: (_v: any, po: any) => (
-              <span className="whitespace-nowrap uppercase font-bold">{po.platNomor || "-"}</span>
-            ),
-          },
-          {
-            key: "totalKg",
-            label: "Total Kg",
-            align: "right" as const,
-            hidden: !visibleCols.totalKg,
-            render: (_v: any, po: any) => {
-              const total = (po.Items || []).reduce(
-                (s: number, it: any) => s + (Number(it.pcsKirim) || Number(it.pcs) || 0) * Number(it.Product?.satuanKg || 1), 0
-              );
-              return <span className="whitespace-nowrap font-semibold">{total.toLocaleString("id-ID")}</span>;
-            },
-          },
-          {
-            key: "tujuan",
-            label: "Tujuan",
-            hidden: !visibleCols.tujuan,
-            render: (_v: any, po: any) => (
-              <span className="whitespace-nowrap text-xs">{po.tujuanDetail || po.RitelModern?.tujuan || "-"}</span>
-            ),
-          },
-          {
-            key: "regional",
-            label: "Regional",
-            hidden: !visibleCols.regional,
-            render: (_v: any, po: any) => (
-              <span className="whitespace-nowrap">{po.regional || "-"}</span>
-            ),
-          },
-          {
-            key: "siteArea",
-            label: "Site Area",
-            hidden: !visibleCols.siteArea,
-            render: (_v: any, po: any) => (
-              <span className="whitespace-nowrap">{po.UnitProduksi?.siteArea || "-"}</span>
-            ),
-          },
-          {
-            key: "nominal",
-            label: "Nominal",
-            align: "right" as const,
-            hidden: !visibleCols.nominal,
-            render: (_v: any, po: any) => {
-              const total = (po.Items || []).reduce((s: number, it: any) => s + (Number(it.nominal) || 0), 0);
-              return <span className="whitespace-nowrap font-bold text-indigo-700">Rp {total.toLocaleString("id-ID")}</span>;
-            },
-          },
-        ]}
+      <DataTableV2
+        columns={columns}
         data={filteredDetailPOs}
-        rowKey={(po: any, idx: number) => po.id || idx}
-        hidePagination
+        getRowId={(row: any) => row.id}
         loading={false}
+        isFetching={false}
+        manualPagination={false}
         onRowClick={(po: any) => {
           const items = po.Items || [];
           const isShipped = items.some((it: any) => (Number(it.pcsKirim) || 0) > 0);
@@ -312,9 +241,6 @@ export function BranchInlineDetail({
             },
           });
         }}
-        variant="rounded"
-        className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden"
-        emptyMessage="Tidak ada pengiriman"
       />
     </div>
   );

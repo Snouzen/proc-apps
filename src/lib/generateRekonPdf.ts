@@ -83,7 +83,7 @@ export const generateRekonPdf = (
     formatRp(item.biayaAdmin || 0),
     formatRp(item.notesNominal || 0),
     formatRp(item.nominal || 0),
-    formatDate(item.createdAt),
+    formatDate(item.tglBayar),
   ]);
 
   // Grand totals
@@ -151,7 +151,7 @@ export const generateRekonPdf = (
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0, 0, 0);
-  doc.text("Mengetahui,", signX + 30, signStartY, { align: "center" });
+  doc.text("Dibuat Oleh,", signX + 30, signStartY, { align: "center" });
 
   // Space for signature (~25mm)
   doc.setFontSize(8);
@@ -176,7 +176,7 @@ export const generateRekonPdf = (
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.text(`Ritel: ${item.RitelModern?.namaPt || "-"}`, 14, 22);
-    doc.text(`Tanggal: ${formatDate(item.createdAt)}`, 14, 26);
+    doc.text(`Tanggal Pembayaran: ${formatDate(item.tglBayar)}`, 14, 26);
 
     // Summary box
     doc.setDrawColor(200, 200, 200);

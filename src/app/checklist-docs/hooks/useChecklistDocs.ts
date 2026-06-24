@@ -53,35 +53,6 @@ export function useChecklistDocs(advancedFilters?: {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const lastCtrlRef = useRef<AbortController | null>(null);
 
-  const [showColumns, setShowColumns] = useState(false);
-  const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>({
-    index: true,
-    company: true,
-    noPo: true,
-    noInvoice: true,
-    tglPo: true,
-    expiredTgl: true,
-    regional: true,
-    statusTagih: true,
-    buktiTagih: true,
-    actions: true,
-    tglkirim: false,
-    statusKirim: true,
-    buktiKirim: true,
-    statusSdif: false,
-    statusPo: false,
-    statusFp: false,
-    statusKwi: false,
-    statusInv: false,
-    statusBayar: false,
-    buktiBayar: false,
-    remarks: false,
-    namaSupir: false,
-    platNomor: false,
-    tujuanDetail: false,
-    linkPo: false,
-  });
-
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
@@ -95,42 +66,6 @@ export function useChecklistDocs(advancedFilters?: {
       setRole(me?.role || null);
     })();
   }, []);
-
-  useEffect(() => {
-    setVisibleCols(prev => {
-      const next = { ...prev };
-      if (activeFilter === "pending_bayar" || activeFilter === "completed_bayar") {
-        next.statusTagih = false;
-        next.buktiTagih = false;
-        next.statusKirim = false;
-        next.buktiKirim = false;
-        next.statusBayar = true;
-        next.buktiBayar = true;
-      } else if (activeFilter === "pending_kirim" || activeFilter === "completed_kirim") {
-        next.statusTagih = false;
-        next.buktiTagih = false;
-        next.statusKirim = true;
-        next.buktiKirim = true;
-        next.statusBayar = false;
-        next.buktiBayar = false;
-      } else if (activeFilter === "pending" || activeFilter === "completed") {
-        next.statusTagih = true;
-        next.buktiTagih = true;
-        next.statusKirim = true;
-        next.buktiKirim = true;
-        next.statusBayar = false;
-        next.buktiBayar = false;
-      } else if (activeFilter === "total") {
-        next.statusTagih = true;
-        next.buktiTagih = true;
-        next.statusKirim = true;
-        next.buktiKirim = true;
-        next.statusBayar = true;
-        next.buktiBayar = true;
-      }
-      return next;
-    });
-  }, [activeFilter]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -310,13 +245,25 @@ export function useChecklistDocs(advancedFilters?: {
   };
 
   const handleFieldChange = (id: string, field: "statusTagih" | "buktiTagih" | "statusKirim" | "buktiKirim" | "statusBayar" | "buktiBayar" | "noInvoice", value: any) => {
-    setEditingRows(prev => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value
+    setEditingRows(prev => {
+      const current = prev[id] || {};
+      const newValues = { ...current, [field]: value };
+
+      if (field === "buktiTagih" && typeof value === "string" && value.trim() !== "" && (!current.buktiTagih || current.buktiTagih.trim() === "")) {
+        newValues.statusTagih = true;
       }
-    }));
+      if (field === "buktiKirim" && typeof value === "string" && value.trim() !== "" && (!current.buktiKirim || current.buktiKirim.trim() === "")) {
+        newValues.statusKirim = true;
+      }
+      if (field === "buktiBayar" && typeof value === "string" && value.trim() !== "" && (!current.buktiBayar || current.buktiBayar.trim() === "")) {
+        newValues.statusBayar = true;
+      }
+
+      return {
+        ...prev,
+        [id]: newValues
+      };
+    });
   };
 
   const handleSave = async (idToSave?: string) => {
@@ -355,6 +302,17 @@ export function useChecklistDocs(advancedFilters?: {
 
       await fetchData();
 
+      if (!idToSave) {
+        setIsEditAll(false);
+      }
+      setEditingRows(prev => {
+        const next = { ...prev };
+        ids.forEach(id => {
+          delete next[id];
+        });
+        return next;
+      });
+
     } catch (e: any) {
       setEditingRows(prev => {
         const next = { ...prev };
@@ -387,10 +345,6 @@ export function useChecklistDocs(advancedFilters?: {
     setSearch,
     activeFilter,
     setActiveFilter,
-    showColumns,
-    setShowColumns,
-    visibleCols,
-    setVisibleCols,
     isTransitioning,
     setIsTransitioning,
     openDetail,

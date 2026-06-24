@@ -239,7 +239,7 @@ export async function POST(request: Request) {
     const poStatusKwi = !!status?.kwi;
     const poStatusInv = !!status?.inv;
     const poStatusTagih = !!status?.tagih;
-    const poStatusBayar = !!status?.bayar;
+    const poStatusBayar = !!status?.bayar || (Boolean(buktiBayar) && String(buktiBayar).trim() !== "");
     const poRemarks = remarks || null;
     const poTglKirim = tglKirim ? parseYmdOrIsoToUtcNoon(tglKirim) : undefined;
     const poUpdatedAt = new Date();

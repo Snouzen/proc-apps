@@ -159,31 +159,6 @@ export function useExpiredCalendar() {
   const [inlineSearch, setInlineSearch] = useState("");
   const [inlineDateFrom, setInlineDateFrom] = useState("");
   const [inlineDateTo, setInlineDateTo] = useState("");
-  const [colsOpen, setColsOpen] = useState(false);
-  const [visibleCols, setVisibleCols] = useState({
-    noPo: true,
-    tglPo: true,
-    expired: true,
-    produk: true,
-    tglKirim: true,
-    pcs: true,
-    pcsKirim: true,
-    namaSupir: true,
-    platNomor: true,
-    totalKg: true,
-    tujuan: true,
-    regional: true,
-    siteArea: true,
-    nominal: true,
-  });
-
-  const toggleAllCols = (val: boolean) => {
-    const next = {} as typeof visibleCols;
-    Object.keys(visibleCols).forEach((k) => {
-      next[k as keyof typeof visibleCols] = val;
-    });
-    setVisibleCols(next);
-  };
 
   const filteredDetailPOs = useMemo(() => {
     if (!selectedDateKey || !groupedPOs[selectedDateKey]) return [];
@@ -214,7 +189,6 @@ export function useExpiredCalendar() {
     setInlineSearch("");
     setInlineDateFrom("");
     setInlineDateTo("");
-    setColsOpen(false);
   }, [selectedDateKey]);
 
   return {
@@ -248,11 +222,6 @@ export function useExpiredCalendar() {
     setInlineDateFrom,
     inlineDateTo,
     setInlineDateTo,
-    colsOpen,
-    setColsOpen,
-    visibleCols,
-    setVisibleCols,
-    toggleAllCols,
     filteredDetailPOs,
   };
 }

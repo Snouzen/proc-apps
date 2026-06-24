@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import SmoothSelect from "@/components/ui/smooth-select";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable } from "@/components/data-table";
+import { DataTableV2 } from "@/components/data-table/DataTableV2";
 
 import { PurchaseOrderHeader } from "./_components/PurchaseOrderHeader";
 import { PurchaseOrderFilters } from "./_components/PurchaseOrderFilters";
@@ -139,30 +139,15 @@ export default function PurchaseOrderPage() {
                 <div className="w-full sm:w-[160px] relative z-20">
                   <SmoothSelect value={poTable.statusFilter} onChange={(v) => poTable.setStatusFilter(v as any)} options={[{ value: "all", label: "All Status" }, { value: "active", label: "Active" }, { value: "almost_expired", label: "Almost Expired" }, { value: "expired", label: "Expired" }, { value: "complete", label: "Complete" }]} />
                 </div>
-                <div className="w-full sm:w-[130px] relative z-10">
-                  <SmoothSelect value={poTable.sortOrder} onChange={(v) => poTable.setSortOrder(v as any)} options={[{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }]} />
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                  <span className="text-slate-500 whitespace-nowrap">Tampilkan</span>
-                  <div className="w-[100px] relative z-10">
-                    <SmoothSelect value={poTable.perPage} onChange={(v) => { poTable.setPerPage(v); poTable.setCurrentPage(1); }} options={[{ value: "10", label: "10" }, { value: "25", label: "25" }, { value: "50", label: "50" }, { value: "100", label: "100" }, { value: "all", label: "Semua" }]} />
-                  </div>
-                  <span className="text-slate-500">data</span>
-                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto w-full">
-                <DataTable
+                <DataTableV2
                   columns={columns}
-                  data={poTable.paginatedPo}
+                  data={poTable.filteredPo}
                   loading={poTable.loadingData}
-                  total={poTable.filteredPo.length}
-                  page={poTable.currentPage}
-                  rowsPerPage={poTable.limitData}
-                  onPageChange={poTable.setCurrentPage}
                   onRowClick={(po: any) => detailModal.openModal(po)}
-                  emptyMessage="Tidak ada data PO yang sesuai."
                 />
               </div>
             </CardContent>
