@@ -8,10 +8,13 @@ import {
   CheckCircle2,
   ExternalLink,
   Eye,
+  Clock
 } from "lucide-react";
 import Modal from "./modal";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import AuditDrawer from "./audit-trail/AuditDrawer";
+import { useAuthData } from "@/hooks/useAuthData";
 
 type POData = {
   id: string;
@@ -84,6 +87,8 @@ type Props = {
 
 export default function PODetailModal({ open, onClose, data }: Props) {
   const router = useRouter();
+  const { role } = useAuthData();
+  const [auditOpen, setAuditOpen] = useState(false);
 
   if (!data) return null;
 
@@ -130,6 +135,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
   );
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -153,16 +159,19 @@ export default function PODetailModal({ open, onClose, data }: Props) {
               <span className="text-[9px] text-slate-300 font-normal lowercase tracking-tighter">rev.2.1</span>
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              router.push(`/purchase-order/${encodeURIComponent(data.company)}`);
-            }}
-            className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
-          >
-            Lihat Histori PO <ExternalLink size={12} />
-          </button>
+          <div className="flex items-center gap-4">
+            {role === "pusat" && (
+              <button
+                type="button"
+                onClick={() => setAuditOpen(true)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors flex items-center gap-1"
+                title="Lihat Riwayat Perubahan"
+              >
+                <Clock size={16} />
+                <span className="hidden sm:inline">Histori Perubahan</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -545,5 +554,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
         </section>
       </div>
     </Modal>
+    <AuditDrawer open={auditOpen} onClose={() => setAuditOpen(false)} poId={data.id} />
+    </>
   );
 }

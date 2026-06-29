@@ -11,6 +11,7 @@ import {
   Paperclip, 
   Eye, 
   Trash2,
+  CircleDollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -277,7 +278,48 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                   style={{ animation: 'fadeSlideIn 0.2s ease-out' }}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-8 w-full">
-                    {/* LEFT: Invoice Breakdown */}
+                    {/* LEFT: Bank Statement Detail */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-6 h-6 bg-amber-500 rounded-lg flex items-center justify-center">
+                          <CircleDollarSign size={12} className="text-white" />
+                        </div>
+                        <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Bank Statement</h4>
+                      </div>
+                      <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+                        {Array.isArray(item.bankStatements) && item.bankStatements.length > 0 ? (
+                          <>
+                            <table className="w-full text-left">
+                              <thead>
+                                <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
+                                  <th className="px-5 py-3">#</th>
+                                  <th className="px-5 py-3">Keterangan</th>
+                                  <th className="px-5 py-3 text-right">Nominal</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.bankStatements.map((bs: any, ni: number) => (
+                                  <tr key={ni} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-amber-50/30 dark:hover:bg-amber-500/10 transition-colors">
+                                    <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{ni + 1}</td>
+                                    <td className="px-5 py-3 text-[10px] font-bold text-slate-600 dark:text-slate-300">{bs.desc || <span className="italic text-slate-300 dark:text-slate-600">-</span>}</td>
+                                    <td className="px-5 py-3 text-right text-[10px] font-black text-amber-600 dark:text-amber-400 tabular-nums">{formatRp(bs.nominal || 0)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            <div className="px-5 py-3 bg-amber-50/50 dark:bg-amber-500/10 flex justify-end">
+                              <span className="text-[8px] font-black text-amber-400 dark:text-amber-500 uppercase tracking-widest mr-3">Total</span>
+                              <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 tabular-nums">{formatRp(item.bankStatement || 0)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="py-6 text-center">
+                            <p className="text-[9px] text-slate-300 italic">Total: {formatRp(item.bankStatement || 0)}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {/* CENTER: Invoice Breakdown */}
                     <div>
                       <div className="flex items-center gap-2 mb-4">
                         <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center">
@@ -318,6 +360,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                         </div>
                       </div>
                     </div>
+
 
                     {/* CENTER: Notes Detail */}
                     <div>

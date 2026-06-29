@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSessionWithRole } from "@/lib/auth";
+import { getSessionWithRole, getProfileName } from "@/lib/auth";
 import { verifySession } from "@/lib/auth";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
+import { auditUpdatePO } from "@/lib/audit";
 
 export async function PATCH(request: Request) {
   try {
@@ -53,9 +54,9 @@ export async function PATCH(request: Request) {
     }
 
     // Update Prisma: Note the field name is 'tglkirim' as per schema.prisma
-    const updated = await prisma.purchaseOrder.update({
-      where: { id },
-      data: updateData
+    const updated = await auditUpdatePO(prisma as any, { id }, updateData, { 
+      id: dbUser?.id || (sessionObj as any)?.user?.id || "unknown", 
+      name: getProfileName(sessionObj, dbUser) 
     });
 
     const { cacheClearPrefix } = await import("@/lib/ttl-cache");

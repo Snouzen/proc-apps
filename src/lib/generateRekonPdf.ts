@@ -149,18 +149,19 @@ export const generateRekonPdf = (
   const signStartY = summaryFinalY + 12;
 
   doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(0, 0, 0);
-  doc.text("Dibuat Oleh,", signX + 30, signStartY, { align: "center" });
-
-  // Space for signature (~25mm)
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text("Izath Rytami", signX + 30, signStartY + 28, { align: "center" });
-
-  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text("Asman Penjualan", signX + 30, signStartY + 33, { align: "center" });
+  doc.setTextColor(0, 0, 0);
+  
+  // Blok 1: Dibuat oleh
+  doc.text("Dibuat oleh,", signX, signStartY);
+  doc.text("Izath Rytami (Asman Penjualan)", signX, signStartY + 5);
+
+  // Blok 2: Disetujui Oleh
+  doc.text("Disetujui Oleh,", signX, signStartY + 18);
+
+  // Space for signature M. Fakhri Firdaus
+  doc.text("M. Fakhri Firdaus", signX, signStartY + 40);
+  doc.text("Manager Bisnis", signX, signStartY + 45);
 
   // ═══════════════════════════════════════════════════════
   // DETAIL BREAKDOWN PER RECORD
@@ -208,6 +209,55 @@ export const generateRekonPdf = (
     });
 
     let nextY = 52;
+
+    // ─── Bank Statement Detail Table ───
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(245, 158, 11); // amber-500
+    doc.text(`DETAIL BANK STATEMENT`, 14, nextY);
+    doc.setTextColor(0, 0, 0);
+
+    const bsBody = (item.bankStatements || []).map((bs: any, i: number) => [
+      String(i + 1),
+      bs.desc || "-",
+      formatRp(bs.nominal || 0),
+    ]);
+
+    if (bsBody.length === 0) {
+      bsBody.push(["-", "Total Keseluruhan", formatRp(item.bankStatement || 0)]);
+    } else {
+      bsBody.push([
+        "",
+        "TOTAL BANK STATEMENT",
+        formatRp(item.bankStatement || 0),
+      ]);
+    }
+
+    autoTable(doc, {
+      startY: nextY + 3,
+      head: [["#", "Keterangan", "Nominal"]],
+      body: bsBody,
+      theme: "striped",
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [245, 158, 11],
+        textColor: [255, 255, 255],
+      },
+      columnStyles: {
+        0: { halign: "center", cellWidth: 8 },
+        1: { cellWidth: 100 },
+        2: { halign: "right", cellWidth: 40 },
+      },
+      didParseCell: (hookData: any) => {
+        if (hookData.row.index === bsBody.length - 1) {
+          hookData.cell.styles.fontStyle = "bold";
+          hookData.cell.styles.fillColor = [254, 243, 199]; // amber-100
+        }
+      },
+    });
+
+    nextY = (doc as any).lastAutoTable.finalY + 10;
 
     // ─── Invoice Detail Table ───
     doc.setFontSize(9);

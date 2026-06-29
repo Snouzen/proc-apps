@@ -106,7 +106,7 @@ export async function GET(request: Request) {
           if (!po.tglPo) continue;
           const dateKey = toYMDJakarta(new Date(po.tglPo));
           byDate.set(dateKey, (byDate.get(dateKey) || 0) + 1);
-        }
+        }       
 
         return ids.map((d) => ({ date: d, count: byDate.get(d) || 0, kg: 0 }));
       }

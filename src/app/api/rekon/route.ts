@@ -277,7 +277,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { 
       ritelId, 
-      bankStatement, 
+      bankStatement,
+      bankStatements,
       biayaAdmin, 
       totalInvoices,
       totalRtvs,
@@ -342,6 +343,7 @@ export async function POST(request: Request) {
       update: {
         ritelId,
         bankStatement: Number(bankStatement) || 0,
+        bankStatements: Array.isArray(bankStatements) && bankStatements.length > 0 ? bankStatements : undefined,
         biayaAdmin: Number(biayaAdmin) || 0,
         totalInvoices: Number(totalInvoices) || 0,
         totalRtvs: Number(totalRtvs) || 0,
@@ -363,6 +365,7 @@ export async function POST(request: Request) {
         noRekonsiliasi: GeneratedNoRekon,
         ritelId,
         bankStatement: Number(bankStatement) || 0,
+        bankStatements: Array.isArray(bankStatements) && bankStatements.length > 0 ? bankStatements : undefined,
         biayaAdmin: Number(biayaAdmin) || 0,
         totalInvoices: Number(totalInvoices) || 0,
         totalRtvs: Number(totalRtvs) || 0,

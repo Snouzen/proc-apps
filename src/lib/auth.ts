@@ -266,3 +266,20 @@ export async function getSessionWithRole(request: Request): Promise<{
 
   return { session, role, email, dbUser };
 }
+
+export function getProfileName(session: SessionPayload | any, dbUser?: any): string {
+  if (!session && !dbUser) return "System";
+  const role = String(dbUser?.role || session?.role || "").toLowerCase();
+  const email = String(dbUser?.email || session?.email || "");
+  const regional = String(dbUser?.regional || session?.regional || "");
+
+  if (role === "magang") return "ADMIN SALES 1";
+  if (role === "sitearea" || role.includes("site")) {
+    return email ? email.split("@")[0].toUpperCase() : "ADMIN CABANG";
+  }
+  if (role === "rm") {
+    return regional ? regional.toUpperCase() : "REGIONAL MANAGER";
+  }
+  if (role === "pusat") return "ADMIN PUSAT";
+  return email ? email.split("@")[0].toUpperCase() : "UNKNOWN";
+}

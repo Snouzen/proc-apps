@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSessionWithRole } from "@/lib/auth";
+import { getSessionWithRole, getProfileName } from "@/lib/auth";
 import { cacheGet, cacheSet, cacheClearPrefix } from "@/lib/ttl-cache";
 import { getRegionalSynonyms } from "@/lib/utils/regional";
+import { auditUpdatePO } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -242,8 +243,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Perform transaction to update multiple rows
-    await prisma.$transaction(
-      updates.map((update: any) => {
+    await prisma.$transaction(async (tx) => {
+      for (const update of updates) {
         const dataToUpdate: any = { updatedAt: new Date() };
         if (update.statusTagih !== undefined) dataToUpdate.statusTagih = update.statusTagih;
         if (update.buktiTagih !== undefined) dataToUpdate.buktiTagih = update.buktiTagih;
@@ -257,13 +258,9 @@ export async function POST(req: NextRequest) {
         if (update.statusKirim !== undefined) dataToUpdate.statusKirim = update.statusKirim;
         if (update.buktiKirim !== undefined) dataToUpdate.buktiKirim = update.buktiKirim;
         if (update.noInvoice !== undefined) dataToUpdate.noInvoice = update.noInvoice;
-        
-        return prisma.purchaseOrder.update({
-          where: { id: update.id },
-          data: dataToUpdate
-        });
-      })
-    );
+        await auditUpdatePO(tx as any, { id: update.id }, dataToUpdate, { id: dbUser?.id || "unknown", name: getProfileName(session, dbUser) });
+      }
+    });
 
     // Invalidate cache
     cacheClearPrefix("checklist_total:");

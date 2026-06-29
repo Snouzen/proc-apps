@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cacheClearPrefix } from "@/lib/ttl-cache";
-import { getSession } from "@/lib/auth";
+import { getSession, getProfileName } from "@/lib/auth";
+import { auditUpdatePO } from "@/lib/audit";
 
 export async function POST(request: Request) {
   try {
@@ -41,16 +42,12 @@ export async function POST(request: Request) {
       finalRegional = unit.namaRegional;
     }
 
-    const po = await prisma.purchaseOrder.update({
-      where: { noPo },
-      data: {
-        unitProduksiId: unitProduksiId || undefined,
-        regional: finalRegional || undefined,
-        remarks: null, // Clear reject remarks when re-assigned
-        updatedAt: new Date(),
-      },
-      select: { id: true, noPo: true, unitProduksiId: true, regional: true },
-    });
+    const po = await auditUpdatePO(prisma as any, { noPo }, {
+      unitProduksiId: unitProduksiId || undefined,
+      regional: finalRegional || undefined,
+      remarks: null, // Clear reject remarks when re-assigned
+      updatedAt: new Date(),
+    }, { id: (session as any)?.user?.id || "unknown", name: getProfileName(session) });
 
     // Invalidation: Clear cache agar stats dan list di dashboard update
     cacheClearPrefix("po_stats:");

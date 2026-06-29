@@ -108,6 +108,54 @@ export function ReportFilters({ hook }: { hook: any }) {
           </div>
         );
       })}
+
+      {/* Status Filters */}
+      {[
+        { id: "statusKirim", label: "Status Kirim" },
+        { id: "statusPo", label: "Status PO" },
+        { id: "statusInv", label: "Status Invoice" },
+        { id: "statusBayar", label: "Status Bayar" },
+        { id: "statusSdif", label: "Status SDIF" },
+        { id: "statusFp", label: "Status FP" },
+        { id: "statusKwi", label: "Status Kwitansi" },
+        { id: "statusTagih", label: "Status Tagih" },
+      ].map((status) => (
+        <div key={status.id} className="flex flex-col gap-1">
+          <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">{status.label}</label>
+          <div className="flex items-center gap-4 px-3 h-[38px] bg-white dark:bg-slate-900/40 border border-gray-200 dark:border-slate-800 rounded-xl overflow-x-auto whitespace-nowrap scrollbar-hide">
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <input
+                type="radio"
+                name={status.id}
+                checked={!colFilters[status.id] || colFilters[status.id].length === 0}
+                onChange={() => setColFilters((prev: any) => ({ ...prev, [status.id]: [] }))}
+                className="w-3.5 h-3.5 accent-emerald-500"
+              />
+              Semua
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+              <input
+                type="radio"
+                name={status.id}
+                checked={colFilters[status.id]?.includes("TRUE") || false}
+                onChange={() => setColFilters((prev: any) => ({ ...prev, [status.id]: ["TRUE"] }))}
+                className="w-3.5 h-3.5 accent-emerald-500"
+              />
+              Sudah
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-rose-600 dark:text-rose-500">
+              <input
+                type="radio"
+                name={status.id}
+                checked={colFilters[status.id]?.includes("FALSE") || false}
+                onChange={() => setColFilters((prev: any) => ({ ...prev, [status.id]: ["FALSE"] }))}
+                className="w-3.5 h-3.5 accent-emerald-500"
+              />
+              Belum
+            </label>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -103,6 +103,22 @@ model PurchaseOrderItem {
   @@index([productId]) // product joins
 }
 
+model AuditLog {
+  id        String   @id @default(cuid())
+  entityId  String   // e.g., PurchaseOrder ID or PurchaseOrderItem ID
+  entity    String   // "PurchaseOrder" or "PurchaseOrderItem"
+  action    String   // "UPDATE", "DELETE", "CREATE"
+  oldData   Json?    // Snapshot of previous state
+  newData   Json?    // Snapshot of new state
+  userId    String?  // Who did it
+  userName  String?
+  createdAt DateTime @default(now())
+
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
 model RitelModern {
   id            String          @id
   namaPt        String
@@ -207,6 +223,7 @@ model Reconcile {
   ritelId        String
   RitelModern    RitelModern @relation(fields: [ritelId], references: [id])
   bankStatement  Float       @default(0)
+  bankStatements Json?       // Array of { nominal: number, notes: string }
   biayaAdmin     Float       @default(0)
   totalInvoices  Float       @default(0)
   totalRtvs      Float       @default(0)

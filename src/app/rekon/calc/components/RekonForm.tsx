@@ -19,7 +19,7 @@ import Swal from "sweetalert2";
 export default function RekonForm({ calc }: { calc: any }) {
   const {
     masterCompanies,
-    bankStatement, setBankStatement,
+    bankStatementsList, setBankStatementsList, bankStatement,
     tglBayar, setTglBayar,
     buktiBayarFile, setBuktiBayarFile,
     rincianBayarUrl, setRincianBayarUrl,
@@ -65,21 +65,75 @@ export default function RekonForm({ calc }: { calc: any }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 relative z-10">
-            <div className="md:col-span-12 space-y-3">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nominal Rekening Koran</label>
-              <div className="relative group">
-                  <div className="absolute left-5 sm:left-10 top-1/2 -translate-y-1/2 text-slate-200 dark:text-slate-500 group-focus-within:text-[#f59e0b] dark:group-focus-within:text-[#f59e0b] transition-colors">
-                    <CircleDollarSign className="w-[24px] h-[24px] sm:w-[36px] sm:h-[36px]" />
-                  </div>
-                  <input 
-                    type="text" 
-                    placeholder="0" 
-                    className="w-full h-20 sm:h-28 pl-16 sm:pl-32 pr-6 sm:pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[24px] sm:rounded-[36px] border-none outline-none font-black text-3xl sm:text-4xl text-slate-700 dark:text-slate-100 placeholder:text-slate-200 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-orange-50/50 dark:focus:ring-orange-500/20 shadow-sm group-hover:shadow-md"
-                    onChange={e => setBankStatement(Number(e.target.value.replace(/[^0-9]/g, '')))}
-                    value={bankStatement ? new Intl.NumberFormat("id-ID").format(bankStatement) : ""}
-                  />
-                  <span className="hidden sm:block absolute right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-200 dark:text-slate-500 uppercase tracking-widest pointer-events-none">Nominal Rp</span>
+            <div className="md:col-span-12 space-y-4">
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data Rekening Koran (Bisa lebih dari 1)</label>
+                <button 
+                  type="button" 
+                  onClick={() => setBankStatementsList([...bankStatementsList, { desc: "", nominal: 0 }])}
+                  className="px-4 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-all shadow-sm"
+                >
+                  <Plus size={12} strokeWidth={3} />
+                  Tambah Bank Statement
+                </button>
               </div>
+              
+              {bankStatementsList.length === 0 && (
+                <div className="text-center py-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                   <p className="text-xs text-slate-400 font-bold">Belum ada Bank Statement, klik Tambah di atas.</p>
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                  {bankStatementsList.map((bs: any, idx: number) => (
+                    <div key={idx} className="flex flex-col lg:flex-row gap-3 items-stretch animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex-1 relative h-full min-w-0">
+                          <input
+                              type="text"
+                              placeholder="Keterangan Bank Statement..."
+                              value={bs.desc}
+                              onChange={(e) => {
+                                const updated = [...bankStatementsList];
+                                updated[idx] = { ...updated[idx], desc: e.target.value };
+                                setBankStatementsList(updated);
+                              }}
+                              className="w-full h-full min-h-[56px] px-5 py-4 bg-white/70 dark:bg-amber-900/10 backdrop-blur-md rounded-2xl border border-white dark:border-amber-800/30 focus:border-amber-200 dark:focus:border-amber-500/50 outline-none font-bold text-[12px] text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-amber-900/30 shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-none focus:shadow-[0_4px_20px_rgba(245,158,11,0.1)] transition-all"
+                          />
+                        </div>
+                        <div className="w-full lg:w-[35%] relative h-full shrink-0">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500">
+                             <CircleDollarSign size={20} />
+                          </div>
+                          <input
+                              type="text"
+                              placeholder="0"
+                              value={bs.nominal ? bs.nominal.toLocaleString('id-ID') : ""}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^0-9]/g, '');
+                                const updated = [...bankStatementsList];
+                                updated[idx] = { ...updated[idx], nominal: Number(raw) || 0 };
+                                setBankStatementsList(updated);
+                              }}
+                              className="w-full h-full min-h-[56px] pl-12 pr-5 py-4 bg-white/70 dark:bg-amber-900/10 backdrop-blur-md rounded-2xl border border-white dark:border-amber-800/30 focus:border-amber-200 dark:focus:border-amber-500/50 outline-none font-black text-lg text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-amber-900/30 shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-none focus:shadow-[0_4px_20px_rgba(245,158,11,0.1)] transition-all text-right tabular-nums"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setBankStatementsList(bankStatementsList.filter((_: any, i: number) => i !== idx))}
+                          className="w-12 lg:w-14 h-14 bg-rose-50 dark:bg-rose-500/10 text-rose-400 dark:text-rose-500 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all shadow-sm cursor-pointer shrink-0"
+                          title="Hapus baris"
+                        >
+                          <X size={20} strokeWidth={2.5} />
+                        </button>
+                    </div>
+                  ))}
+              </div>
+              {bankStatementsList.length > 0 && (
+                 <div className="pt-2 flex justify-end items-center px-4">
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-4">Total Bank Statement</p>
+                     <p className="text-xl font-black tabular-nums text-amber-500">Rp {bankStatement.toLocaleString('id-ID')}</p>
+                 </div>
+              )}
             </div>
 
             <div className="md:col-span-5 space-y-3">

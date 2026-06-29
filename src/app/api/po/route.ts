@@ -19,9 +19,8 @@ import { POBodySchema } from "@/lib/schemas/po";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
 import { getRegionalSynonyms } from "@/lib/utils/regional";
 import { ensureInvoiceNumber } from "@/lib/generatePoInvoiceNumber";
-
-
-
+import { auditUpdatePO, auditUpdatePOItem, auditDeletePOItem } from "@/lib/audit";
+import { getProfileName } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
@@ -270,9 +269,7 @@ export async function POST(request: Request) {
         }
 
         const po = existing
-          ? await tx.purchaseOrder.update({
-              where: { id: existing.id },
-              data: {
+          ? await auditUpdatePO(tx as any, { id: existing.id }, {
                 noPo: noPoTrim,
                 ritelId: poRitelId,
                 unitProduksiId: poUnitProduksiId,
@@ -298,8 +295,7 @@ export async function POST(request: Request) {
                 buktiFp,
                 ...(poTglKirim !== undefined ? { tglkirim: poTglKirim } : {}),
                 updatedAt: poUpdatedAt,
-              },
-            })
+            }, { id: dbUser?.id || (session as any)?.user?.id || "unknown", name: getProfileName(session, dbUser) })
           : await tx.purchaseOrder.upsert({
               where: { noPo: noPoTrim },
               create: {

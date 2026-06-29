@@ -70,7 +70,8 @@ export function useRekonCalc() {
   const [masterRtvsList, setMasterRtvsList] = useState<string[]>([]);
   const [masterPromos, setMasterPromos] = useState<Promo[]>([]);
 
-  const [bankStatement, setBankStatement] = useState(0);
+  const [bankStatementsList, setBankStatementsList] = useState<Array<{desc: string, nominal: number}>>([]);
+  const bankStatement = useMemo(() => bankStatementsList.reduce((acc, curr) => acc + (curr.nominal || 0), 0), [bankStatementsList]);
   const [tglBayar, setTglBayar] = useState<string>("");
   const [buktiBayarFile, setBuktiBayarFile] = useState<File | null>(null);
   const [buktiBayarUrl, setBuktiBayarUrl] = useState<string | null>(null);
@@ -119,7 +120,13 @@ export function useRekonCalc() {
               setSelectedCompany(d.RitelModern);
               fetchCompanyData(d.RitelModern.namaPt, d.RitelModern.id);
             }
-            setBankStatement(d.bankStatement || 0);
+            if (Array.isArray(d.bankStatements) && d.bankStatements.length > 0) {
+              setBankStatementsList(d.bankStatements);
+            } else if (d.bankStatement > 0) {
+              setBankStatementsList([{ desc: "Import dari data lama", nominal: d.bankStatement }]);
+            } else {
+              setBankStatementsList([]);
+            }
             setAdminFee(d.biayaAdmin || 0);
             setSelectedInvoices(d.detailedInvoices || []);
             setSelectedRtvs(d.detailedRtvs || []);
@@ -342,6 +349,7 @@ export function useRekonCalc() {
       const payload = {
         ritelId: selectedCompany.id,
         bankStatement: bankStatement,
+        bankStatements: bankStatementsList.filter(b => b.desc || b.nominal).map(b => ({ desc: b.desc, nominal: b.nominal })),
         biayaAdmin: adminFee,
         totalInvoices: totalInvoices,
         totalRtvs: totalRtv,
@@ -392,7 +400,7 @@ export function useRekonCalc() {
 
   return {
     masterCompanies,
-    bankStatement, setBankStatement,
+    bankStatementsList, setBankStatementsList, bankStatement,
     tglBayar, setTglBayar,
     buktiBayarFile, setBuktiBayarFile,
     rincianBayarUrl, setRincianBayarUrl,

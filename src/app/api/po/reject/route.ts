@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cacheClearPrefix } from "@/lib/ttl-cache";
-import { getSession } from "@/lib/auth";
+import { getSession, getProfileName } from "@/lib/auth";
+import { auditUpdatePO } from "@/lib/audit";
 
 export async function POST(request: Request) {
   try {
@@ -18,16 +19,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "id PO wajib diisi" }, { status: 400 });
     }
 
-    const po = await prisma.purchaseOrder.update({
-      where: { id },
-      data: {
-        statusPo: false,        // Balik ke antrean kebutuhan penetapan unit
-        unitProduksiId: "UNKNOWN", // Reset ke unit dummy agar tidak terdeteksi milik site area manapun
-        remarks: remarks || null, // Simpan alasan reject
-        updatedAt: new Date(),
-      },
-      select: { id: true, noPo: true, regional: true },
-    });
+    const po = await auditUpdatePO(prisma as any, { id }, {
+      statusPo: false,        // Balik ke antrean kebutuhan penetapan unit
+      unitProduksiId: "UNKNOWN", // Reset ke unit dummy agar tidak terdeteksi milik site area manapun
+      remarks: remarks || null, // Simpan alasan reject
+      updatedAt: new Date(),
+    }, { id: (session as any)?.user?.id || "unknown", name: getProfileName(session) });
 
     console.log(`[REJECT PO] Success: ${po.noPo} (ID: ${po.id})`);
 
