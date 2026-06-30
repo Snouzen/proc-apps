@@ -168,7 +168,11 @@ export function useRekonCalc() {
       setMasterInvoicesList([]);
       setMasterRtvsList([]);
       
-      const res = await fetch(`/api/rekon/lookup?companyName=${encodeURIComponent(companyName)}`);
+      const lookupUrl = new URL(`/api/rekon/lookup`, window.location.origin);
+      lookupUrl.searchParams.set("companyName", companyName);
+      if (editId) lookupUrl.searchParams.set("editId", editId);
+      
+      const res = await fetch(lookupUrl.toString());
       const json = await res.json();
       
       setMasterInvoicesList(json.invoices || []);

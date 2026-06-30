@@ -12,10 +12,12 @@ export async function GET(request: Request) {
     const invoiceNo = searchParams.get("invoiceNo")?.trim();
     const rtvNo = searchParams.get("rtvNo")?.trim();
     const companyName = searchParams.get("companyName")?.trim();
+    const editId = searchParams.get("editId")?.trim(); // ID rekon yang sedang di-edit
 
     // --- CASE A: Suggestion Mode (Hanya Company Name disediakan) ---
     // Dipakai untuk dropdown autocomplete di frontend
     if (companyName && !invoiceNo && !rtvNo) {
+      // 1. Ambil semua invoice & RTV yang tersedia untuk company ini
       const [availableInvoices, availableRtvs] = await Promise.all([
         prisma.purchaseOrder.findMany({
           where: { 
@@ -23,7 +25,6 @@ export async function GET(request: Request) {
              AND: [
                { noInvoice: { not: null } },
                { noInvoice: { not: "" } },
-               { statusBayar: false }
              ]
           },
           select: { noInvoice: true, noPo: true },
@@ -42,8 +43,30 @@ export async function GET(request: Request) {
         })
       ]);
 
+      // 2. Ambil semua invoice yang sudah terpakai di rekon lain (draft + final)
+      const usedInvoiceWhere: any = {};
+      if (editId) {
+        // Jika sedang edit rekon, exclude rekon ini sendiri dari pengecekan
+        usedInvoiceWhere.id = { not: editId };
+      }
+      const existingRekons = await prisma.reconcile.findMany({
+        where: usedInvoiceWhere,
+        select: { invoices: true },
+      });
+      const usedInvoiceSet = new Set<string>();
+      for (const rekon of existingRekons) {
+        for (const inv of (rekon.invoices || [])) {
+          usedInvoiceSet.add(inv);
+        }
+      }
+
+      // 3. Filter: buang invoice yang sudah dipakai di rekon lain
+      const filteredInvoices = availableInvoices
+        .map(i => ({ noInvoice: i.noInvoice, noPo: i.noPo }))
+        .filter(i => i.noInvoice && !usedInvoiceSet.has(i.noInvoice));
+
       return NextResponse.json({ 
-        invoices: availableInvoices.map(i => ({ noInvoice: i.noInvoice, noPo: i.noPo })).filter(i => i.noInvoice),
+        invoices: filteredInvoices,
         rtvs: availableRtvs.map(r => r.rtvCn).filter(Boolean)
       });
     }
