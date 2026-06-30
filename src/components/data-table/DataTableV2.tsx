@@ -257,7 +257,7 @@ export function DataTableV2<TData, TValue>({
     meta,
     getRowId,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: manualPagination ? undefined : getPaginationRowModel(),
+    getPaginationRowModel: (manualPagination || hidePagination) ? undefined : getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: manualSorting ? undefined : getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
