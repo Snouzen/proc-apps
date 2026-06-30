@@ -506,6 +506,7 @@ export default function RekonForm({ calc }: { calc: any }) {
                                                     </button>
                                                     {selectedInvoices
                                                       .filter((inv: any) => inv.noInvoice.toLowerCase().includes(refInvoiceSearch.toLowerCase()))
+                                                      .filter((inv: any) => !selectedRtvs.some((r: any) => r.id !== rtv.id && r.refInvoice === inv.noInvoice))
                                                       .map((inv: any) => (
                                                       <button 
                                                           key={inv.id}

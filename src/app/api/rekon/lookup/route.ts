@@ -22,7 +22,8 @@ export async function GET(request: Request) {
              RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } },
              AND: [
                { noInvoice: { not: null } },
-               { noInvoice: { not: "" } }
+               { noInvoice: { not: "" } },
+               { statusBayar: false }
              ]
           },
           select: { noInvoice: true, noPo: true },

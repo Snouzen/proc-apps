@@ -48,8 +48,7 @@ export default function CreditLimitDataPage() {
     tglTo: filters.tglTo,
   });
 
-  const columns = useMemo(() => {
-    const cols = [
+  const cols = [
       helper.display({
         id: "no",
         header: "NO",
@@ -272,12 +271,11 @@ export default function CreditLimitDataPage() {
         },
       }),
     ];
-    return cols.filter(c => {
+    const columns = cols.filter(c => {
       if (c.id === 'batchCode') return activeFilter === "submitted";
       if (c.id === 'action') return activeFilter !== "submitted";
       return true;
     });
-  }, [activeFilter, data.currentPage, data.itemsPerPage, data.handleUpdateKodeVendor, data.handleAjukanCreditLimit]);
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-7">

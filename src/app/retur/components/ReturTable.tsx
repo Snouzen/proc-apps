@@ -18,13 +18,15 @@ export function ReturTable(props: any) {
     total, page, rowsPerPage, setPage, setRowsPerPage, isGroupedMode, selectedDetail, viewDetailId, comboRef, handleTujuanKeyDown, setSearchInisial, setIsInisialOpen, filteredInisial, products, isInisialOpen
   } = props;
 
-  const columns = useMemo(() => [
+  const columns = [
     helper.display({
       id: "no",
       header: "NO",
       size: 60,
       meta: { align: "center" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const no = (page - 1) * rowsPerPage + row.index + 1;
         return (
           <span className="text-slate-500 font-medium text-xs">
@@ -36,7 +38,9 @@ export function ReturTable(props: any) {
     helper.accessor("rtvCn", {
       header: "RTV/CN",
       size: 140,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -50,7 +54,9 @@ export function ReturTable(props: any) {
     helper.accessor("tanggalRtv", {
       header: "TANGGAL RTV",
       size: 140,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -66,7 +72,9 @@ export function ReturTable(props: any) {
     helper.accessor("maxPickup", {
       header: "MAX PICKUP",
       size: 140,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -82,7 +90,9 @@ export function ReturTable(props: any) {
     helper.accessor("statusBarang", {
       header: "STATUS BARANG",
       size: 160,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -116,7 +126,9 @@ export function ReturTable(props: any) {
     helper.accessor("lokasiBarang", {
       header: "LOKASI BARANG",
       size: 180,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -159,7 +171,9 @@ export function ReturTable(props: any) {
       header: "KODE TOKO",
       size: 130,
       meta: { align: "center" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -173,7 +187,9 @@ export function ReturTable(props: any) {
     helper.accessor("namaCompany", {
       header: "TOKO",
       size: 180,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -187,7 +203,9 @@ export function ReturTable(props: any) {
     helper.accessor("inisial", {
       header: "INISIAL",
       size: 100,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -201,7 +219,9 @@ export function ReturTable(props: any) {
     helper.accessor("link", {
       header: "LINK",
       size: 120,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -215,7 +235,9 @@ export function ReturTable(props: any) {
     helper.accessor("produk", {
       header: "PRODUK",
       size: 180,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -230,7 +252,9 @@ export function ReturTable(props: any) {
       header: "QTY RETUR",
       size: 130,
       meta: { align: "center" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -247,7 +271,9 @@ export function ReturTable(props: any) {
       header: "NOMINAL",
       size: 150,
       meta: { align: "right" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -264,7 +290,9 @@ export function ReturTable(props: any) {
       header: "RP/KG",
       size: 140,
       meta: { align: "right" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -280,7 +308,9 @@ export function ReturTable(props: any) {
     helper.accessor("refKetStatus", {
       header: "REFERENSI/KET STATUS",
       size: 200,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -296,7 +326,9 @@ export function ReturTable(props: any) {
     helper.accessor("pembebananReturn", {
       header: "PEMBEBANAN RETUR",
       size: 180,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -317,7 +349,9 @@ export function ReturTable(props: any) {
       header: "INVOICE REKON",
       size: 150,
       meta: { align: "center" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -333,7 +367,9 @@ export function ReturTable(props: any) {
     helper.accessor("referensiPembayaran", {
       header: "REFERENSI PEMBAYARAN",
       size: 200,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -349,7 +385,9 @@ export function ReturTable(props: any) {
     helper.accessor("tanggalPembayaran", {
       header: "TANGGAL PEMBAYARAN",
       size: 160,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -365,7 +403,9 @@ export function ReturTable(props: any) {
     helper.accessor("remarks", {
       header: "REMARKS",
       size: 200,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -381,7 +421,9 @@ export function ReturTable(props: any) {
     helper.accessor("sdiReturn", {
       header: "SDI RETUR",
       size: 180,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         const isEditing = editingId === item.id || isMassEditing;
         const currentForm = isMassEditing ? (massEditForms[item.id] || item) : editForm;
@@ -399,7 +441,9 @@ export function ReturTable(props: any) {
       header: "AKSI",
       size: 100,
       meta: { align: "right" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        const { editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR } = meta;
         const item = row.original;
         if (isMassEditing) return null; // Hide actions during mass edit
         const isEditing = editingId === item.id;
@@ -430,17 +474,12 @@ export function ReturTable(props: any) {
         );
       },
     }),
-  ], [
-    editingId, isMassEditing, massEditForms, editForm, role, units, userArea, userRegional,
-    filteredLokasi, isFetchingPage, page, rowsPerPage, filteredToko, filteredInisial,
-    filteredProductsInline, filteredPembebanan, products, handleFieldChange, setSearchLokasi,
-    setSearchToko, setSearchInisial, setIsInisialOpen, setSearchProduk, setSearchPembebanan,
-    handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, formatIDR, formatDate, formatNumber
-  ]);
+  ];
 
   return (
     <>
-      <DataTableV2
+            <DataTableV2
+        meta={{ editingId, isMassEditing, massEditForms, editForm, role, handleFieldChange, handleSaveInline, handleCancelEdit, handleStartEdit, handleDelete, units, userArea, userRegional, isFetchingPage, filteredLokasi, setSearchLokasi, filteredTujuanItems, activeIndex, setActiveIndex, handleTujuanKeyDown, filteredToko, searchToko, setSearchToko, filteredInisial, setSearchInisial, isInisialOpen, setIsInisialOpen, products, searchProduk, setSearchProduk, filteredProductsInline, filteredPembebanan, searchPembebanan, setSearchPembebanan, formatDate, formatNumber, formatIDR }}
         columns={columns}
         data={paginatedData}
         getRowId={(row: any) => row.id}

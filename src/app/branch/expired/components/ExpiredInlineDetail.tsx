@@ -20,12 +20,10 @@ export function ExpiredInlineDetail({
   inlineDateTo,
   setInlineDateTo,
 }: any) {
-  if (!selectedDateKey) return null;
-
-  const selectedDateLabel = (() => {
+  const selectedDateLabel = selectedDateKey ? (() => {
     const parts = selectedDateKey.split("-");
     return `${Number(parts[2])} ${MONTH_NAMES[Number(parts[1]) - 1]} ${parts[0]}`;
-  })();
+  })() : "";
 
   const columns = useMemo(() => [
     helper.accessor("noPo", {
@@ -202,6 +200,8 @@ export function ExpiredInlineDetail({
       ),
     }),
   ], []);
+
+  if (!selectedDateKey) return null;
 
   return (
     <div className="mt-8 border-t pt-6 animate-in fade-in slide-in-from-bottom-4 duration-300">

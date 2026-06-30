@@ -64,11 +64,22 @@ export default function DataRekonTable({ hook }: { hook: any }) {
     helper.accessor("noRekonsiliasi", {
       header: "NO. REKON",
       size: 150,
-      cell: ({ row }) => (
-        <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg font-black tracking-tight text-[10px]">
-          {row.original.noRekonsiliasi}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const item = row.original;
+        const isNew = new Date().getTime() - new Date(item.updatedAt || item.createdAt).getTime() < 12 * 60 * 60 * 1000;
+        return (
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg font-black tracking-tight text-[10px]">
+              {item.noRekonsiliasi || 'DRAFT'}
+            </span>
+            {isNew && (
+              <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[8px] font-black uppercase rounded animate-pulse shadow-sm">
+                Baru
+              </span>
+            )}
+          </div>
+        );
+      },
     }),
     helper.accessor((row) => row.RitelModern?.namaPt, {
       id: "ritel",

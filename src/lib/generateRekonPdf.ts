@@ -387,6 +387,106 @@ export const generateRekonPdf = (
       },
     });
 
+    // ─── Rekap Transfer Move ───
+    if (item.rtvs && item.rtvs.length > 0) {
+      // Helper: extract weight (kg) per unit from product name, e.g. "BEFOOD SETRA 5 KG" → 5
+      const extractKgPerUnit = (produk: string): number => {
+        const match = (produk || "").match(/(\d+(?:[.,]\d+)?)\s*KG/i);
+        if (match) return parseFloat(match[1].replace(",", "."));
+        return 0;
+      };
+
+      const transferMoveMap: Record<string, { sku: string, pengirim: string, penerima: string, totalPcs: number, totalKg: number }> = {};
+      (item.rtvs || []).forEach((rtv: any) => {
+        const refInv = typeof rtv === "object" ? rtv.refInvoice : "-";
+        const relatedInv = (item.invoices || []).find((inv: any) => inv.noInvoice === refInv);
+        const unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
+        const lokasi = typeof rtv === "object" ? (rtv.lokasiBarang || "-") : "-";
+        const produk = typeof rtv === "object" ? (rtv.produk || "-") : "-";
+        const pcs = typeof rtv === "object" ? (Number(rtv.qty) || Number(rtv.qtyReturn) || 0) : 0;
+        const kgPerUnit = extractKgPerUnit(produk);
+        const kg = pcs * kgPerUnit;
+        
+        if (pcs > 0) {
+          const key = `${produk}_${unitProduksi}_${lokasi}`;
+          if (!transferMoveMap[key]) {
+            transferMoveMap[key] = { sku: produk, pengirim: unitProduksi, penerima: lokasi, totalPcs: 0, totalKg: 0 };
+          }
+          transferMoveMap[key].totalPcs += pcs;
+          transferMoveMap[key].totalKg += kg;
+        }
+      });
+
+      const tmValues = Object.values(transferMoveMap);
+      if (tmValues.length > 0) {
+        nextY = (doc as any).lastAutoTable.finalY + 10;
+        
+        // Cek halaman baru jika sisa ruang sedikit
+        if (nextY > pageHeight - 40) {
+          doc.addPage();
+          nextY = 20;
+        }
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(30, 58, 138); // dark blue
+        doc.text(`REKAP TRANSFER MOVE`, 14, nextY);
+        doc.setTextColor(0, 0, 0);
+
+        // Grand totals
+        const grandTotalKg = tmValues.reduce((s, tm) => s + tm.totalKg, 0);
+        const grandTotalPcs = tmValues.reduce((s, tm) => s + tm.totalPcs, 0);
+
+        const tmBody: (string)[][] = tmValues.map((tm, i) => [
+          String(i + 1),
+          tm.sku,
+          tm.pengirim,
+          tm.penerima,
+          tm.totalKg.toLocaleString("id-ID"),
+          tm.totalPcs.toLocaleString("id-ID"),
+        ]);
+
+        // Grand total row
+        tmBody.push([
+          "",
+          "",
+          "",
+          "Total",
+          grandTotalKg.toLocaleString("id-ID"),
+          grandTotalPcs.toLocaleString("id-ID"),
+        ]);
+
+        autoTable(doc, {
+          startY: nextY + 3,
+          head: [["#", "SKU", "Pengirim", "Penerima", "Kuantum (Kg)", "Kuantum (Pack)"]],
+          body: tmBody,
+          theme: "grid",
+          styles: { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
+          headStyles: {
+            fontStyle: "bold",
+            fillColor: [30, 58, 138], // dark blue like screenshot
+            textColor: [255, 255, 255],
+            halign: "center",
+          },
+          columnStyles: {
+            0: { halign: "center", cellWidth: 10 },
+            1: { cellWidth: 70 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 45 },
+            4: { halign: "right", cellWidth: 30 },
+            5: { halign: "right", cellWidth: 30 },
+          },
+          didParseCell: (hookData: any) => {
+            // Style grand total row
+            if (hookData.row.index === tmBody.length - 1) {
+              hookData.cell.styles.fontStyle = "bold";
+              hookData.cell.styles.fillColor = [219, 234, 254]; // blue-100
+            }
+          },
+        });
+      }
+    }
+
     // ─── Promo Detail Table (only if promos exist) ───
     if (item.promos && item.promos.length > 0) {
       nextY = (doc as any).lastAutoTable.finalY + 10;

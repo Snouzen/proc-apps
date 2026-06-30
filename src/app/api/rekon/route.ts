@@ -144,7 +144,7 @@ export async function GET(request: Request) {
       prisma.reconcile.findMany({
         where: findManyWhere,
         include: { RitelModern: true },
-        orderBy: { createdAt: "desc" },
+        orderBy: { updatedAt: "desc" },
         skip,
         take: limit
       })
