@@ -353,7 +353,7 @@ export async function POST(request: Request) {
       update: {
         ritelId,
         bankStatement: Number(bankStatement) || 0,
-        bankStatements: Array.isArray(bankStatements) && bankStatements.length > 0 ? bankStatements : undefined,
+        bankStatements: Array.isArray(bankStatements) ? bankStatements : [],
         biayaAdmin: Number(biayaAdmin) || 0,
         totalInvoices: Number(totalInvoices) || 0,
         totalRtvs: Number(totalRtvs) || 0,
@@ -361,7 +361,7 @@ export async function POST(request: Request) {
         nominal: Number(nominal) || 0,
         invoices: invoices || [],
         rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
-        notes: notesArray.length > 0 ? notesArray : undefined,
+        notes: notesArray,
         notesDesc: computedNotesDesc,
         notesNominal: computedNotesNominal,
         noPromo: noPromo || null,

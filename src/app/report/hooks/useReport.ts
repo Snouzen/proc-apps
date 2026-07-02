@@ -131,7 +131,7 @@ export function useReport() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [tglFrom, setTglFrom] = useState("");
   const [tglTo, setTglTo] = useState("");
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [showColumns, setShowColumns] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [page, setPage] = useState(1);

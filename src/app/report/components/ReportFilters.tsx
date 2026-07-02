@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Filter } from "lucide-react";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import { MultiSelectFilterDropdown } from "./MultiSelectFilterDropdown";
 import { EXCLUDED_FILTER_COLS, Column } from "../hooks/useReport";
@@ -6,6 +6,7 @@ import { EXCLUDED_FILTER_COLS, Column } from "../hooks/useReport";
 export function ReportFilters({ hook }: { hook: any }) {
   const {
     showFilters,
+    setShowFilters,
     clearAllFilters,
     query,
     setQuery,
@@ -28,23 +29,35 @@ export function ReportFilters({ hook }: { hook: any }) {
     getOptionsForColumn,
   } = hook;
 
-  if (!showFilters) return null;
-
   return (
-    <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-5 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm dark:shadow-none mb-6">
-      <div className="col-span-full flex items-center justify-between mb-2 border-b border-gray-200 dark:border-slate-800 pb-3">
-        <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Filter Data Dinamis</h3>
-        <button
-          type="button"
-          onClick={clearAllFilters}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-500/20 transition-colors"
-        >
-          <X size={14} />
-          Clear All
-        </button>
+    <div className="mt-5 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm dark:shadow-none mb-6 overflow-hidden transition-all duration-300">
+      <div 
+        className="flex items-center justify-between p-5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
+        onClick={() => setShowFilters(!showFilters)}
+      >
+        <div className="flex items-center gap-2">
+          <Filter size={18} className="text-slate-500" />
+          <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Filter Data Dinamis</h3>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              clearAllFilters();
+            }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-500/20 transition-colors"
+          >
+            <X size={14} />
+            Clear All
+          </button>
+          {showFilters ? <ChevronUp size={20} className="text-slate-500" /> : <ChevronDown size={20} className="text-slate-500" />}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-1">
+      {showFilters && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-5 pt-0 border-t border-gray-200 dark:border-slate-800 mt-2">
+          <div className="flex flex-col gap-1">
         <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Pencarian Umum</label>
         <input
           value={query}
@@ -156,6 +169,8 @@ export function ReportFilters({ hook }: { hook: any }) {
           </div>
         </div>
       ))}
+        </div>
+      )}
     </div>
   );
 }

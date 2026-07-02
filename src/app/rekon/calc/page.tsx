@@ -1,13 +1,10 @@
 "use client";
 
-import { LayoutGrid, Loader2, Upload } from "lucide-react";
-import dynamic from "next/dynamic";
+import { LayoutGrid, Loader2 } from "lucide-react";
 import { Suspense } from "react";
 import { useRekonCalc } from "./hooks/useRekonCalc";
 import RekonForm from "./components/RekonForm";
 import RekonSummary from "./components/RekonSummary";
-
-const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
 
 function RekonContent() {
   const calc = useRekonCalc();
@@ -28,15 +25,6 @@ function RekonContent() {
               </p>
            </div>
         </div>
-        <div className="flex gap-4 w-full sm:w-auto">
-           <button 
-             onClick={() => calc.setOpenExcelModal(true)}
-             className="w-full sm:w-auto justify-center px-6 sm:px-10 py-3 bg-[#5c56f6] text-white rounded-xl sm:rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-indigo-100 flex items-center gap-3 hover:bg-indigo-700 transition-all"
-           >
-              <Upload size={14} strokeWidth={3} />
-              Bulk Upload
-           </button>
-        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-12 items-start">
@@ -44,18 +32,6 @@ function RekonContent() {
         <RekonSummary calc={calc} />
       </div>
 
-      {calc.openExcelModal && (
-        <ExcelBulkModal 
-          open={calc.openExcelModal}
-          onClose={() => calc.setOpenExcelModal(false)}
-          variant="rekon"
-          title="Bulk Upload Rekon"
-          onSuccess={() => {
-            calc.setOpenExcelModal(false);
-            window.location.reload();
-          }}
-        />
-      )}
     </div>
   );
 }
