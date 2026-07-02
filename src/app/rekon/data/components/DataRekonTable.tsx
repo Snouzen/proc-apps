@@ -66,7 +66,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
       size: 150,
       cell: ({ row }) => {
         const item = row.original;
-        const isNew = new Date().getTime() - new Date(item.updatedAt || item.createdAt).getTime() < 12 * 60 * 60 * 1000;
+        const isNew = new Date().getTime() - new Date(item.updatedAt || item.createdAt).getTime() < 48 * 60 * 60 * 1000;
         return (
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg font-black tracking-tight text-[10px]">

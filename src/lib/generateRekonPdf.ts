@@ -387,6 +387,126 @@ export const generateRekonPdf = (
       },
     });
 
+    nextY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Cek halaman baru jika sisa ruang sedikit
+    if (nextY > pageHeight - 40) {
+      doc.addPage();
+      nextY = 20;
+    }
+
+    // ─── Summary Net Tiap Invoice ───
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(139, 92, 246); // violet-500
+    doc.text(`SUMMARY NET TIAP INVOICE`, 14, nextY);
+    doc.setTextColor(0, 0, 0);
+
+    // Sort invoices by unitProduksi/siteArea
+    const sortedInvoices = [...(item.invoices || [])].sort((a, b) => {
+      const ua = (a.siteArea || a.unitProduksi || "").toLowerCase();
+      const ub = (b.siteArea || b.unitProduksi || "").toLowerCase();
+      return ua.localeCompare(ub);
+    });
+
+    let grandNominalInv = 0;
+    let grandNominalRetur = 0;
+    let grandNetTotal = 0;
+
+    const netInvoiceBody: any[] = [];
+
+    sortedInvoices.forEach((inv: any, i: number) => {
+      const unitProduksi = inv.siteArea || inv.unitProduksi || "-";
+      const noInvoice = inv.noInvoice || "-";
+      const nominalInv = Number(inv.nominal) || 0;
+      
+      const relatedRtvs = (item.rtvs || []).filter((rtv: any) => {
+        const refInv = typeof rtv === "object" ? rtv.refInvoice : "-";
+        return refInv === noInvoice;
+      });
+      const nominalRetur = relatedRtvs.reduce((sum: number, rtv: any) => sum + (Number(rtv.nominal) || 0), 0);
+      const netNominal = nominalInv - nominalRetur;
+      
+      grandNominalInv += nominalInv;
+      grandNominalRetur += nominalRetur;
+      grandNetTotal += netNominal;
+
+      const rowSpan = Math.max(1, relatedRtvs.length);
+      const spanStyles = { valign: 'middle' as const };
+
+      const firstRow: any[] = [
+        { content: String(i + 1), rowSpan, styles: { ...spanStyles, halign: 'center' } },
+        { content: unitProduksi, rowSpan, styles: spanStyles },
+        { content: noInvoice, rowSpan, styles: spanStyles },
+        { content: formatRp(nominalInv), rowSpan, styles: { ...spanStyles, halign: 'right' } }
+      ];
+
+      if (relatedRtvs.length > 0) {
+        firstRow.push(
+          typeof relatedRtvs[0] === "string" ? relatedRtvs[0] : (relatedRtvs[0].noRtv || "-"),
+          formatRp(relatedRtvs[0].nominal || 0)
+        );
+      } else {
+        firstRow.push("-", "-");
+      }
+
+      firstRow.push(
+        { content: formatRp(netNominal), rowSpan, styles: { ...spanStyles, halign: 'right' } }
+      );
+
+      netInvoiceBody.push(firstRow);
+
+      for (let j = 1; j < relatedRtvs.length; j++) {
+        const rtv = relatedRtvs[j];
+        netInvoiceBody.push([
+          typeof rtv === "string" ? rtv : (rtv.noRtv || "-"),
+          formatRp(rtv.nominal || 0)
+        ]);
+      }
+    });
+
+    if (netInvoiceBody.length === 0) {
+      netInvoiceBody.push(["-", "Tidak ada invoice", "-", "-", "-", "-", "-"]);
+    } else {
+      netInvoiceBody.push([
+        "",
+        "TOTAL KESELURUHAN",
+        "",
+        formatRp(grandNominalInv),
+        "",
+        formatRp(grandNominalRetur),
+        formatRp(grandNetTotal),
+      ]);
+    }
+
+    autoTable(doc, {
+      startY: nextY + 3,
+      head: [["#", "Unit Produksi / Site Area", "No. Invoice", "Nominal Invoice", "No. Retur", "Nominal Retur", "Jumlah Total (Net)"]],
+      body: netInvoiceBody,
+      theme: "grid",
+      styles: { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [139, 92, 246], // violet-500
+        textColor: [255, 255, 255],
+      },
+      columnStyles: {
+        0: { halign: "center", cellWidth: 8 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 40 },
+        3: { halign: "right", cellWidth: 36 },
+        4: { cellWidth: 53 },
+        5: { halign: "right", cellWidth: 36 },
+        6: { halign: "right", cellWidth: 36 },
+      },
+      didParseCell: (hookData: any) => {
+        if (sortedInvoices.length > 0 && hookData.row.index === netInvoiceBody.length - 1) {
+          hookData.cell.styles.fontStyle = "bold";
+          hookData.cell.styles.fillColor = [237, 233, 254]; // violet-100
+        }
+      },
+    });
+
     // ─── Rekap Transfer Move ───
     if (item.rtvs && item.rtvs.length > 0) {
       // Helper: extract weight (kg) per unit from product name, e.g. "BEFOOD SETRA 5 KG" → 5

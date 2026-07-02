@@ -18,6 +18,7 @@ export function useRekonData() {
   const [total, setTotal] = useState(0);
   const [totalDraft, setTotalDraft] = useState(0);
   const [totalCompleted, setTotalCompleted] = useState(0);
+  const [nominalDraft, setNominalDraft] = useState(0);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<any>(null);
@@ -52,6 +53,7 @@ export function useRekonData() {
         setTotal(json.total || 0);
         setTotalDraft(json.totalDraft || 0);
         setTotalCompleted(json.totalCompleted || 0);
+        setNominalDraft(json.nominalDraft || 0);
       }
     } catch (err) {
       console.error("Fetch Error:", err);
@@ -135,7 +137,7 @@ export function useRekonData() {
     statusFilter, setStatusFilter,
     page, setPage,
     limit, setLimit,
-    total, totalDraft, totalCompleted,
+    total, totalDraft, totalCompleted, nominalDraft,
     setTotal,
     expandedRows, setExpandedRows,
     pdfPreviewUrl, setPdfPreviewUrl,

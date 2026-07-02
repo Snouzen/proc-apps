@@ -1,4 +1,4 @@
-import { Layers, Search, Database, FileEdit, CheckCircle2 } from "lucide-react";
+import { Layers, Search, Database, FileEdit, CheckCircle2, AlertCircle } from "lucide-react";
 import DateInputHybrid from "@/components/DateInputHybrid";
 
 export default function DataRekonHeader({ hook }: { hook: any }) {
@@ -123,6 +123,20 @@ export default function DataRekonHeader({ hook }: { hook: any }) {
           </div>
         </div>
       </div>
+
+      {/* Reminder Banner for Draft */}
+      {hook.nominalDraft > 0 && hook.statusFilter !== "draft" && (
+        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-3 transition-all">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+            <AlertCircle size={20} strokeWidth={2.5} />
+          </div>
+          <div>
+            <p className="text-base font-bold text-amber-800 dark:text-amber-300 leading-tight">
+              Nominal Rekening Koran yang menggantung : {hook.formatRp(hook.nominalDraft)}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

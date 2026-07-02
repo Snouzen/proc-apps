@@ -137,10 +137,14 @@ export async function GET(request: Request) {
       findManyWhere.status = statusParam;
     }
 
-    const [total, totalDraft, totalCompleted, reconciles] = await Promise.all([
+    const [total, totalDraft, totalCompleted, draftAgg, reconciles] = await Promise.all([
       prisma.reconcile.count({ where }),
       prisma.reconcile.count({ where: { ...where, status: "draft" } }),
       prisma.reconcile.count({ where: { ...where, status: "final" } }),
+      prisma.reconcile.aggregate({
+        where: { ...where, status: "draft" },
+        _sum: { bankStatement: true }
+      }),
       prisma.reconcile.findMany({
         where: findManyWhere,
         include: { RitelModern: true },
@@ -261,7 +265,13 @@ export async function GET(request: Request) {
       console.error("Backfill buktiBayar setup error:", e);
     }
 
-    return NextResponse.json({ data, total, totalDraft, totalCompleted });
+    return NextResponse.json({ 
+      data, 
+      total, 
+      totalDraft, 
+      totalCompleted,
+      nominalDraft: draftAgg._sum.bankStatement || 0
+    });
   } catch (error: any) {
     console.error("GET Rekon Data Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

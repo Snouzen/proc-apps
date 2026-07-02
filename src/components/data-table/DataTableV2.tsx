@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import SmoothSelect from "@/components/ui/smooth-select";
 import {
   useReactTable,
   getCoreRowModel,
@@ -231,6 +232,7 @@ export function DataTableV2<TData, TValue>({
   const [internalColumnFilters, setInternalColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({});
+  const [internalPagination, setInternalPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const initialVisibility = React.useMemo(() => {
     const vis: VisibilityState = {};
@@ -251,6 +253,9 @@ export function DataTableV2<TData, TValue>({
   const columnFilters = manualFiltering && externalColumnFilters !== undefined ? externalColumnFilters : internalColumnFilters;
   const setColumnFilters = manualFiltering && externalOnColumnFiltersChange ? externalOnColumnFiltersChange : setInternalColumnFilters;
 
+  const activePagination = manualPagination && pagination ? pagination : internalPagination;
+  const setActivePagination = manualPagination && onPaginationChange ? onPaginationChange : setInternalPagination;
+
   const table = useReactTable({
     data,
     columns,
@@ -265,9 +270,9 @@ export function DataTableV2<TData, TValue>({
     onGlobalFilterChange: setGlobalFilter,
     onColumnPinningChange: setColumnPinning,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setActivePagination,
     manualPagination,
     pageCount,
-    onPaginationChange,
     manualSorting,
     manualFiltering,
     state: {
@@ -276,7 +281,7 @@ export function DataTableV2<TData, TValue>({
       globalFilter,
       columnPinning,
       columnVisibility,
-      ...(manualPagination && pagination ? { pagination } : {}),
+      pagination: activePagination,
     },
   });
 
@@ -415,20 +420,18 @@ export function DataTableV2<TData, TValue>({
           <div className="flex items-center space-x-6 lg:space-x-8">
             <div className="flex items-center space-x-2">
               <p className="text-sm font-medium">Data per halaman</p>
-              <select
-                suppressHydrationWarning
-                value={table.getState().pagination.pageSize}
-                onChange={(e) => {
-                  table.setPageSize(Number(e.target.value));
-                }}
-                className="h-8 w-[70px] rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 outline-none"
-              >
-                {[10, 25, 50, 100].map((pageSize) => (
-                  <option key={pageSize} value={pageSize}>
-                    {pageSize}
-                  </option>
-                ))}
-              </select>
+              <SmoothSelect
+                value={String(table.getState().pagination.pageSize)}
+                onChange={(v) => table.setPageSize(Number(v))}
+                options={[
+                  { value: "10", label: "10" },
+                  { value: "25", label: "25" },
+                  { value: "50", label: "50" },
+                  { value: "100", label: "100" },
+                ]}
+                className="w-[80px]"
+                menuPlacement="top"
+              />
             </div>
             <div className="flex items-center space-x-2">
               <button

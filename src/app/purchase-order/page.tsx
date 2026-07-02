@@ -111,7 +111,7 @@ export default function PurchaseOrderPage() {
                     <CardTitle className="text-2xl font-black text-slate-800 dark:text-slate-100">Daftar Purchase Order</CardTitle>
                     {poTable.activeNamaPt && (
                       <span className="text-xs font-semibold px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full shadow-sm">
-                        Total {poTable.filteredPo.length} PO &middot; Hal {poTable.currentPage} dari {poTable.totalPages}
+                        Total {poTable.filteredPo.length} PO
                       </span>
                     )}
                   </div>

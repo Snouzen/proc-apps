@@ -11,6 +11,7 @@ export default function SmoothSelect({
   className,
   width = "100%",
   disabled = false,
+  menuPlacement = "bottom",
 }: {
   options: Option[];
   value: string;
@@ -19,6 +20,7 @@ export default function SmoothSelect({
   className?: string;
   width?: number | string;
   disabled?: boolean;
+  menuPlacement?: "top" | "bottom";
 }) {
   const [open, setOpen] = React.useState(false);
 
@@ -64,14 +66,14 @@ export default function SmoothSelect({
         <span className="truncate">{current?.label || "-"}</span>
         <ChevronDown
           size={16}
-          className={`text-gray-500 dark:text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`text-gray-500 dark:text-slate-400 transition-transform duration-200 ${open && menuPlacement === "bottom" ? "rotate-180" : ""} ${open && menuPlacement === "top" ? "rotate-0" : menuPlacement === "top" ? "rotate-180" : ""}`}
         />
       </button>
       <div
-        className={`absolute left-0 mt-2 w-full z-50 ${open ? "pointer-events-auto" : "pointer-events-none"}`}
+        className={`absolute left-0 w-full z-50 ${menuPlacement === "top" ? "bottom-full mb-2" : "mt-2"} ${open ? "pointer-events-auto" : "pointer-events-none"}`}
       >
         <div
-          className={`rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xl transition-all duration-200 origin-top ${
+          className={`rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xl transition-all duration-200 ${menuPlacement === "top" ? "origin-bottom" : "origin-top"} ${
             open ? "opacity-100 scale-100" : "opacity-0 scale-95"
           }`}
         >
@@ -79,6 +81,7 @@ export default function SmoothSelect({
             {options.map((o) => (
               <li key={o.value}>
                 <button
+                  suppressHydrationWarning
                   type="button"
                   onClick={() => {
                     onChange(o.value);
