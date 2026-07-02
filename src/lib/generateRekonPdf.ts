@@ -159,7 +159,7 @@ export const generateRekonPdf = (
   // Blok 2: Disetujui Oleh
   doc.text("Disetujui Oleh,", signX, signStartY + 18);
 
-  // Space for signature M. Fakhri Firdaus
+  // Space for signature M. Fakri Firdaus
   doc.text("Muhammad Fakri Firdaus", signX, signStartY + 40);
   doc.text("Manager Bisnis", signX, signStartY + 45);
 
