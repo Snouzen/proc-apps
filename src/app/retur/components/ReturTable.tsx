@@ -18,6 +18,7 @@ export function ReturTable(props: any) {
     total, page, rowsPerPage, setPage, setRowsPerPage, isGroupedMode, selectedDetail, viewDetailId, comboRef, handleTujuanKeyDown, setSearchInisial, setIsInisialOpen, filteredInisial, products, isInisialOpen
   } = props;
 
+  // eslint-disable-next-line react-compiler/react-compiler
   const columns = useMemo(() => [
     helper.display({
       id: "no",

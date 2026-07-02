@@ -28,6 +28,8 @@ import { StandardTooltip } from "./StandardTooltip";
 import { ActionButton } from "./ActionButton";
 import { StatusBadge } from "./StatusBadge";
 
+const helper = createColumnHelper<any>();
+
 export function BatchAccordion({
   batchCode,
   pos,
@@ -74,8 +76,7 @@ export function BatchAccordion({
   const hasRequested = pos.some((po) => po.statusCreditLimit === "REQUESTED");
   const hasApproved = pos.some((po) => po.statusCreditLimit === "APPROVED");
 
-  const helper = createColumnHelper<any>();
-
+  // eslint-disable-next-line react-compiler/react-compiler
   const columns = useMemo(() => [
     helper.display({
       id: "no",
@@ -225,14 +226,15 @@ export function BatchAccordion({
       header: "ND",
       size: 50,
       meta: { align: "center" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
         const po = row.original;
         return (
           <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
             <input
               type="checkbox"
               checked={po.isNotaDinas || false}
-              onChange={() => onToggleND(po.id, po.isNotaDinas || false)}
+              onChange={() => meta?.onToggleND(po.id, po.isNotaDinas || false)}
               className="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
             />
           </div>
@@ -243,13 +245,14 @@ export function BatchAccordion({
       header: "NO ND",
       size: 150,
       meta: { align: "center" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
         const po = row.original;
-        return editNdId === po.id ? (
+        return meta?.editNdId === po.id ? (
           <input
             type="text"
-            value={tempNoNd}
-            onChange={(e) => setTempNoNd(e.target.value)}
+            value={meta?.tempNoNd}
+            onChange={(e) => meta?.setTempNoNd(e.target.value)}
             onClick={(e) => e.stopPropagation()}
             className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
             placeholder="Input No ND"
@@ -265,15 +268,16 @@ export function BatchAccordion({
       header: "LINK ND",
       size: 150,
       meta: { align: "center" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
         const po = row.original;
         return (
           <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
-            {editNdId === po.id ? (
+            {meta?.editNdId === po.id ? (
               <input
                 type="text"
-                value={tempLinkNd}
-                onChange={(e) => setTempLinkNd(e.target.value)}
+                value={meta?.tempLinkNd}
+                onChange={(e) => meta?.setTempLinkNd(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
                 className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="Input Link"
@@ -309,17 +313,18 @@ export function BatchAccordion({
       header: "ACTION",
       size: 140,
       meta: { align: "center" },
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
         const po = row.original;
         return (
           <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-            {editNdId === po.id ? (
+            {meta?.editNdId === po.id ? (
               <ActionButton
                 icon={Check}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onUpdateNDDetails(po.id, tempNoNd, tempLinkNd);
-                  setEditNdId(null);
+                  meta?.onUpdateNDDetails(po.id, meta?.tempNoNd, meta?.tempLinkNd);
+                  meta?.setEditNdId(null);
                 }}
                 tooltip="Simpan ND"
                 variant="indigo"
@@ -329,9 +334,9 @@ export function BatchAccordion({
                 icon={Edit3}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setTempNoNd(po.noNd || "");
-                  setTempLinkNd(po.linkNd || "");
-                  setEditNdId(po.id);
+                  meta?.setTempNoNd(po.noNd || "");
+                  meta?.setTempLinkNd(po.linkNd || "");
+                  meta?.setEditNdId(po.id);
                 }}
                 tooltip="Edit ND"
                 variant="slate"
@@ -341,13 +346,13 @@ export function BatchAccordion({
               <>
                 <ActionButton
                   icon={CheckCircle2}
-                  onClick={(e) => { e.stopPropagation(); onAction(po, "approve"); }}
+                  onClick={(e) => { e.stopPropagation(); meta?.onAction(po, "approve"); }}
                   tooltip="Setujui Credit Limit"
                   variant="emerald"
                 />
                 <ActionButton
                   icon={X}
-                  onClick={(e) => { e.stopPropagation(); onAction(po, "reject"); }}
+                  onClick={(e) => { e.stopPropagation(); meta?.onAction(po, "reject"); }}
                   tooltip="Tolak Credit Limit"
                   variant="rose"
                 />
@@ -356,13 +361,13 @@ export function BatchAccordion({
               <>
                 <ActionButton
                   icon={CheckCircle2}
-                  onClick={(e) => { e.stopPropagation(); onAction(po, "approveDireksi"); }}
+                  onClick={(e) => { e.stopPropagation(); meta?.onAction(po, "approveDireksi"); }}
                   tooltip="Setujui Credit Limit (Direksi)"
                   variant="indigo"
                 />
                 <ActionButton
                   icon={X}
-                  onClick={(e) => { e.stopPropagation(); onAction(po, "reject"); }}
+                  onClick={(e) => { e.stopPropagation(); meta?.onAction(po, "reject"); }}
                   tooltip="Tolak Credit Limit"
                   variant="rose"
                 />
@@ -378,7 +383,7 @@ export function BatchAccordion({
                 </span>
                 <ActionButton
                   icon={CheckCircle2}
-                  onClick={(e) => { e.stopPropagation(); onAction(po, "reRequest"); }}
+                  onClick={(e) => { e.stopPropagation(); meta?.onAction(po, "reRequest"); }}
                   tooltip="Ajukan Ulang"
                   variant="emerald"
                 />
@@ -390,7 +395,7 @@ export function BatchAccordion({
         );
       },
     }),
-  ], [editNdId, tempNoNd, tempLinkNd, onToggleND, onUpdateNDDetails, onAction]);
+  ], []);
 
 
   return (
@@ -553,6 +558,17 @@ export function BatchAccordion({
             getRowId={(row: any) => row.id}
             hidePagination={true}
             onRowClick={onViewRow}
+            meta={{
+              editNdId,
+              tempNoNd,
+              tempLinkNd,
+              setTempNoNd,
+              setTempLinkNd,
+              setEditNdId,
+              onToggleND,
+              onUpdateNDDetails,
+              onAction,
+            }}
           />
         </div>
       </div>

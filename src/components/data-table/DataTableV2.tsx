@@ -256,6 +256,7 @@ export function DataTableV2<TData, TValue>({
   const activePagination = manualPagination && pagination ? pagination : internalPagination;
   const setActivePagination = manualPagination && onPaginationChange ? onPaginationChange : setInternalPagination;
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
