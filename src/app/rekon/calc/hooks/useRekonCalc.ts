@@ -240,7 +240,7 @@ export function useRekonCalc() {
           lokasiBarang: r.LokasiBarang?.siteArea || "-",
           produk: r.Product?.name || r.produk || "-",
           unitProduksi: "-",
-          tujuan: r.namaCompany || r.RitelModern?.tujuan || "-",
+          tujuan: r.namaCompany || "-",
           rpKg: Number(r.rpKg || 0),
         }));
 

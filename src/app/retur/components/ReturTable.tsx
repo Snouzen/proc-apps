@@ -18,7 +18,7 @@ export function ReturTable(props: any) {
     total, page, rowsPerPage, setPage, setRowsPerPage, isGroupedMode, selectedDetail, viewDetailId, comboRef, handleTujuanKeyDown, setSearchInisial, setIsInisialOpen, filteredInisial, products, isInisialOpen
   } = props;
 
-  const columns = [
+  const columns = useMemo(() => [
     helper.display({
       id: "no",
       header: "NO",
@@ -474,7 +474,7 @@ export function ReturTable(props: any) {
         );
       },
     }),
-  ];
+  ], []);
 
   return (
     <>

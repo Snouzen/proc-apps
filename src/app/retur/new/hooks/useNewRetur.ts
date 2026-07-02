@@ -203,6 +203,17 @@ export function useNewRetur() {
       return;
     }
 
+    if (!formData.namaCompany || formData.namaCompany.trim() === "") {
+      Swal.fire({
+        icon: "warning",
+        title: "Tujuan Kosong",
+        text: "Silakan input Tujuan (Toko/DC) terlebih dahulu",
+        background: "#fff",
+        confirmButtonColor: "#4f46e5",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const records = items.map((item) => ({ ...formData, ...item, ritelId }));

@@ -125,7 +125,7 @@ export default function DataRekonHeader({ hook }: { hook: any }) {
       </div>
 
       {/* Reminder Banner for Draft */}
-      {hook.nominalDraft > 0 && hook.statusFilter !== "draft" && (
+      {hook.nominalDraft > 0 && (
         <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-3 transition-all">
           <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
             <AlertCircle size={20} strokeWidth={2.5} />

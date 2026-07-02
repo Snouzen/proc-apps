@@ -165,7 +165,7 @@ function NewReturPageContent() {
                 onOpenChange={setIsInisialOpen}
               />
               <EliteSearchableInput
-                label="Tujuan (Toko/DC)"
+                label={<span>Tujuan (Toko/DC) <span className="text-rose-500">*</span></span>}
                 placeholder="Cari atau Ketik Tujuan..."
                 icon={Search}
                 value={formData.namaCompany}
