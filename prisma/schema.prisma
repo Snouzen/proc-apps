@@ -232,6 +232,7 @@ model Reconcile {
   nominal        Float // Hasil akhir kalkulasi
   invoices       String[] // List nomor invoice
   rtvs           String[] // List nomor rtv/cn
+  rtvDetails     Json? // Array of {id, noRtv, refInvoice} — persists ref invoice mapping
   notesDesc      String?
   notesNominal   Float       @default(0)
   notes          Json? // Array of {desc: string, nominal: number}

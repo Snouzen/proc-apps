@@ -54,9 +54,23 @@ export async function GET(request: Request) {
         },
         include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true }
       });
+
+      // Build a refInvoice lookup from persisted rtvDetails (if available)
+      const savedRtvDetails: Array<{id?: string, noRtv: string, refInvoice?: string}> = Array.isArray(rekon.rtvDetails) ? rekon.rtvDetails as any : [];
+      const rtvRefMap = new Map<string, string>();
+      // Also build an id-based map for more precise matching
+      const rtvRefByIdMap = new Map<string, string>();
+      for (const detail of savedRtvDetails) {
+        if (detail.refInvoice) {
+          if (detail.id) rtvRefByIdMap.set(detail.id, detail.refInvoice);
+          if (detail.noRtv) rtvRefMap.set(detail.noRtv, detail.refInvoice);
+        }
+      }
+
       // Map RTVs (preserve duplicates — user may have same RTV number twice)
       // Prioritize records matching rekon's ritelId to prevent cross-ritel issues
       const rtvCounts: Record<string, number> = {};
+      const savedDetailCounts: Record<string, number> = {};
       const rtvsWithData = (rekon.rtvs || []).map((rtvNo: string, idx: number) => {
         const allMatches = detailedRtvs.filter(r => r.rtvCn === rtvNo);
         // Prefer matches that belong to the same ritel
@@ -66,12 +80,32 @@ export async function GET(request: Request) {
         const rtvData = matches[count] || matches[matches.length - 1];
         rtvCounts[rtvNo] = count + 1;
 
+        // Resolve refInvoice: prefer saved rtvDetails > DataRetur.invoiceRekon
+        let refInvoice = "";
+        if (savedRtvDetails.length > 0) {
+          // First try by id from the saved details
+          if (rtvData?.id && rtvRefByIdMap.has(rtvData.id)) {
+            refInvoice = rtvRefByIdMap.get(rtvData.id) || "";
+          } else {
+            // Fall back to matching by noRtv from saved details (use count for duplicates)
+            const detailsForRtv = savedRtvDetails.filter(d => d.noRtv === rtvNo);
+            const detailCount = savedDetailCounts[rtvNo] || 0;
+            const detail = detailsForRtv[detailCount] || detailsForRtv[detailsForRtv.length - 1];
+            if (detail?.refInvoice) refInvoice = detail.refInvoice;
+            savedDetailCounts[rtvNo] = detailCount + 1;
+          }
+        }
+        // Fallback to DataRetur fields for legacy records without rtvDetails
+        if (!refInvoice) {
+          refInvoice = rtvData?.invoiceRekon || rtvData?.referensiPembayaran || "";
+        }
+
         return {
           id: rtvData?.id,
           noRtv: rtvNo,
           total: Number(rtvData?.nominal || 0),
           qty: rtvData?.qtyReturn || 0,
-          refInvoice: rtvData?.invoiceRekon || rtvData?.referensiPembayaran || "",
+          refInvoice,
           pembebananRetur: rtvData?.PembebananReturn?.siteArea || "-",
           lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
           produk: rtvData?.Product?.name || rtvData?.produk || "-",
@@ -373,6 +407,7 @@ export async function POST(request: Request) {
         nominal: Number(nominal) || 0,
         invoices: invoices || [],
         rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
+        rtvDetails: Array.isArray(rtvs) ? rtvs.filter((r: any) => typeof r === 'object').map((r: any) => ({ id: r.id, noRtv: r.noRtv, refInvoice: r.refInvoice || "" })) : [],
         notes: notesArray,
         notesDesc: computedNotesDesc,
         notesNominal: computedNotesNominal,
@@ -395,6 +430,7 @@ export async function POST(request: Request) {
         nominal: Number(nominal) || 0,
         invoices: invoices || [],
         rtvs: Array.isArray(rtvs) ? rtvs.map((r: any) => typeof r === 'string' ? r : r.noRtv) : [],
+        rtvDetails: Array.isArray(rtvs) ? rtvs.filter((r: any) => typeof r === 'object').map((r: any) => ({ id: r.id, noRtv: r.noRtv, refInvoice: r.refInvoice || "" })) : undefined,
         notes: notesArray.length > 0 ? notesArray : undefined,
         notesDesc: computedNotesDesc,
         notesNominal: computedNotesNominal,
