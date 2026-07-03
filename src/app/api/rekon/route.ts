@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { getSession } from "@/lib/auth";
+import { getSessionWithRole, getProfileName, getSession } from "@/lib/auth";
 import crypto from "crypto";
+import { auditActivity } from "@/lib/audit";
 
 export async function GET(request: Request) {
   try {
@@ -45,15 +46,22 @@ export async function GET(request: Request) {
         };
       });
 
-      // Fetch Full RTV Details
+      // Fetch Full RTV Details — fetch all matches, then prioritize by ritelId
+      // RTV numbers (rtvCn) can be duplicated across different ritels with different data
       const detailedRtvs = await prisma.dataRetur.findMany({
-        where: { rtvCn: { in: rekon.rtvs || [] } },
+        where: { 
+          rtvCn: { in: rekon.rtvs || [] },
+        },
         include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true }
       });
       // Map RTVs (preserve duplicates — user may have same RTV number twice)
+      // Prioritize records matching rekon's ritelId to prevent cross-ritel issues
       const rtvCounts: Record<string, number> = {};
       const rtvsWithData = (rekon.rtvs || []).map((rtvNo: string, idx: number) => {
-        const matches = detailedRtvs.filter(r => r.rtvCn === rtvNo);
+        const allMatches = detailedRtvs.filter(r => r.rtvCn === rtvNo);
+        // Prefer matches that belong to the same ritel
+        const ritelMatches = allMatches.filter(r => r.ritelId === rekon.ritelId);
+        const matches = ritelMatches.length > 0 ? ritelMatches : allMatches;
         const count = rtvCounts[rtvNo] || 0;
         const rtvData = matches[count] || matches[matches.length - 1];
         rtvCounts[rtvNo] = count + 1;
@@ -204,7 +212,10 @@ export async function GET(request: Request) {
 
         const rtvCounts: Record<string, number> = {};
         const rtvsWithData = (rekon.rtvs || []).map(rtvNo => {
-          const matches = returMap.get(rtvNo) || [];
+          const allMatches = returMap.get(rtvNo) || [];
+          // Prefer matches that belong to the same ritel
+          const ritelMatches = allMatches.filter(r => r.ritelId === rekon.ritelId);
+          const matches = ritelMatches.length > 0 ? ritelMatches : allMatches;
           const count = rtvCounts[rtvNo] || 0;
           const retur = matches[count] || matches[matches.length - 1];
           rtvCounts[rtvNo] = count + 1;
@@ -280,10 +291,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession(request);
-    if (!session) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const { session, role: safeRole, dbUser } = auth;
     const body = await request.json();
     const { 
       ritelId, 
@@ -393,6 +405,10 @@ export async function POST(request: Request) {
         status: status || "final",
       }
     });
+
+    if (!id) {
+      await auditActivity(prisma as any, newRekon.id, "Reconcile", "CREATE", { id: dbUser?.id || (session as any)?.user?.id || "unknown", name: getProfileName(session, dbUser), role: safeRole });
+    }
 
     // 4. SYNC: Update referensi invoice di tabel DataRetur secara otomatis & Tracking History
     if (Array.isArray(rtvs)) {

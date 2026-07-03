@@ -1,31 +1,16 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { getSessionWithRole, getProfileName } from "@/lib/auth";
+import { auditActivity } from "@/lib/audit";
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies();
-    let token = cookieStore.get("session")?.value;
-    if (!token) {
-      const hdr = req.headers.get("cookie") || "";
-      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-      if (m && m[1]) token = decodeURIComponent(m[1]);
-    }
-
-    const sessionObj = await Promise.resolve(verifySession(token));
-    if (!sessionObj) {
+    const auth = await getSessionWithRole(req);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const emailRaw = sessionObj?.email || (sessionObj as any)?.user?.email || (sessionObj as any)?.payload?.email || "";
-    const email = String(emailRaw).toLowerCase().trim();
-
-    let dbUser = null;
-    if (email) {
-      dbUser = await prisma.user.findUnique({ where: { email } });
-    }
-    const safeRole = String(dbUser?.role || sessionObj?.role || "").toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+    const { session: sessionObj, role: safeRole, dbUser } = auth;
 
     const body = await req.json().catch(() => ({}));
     const { poId, poIds, action, remarks } = body;
@@ -83,6 +68,8 @@ export async function POST(req: Request) {
             },
             include: { _count: { select: { PurchaseOrders: true } } },
           });
+
+          await auditActivity(tx as any, batch.id, "CreditLimitBatch", "CREATE", { id: dbUser?.id || (sessionObj as any)?.user?.id || "unknown", name: getProfileName(sessionObj, dbUser), role: safeRole });
         }
 
         // 4. Update the PO

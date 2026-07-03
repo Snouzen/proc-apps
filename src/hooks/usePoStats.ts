@@ -20,6 +20,7 @@ export function usePoStats({ roleReady, role, regional, siteArea, dateFrom, date
     almostExpiredCount: 0,
     expiredCount: 0,
     completedCount: 0,
+    topSiteAreas: [] as {name: string, po: number}[],
   });
 
   const statsParams = useMemo(() => {
@@ -54,6 +55,7 @@ export function usePoStats({ roleReady, role, regional, siteArea, dateFrom, date
         almostExpiredCount: Number(s?.cAlmost) || 0,
         expiredCount: Number(s?.cExpired) || 0,
         completedCount: Number(s?.cCompleted) || 0,
+        topSiteAreas: Array.isArray(s?.topSiteAreas) ? s.topSiteAreas : [],
       });
     } catch (err) {
       if ((err as any)?.name === "AbortError") return;

@@ -8,11 +8,33 @@ type TxClient = Omit<
   "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
 >;
 
+// Generic function for logging activity
+export async function auditActivity(
+  tx: TxClient,
+  entityId: string,
+  entity: string,
+  action: string,
+  user: { id?: string; name?: string; role?: string } | null,
+  newData?: any
+) {
+  return tx.auditLog.create({
+    data: {
+      entityId,
+      entity,
+      action,
+      newData,
+      userId: user?.id || null,
+      userName: user?.name || null,
+      userRole: user?.role || null,
+    },
+  });
+}
+
 export async function auditUpdatePO(
   tx: TxClient,
   where: Prisma.PurchaseOrderWhereUniqueInput,
   data: Prisma.PurchaseOrderUpdateInput | Prisma.PurchaseOrderUncheckedUpdateInput,
-  user: { id?: string; name?: string } | null
+  user: { id?: string; name?: string; role?: string } | null
 ) {
   const oldData = await tx.purchaseOrder.findUnique({ where });
   const newData = await tx.purchaseOrder.update({ where, data });
@@ -27,6 +49,7 @@ export async function auditUpdatePO(
         newData: newData as any,
         userId: user?.id || null,
         userName: user?.name || null,
+        userRole: user?.role || null,
       },
     });
   }
@@ -37,7 +60,7 @@ export async function auditUpdatePO(
 export async function auditDeletePO(
   tx: TxClient,
   where: Prisma.PurchaseOrderWhereUniqueInput,
-  user: { id?: string; name?: string } | null
+  user: { id?: string; name?: string; role?: string } | null
 ) {
   const oldData = await tx.purchaseOrder.findUnique({ where });
   if (oldData) {
@@ -49,6 +72,7 @@ export async function auditDeletePO(
         oldData: oldData as any,
         userId: user?.id || null,
         userName: user?.name || null,
+        userRole: user?.role || null,
       },
     });
   }
@@ -59,7 +83,7 @@ export async function auditUpdatePOItem(
   tx: TxClient,
   where: Prisma.PurchaseOrderItemWhereUniqueInput,
   data: Prisma.PurchaseOrderItemUpdateInput | Prisma.PurchaseOrderItemUncheckedUpdateInput,
-  user: { id?: string; name?: string } | null
+  user: { id?: string; name?: string; role?: string } | null
 ) {
   const oldData = await tx.purchaseOrderItem.findUnique({ where });
   const newData = await tx.purchaseOrderItem.update({ where, data });
@@ -74,6 +98,7 @@ export async function auditUpdatePOItem(
         newData: newData as any,
         userId: user?.id || null,
         userName: user?.name || null,
+        userRole: user?.role || null,
       },
     });
   }
@@ -84,7 +109,7 @@ export async function auditUpdatePOItem(
 export async function auditDeletePOItem(
   tx: TxClient,
   where: Prisma.PurchaseOrderItemWhereUniqueInput,
-  user: { id?: string; name?: string } | null
+  user: { id?: string; name?: string; role?: string } | null
 ) {
   const oldData = await tx.purchaseOrderItem.findUnique({ where });
   if (oldData) {
@@ -96,6 +121,7 @@ export async function auditDeletePOItem(
         oldData: oldData as any,
         userId: user?.id || null,
         userName: user?.name || null,
+        userRole: user?.role || null,
       },
     });
   }

@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { getMe } from "@/lib/me";
 
-export type RoleType = "pusat" | "rm" | "sitearea" | null;
+export type RoleType = "pusat" | "rm" | "sitearea" | "magang" | null;
 
 export function useAuthData() {
   const [role, setRole] = useState<RoleType>(null);
   const [regional, setRegional] = useState<string | null>(null);
   const [siteArea, setSiteArea] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -17,11 +18,13 @@ export function useAuthData() {
       setRole(me?.role as RoleType);
       setRegional(me?.regional || null);
       setSiteArea((me as any)?.siteArea || null);
+      setEmail(me?.email || null);
       setRoleReady(true);
     } catch {
       setRole("pusat");
       setRegional(null);
       setSiteArea(null);
+      setEmail(null);
       setRoleReady(true);
     } finally {
       setAuthLoading(false);
@@ -50,5 +53,5 @@ export function useAuthData() {
     };
   }, [fetchMe]);
 
-  return { role, regional, siteArea, roleReady, authLoading, fetchMe };
+  return { role, regional, siteArea, email, roleReady, authLoading, fetchMe };
 }

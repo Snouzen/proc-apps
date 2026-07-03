@@ -151,29 +151,31 @@ export const generateRekonPdf = (
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0, 0, 0);
   
-  const col1X = 25;
-  const col2X = 115;
-  const col3X = 220;
+  const col1X = 20;
+  const col2X = 90;
+  const col3X = 170;
+  const col4X = 230;
 
   // Headers
-  doc.text("Diketahui oleh,", (col1X + col2X) / 2 + 10, signStartY, { align: "center" });
-  doc.text("Dibuat Oleh,", col3X, signStartY);
+  doc.text("Diketahui oleh,", 75, signStartY, { align: "center" });
+  doc.text("Dibuat Oleh,", 215, signStartY, { align: "center" });
 
   // Names (Row 1)
   const nameStartY = signStartY + 30;
+  
+  // Diketahui oleh
   doc.text("Fiana Fega Sari", col1X, nameStartY);
   doc.text("Manager Keuangan dan Umum", col1X, nameStartY + 5);
 
   doc.text("Muhammad Fakri Firdaus", col2X, nameStartY);
   doc.text("Manager Bisnis", col2X, nameStartY + 5);
 
+  // Dibuat Oleh
   doc.text("Izath Rytami", col3X, nameStartY);
   doc.text("Asman Bisnis", col3X, nameStartY + 5);
 
-  // Names (Row 2)
-  const row2StartY = nameStartY + 40;
-  doc.text("Rakha Arfiansyah", col1X, row2StartY);
-  doc.text("Asman Keuangan dan Umum", col1X, row2StartY + 5);
+  doc.text("Rakha Arfiansyah", col4X, nameStartY);
+  doc.text("Asman Keuangan dan Umum", col4X, nameStartY + 5);
 
   // ═══════════════════════════════════════════════════════
   // DETAIL BREAKDOWN PER RECORD

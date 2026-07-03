@@ -168,8 +168,8 @@ export async function GET(request: Request) {
         NOT: { OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }] }
       };
 
-      // 3. Eksekusi 6 Hitungan secara Paralel (Ngebut & Bersih!)
-      const [cAll, cActive, cAssign, cAlmost, cExpired, cCompleted] = await Promise.all([
+      // 3. Eksekusi 7 Hitungan secara Paralel (Ngebut & Bersih!)
+      const [cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, topUnits] = await Promise.all([
         // cAll
         prisma.purchaseOrder.count({ where: baseWhere }),
         
@@ -219,11 +219,35 @@ export async function GET(request: Request) {
             ...baseWhere,
             ...hasInvoiceCond
           }
+        }),
+
+        // topUnits
+        prisma.purchaseOrder.groupBy({
+          by: ['unitProduksiId'],
+          _count: true,
+          where: baseWhere,
+          orderBy: { _count: { unitProduksiId: 'desc' } },
+          take: 6
         })
       ]);
 
+      const unitIds = topUnits.map((u: any) => u.unitProduksiId).filter(Boolean);
+      const units = await prisma.unitProduksi.findMany({
+        where: { idRegional: { in: unitIds } },
+        select: { idRegional: true, siteArea: true }
+      });
+      
+      const topSiteAreas = topUnits
+        .filter((u: any) => u.unitProduksiId && u.unitProduksiId !== "UNKNOWN")
+        .map((u: any) => ({
+          name: units.find((unit: any) => unit.idRegional === u.unitProduksiId)?.siteArea || "UNKNOWN",
+          po: u._count
+        }))
+        .filter((u: any) => u.name !== "UNKNOWN")
+        .slice(0, 5);
+
         return {
-          cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, cProgress: 0
+          cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, cProgress: 0, topSiteAreas
         };
     }, [cacheKey], { revalidate: 120, tags: [cacheKey] })();
     cacheSet(cacheKey, payload, 30000);

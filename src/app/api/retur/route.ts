@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { verifySession, getSessionWithRole, getProfileName } from "@/lib/auth";
+import { auditActivity } from "@/lib/audit";
 
 export async function GET(request: Request) {
   try {
@@ -190,6 +191,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await getSessionWithRole(request);
+    if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { session, role: safeRole, dbUser } = auth;
+
     const bodyRaw = await request.json();
     const isArray = Array.isArray(bodyRaw);
     const body = isArray ? bodyRaw : (bodyRaw.data || bodyRaw);
@@ -315,6 +320,13 @@ export async function POST(request: Request) {
         skipDuplicates: true, // Safety net level DB
       });
 
+      if (result.count > 0) {
+        await auditActivity(prisma as any, `batch-${Date.now()}`, "DataRetur", "CREATE", 
+          { id: dbUser?.id || (session as any)?.user?.id || "unknown", name: getProfileName(session, dbUser), role: safeRole }, 
+          { count: result.count, isBatch: true }
+        );
+      }
+
       return NextResponse.json({ success: true, count: result.count });
     }
 
@@ -370,6 +382,8 @@ export async function POST(request: Request) {
         sdiReturn: body.sdiReturn || null,
       },
     });
+
+    await auditActivity(prisma as any, newData.id, "DataRetur", "CREATE", { id: dbUser?.id || (session as any)?.user?.id || "unknown", name: getProfileName(session, dbUser), role: safeRole });
 
     return NextResponse.json({ success: true, data: newData }, { status: 201 });
   } catch (error: any) {

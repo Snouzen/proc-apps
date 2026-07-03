@@ -454,11 +454,11 @@ export default function RekonForm({ calc }: { calc: any }) {
                               </tr>
                           </thead>
                           <tbody className="text-[11px] font-black">
-                              {selectedRtvs.map((rtv: any) => { 
+                              {selectedRtvs.map((rtv: any, rtvIdx: number) => { 
                                 const refInv = selectedInvoices.find((inv: any) => inv.noInvoice === rtv.refInvoice); 
                                 const unitProduksiFromInv = refInv?.siteArea || "-"; 
                                 return (
-                                  <tr key={rtv.id} className="group hover:bg-white dark:hover:bg-slate-800/50 transition-colors border-b border-rose-50/20 dark:border-slate-700/50">
+                                  <tr key={rtv.id || `rtv-${rtvIdx}`} className="group hover:bg-white dark:hover:bg-slate-800/50 transition-colors border-b border-rose-50/20 dark:border-slate-700/50">
                                     <td className="px-4 py-4 text-rose-500 uppercase whitespace-nowrap tracking-tight">{rtv.noRtv}</td>
                                     <td className="px-2 py-4 text-center text-slate-400 dark:text-slate-500 tabular-nums whitespace-nowrap">{rtv.qty}</td>
                                     <td className="px-4 py-4">

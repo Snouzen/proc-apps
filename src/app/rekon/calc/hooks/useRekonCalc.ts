@@ -170,6 +170,7 @@ export function useRekonCalc() {
       
       const lookupUrl = new URL(`/api/rekon/lookup`, window.location.origin);
       lookupUrl.searchParams.set("companyName", companyName);
+      if (ritelId) lookupUrl.searchParams.set("ritelId", ritelId);
       if (editId) lookupUrl.searchParams.set("editId", editId);
       
       const res = await fetch(lookupUrl.toString());
@@ -191,7 +192,7 @@ export function useRekonCalc() {
 
   const handleSelectInvoice = async (invoiceNo: string) => {
     try {
-      const res = await fetch(`/api/rekon/lookup?invoiceNo=${encodeURIComponent(invoiceNo)}&companyName=${encodeURIComponent(selectedCompany?.namaPt || "")}`);
+      const res = await fetch(`/api/rekon/lookup?invoiceNo=${encodeURIComponent(invoiceNo)}&companyName=${encodeURIComponent(selectedCompany?.namaPt || "")}&ritelId=${encodeURIComponent(selectedCompany?.id || "")}`);
       const json = await res.json();
       const pos = json.data || [];
       if (pos.length > 0) {
@@ -224,7 +225,7 @@ export function useRekonCalc() {
 
   const handleSelectRtv = async (rtvNo: string) => {
     try {
-      const res = await fetch(`/api/rekon/lookup?rtvNo=${encodeURIComponent(rtvNo)}&companyName=${encodeURIComponent(selectedCompany?.namaPt || "")}`);
+      const res = await fetch(`/api/rekon/lookup?rtvNo=${encodeURIComponent(rtvNo)}&companyName=${encodeURIComponent(selectedCompany?.namaPt || "")}&ritelId=${encodeURIComponent(selectedCompany?.id || "")}`);
       const json = await res.json();
       const returs = json.data || [];
       

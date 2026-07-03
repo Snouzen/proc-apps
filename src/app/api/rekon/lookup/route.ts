@@ -12,16 +12,19 @@ export async function GET(request: Request) {
     const invoiceNo = searchParams.get("invoiceNo")?.trim();
     const rtvNo = searchParams.get("rtvNo")?.trim();
     const companyName = searchParams.get("companyName")?.trim();
+    const ritelId = searchParams.get("ritelId")?.trim();
     const editId = searchParams.get("editId")?.trim(); // ID rekon yang sedang di-edit
 
     // --- CASE A: Suggestion Mode (Hanya Company Name disediakan) ---
     // Dipakai untuk dropdown autocomplete di frontend
-    if (companyName && !invoiceNo && !rtvNo) {
+    if ((companyName || ritelId) && !invoiceNo && !rtvNo) {
+      const companyFilter = ritelId ? { ritelId } : { RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } } };
+      
       // 1. Ambil semua invoice & RTV yang tersedia untuk company ini
       const [availableInvoices, availableRtvs] = await Promise.all([
         prisma.purchaseOrder.findMany({
           where: { 
-             RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } },
+             ...companyFilter as any,
              AND: [
                { noInvoice: { not: null } },
                { noInvoice: { not: "" } },
@@ -32,7 +35,7 @@ export async function GET(request: Request) {
         }),
         prisma.dataRetur.findMany({
           where: { 
-             RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } },
+             ...companyFilter as any,
              AND: [
                { rtvCn: { not: null } },
                { rtvCn: { not: "" } }
@@ -77,7 +80,9 @@ export async function GET(request: Request) {
         noInvoice: { equals: invoiceNo, mode: "insensitive" }
       };
 
-      if (companyName) {
+      if (ritelId) {
+        where.ritelId = ritelId;
+      } else if (companyName) {
         where.RitelModern = {
           namaPt: { equals: companyName, mode: "insensitive" }
         };
@@ -107,7 +112,9 @@ export async function GET(request: Request) {
         rtvCn: { equals: rtvNo, mode: "insensitive" }
       };
 
-      if (companyName) {
+      if (ritelId) {
+        where.ritelId = ritelId;
+      } else if (companyName) {
         where.RitelModern = {
           namaPt: { equals: companyName, mode: "insensitive" }
         };

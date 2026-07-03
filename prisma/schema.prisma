@@ -112,6 +112,7 @@ model AuditLog {
   newData   Json?    // Snapshot of new state
   userId    String?  // Who did it
   userName  String?
+  userRole  String?  // Role of the user
   createdAt DateTime @default(now())
 
   @@index([entityId])
