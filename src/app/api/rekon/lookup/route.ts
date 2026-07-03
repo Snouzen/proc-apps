@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     // --- CASE A: Suggestion Mode (Hanya Company Name disediakan) ---
     // Dipakai untuk dropdown autocomplete di frontend
     if ((companyName || ritelId) && !invoiceNo && !rtvNo) {
-      const companyFilter = ritelId ? { ritelId } : { RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } } };
+      // Jika companyName dikirim, prioritaskan pencarian berdasarkan namaPt karena UI melakukan grouping nama perusahaan.
+      const companyFilter = companyName ? { RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } } } : { ritelId };
       
       // 1. Ambil semua invoice & RTV yang tersedia untuk company ini
       const [availableInvoices, availableRtvs] = await Promise.all([
@@ -80,12 +81,13 @@ export async function GET(request: Request) {
         noInvoice: { equals: invoiceNo, mode: "insensitive" }
       };
 
-      if (ritelId) {
-        where.ritelId = ritelId;
-      } else if (companyName) {
+      // Prioritaskan companyName karena UI melakukan grouping ritel dengan namaPt yang sama
+      if (companyName) {
         where.RitelModern = {
           namaPt: { equals: companyName, mode: "insensitive" }
         };
+      } else if (ritelId) {
+        where.ritelId = ritelId;
       }
 
       const pos = await prisma.purchaseOrder.findMany({

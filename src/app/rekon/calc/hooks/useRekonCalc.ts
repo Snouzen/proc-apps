@@ -266,7 +266,7 @@ export function useRekonCalc() {
        const noPo = typeof item === 'string' ? "" : (item.noPo || "");
        if (!noInv) return false;
        
-       const searchLower = (invSearch || "").toLowerCase();
+       const searchLower = (invSearch || "").trim().toLowerCase();
        const matchInv = noInv.toLowerCase().includes(searchLower);
        const matchPo = noPo.toLowerCase().includes(searchLower);
        
@@ -277,7 +277,7 @@ export function useRekonCalc() {
   const availableRtvs = useMemo(() => {
     return (masterRtvsList || []).filter(no => 
        no && typeof no === 'string' &&
-       no.toLowerCase().includes((rtvSearch || "").toLowerCase()) && 
+       no.toLowerCase().includes((rtvSearch || "").trim().toLowerCase()) && 
        !selectedRtvs.find(s => s.noRtv === no)
     );
   }, [masterRtvsList, rtvSearch, selectedRtvs]);
