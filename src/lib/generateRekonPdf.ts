@@ -161,7 +161,7 @@ export const generateRekonPdf = (
 
   // Names (Row 1)
   const nameStartY = signStartY + 30;
-  doc.text("Fega Fiana Sari", col1X, nameStartY);
+  doc.text("Fiana Fega Sari", col1X, nameStartY);
   doc.text("Manager Keuangan dan Umum", col1X, nameStartY + 5);
 
   doc.text("Muhammad Fakri Firdaus", col2X, nameStartY);
@@ -172,7 +172,7 @@ export const generateRekonPdf = (
 
   // Names (Row 2)
   const row2StartY = nameStartY + 40;
-  doc.text("Rakha", col1X, row2StartY);
+  doc.text("Rakha Arfiansyah", col1X, row2StartY);
   doc.text("Asman Keuangan dan Umum", col1X, row2StartY + 5);
 
   // ═══════════════════════════════════════════════════════
