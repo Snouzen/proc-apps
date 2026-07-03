@@ -145,23 +145,35 @@ export const generateRekonPdf = (
 
   // ─── Signature Block (below-right of summary table) ───
   const summaryFinalY = (doc as any).lastAutoTable.finalY;
-  const signX = pageWidth - 14 - 60; // right-aligned, 60mm wide block
   const signStartY = summaryFinalY + 12;
 
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0, 0, 0);
   
-  // Blok 1: Dibuat oleh
-  doc.text("Dibuat oleh,", signX, signStartY);
-  doc.text("Izath Rytami (Asman Penjualan)", signX, signStartY + 5);
+  const col1X = 25;
+  const col2X = 115;
+  const col3X = 220;
 
-  // Blok 2: Disetujui Oleh
-  doc.text("Disetujui Oleh,", signX, signStartY + 18);
+  // Headers
+  doc.text("Diketahui oleh,", (col1X + col2X) / 2 + 10, signStartY, { align: "center" });
+  doc.text("Dibuat Oleh,", col3X, signStartY);
 
-  // Space for signature M. Fakri Firdaus
-  doc.text("Muhammad Fakri Firdaus", signX, signStartY + 40);
-  doc.text("Manager Bisnis", signX, signStartY + 45);
+  // Names (Row 1)
+  const nameStartY = signStartY + 30;
+  doc.text("Fega Fiana Sari", col1X, nameStartY);
+  doc.text("Manager Keuangan dan Umum", col1X, nameStartY + 5);
+
+  doc.text("Muhammad Fakri Firdaus", col2X, nameStartY);
+  doc.text("Manager Bisnis", col2X, nameStartY + 5);
+
+  doc.text("Izath Rytami", col3X, nameStartY);
+  doc.text("Asman Bisnis", col3X, nameStartY + 5);
+
+  // Names (Row 2)
+  const row2StartY = nameStartY + 40;
+  doc.text("Rakha", col1X, row2StartY);
+  doc.text("Asman Keuangan dan Umum", col1X, row2StartY + 5);
 
   // ═══════════════════════════════════════════════════════
   // DETAIL BREAKDOWN PER RECORD
