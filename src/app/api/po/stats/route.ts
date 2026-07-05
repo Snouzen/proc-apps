@@ -79,7 +79,7 @@ export async function GET(request: Request) {
   if (siteAreaParam) keyParams.set("siteArea", siteAreaParam);
   if (tglFrom) keyParams.set("tglFrom", searchParams.get("tglFrom") || "");
   if (tglTo) keyParams.set("tglTo", searchParams.get("tglTo") || "");
-  const cacheKey = `po_stats:${safeRole}:${regionalParam || "all"}:${siteAreaParam || "all"}:${keyParams.toString()}`;
+  const cacheKey = `po_stats_v2:${safeRole}:${regionalParam || "all"}:${siteAreaParam || "all"}:${keyParams.toString()}`;
   const cached = cacheGet<any>(cacheKey);
   try {
     const emptyInvoiceValues = ["", "-", "Unknown"];
@@ -89,6 +89,17 @@ export async function GET(request: Request) {
         now.getUTCFullYear(),
         now.getUTCMonth(),
         now.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const startOfMonth = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        1,
         0,
         0,
         0,
@@ -168,8 +179,8 @@ export async function GET(request: Request) {
         NOT: { OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }] }
       };
 
-      // 3. Eksekusi 7 Hitungan secara Paralel (Ngebut & Bersih!)
-      const [cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, topUnits] = await Promise.all([
+      // 3. Eksekusi 8 Hitungan secara Paralel (Ngebut & Bersih!)
+      const [cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, topUnits, topUnitsMtd] = await Promise.all([
         // cAll
         prisma.purchaseOrder.count({ where: baseWhere }),
         
@@ -228,12 +239,24 @@ export async function GET(request: Request) {
           where: baseWhere,
           orderBy: { _count: { unitProduksiId: 'desc' } },
           take: 6
+        }),
+
+        // topUnitsMtd
+        prisma.purchaseOrder.groupBy({
+          by: ['unitProduksiId'],
+          _count: true,
+          where: {
+            ...baseWhere,
+            tglPo: { gte: startOfMonth }
+          },
+          orderBy: { _count: { unitProduksiId: 'desc' } },
+          take: 6
         })
       ]);
 
-      const unitIds = topUnits.map((u: any) => u.unitProduksiId).filter(Boolean);
+      const unitIds = [...new Set([...topUnits.map((u: any) => u.unitProduksiId), ...topUnitsMtd.map((u: any) => u.unitProduksiId)])].filter(Boolean);
       const units = await prisma.unitProduksi.findMany({
-        where: { idRegional: { in: unitIds } },
+        where: { idRegional: { in: unitIds as string[] } },
         select: { idRegional: true, siteArea: true }
       });
       
@@ -246,8 +269,17 @@ export async function GET(request: Request) {
         .filter((u: any) => u.name !== "UNKNOWN")
         .slice(0, 5);
 
+      const topSiteAreasMtd = topUnitsMtd
+        .filter((u: any) => u.unitProduksiId && u.unitProduksiId !== "UNKNOWN")
+        .map((u: any) => ({
+          name: units.find((unit: any) => unit.idRegional === u.unitProduksiId)?.siteArea || "UNKNOWN",
+          po: u._count
+        }))
+        .filter((u: any) => u.name !== "UNKNOWN")
+        .slice(0, 5);
+
         return {
-          cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, cProgress: 0, topSiteAreas
+          cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, cProgress: 0, topSiteAreas, topSiteAreasMtd
         };
     }, [cacheKey], { revalidate: 120, tags: [cacheKey] })();
     cacheSet(cacheKey, payload, 30000);

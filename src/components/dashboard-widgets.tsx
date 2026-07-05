@@ -7,6 +7,7 @@ import { PoDateBadge } from "@/components/PoDateBadge";
 import { ArrowRight, FileWarning, Activity, CheckCircle2, Clock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import DateInputHybrid from "@/components/DateInputHybrid";
 
 const COLORS = ["#3b82f6", "#f59e0b", "#f43f5e", "#10b981", "#64748b"];
 
@@ -73,20 +74,77 @@ export function PoStatusDonut({ stats }: { stats: any }) {
 }
 
 export function RegionalDistributionBar({ stats }: { stats?: any }) {
-  const data = stats?.topSiteAreas && stats.topSiteAreas.length > 0
-    ? stats.topSiteAreas
+  const [tglFrom, setTglFrom] = useState("");
+  const [tglTo, setTglTo] = useState("");
+  const [localStats, setLocalStats] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!tglFrom && !tglTo) {
+      setLocalStats(null);
+      return;
+    }
+    const fetchFiltered = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (tglFrom) params.set("tglFrom", tglFrom);
+        if (tglTo) params.set("tglTo", tglTo);
+        // Fallback to safe defaults if session/role isn't fully propagated in this isolated fetch
+        const res = await fetch(`/api/po/stats?${params.toString()}`);
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        setLocalStats(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // Simple debounce
+    const t = setTimeout(fetchFiltered, 500);
+    return () => clearTimeout(t);
+  }, [tglFrom, tglTo]);
+
+  const activeStats = localStats || stats;
+  const sourceData = activeStats?.topSiteAreas;
+  const data = sourceData && sourceData.length > 0
+    ? sourceData
     : [
         { name: "BELUM ADA DATA", po: 0 },
       ];
 
   return (
-    <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-          Distribusi PO per Site Area (Top 5)
+    <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full relative">
+      <CardHeader className="pb-2 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3">
+        <CardTitle className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider shrink-0">
+          Distribusi PO (Top 5)
         </CardTitle>
+        <div className="flex gap-2 w-full xl:w-auto items-center justify-end">
+          <button
+            onClick={() => {
+              setTglFrom("");
+              setTglTo("");
+            }}
+            className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider shrink-0 ${(!tglFrom && !tglTo) ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600'}`}
+          >
+            All
+          </button>
+          <div className="flex-1 min-w-0 xl:w-[115px]">
+            <DateInputHybrid value={tglFrom} onChange={setTglFrom} placeholder="Dari..." maxDate={tglTo} />
+          </div>
+          <div className="flex-1 min-w-0 xl:w-[115px]">
+            <DateInputHybrid value={tglTo} onChange={setTglTo} placeholder="Sampai..." minDate={tglFrom} />
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-[260px] pb-6">
+      <CardContent className="flex-1 min-h-[260px] pb-6 relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 z-10 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          </div>
+        )}
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />

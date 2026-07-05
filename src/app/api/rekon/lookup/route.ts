@@ -114,12 +114,13 @@ export async function GET(request: Request) {
         rtvCn: { equals: rtvNo, mode: "insensitive" }
       };
 
-      if (ritelId) {
-        where.ritelId = ritelId;
-      } else if (companyName) {
+      // Prioritaskan companyName karena UI melakukan grouping ritel dengan namaPt yang sama
+      if (companyName) {
         where.RitelModern = {
           namaPt: { equals: companyName, mode: "insensitive" }
         };
+      } else if (ritelId) {
+        where.ritelId = ritelId;
       }
 
       const returs = await prisma.dataRetur.findMany({
