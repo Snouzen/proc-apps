@@ -410,21 +410,28 @@ export default function RekonForm({ calc }: { calc: any }) {
                                     </div>
                                 ) : availableRtvs.map((item: any) => {
                                         const rtvNo = typeof item === 'string' ? item : (item as any).noRtv;
+                                        const nominal = typeof item === 'object' && item.nominal ? item.nominal : null;
                                         return (
                                         <button 
-                                          key={rtvNo} 
-                                          onClick={() => handleSelectRtv(rtvNo)} 
+                                          key={typeof item === 'object' && item.id ? item.id : rtvNo} 
+                                          onClick={() => handleSelectRtv(item)} 
                                           className="w-full p-5 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition-all flex justify-between items-center group text-left border border-transparent hover:border-rose-100 dark:hover:border-rose-500/20"
                                         >
                                           <div>
                                               <p className="font-black text-[12px] text-slate-800 dark:text-slate-200 uppercase tracking-tight">
                                                 {highlightMatch(rtvNo, rtvSearch)}
                                               </p>
-                                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Pilih RTV ini</p>
+                                              {typeof item === 'object' && (item.namaCompany || item.produk) ? (
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic max-w-[200px] truncate" title={`${item.namaCompany || ""} - ${item.produk || ""}`}>
+                                                  {item.namaCompany || item.produk}
+                                                </p>
+                                              ) : (
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Pilih RTV ini</p>
+                                              )}
                                           </div>
                                           <div className="text-right">
-                                              <div className="flex items-center gap-1 text-[8px] font-black text-rose-500 uppercase">
-                                                <Plus size={8} /> Ambil Detail
+                                              <div className="flex items-center gap-1 text-[11px] font-black text-rose-500 tabular-nums">
+                                                {nominal !== null ? formatRp(nominal) : <><Plus size={8} /> Ambil Detail</>}
                                               </div>
                                           </div>
                                         </button>

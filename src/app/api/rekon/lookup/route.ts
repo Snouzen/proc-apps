@@ -42,8 +42,7 @@ export async function GET(request: Request) {
                { rtvCn: { not: "" } }
              ]
           },
-          select: { rtvCn: true },
-          distinct: ['rtvCn'],
+          select: { id: true, rtvCn: true, nominal: true, namaCompany: true, produk: true }
         })
       ]);
 
@@ -55,12 +54,25 @@ export async function GET(request: Request) {
       }
       const existingRekons = await prisma.reconcile.findMany({
         where: usedInvoiceWhere,
-        select: { invoices: true },
+        select: { invoices: true, rtvs: true, rtvDetails: true },
       });
       const usedInvoiceSet = new Set<string>();
+      const usedRtvIdSet = new Set<string>();
+      const usedRtvCnSet = new Set<string>();
+
       for (const rekon of existingRekons) {
         for (const inv of (rekon.invoices || [])) {
           usedInvoiceSet.add(inv);
+        }
+        
+        if (Array.isArray(rekon.rtvDetails) && rekon.rtvDetails.length > 0) {
+          for (const rtv of rekon.rtvDetails as any[]) {
+            if (rtv.id) usedRtvIdSet.add(rtv.id);
+          }
+        } else if (Array.isArray(rekon.rtvs) && rekon.rtvs.length > 0) {
+          for (const rtvCn of rekon.rtvs) {
+             usedRtvCnSet.add(rtvCn);
+          }
         }
       }
 
@@ -69,9 +81,14 @@ export async function GET(request: Request) {
         .map(i => ({ noInvoice: i.noInvoice, noPo: i.noPo }))
         .filter(i => i.noInvoice && !usedInvoiceSet.has(i.noInvoice));
 
+      const filteredRtvs = availableRtvs
+        .filter((r: any) => !usedRtvIdSet.has(r.id) && !usedRtvCnSet.has(r.rtvCn))
+        .map((r: any) => ({ id: r.id, noRtv: r.rtvCn, nominal: Number(r.nominal || 0), namaCompany: r.namaCompany, produk: r.produk }))
+        .filter((r: any) => r.noRtv);
+
       return NextResponse.json({ 
         invoices: filteredInvoices,
-        rtvs: availableRtvs.map(r => r.rtvCn).filter(Boolean)
+        rtvs: filteredRtvs
       });
     }
 
@@ -109,10 +126,15 @@ export async function GET(request: Request) {
     }
 
     // --- CASE C: Lookup RTV Terpilih ---
-    if (rtvNo) {
-      const where: any = {
-        rtvCn: { equals: rtvNo, mode: "insensitive" }
-      };
+    const rtvId = searchParams.get("rtvId")?.trim();
+    if (rtvNo || rtvId) {
+      const where: any = {};
+      
+      if (rtvId) {
+        where.id = rtvId;
+      } else if (rtvNo) {
+        where.rtvCn = { equals: rtvNo, mode: "insensitive" };
+      }
 
       // Prioritaskan companyName karena UI melakukan grouping ritel dengan namaPt yang sama
       if (companyName) {

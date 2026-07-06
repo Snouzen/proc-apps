@@ -67,7 +67,7 @@ export function useRekonCalc() {
   const [masterInvoices, setMasterInvoices] = useState<any[]>([]);
   const [masterRtvs, setMasterRtvs] = useState<any[]>([]);
   const [masterInvoicesList, setMasterInvoicesList] = useState<any[]>([]);
-  const [masterRtvsList, setMasterRtvsList] = useState<string[]>([]);
+  const [masterRtvsList, setMasterRtvsList] = useState<any[]>([]);
   const [masterPromos, setMasterPromos] = useState<Promo[]>([]);
 
   const [bankStatementsList, setBankStatementsList] = useState<Array<{desc: string, nominal: number}>>([]);
@@ -223,9 +223,17 @@ export function useRekonCalc() {
     }
   };
 
-  const handleSelectRtv = async (rtvNo: string) => {
+  const handleSelectRtv = async (rtvItem: any) => {
     try {
-      const res = await fetch(`/api/rekon/lookup?rtvNo=${encodeURIComponent(rtvNo)}&companyName=${encodeURIComponent(selectedCompany?.namaPt || "")}&ritelId=${encodeURIComponent(selectedCompany?.id || "")}`);
+      const rtvNo = typeof rtvItem === 'string' ? rtvItem : (rtvItem.noRtv || rtvItem.rtvCn);
+      const rtvId = typeof rtvItem === 'object' ? rtvItem.id : null;
+      const url = new URL(`/api/rekon/lookup`, window.location.origin);
+      if (rtvNo) url.searchParams.set("rtvNo", rtvNo);
+      if (rtvId) url.searchParams.set("rtvId", rtvId);
+      url.searchParams.set("companyName", selectedCompany?.namaPt || "");
+      url.searchParams.set("ritelId", selectedCompany?.id || "");
+
+      const res = await fetch(url.toString());
       const json = await res.json();
       const returs = json.data || [];
       
@@ -275,11 +283,13 @@ export function useRekonCalc() {
   }, [masterInvoicesList, invSearch, selectedInvoices]);
 
   const availableRtvs = useMemo(() => {
-    return (masterRtvsList || []).filter(no => 
-       no && typeof no === 'string' &&
-       no.toLowerCase().includes((rtvSearch || "").trim().toLowerCase()) && 
-       !selectedRtvs.find(s => s.noRtv === no)
-    );
+    return (masterRtvsList || []).filter(rtv => {
+       if (!rtv) return false;
+       const no = typeof rtv === 'string' ? rtv : rtv.noRtv;
+       if (!no) return false;
+       return no.toLowerCase().includes((rtvSearch || "").trim().toLowerCase()) && 
+              !selectedRtvs.find(s => s.noRtv === no);
+    });
   }, [masterRtvsList, rtvSearch, selectedRtvs]);
 
   const totalInvoices = useMemo(() => {
