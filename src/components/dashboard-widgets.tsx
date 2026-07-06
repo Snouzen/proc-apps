@@ -410,17 +410,23 @@ export function RecentActivityWidget() {
     let icon = <Activity size={14} className="text-blue-500" />;
     
     if (act.entity === "PurchaseOrder") {
-      text = `PO baru diupload oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
+      const poRef = act.refNumber || act.newData?.noPo || act.newData?.noInvoice;
+      const refText = poRef ? ` (${poRef})` : '';
+      text = `PO${refText} baru diupload oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
       link = `/dashboard/po`;
       icon = <FileWarning size={14} className="text-blue-500" />;
     } else if (act.entity === "Reconcile") {
-      text = `Rekonsiliasi dibuat oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
+      const rekonRef = act.refNumber || act.newData?.noRekonsiliasi;
+      const refText = rekonRef ? ` (${rekonRef})` : '';
+      text = `Rekonsiliasi${refText} dibuat oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
       link = `/dashboard/rekon?action=edit&id=${act.entityId}`;
       icon = <CheckCircle2 size={14} className="text-emerald-500" />;
     } else if (act.entity === "DataRetur") {
-      const isBatch = act.newData?.isBatch;
+      const isBatch = act.newData?.isBatch || act.entityId.startsWith("batch-");
       const count = act.newData?.count || 1;
-      text = `${isBatch ? count : 1} Data Retur diupload oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
+      const rtvRef = act.refNumber || act.newData?.rtvCn;
+      const refText = (!isBatch && rtvRef) ? ` (${rtvRef})` : '';
+      text = `${isBatch ? count : 1} Data Retur${refText} diupload oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
       link = `/dashboard/retur`;
       icon = <Activity size={14} className="text-rose-500" />;
     } else if (act.entity === "CreditLimitBatch") {
@@ -443,7 +449,7 @@ export function RecentActivityWidget() {
   };
 
   return (
-    <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full">
+    <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full max-h-[420px]">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
           Aktivitas Terakhir

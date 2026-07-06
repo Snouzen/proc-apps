@@ -36,7 +36,26 @@ export async function GET(request: Request) {
       take: 15
     });
 
-    return NextResponse.json({ data: activities });
+    const enrichedActivities = await Promise.all(activities.map(async (act) => {
+      let refNumber = null;
+      if (act.entity === "PurchaseOrder") {
+        const po = await prisma.purchaseOrder.findUnique({ where: { id: act.entityId }, select: { noPo: true } });
+        refNumber = po?.noPo;
+      } else if (act.entity === "Reconcile") {
+        const rekon = await prisma.reconcile.findUnique({ where: { id: act.entityId }, select: { noRekonsiliasi: true } });
+        refNumber = rekon?.noRekonsiliasi;
+      } else if (act.entity === "DataRetur" && !act.entityId.startsWith("batch-")) {
+        const retur = await prisma.dataRetur.findUnique({ where: { id: act.entityId }, select: { rtvCn: true } });
+        refNumber = retur?.rtvCn;
+      }
+      
+      return {
+        ...act,
+        refNumber
+      };
+    }));
+
+    return NextResponse.json({ data: enrichedActivities });
   } catch (error: any) {
     console.error("GET Activities Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
