@@ -57,64 +57,66 @@ export async function GET(request: Request) {
 
       // Build a refInvoice lookup from persisted rtvDetails (if available)
       const savedRtvDetails: Array<{id?: string, noRtv: string, refInvoice?: string}> = Array.isArray(rekon.rtvDetails) ? rekon.rtvDetails as any : [];
-      const rtvRefMap = new Map<string, string>();
-      // Also build an id-based map for more precise matching
-      const rtvRefByIdMap = new Map<string, string>();
-      for (const detail of savedRtvDetails) {
-        if (detail.refInvoice) {
-          if (detail.id) rtvRefByIdMap.set(detail.id, detail.refInvoice);
-          if (detail.noRtv) rtvRefMap.set(detail.noRtv, detail.refInvoice);
-        }
-      }
+      let rtvsWithData: any[] = [];
 
-      // Map RTVs (preserve duplicates — user may have same RTV number twice)
-      // Prioritize records matching rekon's ritelId to prevent cross-ritel issues
-      const rtvCounts: Record<string, number> = {};
-      const savedDetailCounts: Record<string, number> = {};
-      const rtvsWithData = (rekon.rtvs || []).map((rtvNo: string, idx: number) => {
-        const allMatches = detailedRtvs.filter(r => r.rtvCn === rtvNo);
-        // Prefer matches that belong to the same ritel
-        const ritelMatches = allMatches.filter(r => r.ritelId === rekon.ritelId);
-        const matches = ritelMatches.length > 0 ? ritelMatches : allMatches;
-        const count = rtvCounts[rtvNo] || 0;
-        const rtvData = matches[count] || matches[matches.length - 1];
-        rtvCounts[rtvNo] = count + 1;
-
-        // Resolve refInvoice: prefer saved rtvDetails > DataRetur.invoiceRekon
-        let refInvoice = "";
-        if (savedRtvDetails.length > 0) {
-          // First try by id from the saved details
-          if (rtvData?.id && rtvRefByIdMap.has(rtvData.id)) {
-            refInvoice = rtvRefByIdMap.get(rtvData.id) || "";
-          } else {
-            // Fall back to matching by noRtv from saved details (use count for duplicates)
-            const detailsForRtv = savedRtvDetails.filter(d => d.noRtv === rtvNo);
-            const detailCount = savedDetailCounts[rtvNo] || 0;
-            const detail = detailsForRtv[detailCount] || detailsForRtv[detailsForRtv.length - 1];
-            if (detail?.refInvoice) refInvoice = detail.refInvoice;
-            savedDetailCounts[rtvNo] = detailCount + 1;
+      if (savedRtvDetails.length > 0) {
+        rtvsWithData = savedRtvDetails.map(detail => {
+          let rtvData = null;
+          if (detail.id) {
+            rtvData = detailedRtvs.find(r => r.id === detail.id);
           }
-        }
-        // Fallback to DataRetur fields for legacy records without rtvDetails
-        if (!refInvoice) {
-          refInvoice = rtvData?.invoiceRekon || rtvData?.referensiPembayaran || "";
-        }
+          if (!rtvData) {
+            const allMatches = detailedRtvs.filter(r => r.rtvCn === detail.noRtv);
+            const ritelMatches = allMatches.filter(r => r.ritelId === rekon.ritelId);
+            const matches = ritelMatches.length > 0 ? ritelMatches : allMatches;
+            rtvData = matches[0];
+          }
+          
+          const refInvoice = detail.refInvoice || rtvData?.invoiceRekon || rtvData?.referensiPembayaran || "";
+          
+          return {
+            id: rtvData?.id || detail.id,
+            noRtv: detail.noRtv,
+            total: Number(rtvData?.nominal || 0),
+            qty: rtvData?.qtyReturn || (rtvData as any)?.qty || (rtvData as any)?.pcs || 1,
+            refInvoice,
+            pembebananRetur: rtvData?.PembebananReturn?.siteArea || "-",
+            lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
+            produk: rtvData?.Product?.name || rtvData?.produk || "-",
+            unitProduksi: rtvData?.LokasiBarang?.namaRegional || rtvData?.PembebananReturn?.namaRegional || "-",
+            tujuan: rtvData?.namaCompany || "-",
+            rpKg: Number(rtvData?.rpKg || 0),
+            tanggalRtv: rtvData?.tanggalRtv || null,
+          };
+        });
+      } else {
+        const rtvCounts: Record<string, number> = {};
+        rtvsWithData = (rekon.rtvs || []).map((rtvNo: string) => {
+          const allMatches = detailedRtvs.filter(r => r.rtvCn === rtvNo);
+          const ritelMatches = allMatches.filter(r => r.ritelId === rekon.ritelId);
+          const matches = ritelMatches.length > 0 ? ritelMatches : allMatches;
+          const count = rtvCounts[rtvNo] || 0;
+          const rtvData = matches[count] || matches[matches.length - 1];
+          rtvCounts[rtvNo] = count + 1;
 
-        return {
-          id: rtvData?.id,
-          noRtv: rtvNo,
-          total: Number(rtvData?.nominal || 0),
-          qty: rtvData?.qtyReturn || 0,
-          refInvoice,
-          pembebananRetur: rtvData?.PembebananReturn?.siteArea || "-",
-          lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
-          produk: rtvData?.Product?.name || rtvData?.produk || "-",
-          unitProduksi: rtvData?.LokasiBarang?.namaRegional || rtvData?.PembebananReturn?.namaRegional || "-",
-          tujuan: rtvData?.namaCompany || "-",
-          rpKg: Number(rtvData?.rpKg || 0),
-          tanggalRtv: rtvData?.tanggalRtv || null,
-        };
-      });
+          const refInvoice = rtvData?.invoiceRekon || rtvData?.referensiPembayaran || "";
+
+          return {
+            id: rtvData?.id,
+            noRtv: rtvNo,
+            total: Number(rtvData?.nominal || 0),
+            qty: rtvData?.qtyReturn || (rtvData as any)?.qty || (rtvData as any)?.pcs || 1,
+            refInvoice,
+            pembebananRetur: rtvData?.PembebananReturn?.siteArea || "-",
+            lokasiBarang: rtvData?.LokasiBarang?.siteArea || "-",
+            produk: rtvData?.Product?.name || rtvData?.produk || "-",
+            unitProduksi: rtvData?.LokasiBarang?.namaRegional || rtvData?.PembebananReturn?.namaRegional || "-",
+            tujuan: rtvData?.namaCompany || "-",
+            rpKg: Number(rtvData?.rpKg || 0),
+            tanggalRtv: rtvData?.tanggalRtv || null,
+          };
+        });
+      }
 
       // Fetch Promos if exists
       let promoData: any[] = [];
@@ -244,31 +246,63 @@ export async function GET(request: Request) {
           };
         });
 
-        const rtvCounts: Record<string, number> = {};
-        const rtvsWithData = (rekon.rtvs || []).map(rtvNo => {
-          const allMatches = returMap.get(rtvNo) || [];
-          // Prefer matches that belong to the same ritel
-          const ritelMatches = allMatches.filter(r => r.ritelId === rekon.ritelId);
-          const matches = ritelMatches.length > 0 ? ritelMatches : allMatches;
-          const count = rtvCounts[rtvNo] || 0;
-          const retur = matches[count] || matches[matches.length - 1];
-          rtvCounts[rtvNo] = count + 1;
-          
-          return {
-            id: retur?.id,
-            noRtv: rtvNo,
-            refInvoice: retur?.invoiceRekon || retur?.referensiPembayaran || "-",
-            nominal: Number(retur?.nominal || 0),
-            pembebananRetur: retur?.PembebananReturn?.siteArea || "-",
-            unitProduksi: retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
-            lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
-            produk: retur?.Product?.name || retur?.produk || "-",
-            tujuan: retur?.namaCompany || retur?.RitelModern?.tujuan || "-",
-            rpKg: Number(retur?.rpKg || 0),
-            qty: retur?.qtyReturn || retur?.qty || retur?.pcs || 1,
-            tanggalRtv: retur?.tanggalRtv || null,
-          };
-        });
+        const savedRtvDetails: Array<{id?: string, noRtv: string, refInvoice?: string}> = Array.isArray(rekon.rtvDetails) ? rekon.rtvDetails as any : [];
+        let rtvsWithData: any[] = [];
+        
+        if (savedRtvDetails.length > 0) {
+          rtvsWithData = savedRtvDetails.map(detail => {
+            const allMatches = returMap.get(detail.noRtv) || [];
+            let retur = null;
+            if (detail.id) {
+               retur = allMatches.find(r => r.id === detail.id);
+            }
+            if (!retur) {
+               const ritelMatches = allMatches.filter(r => r.ritelId === rekon.ritelId);
+               const matches = ritelMatches.length > 0 ? ritelMatches : allMatches;
+               retur = matches[0];
+            }
+            return {
+              id: retur?.id || detail.id,
+              noRtv: detail.noRtv,
+              refInvoice: detail.refInvoice || retur?.invoiceRekon || retur?.referensiPembayaran || "-",
+              nominal: Number(retur?.nominal || 0),
+              pembebananRetur: retur?.PembebananReturn?.siteArea || "-",
+              unitProduksi: retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
+              lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
+              produk: retur?.Product?.name || retur?.produk || "-",
+              tujuan: retur?.namaCompany || retur?.RitelModern?.tujuan || "-",
+              rpKg: Number(retur?.rpKg || 0),
+              qty: retur?.qtyReturn || (retur as any)?.qty || (retur as any)?.pcs || 1,
+              tanggalRtv: retur?.tanggalRtv || null,
+            };
+          });
+        } else {
+          const rtvCounts: Record<string, number> = {};
+          rtvsWithData = (rekon.rtvs || []).map((rtvNo: string) => {
+            const allMatches = returMap.get(rtvNo) || [];
+            // Prefer matches that belong to the same ritel
+            const ritelMatches = allMatches.filter(r => r.ritelId === rekon.ritelId);
+            const matches = ritelMatches.length > 0 ? ritelMatches : allMatches;
+            const count = rtvCounts[rtvNo] || 0;
+            const retur = matches[count] || matches[matches.length - 1];
+            rtvCounts[rtvNo] = count + 1;
+            
+            return {
+              id: retur?.id,
+              noRtv: rtvNo,
+              refInvoice: retur?.invoiceRekon || retur?.referensiPembayaran || "-",
+              nominal: Number(retur?.nominal || 0),
+              pembebananRetur: retur?.PembebananReturn?.siteArea || "-",
+              unitProduksi: retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
+              lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
+              produk: retur?.Product?.name || retur?.produk || "-",
+              tujuan: retur?.namaCompany || retur?.RitelModern?.tujuan || "-",
+              rpKg: Number(retur?.rpKg || 0),
+              qty: retur?.qtyReturn || (retur as any)?.qty || (retur as any)?.pcs || 1,
+              tanggalRtv: retur?.tanggalRtv || null,
+            };
+          });
+        }
 
       // Normalize notes for this rekon
       let normalizedNotes: any[] = [];

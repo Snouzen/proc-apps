@@ -287,8 +287,17 @@ export function useRekonCalc() {
        if (!rtv) return false;
        const no = typeof rtv === 'string' ? rtv : rtv.noRtv;
        if (!no) return false;
-       return no.toLowerCase().includes((rtvSearch || "").trim().toLowerCase()) && 
-              !selectedRtvs.find(s => s.noRtv === no);
+       
+       const matchSearch = no.toLowerCase().includes((rtvSearch || "").trim().toLowerCase());
+       
+       let isAlreadySelected = false;
+       if (rtv.id) {
+         isAlreadySelected = !!selectedRtvs.find(s => s.id === rtv.id);
+       } else {
+         isAlreadySelected = !!selectedRtvs.find(s => s.noRtv === no && !s.id);
+       }
+       
+       return matchSearch && !isAlreadySelected;
     });
   }, [masterRtvsList, rtvSearch, selectedRtvs]);
 

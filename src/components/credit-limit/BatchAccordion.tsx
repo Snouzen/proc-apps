@@ -76,7 +76,7 @@ export function BatchAccordion({
   const hasRequested = pos.some((po) => po.statusCreditLimit === "REQUESTED");
   const hasApproved = pos.some((po) => po.statusCreditLimit === "APPROVED");
 
-  // eslint-disable-next-line react-compiler/react-compiler
+   
   const columns = useMemo(() => [
     helper.display({
       id: "no",
