@@ -175,7 +175,7 @@ export const generateRekonPdf = (
   doc.text("Asman Bisnis", col3X, nameStartY + 5);
 
   doc.text("Rakha Arfiansyah", col4X, nameStartY);
-  doc.text("Asman Keuangan dan Umum", col4X, nameStartY + 5);
+  doc.text("Asman Akutansi dan Umum", col4X, nameStartY + 5);
 
   // ═══════════════════════════════════════════════════════
   // DETAIL BREAKDOWN PER RECORD
