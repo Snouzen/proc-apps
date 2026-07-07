@@ -43,7 +43,7 @@ export const generateRekonPdf = (
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("LAPORAN REKONSILIASI PEMBAYARAN", pageWidth / 2, 16, { align: "center" });
+  doc.text("LAPORAN REKONSILIASI PEMBAYARAN UB INDUSTRI", pageWidth / 2, 16, { align: "center" });
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
@@ -56,8 +56,9 @@ export const generateRekonPdf = (
   const filterText = filterParts.length > 0 ? filterParts.join(" | ") : "Semua Data";
   
   doc.text(`Filter: ${filterText}`, pageWidth / 2, 22, { align: "center" });
-  doc.text(`Dicetak: ${printTime}`, pageWidth / 2, 26, { align: "center" });
-
+  
+  const createdDate = data.length > 0 && data[0].createdAt ? formatDate(data[0].createdAt) : "-";
+  doc.text(`Tgl Dibuat: ${createdDate}`, pageWidth / 2, 26, { align: "center" });
   // Horizontal separator
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.3);
@@ -172,10 +173,10 @@ export const generateRekonPdf = (
 
   // Dibuat Oleh
   doc.text("Izath Rytami", col3X, nameStartY);
-  doc.text("Asman Bisnis", col3X, nameStartY + 5);
+  doc.text("Asman Penjualan", col3X, nameStartY + 5);
 
   doc.text("Rakha Arfiansyah", col4X, nameStartY);
-  doc.text("Asman Akutansi dan Umum", col4X, nameStartY + 5);
+  doc.text("Asman Akuntansi dan Umum", col4X, nameStartY + 5);
 
   // ═══════════════════════════════════════════════════════
   // DETAIL BREAKDOWN PER RECORD
@@ -745,6 +746,7 @@ export const generateRekonPdf = (
     doc.setFontSize(6);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(150, 150, 150);
+    doc.text(`Dicetak: ${printTime}`, 14, pageHeight - 8);
     doc.text(`Halaman ${i} / ${totalPages}`, pageWidth - 14, pageHeight - 5, { align: "right" });
     doc.text("Sistem Rekonsiliasi Procurement — Dokumen ini di-generate otomatis", 14, pageHeight - 5);
     doc.setTextColor(0, 0, 0);
