@@ -172,6 +172,110 @@ export async function GET(request: Request) {
       })
     ]);
 
+    // ── BACKFILL: Auto-fill pembebananReturnId & referensiPembayaran from Reconcile ──
+    const retursNeedingFill = data.filter((d: any) => 
+      !d.pembebananReturnId || !d.referensiPembayaran || d.referensiPembayaran === "" || d.referensiPembayaran === "-"
+    );
+
+    if (retursNeedingFill.length > 0) {
+      try {
+        const rtvCns = retursNeedingFill.map((d: any) => d.rtvCn).filter(Boolean);
+        
+        // Find all Reconcile records that contain these rtvCns
+        const rekonsContaining = await prisma.reconcile.findMany({
+          where: {
+            status: "final",
+            rtvs: { hasSome: rtvCns },
+          },
+          select: { noRekonsiliasi: true, rtvs: true, rtvDetails: true, invoices: true }
+        });
+
+        if (rekonsContaining.length > 0) {
+          // Build rtvCn → { noRekon, refInvoice } map
+          const rtvRekonMap = new Map<string, { noRekon: string, refInvoice: string }>();
+          for (const rekon of rekonsContaining) {
+            const details: Array<{id?: string, noRtv: string, refInvoice?: string}> = 
+              Array.isArray(rekon.rtvDetails) ? rekon.rtvDetails as any : [];
+            
+            if (details.length > 0) {
+              for (const d of details) {
+                if (d.noRtv && d.refInvoice) {
+                  rtvRekonMap.set(d.noRtv, { noRekon: rekon.noRekonsiliasi, refInvoice: d.refInvoice });
+                }
+              }
+            } else {
+              // Legacy: no rtvDetails, just rtvs array — no refInvoice info available
+              for (const rtvNo of (rekon.rtvs || [])) {
+                if (!rtvRekonMap.has(rtvNo)) {
+                  rtvRekonMap.set(rtvNo, { noRekon: rekon.noRekonsiliasi, refInvoice: "" });
+                }
+              }
+            }
+          }
+
+          // Lookup invoice → UnitProduksi for pembebananReturnId
+          const allRefInvoiceNos = [...new Set([...rtvRekonMap.values()].map(v => v.refInvoice).filter(Boolean))];
+          const invoiceUnitMap = new Map<string, string>();
+          if (allRefInvoiceNos.length > 0) {
+            const invPOs = await prisma.purchaseOrder.findMany({
+              where: { noInvoice: { in: allRefInvoiceNos } },
+              include: { UnitProduksi: true }
+            });
+            invPOs.forEach((po: any) => {
+              if (po.noInvoice && po.UnitProduksi?.idRegional) {
+                invoiceUnitMap.set(po.noInvoice, po.UnitProduksi.idRegional);
+              }
+            });
+          }
+
+          // Update DataRetur records
+          const updateOps = retursNeedingFill.map((retur: any) => {
+            const mapping = rtvRekonMap.get(retur.rtvCn);
+            if (!mapping) return null;
+
+            const updateData: any = {};
+
+            // Fill referensiPembayaran with noRekonsiliasi
+            if (!retur.referensiPembayaran || retur.referensiPembayaran === "" || retur.referensiPembayaran === "-") {
+              updateData.referensiPembayaran = mapping.noRekon;
+            }
+
+            // Fill pembebananReturnId from invoice's UnitProduksi
+            if (!retur.pembebananReturnId && mapping.refInvoice) {
+              const unitId = invoiceUnitMap.get(mapping.refInvoice);
+              if (unitId) {
+                updateData.pembebananReturnId = unitId;
+              }
+            }
+
+            if (Object.keys(updateData).length === 0) return null;
+            return prisma.dataRetur.update({ where: { id: retur.id }, data: updateData });
+          }).filter(Boolean);
+
+          if (updateOps.length > 0) {
+            await prisma.$transaction(updateOps as any);
+            
+            // Re-fetch the updated records so the response reflects the changes
+            const updatedIds = retursNeedingFill.map((r: any) => r.id);
+            const updatedRecords = await prisma.dataRetur.findMany({
+              where: { id: { in: updatedIds } },
+              include: { RitelModern: true, LokasiBarang: true, PembebananReturn: true, Product: true }
+            });
+            const updatedMap = new Map(updatedRecords.map((r: any) => [r.id, r]));
+            for (let i = 0; i < data.length; i++) {
+              const updated = updatedMap.get(data[i].id);
+              if (updated) {
+                (data as any)[i] = updated;
+              }
+            }
+          }
+        }
+      } catch (backfillErr) {
+        console.error("Retur backfill error:", backfillErr);
+        // Non-fatal — continue with original data
+      }
+    }
+
     return NextResponse.json({
       isGrouped: false,
       data,

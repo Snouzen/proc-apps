@@ -344,6 +344,98 @@ export async function GET(request: Request) {
       console.error("Backfill buktiBayar setup error:", e);
     }
 
+    // ── BACKFILL: Sync pembebananReturnId & referensiPembayaran on DataRetur ──
+    // For existing rekons: fill pembebananReturnId (from invoice's UnitProduksi)
+    // and referensiPembayaran (from noRekonsiliasi) where they are still empty.
+    try {
+      const finalRekonsForRetur = reconciles.filter(r => r.status === "final" && r.noRekonsiliasi);
+      if (finalRekonsForRetur.length > 0) {
+        (async () => {
+          try {
+            for (const rekon of finalRekonsForRetur) {
+              const savedDetails: Array<{id?: string, noRtv: string, refInvoice?: string}> = Array.isArray(rekon.rtvDetails) ? rekon.rtvDetails as any : [];
+              const rtvNos = savedDetails.length > 0 
+                ? savedDetails.map(d => d.noRtv) 
+                : (rekon.rtvs || []);
+              
+              if (rtvNos.length === 0) continue;
+
+              // Find DataRetur records that need backfill (pembebananReturnId or referensiPembayaran is empty)
+              const retursToFill = await prisma.dataRetur.findMany({
+                where: {
+                  rtvCn: { in: rtvNos },
+                  OR: [
+                    { pembebananReturnId: null },
+                    { referensiPembayaran: null },
+                    { referensiPembayaran: "" },
+                    { referensiPembayaran: "-" },
+                  ],
+                },
+                select: { id: true, rtvCn: true, pembebananReturnId: true, referensiPembayaran: true }
+              });
+
+              if (retursToFill.length === 0) continue;
+
+              // Build refInvoice lookup from rtvDetails
+              const rtvRefMap = new Map<string, string>();
+              if (savedDetails.length > 0) {
+                savedDetails.forEach(d => {
+                  if (d.refInvoice) rtvRefMap.set(d.noRtv, d.refInvoice);
+                });
+              }
+
+              // Lookup invoices to get UnitProduksi for pembebananReturnId
+              const allRefInvNos = [...new Set([...rtvRefMap.values()])];
+              const invoiceUnitMap = new Map<string, string>();
+              if (allRefInvNos.length > 0) {
+                const invPOs = await prisma.purchaseOrder.findMany({
+                  where: { noInvoice: { in: allRefInvNos } },
+                  include: { UnitProduksi: true }
+                });
+                invPOs.forEach((po: any) => {
+                  if (po.noInvoice && po.UnitProduksi?.idRegional) {
+                    invoiceUnitMap.set(po.noInvoice, po.UnitProduksi.idRegional);
+                  }
+                });
+              }
+
+              // Update each retur
+              const ops = retursToFill.map(retur => {
+                const updateData: any = {};
+                
+                // Backfill referensiPembayaran
+                if (!retur.referensiPembayaran || retur.referensiPembayaran === "" || retur.referensiPembayaran === "-") {
+                  updateData.referensiPembayaran = rekon.noRekonsiliasi;
+                }
+                
+                // Backfill pembebananReturnId
+                if (!retur.pembebananReturnId) {
+                  const refInv = rtvRefMap.get(retur.rtvCn || "");
+                  if (refInv) {
+                    const unitId = invoiceUnitMap.get(refInv);
+                    if (unitId) {
+                      updateData.pembebananReturnId = unitId;
+                    }
+                  }
+                }
+
+                if (Object.keys(updateData).length === 0) return null;
+                return prisma.dataRetur.update({ where: { id: retur.id }, data: updateData });
+              }).filter(Boolean);
+
+              if (ops.length > 0) {
+                await prisma.$transaction(ops as any);
+              }
+            }
+          } catch (err) {
+            console.error("Backfill retur error:", err);
+          }
+        })();
+      }
+    } catch (e) {
+      console.error("Backfill retur setup error:", e);
+    }
+
     return NextResponse.json({ 
       data, 
       total, 
@@ -480,7 +572,7 @@ export async function POST(request: Request) {
       await auditActivity(prisma as any, newRekon.id, "Reconcile", "CREATE", { id: dbUser?.id || (session as any)?.user?.id || "unknown", name: getProfileName(session, dbUser), role: safeRole });
     }
 
-    // 4. SYNC: Update referensi invoice di tabel DataRetur secara otomatis & Tracking History
+    // 4. SYNC: Update referensi invoice, pembebanan retur, dan referensi pembayaran di tabel DataRetur
     if (Array.isArray(rtvs)) {
       const validRtvs = rtvs.filter((r: any) => typeof r === 'object' && r.noRtv && r.refInvoice);
       
@@ -488,37 +580,45 @@ export async function POST(request: Request) {
         const whereOr = validRtvs.map((r: any) => r.id ? { id: r.id } : { rtvCn: r.noRtv });
         const allOldData = await prisma.dataRetur.findMany({ where: { OR: whereOr } });
         
-        // OPTIMIZATION: Group identical payloads to minimize database queries
-        const updatesByPayload = new Map<string, { payload: any, ids: string[], rtvCns: string[] }>();
+        // Lookup all referenced invoices to get their UnitProduksi (for pembebananReturnId)
+        const allRefInvoiceNos = [...new Set(validRtvs.map((r: any) => r.refInvoice).filter(Boolean))];
+        const invoicePOs = allRefInvoiceNos.length > 0 
+          ? await prisma.purchaseOrder.findMany({
+              where: { noInvoice: { in: allRefInvoiceNos } },
+              include: { UnitProduksi: true }
+            })
+          : [];
+        const invoiceUnitMap = new Map<string, string>();
+        invoicePOs.forEach((po: any) => {
+          if (po.noInvoice && po.UnitProduksi?.idRegional) {
+            invoiceUnitMap.set(po.noInvoice, po.UnitProduksi.idRegional);
+          }
+        });
 
-        for (const r of validRtvs) {
+        // The noRekonsiliasi to fill into referensiPembayaran
+        const rekonNo = newRekon.noRekonsiliasi;
+
+        // Update each DataRetur individually since pembebananReturnId may differ per RTV
+        const updatePromises = validRtvs.map((r: any) => {
           const oldData = allOldData.find((d: any) => r.id ? d.id === r.id : d.rtvCn === r.noRtv);
           
           const updatePayload: any = { invoiceRekon: r.refInvoice };
-          if (oldData && oldData.invoiceRekon && oldData.invoiceRekon !== r.refInvoice) {
-             updatePayload.referensiPembayaran = oldData.invoiceRekon;
+          
+          // Auto-fill referensiPembayaran with noRekonsiliasi
+          if (rekonNo) {
+            updatePayload.referensiPembayaran = rekonNo;
           }
           
-          const payloadKey = JSON.stringify(updatePayload);
-          if (!updatesByPayload.has(payloadKey)) {
-             updatesByPayload.set(payloadKey, { payload: updatePayload, ids: [], rtvCns: [] });
+          // Auto-fill pembebananReturnId from the invoice's UnitProduksi
+          const unitProduksiId = invoiceUnitMap.get(r.refInvoice);
+          if (unitProduksiId) {
+            updatePayload.pembebananReturnId = unitProduksiId;
           }
-          
-          if (r.id) {
-             updatesByPayload.get(payloadKey)!.ids.push(r.id);
-          } else {
-             updatesByPayload.get(payloadKey)!.rtvCns.push(r.noRtv);
-          }
-        }
 
-        const updatePromises = Array.from(updatesByPayload.values()).map(group => {
-          const condition = group.ids.length > 0 && group.rtvCns.length > 0 
-              ? { OR: [{ id: { in: group.ids } }, { rtvCn: { in: group.rtvCns } }] }
-              : group.ids.length > 0 ? { id: { in: group.ids } } : { rtvCn: { in: group.rtvCns } };
-
+          const condition = r.id ? { id: r.id } : { rtvCn: r.noRtv };
           return prisma.dataRetur.updateMany({
             where: condition,
-            data: group.payload
+            data: updatePayload
           });
         });
         
