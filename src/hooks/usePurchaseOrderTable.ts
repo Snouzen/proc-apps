@@ -21,6 +21,9 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
   const [activeNamaPt, setActiveNamaPt] = useState<string>("");
   const [activeInisial, setActiveInisial] = useState<string>("");
   const [activeTujuan, setActiveTujuan] = useState<string>("");
+  const [activeRegional, setActiveRegional] = useState<string>("");
+  const [activeSiteArea, setActiveSiteArea] = useState<string>("");
+
   const [currentPage, setCurrentPage] = useState(1);
 
   const [deleting, setDeleting] = useState(false);
@@ -29,7 +32,7 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
   const lastCtrlRef = useRef<AbortController | null>(null);
 
   const handleFetchData = useCallback(
-    async (selectedNamaPt: string, selectedInisial: string, selectedTujuan: string) => {
+    async (selectedNamaPt: string, selectedInisial: string, selectedTujuan: string, selectedRegional?: string, selectedSiteArea?: string) => {
       if (!selectedNamaPt) return;
 
       setLoadingData(true);
@@ -55,6 +58,8 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
         setActiveNamaPt(selectedNamaPt);
         setActiveInisial(selectedInisial);
         setActiveTujuan(selectedTujuan);
+        setActiveRegional(selectedRegional || "");
+        setActiveSiteArea(selectedSiteArea || "");
         setCurrentPage(1);
       } catch (e: any) {
         if (e.name !== "AbortError") console.error(e);
@@ -70,7 +75,7 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
       setDeleting(true);
       try {
         await fetch(`/api/po?noPo=${encodeURIComponent(noPo)}`, { method: "DELETE" });
-        await handleFetchData(activeNamaPt, activeInisial, activeTujuan);
+        await handleFetchData(activeNamaPt, activeInisial, activeTujuan, activeRegional, activeSiteArea);
         setConfirmDelete(null);
       } catch (e) {
         alert("Gagal menghapus PO");
@@ -78,7 +83,7 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
         setDeleting(false);
       }
     },
-    [handleFetchData, activeNamaPt, activeInisial, activeTujuan]
+    [handleFetchData, activeNamaPt, activeInisial, activeTujuan, activeRegional, activeSiteArea]
   );
 
   const stats = useMemo(() => {
@@ -122,6 +127,19 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
     if (tujuanQ) {
       data = data.filter((po) => (po.tujuanDetail || "").toLowerCase().includes(tujuanQ));
     }
+    
+    const regionalQ = activeRegional.toLowerCase().trim();
+    if (regionalQ) {
+      data = data.filter((po) => (po.regional || "").toLowerCase().includes(regionalQ));
+    }
+    
+    const siteAreaQ = activeSiteArea.toLowerCase().trim();
+    if (siteAreaQ) {
+      data = data.filter((po) => {
+        const site = po.UnitProduksi?.siteArea || "";
+        return site.toLowerCase().includes(siteAreaQ);
+      });
+    }
 
     if (tglFrom) {
       const fromDate = new Date(tglFrom);
@@ -158,7 +176,7 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
     });
 
     return data;
-  }, [poData, searchFilter, tglFrom, tglTo, sortOrder, statusFilter, activeTujuan]);
+  }, [poData, searchFilter, tglFrom, tglTo, sortOrder, statusFilter, activeTujuan, activeRegional, activeSiteArea]);
 
   const limitData = perPage === "all" ? filteredPo.length || 1 : parseInt(perPage, 10);
   const totalPages = Math.ceil(filteredPo.length / limitData) || 1;
@@ -175,6 +193,8 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
     setActiveNamaPt(namaPt);
     setActiveInisial(inisial);
     setActiveTujuan("");
+    setActiveRegional("");
+    setActiveSiteArea("");
     setCurrentPage(1);
   };
 
@@ -207,5 +227,7 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
     activeNamaPt,
     activeInisial,
     activeTujuan,
+    activeRegional,
+    activeSiteArea,
   };
 }

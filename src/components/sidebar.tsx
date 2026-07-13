@@ -22,6 +22,7 @@ import {
   Undo2,
   Target,
   ShieldCheck,
+  ScrollText,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -139,6 +140,7 @@ export default function Sidebar({
   const checklistDocsItem = { name: "Checklist Docs", icon: <FileCheck size={20} />, path: "/checklist-docs" };
   const reportItem = { name: "Report", icon: <BarChart3 size={20} />, path: "/report" };
   const returItem = { name: "Data Retur", icon: <Undo2 size={20} />, path: "/retur" };
+  const notaDinasItem = { name: "Nota Dinas", icon: <ScrollText size={20} />, path: "/tools/nota-dinas" };
 
   const actionPlanSubItems = [
     { name: "Schedule", icon: <CalendarDays size={16} />, path: "/schedule" },
@@ -384,6 +386,9 @@ export default function Sidebar({
 
           {/* 5. Data Retur */}
           <RenderLink item={returItem} pathname={pathname} isOpen={isOpen} />
+
+          {/* 5.5 Nota Dinas */}
+          {role === "pusat" && <RenderLink item={notaDinasItem} pathname={pathname} isOpen={isOpen} />}
 
           {/* 6. Rekonsiliasi */}
           {role !== "sitearea" && role !== "magang" && (

@@ -152,6 +152,11 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ── Role-based Access Control ──
+  if (pathname.startsWith("/tools/nota-dinas") && session.role !== "pusat") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   return NextResponse.next();
 }
 
