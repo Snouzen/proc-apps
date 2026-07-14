@@ -27,6 +27,7 @@ import { cleanSiteArea, getDueDateZone, getZoneLabel, needsRemarks } from "@/lib
 import { StandardTooltip } from "./StandardTooltip";
 import { ActionButton } from "./ActionButton";
 import { StatusBadge } from "./StatusBadge";
+import { InlineVendorInput } from "./InlineVendorInput";
 
 const helper = createColumnHelper<any>();
 
@@ -47,6 +48,7 @@ export function BatchAccordion({
   onCloseBatch,
   isBatchUncloseable,
   onUncloseBatch,
+  onUpdateKodeVendor,
 }: {
   batchCode: string;
   pos: any[];
@@ -64,6 +66,7 @@ export function BatchAccordion({
   onCloseBatch?: (batchCode: string) => void;
   isBatchUncloseable?: boolean;
   onUncloseBatch?: (batchCode: string) => void;
+  onUpdateKodeVendor?: (poId: string, val: string) => void;
 }) {
   const [editNdId, setEditNdId] = useState<string | null>(null);
   const [tempNoNd, setTempNoNd] = useState("");
@@ -207,11 +210,18 @@ export function BatchAccordion({
       header: "KODE VENDOR",
       size: 130,
       meta: { align: "center" },
-      cell: ({ row }) => (
-        <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider">
-          {row.original.kodeVendor || "-"}
-        </span>
-      ),
+      cell: ({ row, table }) => {
+        const meta = table.options.meta as any;
+        return (
+          <div onClick={(e) => e.stopPropagation()}>
+            <InlineVendorInput
+              po={row.original}
+              onUpdate={(id, val) => meta?.onUpdateKodeVendor?.(id, val)}
+              disabled={row.original.statusCreditLimit === "APPROVED_DIREKSI"}
+            />
+          </div>
+        );
+      },
     }),
     helper.accessor("remarksCreditLimit", {
       header: "REMARKS",
@@ -567,6 +577,7 @@ export function BatchAccordion({
               setEditNdId,
               onToggleND,
               onUpdateNDDetails,
+              onUpdateKodeVendor,
               onAction,
             }}
           />

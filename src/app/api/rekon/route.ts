@@ -662,6 +662,38 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
+    const rekon = await prisma.reconcile.findUnique({ where: { id } });
+    if (!rekon) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    // 1. Reset Purchase Orders
+    if (rekon.invoices && rekon.invoices.length > 0) {
+      await prisma.purchaseOrder.updateMany({
+        where: { noInvoice: { in: rekon.invoices } },
+        data: { statusBayar: false, buktiBayar: null }
+      });
+    }
+
+    // 2. Reset DataRetur
+    const rtvIds = Array.isArray(rekon.rtvDetails) 
+      ? (rekon.rtvDetails as any[]).map((r: any) => r.id).filter(Boolean) 
+      : [];
+    const rtvCns = Array.isArray(rekon.rtvs) ? rekon.rtvs.filter(Boolean) : [];
+
+    if (rtvIds.length > 0 || rtvCns.length > 0) {
+      const orConditions: any[] = [];
+      if (rtvIds.length > 0) orConditions.push({ id: { in: rtvIds } });
+      if (rtvCns.length > 0) orConditions.push({ rtvCn: { in: rtvCns } });
+      
+      await prisma.dataRetur.updateMany({
+        where: { OR: orConditions },
+        data: {
+          invoiceRekon: null,
+          referensiPembayaran: null,
+          pembebananReturnId: null
+        }
+      });
+    }
+
     await prisma.reconcile.delete({
       where: { id }
     });

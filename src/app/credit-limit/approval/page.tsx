@@ -94,6 +94,7 @@ export default function CreditLimitApprovalPage() {
               pos={batch.pos}
               isExpanded={data.expandedBatches.has(batch.batchCode)}
               isArchived={batch.isArchived}
+              onUpdateKodeVendor={data.handleUpdateKodeVendor}
               isBatchOpen={batch.isBatchOpen}
               isBatchUncloseable={batch.isBatchUncloseable}
               onToggle={() => data.toggleBatch(batch.batchCode)}

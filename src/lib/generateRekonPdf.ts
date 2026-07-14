@@ -164,7 +164,7 @@ export const generateRekonPdf = (
   // Names (Row 1)
   const nameStartY = signStartY + 30;
   
-  // Diketahui oleh
+  // Disetujui oleh
   doc.text("Fiana Fega Sari", col1X, nameStartY);
   doc.text("Manager Keuangan dan Umum", col1X, nameStartY + 5);
 

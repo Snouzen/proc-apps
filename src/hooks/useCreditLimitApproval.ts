@@ -276,8 +276,8 @@ export function useCreditLimitApproval({
     }
   };
 
-  const handleChecklistAllND = async (batchCode: string, posToToggle: any[], checked: boolean) => {
-    const poIds = posToToggle.map((po) => po.id);
+  const handleChecklistAllND = async (batchCode: string, batchPos: any[], checked: boolean) => {
+    const poIds = batchPos.map(p => p.id);
     
     // Optimistic UI update
     setPoData((prev) =>
@@ -584,6 +584,12 @@ export function useCreditLimitApproval({
     }
   };
 
+  const handleUpdateKodeVendor = (poId: string, val: string) => {
+    setPoData((prev) =>
+      prev.map((item) => (item.id === poId ? { ...item, kodeVendor: val } : item))
+    );
+  };
+
   return {
     loading,
     role,
@@ -602,5 +608,6 @@ export function useCreditLimitApproval({
     handleUpdateNDDetails,
     handleCloseBatch,
     handleUncloseBatch,
+    handleUpdateKodeVendor,
   };
 }
