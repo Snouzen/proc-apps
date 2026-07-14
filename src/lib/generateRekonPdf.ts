@@ -158,7 +158,7 @@ export const generateRekonPdf = (
   const col4X = 230;
 
   // Headers
-  doc.text("Diketahui oleh,", 75, signStartY, { align: "center" });
+  doc.text("Disetujui oleh,", 75, signStartY, { align: "center" });
   doc.text("Dibuat Oleh,", 215, signStartY, { align: "center" });
 
   // Names (Row 1)
