@@ -498,7 +498,7 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
             ritelFilters.selectedRegional,
             ritelFilters.selectedSiteArea
           )}
-          disabled={!ritelFilters.selectedNamaPt || poTable.loadingData}
+          disabled={(!ritelFilters.selectedNamaPt && !ritelFilters.selectedRegional && !ritelFilters.selectedSiteArea) || poTable.loadingData}
           className="w-full h-12 bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 text-white dark:text-white font-black rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-slate-100 disabled:dark:bg-slate-800 disabled:text-slate-400 disabled:dark:text-slate-500"
         >
           {poTable.loadingData ? (

@@ -33,7 +33,7 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
 
   const handleFetchData = useCallback(
     async (selectedNamaPt: string, selectedInisial: string, selectedTujuan: string, selectedRegional?: string, selectedSiteArea?: string) => {
-      if (!selectedNamaPt) return;
+      if (!selectedNamaPt && !selectedRegional && !selectedSiteArea) return;
 
       setLoadingData(true);
       setPoData(null);
@@ -43,12 +43,18 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
       lastCtrlRef.current = ctrl;
 
       try {
-        const ritelsToFetch = selectedInisial
-          ? retailers.filter((r) => r.namaPt === selectedNamaPt && r.inisial === selectedInisial)
-          : retailers.filter((r) => r.namaPt === selectedNamaPt);
+        let allIds = "";
+        if (selectedNamaPt) {
+          const ritelsToFetch = selectedInisial
+            ? retailers.filter((r) => r.namaPt === selectedNamaPt && r.inisial === selectedInisial)
+            : retailers.filter((r) => r.namaPt === selectedNamaPt);
+          allIds = ritelsToFetch.map((r) => r.id).join(",");
+        }
 
-        const allIds = ritelsToFetch.map((r) => r.id).join(",");
-        const url = `/api/po?retailerId=${encodeURIComponent(allIds)}&summary=true`;
+        let url = `/api/po?summary=true`;
+        if (allIds) url += `&retailerId=${encodeURIComponent(allIds)}`;
+        if (selectedRegional) url += `&regional=${encodeURIComponent(selectedRegional)}`;
+        if (selectedSiteArea) url += `&siteArea=${encodeURIComponent(selectedSiteArea)}`;
         
         const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
         const json = await res.json();
@@ -155,16 +161,12 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
 
     if (statusFilter !== "all") {
       data = data.filter((po) => {
-        const completed = isCompleted(po);
-        if (statusFilter === "complete") return completed;
-        if (completed) return false;
-
-        const du = daysUntil(toDate(po.expiredTgl));
-        if (du == null) return statusFilter === "active";
-
-        if (statusFilter === "expired") return du < 0;
-        if (statusFilter === "almost_expired") return du >= 0 && du <= 14;
-        if (statusFilter === "active") return du > 14;
+        if (statusFilter === "tagih") {
+          return !!po.buktiTagih;
+        }
+        if (statusFilter === "paid") {
+          return !!po.buktiBayar || po.statusBayar === true;
+        }
         return true;
       });
     }

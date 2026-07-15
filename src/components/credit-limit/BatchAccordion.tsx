@@ -21,6 +21,7 @@ import {
   Edit3,
   Lock,
   Unlock,
+  FileText,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cleanSiteArea, getDueDateZone, getZoneLabel, needsRemarks } from "@/lib/credit-limit";
@@ -49,6 +50,7 @@ export function BatchAccordion({
   isBatchUncloseable,
   onUncloseBatch,
   onUpdateKodeVendor,
+  onOpenNdModal,
 }: {
   batchCode: string;
   pos: any[];
@@ -67,6 +69,7 @@ export function BatchAccordion({
   isBatchUncloseable?: boolean;
   onUncloseBatch?: (batchCode: string) => void;
   onUpdateKodeVendor?: (poId: string, val: string) => void;
+  onOpenNdModal?: (batchCode: string, pos: any[]) => void;
 }) {
   const [editNdId, setEditNdId] = useState<string | null>(null);
   const [tempNoNd, setTempNoNd] = useState("");
@@ -475,6 +478,20 @@ export function BatchAccordion({
           </div>
 
           <div className="pl-2 border-l border-slate-200 dark:border-slate-700/50 flex items-center gap-2">
+            {/* 
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenNdModal) {
+                  onOpenNdModal(batchCode, pos);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-bold transition-all shadow-sm shadow-amber-200 dark:shadow-none active:scale-95"
+            >
+              <FileText size={14} />
+              Create ND
+            </button>
+            */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -501,7 +518,7 @@ export function BatchAccordion({
                   e.stopPropagation();
                   onCloseBatch(batchCode);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-bold transition-all shadow-sm shadow-amber-200 dark:shadow-none active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-500/10 hover:bg-slate-100 dark:hover:bg-slate-500/20 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-500/20 rounded-lg text-xs font-bold transition-all shadow-sm shadow-slate-200 dark:shadow-none active:scale-95"
               >
                 <Lock size={14} />
                 Close Batch

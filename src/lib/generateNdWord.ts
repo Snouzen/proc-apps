@@ -76,7 +76,7 @@ function formatDateIndonesian(date: Date): string {
   return `${day} ${month} ${year}`;
 }
 
-export async function generateNdWord(formData: NdFormData): Promise<void> {
+export async function generateNdWord(formData: NdFormData, pos?: any[]): Promise<void> {
   // Fetch the template from public folder
   const response = await fetch("/template/Draft ND Pengajuan Credit Limit.docx");
   if (!response.ok) {
@@ -93,8 +93,50 @@ export async function generateNdWord(formData: NdFormData): Promise<void> {
     nullGetter: () => "",
   });
 
+  const cleanSiteArea = (str: string) => {
+    if (!str) return "-";
+    return str
+      .replace(/KANTOR CABANG/i, "KC")
+      .replace(/KANTOR WILAYAH/i, "KANWIL")
+      .replace(/SUB CABANG/i, "KCP");
+  };
+
+  const list_po_grouped = [];
+  if (pos && pos.length > 0) {
+    const groupedPos = pos.reduce((acc: any, po: any) => {
+      const siteArea = cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea || "-");
+      if (!acc[siteArea]) acc[siteArea] = [];
+      acc[siteArea].push(po);
+      return acc;
+    }, {});
+
+    let groupIndex = 1;
+    for (const [site, items] of Object.entries(groupedPos)) {
+      const itms = items as any[];
+      const firstItem = itms[0];
+      const restItems = itms.slice(1).map((po: any) => ({
+        kodeVendor: po.kodeVendor || "-",
+        inisial: po.RitelModern?.inisial || "-",
+        noPo: po.noPo,
+        totalAmount: Number(po.totalNominal || po.nominal || 0).toLocaleString("id-ID"),
+      }));
+      const subtotal = itms.reduce((sum: number, po: any) => sum + Number(po.totalNominal || po.nominal || 0), 0);
+
+      list_po_grouped.push({
+        no: groupIndex++,
+        siteArea: site,
+        firstKodeVendor: firstItem.kodeVendor || "-",
+        firstInisial: firstItem.RitelModern?.inisial || "-",
+        firstNoPo: firstItem.noPo,
+        firstTotalAmount: Number(firstItem.totalNominal || firstItem.nominal || 0).toLocaleString("id-ID"),
+        rest_items: restItems,
+        subtotal: subtotal.toLocaleString("id-ID"),
+      });
+    }
+  }
+
   // Render data into the template
-  doc.render(formData);
+  doc.render({ ...formData, list_po_grouped });
 
   // Generate output
   const output = doc.getZip().generate({

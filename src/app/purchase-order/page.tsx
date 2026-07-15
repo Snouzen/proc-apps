@@ -78,7 +78,7 @@ export default function PurchaseOrderPage() {
           </div>
           <div className="space-y-1">
             <h3 className="text-xl font-bold text-slate-800">Siap Memuat Data</h3>
-            <p className="text-slate-400 max-w-xs mx-auto text-sm">Pilih Ritel Modern & Inisial di atas untuk memuat ringkasan Purchase Order.</p>
+            <p className="text-slate-400 max-w-xs mx-auto text-sm">Pilih filter Ritel, Regional, atau Unit Produksi di atas untuk memuat data Purchase Order.</p>
           </div>
         </div>
       ) : poTable.poData.length === 0 && !poTable.loadingData ? (
@@ -137,7 +137,7 @@ export default function PurchaseOrderPage() {
                 <div className="w-full sm:w-[150px]"><DateInputHybrid value={poTable.tglFrom} onChange={(v) => poTable.setTglFrom(v)} placeholder="Dari Tgl PO..." maxDate={poTable.tglTo} /></div>
                 <div className="w-full sm:w-[150px]"><DateInputHybrid value={poTable.tglTo} onChange={(v) => poTable.setTglTo(v)} placeholder="Sampai Tgl..." minDate={poTable.tglFrom} /></div>
                 <div className="w-full sm:w-[160px] relative z-20">
-                  <SmoothSelect value={poTable.statusFilter} onChange={(v) => poTable.setStatusFilter(v as any)} options={[{ value: "all", label: "All Status" }, { value: "active", label: "Active" }, { value: "almost_expired", label: "Almost Expired" }, { value: "expired", label: "Expired" }, { value: "complete", label: "Complete" }]} />
+                  <SmoothSelect value={poTable.statusFilter} onChange={(v) => poTable.setStatusFilter(v as any)} options={[{ value: "all", label: "All Status" }, { value: "tagih", label: "Tagih" }, { value: "paid", label: "Paid" }]} />
                 </div>
               </div>
             </CardHeader>

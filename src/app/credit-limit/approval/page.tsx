@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Truck, ChevronLeft, ChevronRight } from "lucide-react";
 
 import PODetailModal from "@/components/po-detail-modal";
@@ -8,6 +9,7 @@ import {
   CreditLimitFilters,
   BatchAccordion,
 } from "@/components/credit-limit";
+import { CreateNdModal } from "@/components/credit-limit/CreateNdModal";
 import { GlobalPagination } from "@/components/global-pagination";
 
 import { useCreditLimitFilters } from "@/hooks/useCreditLimitFilters";
@@ -17,6 +19,14 @@ import { usePODetail } from "@/hooks/usePODetail";
 export default function CreditLimitApprovalPage() {
   const filters = useCreditLimitFilters();
   const detail = usePODetail();
+
+  const [ndModalOpen, setNdModalOpen] = useState(false);
+  const [selectedNdBatch, setSelectedNdBatch] = useState<{batchCode: string, pos: any[]} | null>(null);
+
+  const handleOpenNdModal = (batchCode: string, pos: any[]) => {
+    setSelectedNdBatch({ batchCode, pos });
+    setNdModalOpen(true);
+  };
 
   const data = useCreditLimitApproval({
     search: filters.search,
@@ -107,6 +117,7 @@ export default function CreditLimitApprovalPage() {
               onUpdateNDDetails={data.handleUpdateNDDetails}
               onCloseBatch={data.handleCloseBatch}
               onUncloseBatch={data.handleUncloseBatch}
+              onOpenNdModal={handleOpenNdModal}
             />
           ))}
         </div>
@@ -145,6 +156,14 @@ export default function CreditLimitApprovalPage() {
               }
             : null
         }
+      />
+
+      {/* ── Create ND Modal ────────────────────────────────────────── */}
+      <CreateNdModal
+        open={ndModalOpen}
+        onClose={() => setNdModalOpen(false)}
+        batchCode={selectedNdBatch?.batchCode}
+        pos={selectedNdBatch?.pos}
       />
     </div>
   );

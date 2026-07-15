@@ -19,6 +19,7 @@ import {
   getDefaultNdFormData,
   generateNdWord,
 } from "@/lib/generateNdWord";
+import { generateNdPdf } from "@/lib/generateNdPdf";
 
 // --- Field config for the form ---
 interface FieldConfig {
@@ -121,6 +122,7 @@ function groupFields(fields: FieldConfig[]): Record<string, FieldConfig[]> {
 export default function NotaDinasPage() {
   const [formData, setFormData] = useState<NdFormData>(getDefaultNdFormData());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "Header Surat": true,
     "Realisasi Penjualan": true,
@@ -188,6 +190,17 @@ export default function NotaDinasPage() {
     }
   }, [formData]);
 
+  const handleGeneratePdf = useCallback(async () => {
+    setIsGeneratingPdf(true);
+    try {
+      await generateNdPdf(formData);
+    } catch (err: any) {
+      alert(err?.message || "Gagal generate dokumen PDF");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }, [formData]);
+
   const toggleGroup = (group: string) => {
     setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
   };
@@ -246,7 +259,21 @@ export default function NotaDinasPage() {
                 ) : (
                   <Download className="w-4 h-4" />
                 )}
-                {isGenerating ? "Generating..." : "Download Word"}
+                <span className="hidden sm:inline">{isGenerating ? "Generating..." : "Download Word"}</span>
+                <span className="sm:hidden">Word</span>
+              </button>
+              <button
+                onClick={handleGeneratePdf}
+                disabled={isGeneratingPdf}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                {isGeneratingPdf ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">{isGeneratingPdf ? "Generating..." : "Cetak PDF"}</span>
+                <span className="sm:hidden">PDF</span>
               </button>
             </div>
           </div>

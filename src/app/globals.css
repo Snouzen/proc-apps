@@ -122,3 +122,20 @@
   50% { opacity: 1; transform: scale(1.05); }
   100% { opacity: 0.85; transform: scale(0.96); }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-only, .print-only * {
+    visibility: visible;
+  }
+  .print-only {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+}
