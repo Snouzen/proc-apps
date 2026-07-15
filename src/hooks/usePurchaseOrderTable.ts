@@ -161,6 +161,9 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
 
     if (statusFilter !== "all") {
       data = data.filter((po) => {
+        if (statusFilter === "verified") {
+          return !!po.noInvoice && !po.buktiTagih && !po.buktiBayar && po.statusBayar !== true;
+        }
         if (statusFilter === "tagih") {
           return !!po.buktiTagih;
         }

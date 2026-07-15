@@ -137,7 +137,7 @@ export default function PurchaseOrderPage() {
                 <div className="w-full sm:w-[150px]"><DateInputHybrid value={poTable.tglFrom} onChange={(v) => poTable.setTglFrom(v)} placeholder="Dari Tgl PO..." maxDate={poTable.tglTo} /></div>
                 <div className="w-full sm:w-[150px]"><DateInputHybrid value={poTable.tglTo} onChange={(v) => poTable.setTglTo(v)} placeholder="Sampai Tgl..." minDate={poTable.tglFrom} /></div>
                 <div className="w-full sm:w-[160px] relative z-20">
-                  <SmoothSelect value={poTable.statusFilter} onChange={(v) => poTable.setStatusFilter(v as any)} options={[{ value: "all", label: "All Status" }, { value: "tagih", label: "Tagih" }, { value: "paid", label: "Paid" }]} />
+                  <SmoothSelect value={poTable.statusFilter} onChange={(v) => poTable.setStatusFilter(v as any)} options={[{ value: "all", label: "All Status" }, { value: "verified", label: "Verified" }, { value: "tagih", label: "Tagih" }, { value: "paid", label: "Paid" }]} />
                 </div>
               </div>
             </CardHeader>
