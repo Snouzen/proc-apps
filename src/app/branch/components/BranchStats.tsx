@@ -14,25 +14,11 @@ export function BranchStats({
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {[
         {
-          label: "Total Active PO",
+          label: "Total PO Dijadwalkan",
           value: poData.length,
-          icon: <Package size={18} />,
-          color: "text-blue-600",
-          bg: "bg-blue-50 dark:bg-blue-900/30",
-        },
-        {
-          label: "Sudah Dijadwalkan",
-          value: totalScheduled,
           icon: <Truck size={18} />,
-          color: "text-emerald-600 dark:text-emerald-400",
-          bg: "bg-emerald-50 dark:bg-emerald-900/30",
-        },
-        {
-          label: "Belum Dijadwalkan",
-          value: totalUnscheduled,
-          icon: <Clock size={18} />,
-          color: "text-amber-600 dark:text-amber-400",
-          bg: "bg-amber-50 dark:bg-amber-900/30",
+          color: "text-blue-600 dark:text-blue-400",
+          bg: "bg-blue-50 dark:bg-blue-900/30",
         },
       ].map((s, i) => (
         <div

@@ -31,6 +31,42 @@ type EditItem = {
   discount: number | string;
 };
 
+const InlineDiscountInput = ({ 
+  actualDiscount, 
+  onChange 
+}: { 
+  actualDiscount: number, 
+  onChange: (val: number) => void 
+}) => {
+  const [val, setVal] = useState(() => 
+    actualDiscount > 0 ? actualDiscount.toLocaleString("id-ID", { maximumFractionDigits: 2 }) : ""
+  );
+  
+  useEffect(() => {
+    const currentNum = parseRupiah(val);
+    if (Math.abs(currentNum - actualDiscount) > 0.01) {
+      setVal(actualDiscount > 0 ? actualDiscount.toLocaleString("id-ID", { maximumFractionDigits: 2 }) : "");
+    }
+  }, [actualDiscount]);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={val}
+      onChange={(e) => {
+        setVal(e.target.value);
+        onChange(parseRupiah(e.target.value));
+      }}
+      onBlur={() => {
+        const num = parseRupiah(val);
+        setVal(num > 0 ? num.toLocaleString("id-ID", { maximumFractionDigits: 2 }) : "");
+      }}
+      className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100"
+    />
+  );
+};
+
 export default function POEditModal({
   open,
   onClose,
@@ -568,7 +604,7 @@ export default function POEditModal({
           
           // Re-calculate rpTagih during save for maximum safety
           const actualDiscount = (discountBase / pcsBase) * pcsKirim;
-          const rpTagih = Math.max(0, Math.round((pcsKirim * hargaPcs) - actualDiscount));
+          const rpTagih = Math.max(0, (pcsKirim * hargaPcs) - actualDiscount);
 
           return {
             namaProduk: String(it.namaProduk || "").trim(),
@@ -937,9 +973,10 @@ export default function POEditModal({
                   onBlur={() =>
                     setCurrentItem((prev) => {
                       const n = parseRupiah(prev.discount);
+                      const hasDecimal = n % 1 !== 0;
                       return {
                         ...prev,
-                        discount: n ? n.toLocaleString("id-ID") : "",
+                        discount: n ? n.toLocaleString("id-ID", { maximumFractionDigits: hasDecimal ? 2 : 0 }) : "",
                       };
                     })
                   }
@@ -1072,16 +1109,9 @@ export default function POEditModal({
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={
-                                d.actualDiscount > 0
-                                  ? Math.round(d.actualDiscount).toLocaleString("id-ID")
-                                  : ""
-                              }
-                              onChange={(e) => {
-                                const val = parseRupiah(e.target.value);
+                            <InlineDiscountInput
+                              actualDiscount={d.actualDiscount}
+                              onChange={(val) => {
                                 const orderPcs = Number(it.pcs) || 1;
                                 const shipped = Number(it.pcsKirim) || 1;
                                 // Reverse calculate base discount for the whole PO
@@ -1090,12 +1120,11 @@ export default function POEditModal({
                                 setItems((prev) =>
                                   prev.map((x) =>
                                     x.id === it.id
-                                      ? { ...x, discount: Math.round(baseDiscount) }
+                                      ? { ...x, discount: baseDiscount }
                                       : x,
                                   ),
                                 );
                               }}
-                              className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-bold dark:text-slate-100"
                             />
                             {parseRupiah(it.discount) > 0 && (
                               <button

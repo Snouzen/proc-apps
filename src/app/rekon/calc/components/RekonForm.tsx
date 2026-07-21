@@ -815,8 +815,27 @@ export default function RekonForm({ calc }: { calc: any }) {
                 type="text" 
                 placeholder="Input Biaya Admin..." 
                 className="w-full h-20 pl-24 pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[28px] border-none outline-none font-black text-2xl text-slate-700 dark:text-slate-100 placeholder:text-slate-200 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-slate-100/50 dark:focus:ring-slate-700/50"
-                onChange={e => setAdminFee(Number(e.target.value.replace(/[^0-9]/g, '')))}
-                value={adminFee ? new Intl.NumberFormat("id-ID").format(adminFee) : ""}
+                onChange={e => calc.setAdminFee(Number(e.target.value.replace(/[^0-9]/g, '')))}
+                value={calc.adminFee ? new Intl.NumberFormat("id-ID").format(calc.adminFee) : ""}
+            />
+          </div>
+      </div>
+
+      {/* STEP 4: Remarks */}
+      <div className="bg-white dark:bg-slate-800 rounded-[40px] p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-8 relative">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-slate-800 dark:bg-slate-700 text-white flex items-center justify-center font-black text-xs shadow-lg dark:shadow-none">4</div>
+            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Catatan Tambahan (Remarks)</h3>
+          </div>
+          <div className="relative group">
+            <div className="absolute left-8 top-8 text-slate-200 dark:text-slate-600 group-focus-within:text-slate-800 dark:group-focus-within:text-slate-300 transition-colors">
+                <FileText size={28} />
+            </div>
+            <textarea 
+                placeholder="Tulis catatan tambahan untuk rekonsiliasi ini (opsional)..." 
+                className="w-full h-40 pt-8 pl-24 pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[28px] border-none outline-none font-bold text-[13px] text-slate-700 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-slate-100/50 dark:focus:ring-slate-700/50 resize-none"
+                onChange={e => calc.setRemarks(e.target.value)}
+                value={calc.remarks}
             />
           </div>
       </div>

@@ -83,6 +83,7 @@ export function useRekonCalc() {
   const [selectedPromos, setSelectedPromos] = useState<Promo[]>([]);
   const [adminFee, setAdminFee] = useState<number>(0);
   const [notesList, setNotesList] = useState<Array<{type?: 'invoice' | 'rtv', desc: string, nominal: number}>>([]);
+  const [remarks, setRemarks] = useState<string>("");
 
   const [companySearch, setCompanySearch] = useState("");
   const [invSearch, setInvSearch] = useState("");
@@ -133,6 +134,7 @@ export function useRekonCalc() {
             setSelectedPromos(d.detailedPromos || []);
             setRekonNo(d.noRekonsiliasi || null);
             setNotesList(Array.isArray(d.notes) ? d.notes.map((n: any) => ({ ...n, type: n.type || 'invoice' })) : []);
+            setRemarks(d.remarks || "");
             setBuktiBayarUrl(d.buktiBayarUrl || null);
             setRincianBayarUrl(d.rincianBayarUrl || "");
             if (d.tglBayar) setTglBayar(d.tglBayar.split("T")[0]);
@@ -387,6 +389,7 @@ export function useRekonCalc() {
         })),
         noPromo: selectedPromos.length > 0 ? selectedPromos.map(p => p.nomor).join(', ') : null,
         notes: notesList.filter(n => n.desc || n.nominal).map(n => ({ type: n.type || 'invoice', desc: n.desc, nominal: n.nominal })),
+        remarks: remarks || null,
         buktiBayarUrl: uploadedBuktiBayarUrl || null,
         rincianBayarUrl: rincianBayarUrl || null,
         tglBayar: tglBayar || null,
@@ -450,6 +453,7 @@ export function useRekonCalc() {
     isDataLoading, isSubmitting, isUploading,
     availableInvoices, availableRtvs,
     totalInvoices, totalRtv, totalPromo, totalNotesInvoice, totalNotesRtv, totalNotes, balanceNetDue,
-    handleSelectInvoice, handleSelectRtv, handleSaveRekon, fetchCompanyData, masterPromos
+    handleSelectInvoice, handleSelectRtv, handleSaveRekon, fetchCompanyData, masterPromos,
+    remarks, setRemarks
   };
 }

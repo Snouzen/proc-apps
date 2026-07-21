@@ -237,6 +237,7 @@ model Reconcile {
   notesNominal   Float       @default(0)
   notes          Json? // Array of {desc: string, nominal: number}
   noPromo        String? // Nomor promo (opsional)
+  remarks        String? // Catatan tambahan (opsional)
   status         String      @default("final")
   tglBayar       DateTime?
   buktiBayarUrl  String?

@@ -568,10 +568,10 @@ export default function POTableSection({
                               <td className="px-4 py-2 text-right">
                                 <input
                                   type="text"
-                                  inputMode="numeric"
+                                  inputMode="decimal"
                                   value={
-                                    Number(it?.discount || 0)
-                                      ? Number(it?.discount || 0).toLocaleString("id-ID")
+                                    it?.discount
+                                      ? Number(it?.discount || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 })
                                       : ""
                                   }
                                   onChange={(e) => {

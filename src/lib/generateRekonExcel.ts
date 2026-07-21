@@ -25,7 +25,7 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
     // --- Summary Table Header ---
     wsData.push(["RINGKASAN REKONSILIASI"]);
     wsData.push([
-      "#", "No. Rekon", "Ritel", "Bank Statement", "Invoice", "RTV", "Promo", "Admin Fee", "Notes", "Net Due", "Tanggal"
+      "#", "No. Rekon", "Ritel", "Bank Statement", "Invoice", "RTV", "Promo", "Admin Fee", "Notes", "Remarks", "Net Due", "Tanggal"
     ]);
 
     let grandBS = 0, grandInv = 0, grandRtv = 0, grandPromo = 0, grandAdmin = 0, grandNotes = 0, grandNet = 0;
@@ -49,6 +49,7 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
         Number(item.totalPromo || 0),
         Number(item.biayaAdmin || 0),
         Number(item.notesNominal || 0),
+        item.remarks || "-",
         Number(item.nominal || 0),
         item.tglBayar ? format(new Date(item.tglBayar), "dd/MM/yyyy") : "-"
       ]);
@@ -57,7 +58,7 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
     // Grand Totals
     wsData.push([
       "", "", "GRAND TOTAL",
-      grandBS, grandInv, grandRtv, grandPromo, grandAdmin, grandNotes, grandNet, ""
+      grandBS, grandInv, grandRtv, grandPromo, grandAdmin, grandNotes, "", grandNet, ""
     ]);
 
     wsData.push([]);
@@ -86,14 +87,15 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
       wsData.push([]);
 
       // --- Summary Box ---
-      wsData.push(["Bank Statement", "Total Invoice", "Total RTV", "Promo", "Admin Fee", "NET DUE"]);
+      wsData.push(["Bank Statement", "Total Invoice", "Total RTV", "Promo", "Admin Fee", "NET DUE", "REMARKS"]);
       wsData.push([
         Number(item.bankStatement || 0),
         Number(item.totalInvoices || 0),
         Number(item.totalRtvs || 0),
         Number(item.totalPromo || 0),
         Number(item.biayaAdmin || 0) * -1,
-        Number(item.nominal || 0)
+        Number(item.nominal || 0),
+        item.remarks || "-"
       ]);
       wsData.push([]);
 

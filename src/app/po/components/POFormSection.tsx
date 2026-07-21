@@ -387,7 +387,7 @@ export default function POFormSection({
                   </label>
                   <input
                     type="text"
-                    inputMode="numeric"
+                    inputMode="decimal"
                     value={currentItem.discount}
                     placeholder="0"
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100"
@@ -402,7 +402,7 @@ export default function POFormSection({
                         const n = parseRupiah(prev.discount);
                         return {
                           ...prev,
-                          discount: n ? n.toLocaleString("id-ID") : "",
+                          discount: n ? n.toLocaleString("id-ID", { maximumFractionDigits: 2 }) : "",
                         };
                       })
                     }
@@ -558,13 +558,13 @@ export default function POFormSection({
                               editItem.hargaPcs,
                               editItem.discount,
                             )
-                          : computeDerived(
-                              item.namaProduk,
-                              item.pcs,
-                              item.pcsKirim,
-                              item.hargaPcs,
-                              item.discount,
-                            );
+                          : {
+                              kg: item.kg,
+                              kgKirim: item.kgKirim,
+                              hargaKg: item.hargaKg,
+                              nominal: item.nominal,
+                              rpTagih: item.rpTagih,
+                            };
                         return (
                           <Fragment key={item.id}>
                             <tr className="group hover:bg-slate-50/50">
@@ -637,7 +637,7 @@ export default function POFormSection({
                                 {isEditing ? (
                                   <input
                                     type="text"
-                                    inputMode="numeric"
+                                    inputMode="decimal"
                                     value={editItem.discount}
                                     onChange={(e) =>
                                       setEditItem((p: any) => ({
@@ -651,7 +651,7 @@ export default function POFormSection({
                                         return {
                                           ...p,
                                           discount: n
-                                            ? n.toLocaleString("id-ID")
+                                            ? n.toLocaleString("id-ID", { maximumFractionDigits: 2 })
                                             : "",
                                         };
                                       })

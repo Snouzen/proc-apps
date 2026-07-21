@@ -105,11 +105,14 @@ export default function PODetailModal({ open, onClose, data }: Props) {
 
   const formatCurrency = (val: number | string | undefined) => {
     if (!val) return "-";
+    const num = Number(val);
+    const hasDecimal = num % 1 !== 0;
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(Number(val));
+      minimumFractionDigits: hasDecimal ? 2 : 0,
+      maximumFractionDigits: hasDecimal ? 2 : 0,
+    }).format(num);
   };
 
   const formatLocation = (loc?: string | null) => {
@@ -465,7 +468,7 @@ export default function PODetailModal({ open, onClose, data }: Props) {
                       </td>
                       <td className="px-4 py-2.5 text-right text-rose-500 font-bold">
                         <div className="flex items-center justify-end gap-1.5">
-                          <span>{Math.round(actualDiscount) > 0 ? formatCurrency(Math.round(actualDiscount)) : "-"}</span>
+                          <span>{actualDiscount > 0 ? formatCurrency(actualDiscount) : "-"}</span>
                           {finalDiscountBase > 0 && (
                             <button
                               type="button"

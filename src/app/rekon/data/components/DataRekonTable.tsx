@@ -173,6 +173,20 @@ export default function DataRekonTable({ hook }: { hook: any }) {
         </div>
       ),
     }),
+    helper.accessor("remarks", {
+      header: "REMARKS",
+      size: 200,
+      cell: ({ row }) => {
+        const text = row.original.remarks || "-";
+        return (
+          <div className="w-full text-left">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium whitespace-pre-wrap break-words line-clamp-3" title={text}>
+              {text}
+            </p>
+          </div>
+        );
+      },
+    }),
     helper.accessor("createdAt", {
       header: "TANGGAL INPUT",
       size: 140,
@@ -288,261 +302,284 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                   className="bg-slate-50/60 dark:bg-slate-900/40 px-14 py-8"
                   style={{ animation: 'fadeSlideIn 0.2s ease-out' }}
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-8 w-full">
-                    {/* LEFT: Bank Statement Detail */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="w-6 h-6 bg-amber-500 rounded-lg flex items-center justify-center">
-                          <CircleDollarSign size={12} className="text-white" />
-                        </div>
-                        <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Bank Statement</h4>
-                      </div>
-                      <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
-                        {Array.isArray(item.bankStatements) && item.bankStatements.length > 0 ? (
-                          <>
-                            <table className="w-full text-left">
-                              <thead>
-                                <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
-                                  <th className="px-5 py-3">#</th>
-                                  <th className="px-5 py-3">Keterangan</th>
-                                  <th className="px-5 py-3 text-right">Nominal</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {item.bankStatements.map((bs: any, ni: number) => (
-                                  <tr key={ni} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-amber-50/30 dark:hover:bg-amber-500/10 transition-colors">
-                                    <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{ni + 1}</td>
-                                    <td className="px-5 py-3 text-[10px] font-bold text-slate-600 dark:text-slate-300">{bs.desc || <span className="italic text-slate-300 dark:text-slate-600">-</span>}</td>
-                                    <td className="px-5 py-3 text-right text-[10px] font-black text-amber-600 dark:text-amber-400 tabular-nums">{formatRp(bs.nominal || 0)}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                            <div className="px-5 py-3 bg-amber-50/50 dark:bg-amber-500/10 flex justify-end">
-                              <span className="text-[8px] font-black text-amber-400 dark:text-amber-500 uppercase tracking-widest mr-3">Total</span>
-                              <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 tabular-nums">{formatRp(item.bankStatement || 0)}</span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="py-6 text-center">
-                            <p className="text-[9px] text-slate-300 italic">Total: {formatRp(item.bankStatement || 0)}</p>
+                    {/* ── ROW 1: Bank Statement + Invoice ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+                      {/* Bank Statement Detail */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-6 h-6 bg-amber-500 rounded-lg flex items-center justify-center">
+                            <CircleDollarSign size={12} className="text-white" />
                           </div>
-                        )}
-                      </div>
-                    </div>
-                    {/* CENTER: Invoice Breakdown */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center">
-                          <Receipt size={12} className="text-white" />
+                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Bank Statement</h4>
                         </div>
-                        <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Invoice ({invoiceCount})</h4>
-                      </div>
-                      <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
-                              <th className="px-5 py-3">#</th>
-                              <th className="px-5 py-3">NO. INVOICE</th>
-                              <th className="px-5 py-3 text-right">NOMINAL</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {item.invoices?.length > 0 ? item.invoices.map((inv: any, i: number) => (
-                              <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-blue-50/30 dark:hover:bg-blue-500/10 transition-colors">
-                                <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
-                                <td className="px-5 py-3">
-                                  <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight">{inv.noInvoice}</span>
-                                </td>
-                                <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200">
-                                  {formatRp(inv.nominal)}
-                                </td>
-                              </tr>
-                            )) : (
-                              <tr><td colSpan={3} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada invoice</td></tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="mt-3 flex justify-end">
-                        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
-                          <span className="text-[8px] font-black text-blue-400 dark:text-blue-500 uppercase tracking-widest mr-3">Total</span>
-                          <span className="text-[11px] font-black text-blue-600 dark:text-blue-400 tabular-nums">{formatRp(item.totalInvoices || 0)}</span>
+                        <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+                          {Array.isArray(item.bankStatements) && item.bankStatements.length > 0 ? (
+                            <>
+                              <div className="max-h-[280px] overflow-y-auto">
+                                <table className="w-full text-left">
+                                  <thead className="sticky top-0 bg-white dark:bg-slate-800/90 z-10">
+                                    <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
+                                      <th className="px-5 py-3 w-10">#</th>
+                                      <th className="px-5 py-3">Keterangan</th>
+                                      <th className="px-5 py-3 text-right">Nominal</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {item.bankStatements.map((bs: any, ni: number) => (
+                                      <tr key={ni} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-amber-50/30 dark:hover:bg-amber-500/10 transition-colors">
+                                        <td className="px-5 py-2.5 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{ni + 1}</td>
+                                        <td className="px-5 py-2.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">{bs.desc || <span className="italic text-slate-300 dark:text-slate-600">-</span>}</td>
+                                        <td className="px-5 py-2.5 text-right text-[10px] font-black text-amber-600 dark:text-amber-400 tabular-nums whitespace-nowrap">{formatRp(bs.nominal || 0)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div className="px-5 py-2.5 bg-amber-50/50 dark:bg-amber-500/10 flex justify-between items-center border-t border-slate-100 dark:border-slate-700/50">
+                                <span className="text-[8px] font-black text-amber-400 dark:text-amber-500 uppercase tracking-widest">Total</span>
+                                <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 tabular-nums">{formatRp(item.bankStatement || 0)}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="py-6 text-center">
+                              <p className="text-[9px] text-slate-300 italic">Total: {formatRp(item.bankStatement || 0)}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
 
-
-                    {/* CENTER: Notes Detail */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="w-6 h-6 bg-indigo-500 rounded-lg flex items-center justify-center">
-                          <FileText size={12} className="text-white" />
+                      {/* Invoice Breakdown */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center">
+                            <Receipt size={12} className="text-white" />
+                          </div>
+                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Invoice ({invoiceCount})</h4>
                         </div>
-                        <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Notes</h4>
-                      </div>
-                      <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
-                        {Array.isArray(item.notes) && item.notes.length > 0 ? (
-                          <>
+                        <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+                          <div className="max-h-[280px] overflow-y-auto">
                             <table className="w-full text-left">
-                              <thead>
+                              <thead className="sticky top-0 bg-white dark:bg-slate-800/90 z-10">
                                 <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
-                                  <th className="px-5 py-3">#</th>
-                                  <th className="px-5 py-3">Tipe</th>
-                                  <th className="px-5 py-3">Keterangan</th>
-                                  <th className="px-5 py-3 text-right">Nominal</th>
+                                  <th className="px-5 py-3 w-10">#</th>
+                                  <th className="px-5 py-3">NO. INVOICE</th>
+                                  <th className="px-5 py-3 text-right">NOMINAL</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {item.notes.map((note: any, ni: number) => (
-                                  <tr key={ni} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-indigo-50/30 dark:hover:bg-indigo-500/10 transition-colors">
-                                    <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{ni + 1}</td>
-                                    <td className="px-5 py-3 text-[10px] font-bold text-slate-600">
-                                      {note.type === 'rtv' ? (
-                                        <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-500/20 text-[8px] uppercase tracking-widest">RTV</span>
-                                      ) : (
-                                        <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-500/20 text-[8px] uppercase tracking-widest">Invoice</span>
-                                      )}
+                                {item.invoices?.length > 0 ? item.invoices.map((inv: any, i: number) => (
+                                  <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-blue-50/30 dark:hover:bg-blue-500/10 transition-colors">
+                                    <td className="px-5 py-2.5 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight">{inv.noInvoice}</span>
                                     </td>
-                                    <td className="px-5 py-3 text-[10px] font-bold text-slate-600 dark:text-slate-300">{note.desc || <span className="italic text-slate-300 dark:text-slate-600">-</span>}</td>
-                                    <td className="px-5 py-3 text-right text-[10px] font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatRp(note.nominal || 0)}</td>
+                                    <td className="px-5 py-2.5 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                      {formatRp(inv.nominal)}
+                                    </td>
                                   </tr>
-                                ))}
+                                )) : (
+                                  <tr><td colSpan={3} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada invoice</td></tr>
+                                )}
                               </tbody>
                             </table>
-                            <div className="px-5 py-3 bg-indigo-50/50 dark:bg-indigo-500/10 flex justify-end">
-                              <span className="text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-widest mr-3">Total</span>
-                              <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatRp(item.notes.reduce((s: number, n: any) => s + (Number(n.nominal) || 0), 0))}</span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="py-6 text-center">
-                            <p className="text-[9px] text-slate-300 italic">Tidak ada notes</p>
                           </div>
-                        )}
+                          <div className="px-5 py-2.5 bg-blue-50/50 dark:bg-blue-500/10 flex justify-between items-center border-t border-slate-100 dark:border-slate-700/50">
+                            <span className="text-[8px] font-black text-blue-400 dark:text-blue-500 uppercase tracking-widest">Total</span>
+                            <span className="text-[11px] font-black text-blue-600 dark:text-blue-400 tabular-nums">{formatRp(item.totalInvoices || 0)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* RIGHT: RTV Breakdown */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-4">
+                    {/* ── ROW 2: Notes + Promo ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full mt-6">
+                      {/* Notes Detail */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-6 h-6 bg-indigo-500 rounded-lg flex items-center justify-center">
+                            <FileText size={12} className="text-white" />
+                          </div>
+                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Notes</h4>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+                          {Array.isArray(item.notes) && item.notes.length > 0 ? (
+                            <>
+                              <div className="max-h-[240px] overflow-y-auto">
+                                <table className="w-full text-left">
+                                  <thead className="sticky top-0 bg-white dark:bg-slate-800/90 z-10">
+                                    <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
+                                      <th className="px-5 py-3 w-10">#</th>
+                                      <th className="px-5 py-3 w-16">Tipe</th>
+                                      <th className="px-5 py-3">Keterangan</th>
+                                      <th className="px-5 py-3 text-right">Nominal</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {item.notes.map((note: any, ni: number) => (
+                                      <tr key={ni} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-indigo-50/30 dark:hover:bg-indigo-500/10 transition-colors">
+                                        <td className="px-5 py-2.5 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{ni + 1}</td>
+                                        <td className="px-5 py-2.5 text-[10px] font-bold text-slate-600">
+                                          {note.type === 'rtv' ? (
+                                            <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-500/20 text-[8px] uppercase tracking-widest">RTV</span>
+                                          ) : (
+                                            <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-500/20 text-[8px] uppercase tracking-widest">Invoice</span>
+                                          )}
+                                        </td>
+                                        <td className="px-5 py-2.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">{note.desc || <span className="italic text-slate-300 dark:text-slate-600">-</span>}</td>
+                                        <td className="px-5 py-2.5 text-right text-[10px] font-black text-indigo-600 dark:text-indigo-400 tabular-nums whitespace-nowrap">{formatRp(note.nominal || 0)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div className="px-5 py-2.5 bg-indigo-50/50 dark:bg-indigo-500/10 flex justify-between items-center border-t border-slate-100 dark:border-slate-700/50">
+                                <span className="text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-widest">Total</span>
+                                <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatRp(item.notes.reduce((s: number, n: any) => s + (Number(n.nominal) || 0), 0))}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="py-6 text-center">
+                              <p className="text-[9px] text-slate-300 italic">Tidak ada notes</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Promo Breakdown */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-6 h-6 bg-emerald-500 rounded-lg flex items-center justify-center">
+                            <Percent size={12} className="text-white" />
+                          </div>
+                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Promo ({item.promos?.length || 0})</h4>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+                          <div className="max-h-[240px] overflow-y-auto">
+                            <table className="w-full text-left">
+                              <thead className="sticky top-0 bg-white dark:bg-slate-800/90 z-10">
+                                <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
+                                  <th className="px-5 py-3 w-10">#</th>
+                                  <th className="px-5 py-3">NO. PROMO</th>
+                                  <th className="px-5 py-3">KEGIATAN</th>
+                                  <th className="px-5 py-3 text-right">NOMINAL</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.promos?.length > 0 ? item.promos.map((promo: any, i: number) => (
+                                  <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-emerald-50/30 dark:hover:bg-emerald-500/10 transition-colors">
+                                    <td className="px-5 py-2.5 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">{promo.nomor}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{promo.kegiatan || '-'}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                      {formatRp(promo.total || 0)}
+                                    </td>
+                                  </tr>
+                                )) : (
+                                  <tr><td colSpan={4} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada promo</td></tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="px-5 py-2.5 bg-emerald-50/50 dark:bg-emerald-500/10 flex justify-between items-center border-t border-slate-100 dark:border-slate-700/50">
+                            <span className="text-[8px] font-black text-emerald-400 dark:text-emerald-500 uppercase tracking-widest">Total</span>
+                            <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatRp(item.totalPromo || 0)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── ROW 3: RTV Full-Width ── */}
+                    <div className="w-full mt-6">
+                      <div className="flex items-center gap-2 mb-3">
                         <div className="w-6 h-6 bg-rose-500 rounded-lg flex items-center justify-center">
                           <RotateCcw size={12} className="text-white" />
                         </div>
                         <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail RTV ({rtvCount})</h4>
                       </div>
-                      <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
-                              <th className="px-5 py-3">#</th>
-                              <th className="px-5 py-3">NO. RTV</th>
-                              <th className="px-5 py-3">REF. INVOICE</th>
-                              <th className="px-5 py-3">LOKASI BARANG</th>
-                              <th className="px-5 py-3">TUJUAN</th>
-                              <th className="px-5 py-3">PRODUK</th>
-                              <th className="px-5 py-3 text-right">NOMINAL</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {item.rtvs?.length > 0 ? item.rtvs.map((rtv: any, i: number) => {
-                              const rtvNo = typeof rtv === 'string' ? rtv : rtv.noRtv;
-                              const refInv = typeof rtv === 'object' ? rtv.refInvoice : '-';
-                              const nominal = typeof rtv === 'object' ? rtv.nominal : 0;
-                              const lokasi = typeof rtv === 'object' ? (rtv.lokasiBarang || '-') : '-';
-                              const tujuan = typeof rtv === 'object' ? (rtv.tujuan || '-') : '-';
-                              const produk = typeof rtv === 'object' ? (rtv.produk || '-') : '-';
-                              return (
-                                <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-rose-50/30 dark:hover:bg-rose-500/10 transition-colors">
-                                  <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
-                                  <td className="px-5 py-3">
-                                    <span className="text-[10px] font-black text-rose-500 dark:text-rose-400 uppercase tracking-tight">{rtvNo}</span>
-                                  </td>
-                                  <td className="px-5 py-3">
-                                    {refInv && refInv !== '-' ? (
-                                      <div className="flex items-center gap-1.5">
-                                        <ArrowRightCircle size={10} className="text-indigo-400 dark:text-indigo-500 shrink-0" />
-                                        <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-tight">{refInv}</span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-[9px] text-slate-200 dark:text-slate-600 italic">belum di-set</span>
-                                    )}
-                                  </td>
-                                  <td className="px-5 py-3">
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{lokasi}</span>
-                                  </td>
-                                  <td className="px-5 py-3">
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[120px] inline-block" title={tujuan}>{tujuan}</span>
-                                  </td>
-                                  <td className="px-5 py-3">
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[120px] inline-block" title={produk}>{produk}</span>
-                                  </td>
-                                  <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200">
-                                    {formatRp(nominal)}
-                                  </td>
-                                </tr>
-                              );
-                            }) : (
-                              <tr><td colSpan={8} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada RTV</td></tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="mt-3 flex justify-end">
-                        <div className="px-4 py-2 bg-rose-50 dark:bg-rose-500/10 rounded-xl">
-                          <span className="text-[8px] font-black text-rose-400 dark:text-rose-500 uppercase tracking-widest mr-3">Total</span>
+                      <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+                        <div className="max-h-[320px] overflow-y-auto overflow-x-auto">
+                          <table className="w-full text-left">
+                            <thead className="sticky top-0 bg-white dark:bg-slate-800/90 z-10">
+                              <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
+                                <th className="px-5 py-3 w-10">#</th>
+                                <th className="px-5 py-3">NO. RTV</th>
+                                <th className="px-5 py-3">REF. INVOICE</th>
+                                <th className="px-5 py-3">LOKASI BARANG</th>
+                                <th className="px-5 py-3">TUJUAN</th>
+                                <th className="px-5 py-3">PRODUK</th>
+                                <th className="px-5 py-3 text-right">NOMINAL</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {item.rtvs?.length > 0 ? item.rtvs.map((rtv: any, i: number) => {
+                                const rtvNo = typeof rtv === 'string' ? rtv : rtv.noRtv;
+                                const refInv = typeof rtv === 'object' ? rtv.refInvoice : '-';
+                                const nominal = typeof rtv === 'object' ? rtv.nominal : 0;
+                                const lokasi = typeof rtv === 'object' ? (rtv.lokasiBarang || '-') : '-';
+                                const tujuan = typeof rtv === 'object' ? (rtv.tujuan || '-') : '-';
+                                const produk = typeof rtv === 'object' ? (rtv.produk || '-') : '-';
+                                return (
+                                  <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-rose-50/30 dark:hover:bg-rose-500/10 transition-colors">
+                                    <td className="px-5 py-2.5 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="text-[10px] font-black text-rose-500 dark:text-rose-400 uppercase tracking-tight whitespace-nowrap">{rtvNo}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5">
+                                      {refInv && refInv !== '-' ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <ArrowRightCircle size={10} className="text-indigo-400 dark:text-indigo-500 shrink-0" />
+                                          <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-tight whitespace-nowrap">{refInv}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-[9px] text-slate-200 dark:text-slate-600 italic">belum di-set</span>
+                                      )}
+                                    </td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{lokasi}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap max-w-[180px] truncate inline-block" title={tujuan}>{tujuan}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap max-w-[180px] truncate inline-block" title={produk}>{produk}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                      {formatRp(nominal)}
+                                    </td>
+                                  </tr>
+                                );
+                              }) : (
+                                <tr><td colSpan={7} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada RTV</td></tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="px-5 py-2.5 bg-rose-50/50 dark:bg-rose-500/10 flex justify-between items-center border-t border-slate-100 dark:border-slate-700/50">
+                          <span className="text-[8px] font-black text-rose-400 dark:text-rose-500 uppercase tracking-widest">Total</span>
                           <span className="text-[11px] font-black text-rose-600 dark:text-rose-400 tabular-nums">{formatRp(item.totalRtvs || 0)}</span>
                         </div>
                       </div>
                     </div>
-
-                    {/* RIGHT: Promo Breakdown */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="w-6 h-6 bg-emerald-500 rounded-lg flex items-center justify-center">
-                          <Percent size={12} className="text-white" />
+                    {/* ── ROW 4: Remarks Full-Width ── */}
+                    {item.remarks && (
+                      <div className="w-full mt-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-6 h-6 bg-slate-500 rounded-lg flex items-center justify-center">
+                            <FileText size={12} className="text-white" />
+                          </div>
+                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Catatan Tambahan (Remarks)</h4>
                         </div>
-                        <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detail Promo ({item.promos?.length || 0})</h4>
-                      </div>
-                      <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-slate-700/50">
-                              <th className="px-5 py-3">#</th>
-                              <th className="px-5 py-3">NO. PROMO</th>
-                              <th className="px-5 py-3">KEGIATAN</th>
-                              <th className="px-5 py-3 text-right">NOMINAL</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {item.promos?.length > 0 ? item.promos.map((promo: any, i: number) => (
-                              <tr key={i} className="border-b border-slate-50 dark:border-slate-700/50 last:border-none hover:bg-emerald-50/30 dark:hover:bg-emerald-500/10 transition-colors">
-                                <td className="px-5 py-3 text-[9px] text-slate-300 dark:text-slate-500 font-bold">{i + 1}</td>
-                                <td className="px-5 py-3">
-                                  <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">{promo.nomor}</span>
-                                </td>
-                                <td className="px-5 py-3">
-                                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{promo.kegiatan || '-'}</span>
-                                </td>
-                                <td className="px-5 py-3 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200">
-                                  {formatRp(promo.total || 0)}
-                                </td>
-                              </tr>
-                            )) : (
-                              <tr><td colSpan={4} className="px-5 py-6 text-center text-[9px] text-slate-300 dark:text-slate-600 italic">Tidak ada promo</td></tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="mt-3 flex justify-end">
-                        <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
-                          <span className="text-[8px] font-black text-emerald-400 dark:text-emerald-500 uppercase tracking-widest mr-3">Total</span>
-                          <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatRp(item.totalPromo || 0)}</span>
+                        <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden p-6">
+                          <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                            {item.remarks}
+                          </p>
                         </div>
                       </div>
-                    </div>
-
-                  </div>
+                    )}
 
                   {/* Bukti & Rincian Bayar Section */}
                   <div className="mt-4 pt-4 border-t border-slate-100/50 dark:border-slate-800/50">

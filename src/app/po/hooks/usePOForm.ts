@@ -132,8 +132,21 @@ export function usePOForm() {
   const currentPcsNum = parseFloat(currentItem.pcs.toString()) || 0;
   const currentHargaPcsNum = parseFloat(currentItem.hargaPcs.toString()) || 0;
   const currentPcsKirimNum = parseFloat(currentItem.pcsKirim.toString()) || 0;
-  const parseRupiah = (v: any) =>
-    Math.max(0, Number(String(v ?? "").replace(/[^0-9]/g, "")) || 0);
+  const parseRupiah = (v: any) => {
+    if (typeof v === "number") return v;
+    let s = String(v ?? "").trim();
+    if (!s) return 0;
+    
+    // Check if it's a valid float string (e.g. from DB) that doesn't contain a comma
+    // and parses cleanly into the same value.
+    const num = Number(s);
+    if (!isNaN(num) && String(num) === s) {
+      return Math.max(0, num);
+    }
+    
+    s = s.replace(/\./g, "").replace(",", ".");
+    return Math.max(0, Number(s) || 0);
+  };
   const currentDiscountNum = parseRupiah(currentItem.discount);
   const satuanKgSelected =
     (Array.isArray(productData)
@@ -215,7 +228,7 @@ export function usePOForm() {
       pcsKirim: String(item.pcsKirim ?? ""),
       hargaPcs: String(item.hargaPcs ?? ""),
       discount: String(
-        item.discount ? item.discount.toLocaleString("id-ID") : "",
+        item.discount ? item.discount.toLocaleString("id-ID", { maximumFractionDigits: 2 }) : "",
       ),
     });
   };
@@ -786,10 +799,14 @@ export function usePOForm() {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(val);
 
   const formatNumber = (val: number) =>
-    new Intl.NumberFormat("id-ID").format(val);
+    new Intl.NumberFormat("id-ID", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(val);
 
   return {
     hasMounted,

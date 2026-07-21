@@ -225,6 +225,15 @@ export const generateRekonPdf = (
 
     let nextY = 52;
 
+    if (item.remarks) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(100, 100, 100);
+      const textLines = doc.splitTextToSize(`Remarks: ${item.remarks}`, pageWidth - 28);
+      doc.text(textLines, 14, nextY);
+      nextY += (textLines.length * 4) + 6;
+    }
+
     // ─── Bank Statement Detail Table ───
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");

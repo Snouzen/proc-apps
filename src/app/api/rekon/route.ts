@@ -474,7 +474,8 @@ export async function POST(request: Request) {
       rincianBayarUrl,
       tglBayar,
       status = "final",
-      id // Cek apakah ini edit/update dari draft
+      id, // Cek apakah ini edit/update dari draft
+      remarks
     } = body;
 
     // Compute backward-compat fields from notes array
@@ -542,6 +543,7 @@ export async function POST(request: Request) {
         rincianBayarUrl: rincianBayarUrl || undefined,
         tglBayar: tglBayar ? new Date(tglBayar) : undefined,
         status: status || "final",
+        remarks: remarks || null,
       },
       create: {
         id: finalId,
@@ -565,6 +567,7 @@ export async function POST(request: Request) {
         rincianBayarUrl: rincianBayarUrl || null,
         tglBayar: tglBayar ? new Date(tglBayar) : null,
         status: status || "final",
+        remarks: remarks || null,
       }
     });
 
@@ -598,11 +601,24 @@ export async function POST(request: Request) {
         // The noRekonsiliasi to fill into referensiPembayaran
         const rekonNo = newRekon.noRekonsiliasi;
 
-        // Update each DataRetur individually since pembebananReturnId may differ per RTV
-        const updatePromises = validRtvs.map((r: any) => {
-          const oldData = allOldData.find((d: any) => r.id ? d.id === r.id : d.rtvCn === r.noRtv);
-          
-          const updatePayload: any = { invoiceRekon: r.refInvoice };
+        // Group RTVs by their refInvoice to minimize update queries
+        const groupedByRef = new Map<string, { ids: string[], rtvCns: string[] }>();
+        
+        validRtvs.forEach((r: any) => {
+          const ref = r.refInvoice || "";
+          if (!groupedByRef.has(ref)) {
+            groupedByRef.set(ref, { ids: [], rtvCns: [] });
+          }
+          if (r.id) {
+            groupedByRef.get(ref)!.ids.push(r.id);
+          } else if (r.noRtv) {
+            groupedByRef.get(ref)!.rtvCns.push(r.noRtv);
+          }
+        });
+
+        // Create one updateMany per refInvoice
+        const updatePromises = Array.from(groupedByRef.entries()).map(([ref, { ids, rtvCns }]) => {
+          const updatePayload: any = { invoiceRekon: ref };
           
           // Auto-fill referensiPembayaran with noRekonsiliasi
           if (rekonNo) {
@@ -610,14 +626,17 @@ export async function POST(request: Request) {
           }
           
           // Auto-fill pembebananReturnId from the invoice's UnitProduksi
-          const unitProduksiId = invoiceUnitMap.get(r.refInvoice);
+          const unitProduksiId = invoiceUnitMap.get(ref);
           if (unitProduksiId) {
             updatePayload.pembebananReturnId = unitProduksiId;
           }
 
-          const condition = r.id ? { id: r.id } : { rtvCn: r.noRtv };
+          const orConditions: any[] = [];
+          if (ids.length > 0) orConditions.push({ id: { in: ids } });
+          if (rtvCns.length > 0) orConditions.push({ rtvCn: { in: rtvCns } });
+
           return prisma.dataRetur.updateMany({
-            where: condition,
+            where: { OR: orConditions },
             data: updatePayload
           });
         });

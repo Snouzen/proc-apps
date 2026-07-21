@@ -167,7 +167,7 @@ export function useBranchCalendar() {
     try {
       const params = new URLSearchParams();
       params.set("limit", "5000"); // UX FIX: Large limit for calendar
-      params.set("status", "active");
+      params.set("group", "schedule_page");
       params.set("includeUnknown", "true");
       params.set("month", selectedMonth);
       params.set("year", selectedYear);

@@ -117,7 +117,9 @@ export function useExpiredCalendar() {
       if (selectedSiteArea && selectedSiteArea !== "ALL")
         params.set("siteArea", selectedSiteArea);
 
-      const res = await fetch(`/api/po?${params.toString()}`);
+      const res = await fetch(`/api/po?${params.toString()}`, {
+        cache: "no-store",
+      });
       const json = await res.json();
       setPoData(json?.data || []);
     } catch {

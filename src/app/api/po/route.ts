@@ -393,7 +393,7 @@ export async function POST(request: Request) {
 
         const parseAmt = (v: any) => {
           if (typeof v === "number") return v;
-          return Number(String(v || "").replace(/[^0-9]/g, "")) || 0;
+          return Number(String(v || "").replace(/\./g, "").replace(",", ".").replace(/[^0-9.]/g, "")) || 0;
         };
 
         const rows = items.map((item: any) => {
