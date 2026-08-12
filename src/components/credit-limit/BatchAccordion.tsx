@@ -478,7 +478,6 @@ export function BatchAccordion({
           </div>
 
           <div className="pl-2 border-l border-slate-200 dark:border-slate-700/50 flex items-center gap-2">
-            {/* 
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -491,7 +490,6 @@ export function BatchAccordion({
               <FileText size={14} />
               Create ND
             </button>
-            */}
             <button
               onClick={(e) => {
                 e.stopPropagation();

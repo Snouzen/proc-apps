@@ -6,7 +6,9 @@ import { id } from "date-fns/locale";
 
 export const highlightMatch = (text: string, query: string) => {
   if (!query) return text;
-  const parts = text.split(new RegExp(`(${query})`, "gi"));
+  // Escape regex special characters to prevent RegExp syntax errors
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escapedQuery})`, "gi"));
   return (
     <span>
       {parts.map((part, i) =>
@@ -63,6 +65,7 @@ export const EliteSearchableInput = memo(
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setInternalVal(e.target.value);
+      onCommit(e.target.value);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -189,6 +192,7 @@ export const EliteProductInput = memo(
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setInternalVal(e.target.value);
+      onCommit(e.target.value);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {

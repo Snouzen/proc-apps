@@ -487,6 +487,7 @@ export function useReport() {
         baseParams.set("colFilters", JSON.stringify(Object.fromEntries(activeFilters)));
       }
       baseParams.set("sort", "createdAt_desc");
+      if (pcsKirim.trim()) baseParams.set("pcsKirim", pcsKirim.trim());
 
       if (serverTotal > 5000) {
         const columnsConfig = cols.map((c) => ({ id: c.id, label: c.label }));
@@ -503,18 +504,18 @@ export function useReport() {
       }
 
       const chunk = 500;
-      const total = Math.max(0, Number(serverTotal) || 0);
-      const pages = total > 0 ? Math.ceil(total / chunk) : 1;
       const all: any[] = [];
-      for (let i = 0; i < pages; i++) {
+      let currentOffset = 0;
+      while (true) {
         const params = new URLSearchParams(baseParams);
         params.set("limit", String(chunk));
-        params.set("offset", String(i * chunk));
+        params.set("offset", String(currentOffset));
         const res = await fetch(`/api/po?${params.toString()}`, { cache: "no-store", credentials: "same-origin", headers: { Accept: "application/json" } });
         const json = await res.json().catch(() => null);
         const list = Array.isArray(json?.data) ? json.data : [];
         all.push(...list);
         if (list.length < chunk) break;
+        currentOffset += chunk;
       }
 
       let currentRowNo = 0;

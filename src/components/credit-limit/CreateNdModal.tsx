@@ -130,13 +130,14 @@ export function CreateNdModal({ open, onClose, batchCode, pos }: CreateNdModalPr
   const [formData, setFormData] = useState<NdFormData>(getDefaultNdFormData());
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showApprovalTable, setShowApprovalTable] = useState(true);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "Header Surat": true,
     "Realisasi Penjualan": true,
     "Posisi Piutang": true,
     "Tabel Piutang": true,
   });
-  const [previewMode, setPreviewMode] = useState(true); // true = preview, false = form only (mobile)
+  const [previewMode, setPreviewMode] = useState(true);
 
   const grouped = groupFields(fieldConfigs);
 
@@ -207,13 +208,13 @@ export function CreateNdModal({ open, onClose, batchCode, pos }: CreateNdModalPr
   const handleGeneratePdf = useCallback(async () => {
     setIsGeneratingPdf(true);
     try {
-      await generateNdPdf(formData, pos);
+      await generateNdPdf(formData, pos, showApprovalTable);
     } catch (err: any) {
       alert(err?.message || "Gagal generate dokumen PDF");
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [formData, pos]);
+  }, [formData, pos, showApprovalTable]);
 
   const toggleGroup = (group: string) => {
     setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
@@ -313,7 +314,7 @@ export function CreateNdModal({ open, onClose, batchCode, pos }: CreateNdModalPr
               className={`lg:flex-1 lg:block ${previewMode ? "block" : "hidden"} overflow-auto h-full p-6 bg-slate-100/50 dark:bg-slate-900/50`}
             >
               <div className="mx-auto w-full max-w-[680px] print-only bg-white">
-                <NdPreview formData={formData} batchCode={batchCode} pos={pos} />
+                <NdPreview formData={formData} batchCode={batchCode} pos={pos} showApprovalTable={showApprovalTable} />
               </div>
             </div>
 
@@ -515,6 +516,33 @@ export function CreateNdModal({ open, onClose, batchCode, pos }: CreateNdModalPr
                   </div>
                 </div>
 
+                {/* Opsi Tanda Tangan */}
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-50/80 dark:bg-slate-750">
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      Opsi Tanda Tangan
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showApprovalTable}
+                        onChange={(e) => setShowApprovalTable(e.target.checked)}
+                        className="w-4 h-4 text-amber-600 bg-slate-100 border-slate-300 rounded focus:ring-amber-500 dark:focus:ring-amber-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                          Tampilkan tabel paraf Manager &amp; Asman
+                        </p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                          Centang untuk arsip internal (dengan paraf). Hilangkan centang untuk pengajuan ke Direktur Pemasaran (hanya TTD GM).
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
                 {/* Info Card */}
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/40 rounded-xl p-4">
                   <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
@@ -534,7 +562,7 @@ export function CreateNdModal({ open, onClose, batchCode, pos }: CreateNdModalPr
   );
 }
 
-function NdPreview({ formData, batchCode, pos }: { formData: NdFormData, batchCode?: string, pos?: any[] }) {
+function NdPreview({ formData, batchCode, pos, showApprovalTable = true }: { formData: NdFormData, batchCode?: string, pos?: any[], showApprovalTable?: boolean }) {
   const highlight = (val: string, placeholder: string, normal?: boolean) => {
     if (!val)
       return (
@@ -543,7 +571,7 @@ function NdPreview({ formData, batchCode, pos }: { formData: NdFormData, batchCo
         </span>
       );
     if (normal) return <span>{val}</span>;
-    return <span className="text-blue-700 dark:text-blue-400 font-semibold">{val}</span>;
+    return <span className="font-semibold">{val}</span>;
   };
 
   return (
@@ -823,13 +851,52 @@ function NdPreview({ formData, batchCode, pos }: { formData: NdFormData, batchCo
         </p>
       </div>
 
-      {/* Footer - Signature */}
-      <div className="mt-6" style={{ fontSize: "12px" }}>
-        <div className="text-right">
-          <p className="mb-8">Jakarta, &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {formData.tgl_input ? formData.tgl_input.split(" ")[1] : ""} 2026</p>
-          <p className="font-bold">FRIMA AGUNG NITIPRAJA</p>
-          <p>GM UB Industri</p>
-        </div>
+      {/* Footer - Signature (side-by-side: table left, GM right) */}
+      <div className="mt-6" style={{ fontSize: "11px" }}>
+        {showApprovalTable ? (
+          <div className="flex gap-4">
+            {/* Left: Approval table */}
+            <div className="flex-shrink-0" style={{ width: "55%" }}>
+              <table className="w-full border-collapse border border-slate-800 text-[9px]">
+                <thead>
+                  <tr>
+                    <th className="border border-slate-800 p-1 font-semibold text-left bg-white">Jabatan</th>
+                    <th className="border border-slate-800 p-1 font-semibold text-left bg-white">Nama</th>
+                    <th className="border border-slate-800 p-1 font-semibold text-center bg-white" style={{ width: "50px" }}>Paraf</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Manager Bisnis", "Muhammad Fakri Firdaus"],
+                    ["Manager Keuangan & Umum", "Fiana Fega Sari"],
+                    ["Asman Akuntansi & Umum", "Rakha Afriansyah Putra"],
+                    ["Asman Adm & Keuangan", "Pepy Suhartini"],
+                    ["Asman Pemasaran", "Gisheila Miftanisa"],
+                    ["Asman Penjualan", "Izath Rytami"],
+                  ].map(([jabatan, nama], i) => (
+                    <tr key={i}>
+                      <td className="border border-slate-800 p-1">{jabatan}</td>
+                      <td className="border border-slate-800 p-1">{nama}</td>
+                      <td className="border border-slate-800 p-1"></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Right: GM signature */}
+            <div className="flex-1 text-center pt-0">
+              <p className="mb-8">Jakarta, &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {formData.tgl_input ? formData.tgl_input.split(" ")[1] : ""} 2026</p>
+              <p className="font-bold">FRIMA AGUNG NITIPRAJA</p>
+              <p>GM UB Industri</p>
+            </div>
+          </div>
+        ) : (
+          <div className="text-right">
+            <p className="mb-8">Jakarta, &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {formData.tgl_input ? formData.tgl_input.split(" ")[1] : ""} 2026</p>
+            <p className="font-bold">FRIMA AGUNG NITIPRAJA</p>
+            <p>GM UB Industri</p>
+          </div>
+        )}
       </div>
 
       {/* Tembusan */}

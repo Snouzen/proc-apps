@@ -329,9 +329,9 @@ export async function GET(request: Request) {
       }
     }
 
-    // [PERF] Use select instead of include — only fetch fields used in Excel generation
+    // Fetch ALL matching POs in a single query (no limit).
+    // Safe for export — typically handles up to ~25K records.
     const data = await prisma.purchaseOrder.findMany({
-      take: 5000,
       where,
       select: {
         id: true,
@@ -375,6 +375,8 @@ export async function GET(request: Request) {
       },
       orderBy,
     });
+
+    console.log(`[EXPORT DEBUG] POs fetched: ${data.length}, where: ${JSON.stringify(where).slice(0, 500)}`);
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Report PO");
