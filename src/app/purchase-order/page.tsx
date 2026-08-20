@@ -33,7 +33,7 @@ function AlertCircle(props: any) {
 }
 
 export default function PurchaseOrderPage() {
-  const { role, regional } = useAuthData();
+  const { role, regional, siteArea } = useAuthData();
 
   const ritelFilters = useRetailerFilters();
   const globalSearch = useGlobalSearch();
@@ -63,7 +63,9 @@ export default function PurchaseOrderPage() {
             globalSearch={globalSearch} 
             poTable={poTable} 
             detailModal={detailModal} 
-            setIsBulkOpen={setIsBulkOpen} 
+            setIsBulkOpen={setIsBulkOpen}
+            role={role}
+            siteArea={siteArea}
           />
         </CardHeader>
         <CardContent className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">

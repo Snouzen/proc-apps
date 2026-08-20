@@ -159,9 +159,11 @@ export function usePOForm() {
     0,
     currentHargaPcsNum * currentPcsNum - currentDiscountNum,
   );
+  const currentDivider = currentPcsNum || 1;
+  const currentProportionalDiscount = (currentDiscountNum / currentDivider) * currentPcsKirimNum;
   const currentRpTagih = Math.max(
     0,
-    currentHargaPcsNum * currentPcsKirimNum - currentDiscountNum,
+    currentHargaPcsNum * currentPcsKirimNum - currentProportionalDiscount,
   );
   const currentKg = currentPcsNum * (satuanKgSelected || 0);
   const currentKgKirim = currentPcsKirimNum * (satuanKgSelected || 0);
@@ -199,7 +201,9 @@ export function usePOForm() {
     const discount = parseRupiah(discountRaw);
     const hargaKg = satuan > 0 ? hargaPcs / satuan : 0;
     const nominal = Math.max(0, hargaPcs * pcs - discount);
-    const rpTagih = Math.max(0, hargaPcs * pcsKirim - discount);
+    const divider = pcs || 1;
+    const proportionalDiscount = (discount / divider) * pcsKirim;
+    const rpTagih = Math.max(0, hargaPcs * pcsKirim - proportionalDiscount);
     const kg = pcs * satuan;
     const kgKirim = pcsKirim * satuan;
     return {

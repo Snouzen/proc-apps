@@ -1113,9 +1113,12 @@ export default function POEditModal({
                               actualDiscount={d.actualDiscount}
                               onChange={(val) => {
                                 const orderPcs = Number(it.pcs) || 1;
-                                const shipped = Number(it.pcsKirim) || 1;
-                                // Reverse calculate base discount for the whole PO
-                                const baseDiscount = (val / shipped) * orderPcs;
+                                const shipped = Number(it.pcsKirim) || 0;
+                                // Jika pcsKirim > 0: reverse dari actual discount ke base discount
+                                // Jika pcsKirim = 0: input langsung = base discount (tidak perlu reverse)
+                                const baseDiscount = shipped > 0
+                                  ? (val / shipped) * orderPcs
+                                  : val;
 
                                 setItems((prev) =>
                                   prev.map((x) =>

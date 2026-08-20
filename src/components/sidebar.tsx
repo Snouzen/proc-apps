@@ -35,6 +35,7 @@ interface SidebarProps {
   setIsOpen: (open: boolean) => void;
   initialRole?: "pusat" | "rm" | "spb_dki" | "sitearea" | "magang" | null;
   initialRegional?: string | null;
+  initialSiteArea?: string | null;
 }
 
 const RenderLink = ({
@@ -75,6 +76,7 @@ export default function Sidebar({
   setIsOpen,
   initialRole,
   initialRegional,
+  initialSiteArea,
 }: SidebarProps) {
   const pathname = usePathname();
   const [poMenuOpen, setPoMenuOpen] = useState(false);
@@ -87,6 +89,9 @@ export default function Sidebar({
   >(initialRole || null);
   const [regional, setRegional] = useState<string | null>(
     initialRegional ?? null,
+  );
+  const [siteArea, setSiteArea] = useState<string | null>(
+    initialSiteArea ?? null,
   );
 
   // Otomatis buka sub-menu kalau kita lagi di halaman terkait
@@ -112,6 +117,7 @@ export default function Sidebar({
     if (initialRole) {
       setRole(initialRole);
       setRegional(initialRegional ?? null);
+      setSiteArea(initialSiteArea ?? null);
       return;
     }
     (async () => {
@@ -124,16 +130,19 @@ export default function Sidebar({
               : "pusat";
           setRole(r as any);
           setRegional(data?.regional || null);
+          setSiteArea(data?.siteArea || null);
         } else {
           setRole(null);
           setRegional(null);
+          setSiteArea(null);
         }
       } catch {
         setRole(null);
         setRegional(null);
+        setSiteArea(null);
       }
     })();
-  }, [initialRole, initialRegional]);
+  }, [initialRole, initialRegional, initialSiteArea]);
 
   const dashboardItem = { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" };
   const poItem = { name: "Purchase Order", icon: <Package size={20} />, path: "/purchase-order" };
@@ -267,7 +276,7 @@ export default function Sidebar({
           {role !== "magang" && <RenderLink item={dashboardItem} pathname={pathname} isOpen={isOpen} />}
 
           {/* 2. Purchase Order */}
-          {role !== "sitearea" && <RenderLink item={poItem} pathname={pathname} isOpen={isOpen} />}
+          {(role !== "sitearea" || (siteArea && siteArea.replace(/\s+/g, "").toUpperCase() === "SPBDKI")) && <RenderLink item={poItem} pathname={pathname} isOpen={isOpen} />}
           
           {/* 2.5 Checklist Docs */}
           <RenderLink item={checklistDocsItem} pathname={pathname} isOpen={isOpen} />

@@ -27,6 +27,7 @@ export async function POST(req: Request) {
       ok: true,
       role: result.payload.role,
       regional: result.payload.regional ?? null,
+      siteArea: result.payload.siteArea ?? null,
     });
     res.cookies.set("session", token, {
       httpOnly: true,

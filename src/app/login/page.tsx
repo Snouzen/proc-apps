@@ -38,6 +38,7 @@ function LoginPageInner() {
         email: eNorm,
         role: payload?.role,
         regional: payload?.regional ?? null,
+        siteArea: payload?.siteArea ?? null,
       };
       if (typeof window !== "undefined") {
         sessionStorage.setItem("__me__", JSON.stringify(meData));

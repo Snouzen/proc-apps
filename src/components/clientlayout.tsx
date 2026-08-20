@@ -120,6 +120,7 @@ export default function ClientLayout({
           setIsOpen={setSidebarOpen}
           initialRole={profileRole}
           initialRegional={profileRegional}
+          initialSiteArea={profileSiteArea}
         />
 
         {/* 2. MAIN AREA */}

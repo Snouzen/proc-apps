@@ -12,6 +12,8 @@ interface PurchaseOrderHeaderProps {
   poTable: ReturnType<typeof usePurchaseOrderTable>;
   detailModal: ReturnType<typeof usePoDetailModal>;
   setIsBulkOpen: (val: boolean) => void;
+  role?: string | null;
+  siteArea?: string | null;
 }
 
 export function PurchaseOrderHeader({
@@ -19,7 +21,12 @@ export function PurchaseOrderHeader({
   poTable,
   detailModal,
   setIsBulkOpen,
+  role,
+  siteArea,
 }: PurchaseOrderHeaderProps) {
+  const isSpbDki = siteArea && siteArea.replace(/\s+/g, "").toUpperCase() === "SPBDKI";
+  const canAddPO = role !== "sitearea" || isSpbDki;
+
   return (
     <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
       <div>
@@ -139,12 +146,14 @@ export function PurchaseOrderHeader({
           <Upload className="w-4 h-4 mr-2 text-blue-600" />
           Bulk Upload
         </Button>
-        <Link href="/po">
-          <Button className="bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white dark:text-white shadow-none h-11 rounded-xl px-5 font-bold">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Add PO
-          </Button>
-        </Link>
+        {canAddPO && (
+          <Link href="/po">
+            <Button className="bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white dark:text-white shadow-none h-11 rounded-xl px-5 font-bold">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Add PO
+            </Button>
+          </Link>
+        )}
       </div>
     </div>
   );
