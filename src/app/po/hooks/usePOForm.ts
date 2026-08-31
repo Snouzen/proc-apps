@@ -133,19 +133,30 @@ export function usePOForm() {
   const currentHargaPcsNum = parseFloat(currentItem.hargaPcs.toString()) || 0;
   const currentPcsKirimNum = parseFloat(currentItem.pcsKirim.toString()) || 0;
   const parseRupiah = (v: any) => {
-    if (typeof v === "number") return v;
-    let s = String(v ?? "").trim();
-    if (!s) return 0;
-    
-    // Check if it's a valid float string (e.g. from DB) that doesn't contain a comma
-    // and parses cleanly into the same value.
-    const num = Number(s);
-    if (!isNaN(num) && String(num) === s) {
-      return Math.max(0, num);
+    if (v === null || v === undefined || v === "") return 0;
+    if (typeof v === "number" && !isNaN(v)) return v;
+    let str = String(v).trim();
+    if (!str) return 0;
+
+    if (str.includes(",")) {
+      str = str.replace(/\./g, "").replace(",", ".");
+      return Math.max(0, Number(str) || 0);
     }
-    
-    s = s.replace(/\./g, "").replace(",", ".");
-    return Math.max(0, Number(s) || 0);
+
+    const dotParts = str.split(".");
+    if (dotParts.length > 2) {
+      str = str.replace(/\./g, "");
+      return Math.max(0, Number(str) || 0);
+    } else if (dotParts.length === 2) {
+      if (dotParts[1].length === 3) {
+        str = str.replace(/\./g, "");
+        return Math.max(0, Number(str) || 0);
+      } else {
+        return Math.max(0, Number(str) || 0);
+      }
+    }
+
+    return Math.max(0, Number(str) || 0);
   };
   const currentDiscountNum = parseRupiah(currentItem.discount);
   const satuanKgSelected =

@@ -12,15 +12,31 @@ export const formatCurrency = (val: number | string | null | undefined): string 
 };
 
 export const parseVal = (v: any): number => {
-  if (!v) return 0;
+  if (v === null || v === undefined || v === "") return 0;
   if (typeof v === "number" && !isNaN(v)) return v;
   let str = String(v).trim();
+  if (!str) return 0;
+
   // Indonesian format: dot is thousands separator, comma is decimal
-  // e.g. "2.567,65" → 2567.65 or "2567,65" → 2567.65
+  // If it has a comma, comma is decimal
   if (str.includes(",")) {
     str = str.replace(/\./g, "").replace(",", ".");
+    return Number(str) || 0;
   }
-  str = str.replace(/[^0-9.]/g, "");
+
+  const dotParts = str.split(".");
+  if (dotParts.length > 2) {
+    str = str.replace(/\./g, "");
+    return Number(str) || 0;
+  } else if (dotParts.length === 2) {
+    if (dotParts[1].length === 3) {
+      str = str.replace(/\./g, "");
+      return Number(str) || 0;
+    } else {
+      return Number(str) || 0;
+    }
+  }
+
   return Number(str) || 0;
 };
 

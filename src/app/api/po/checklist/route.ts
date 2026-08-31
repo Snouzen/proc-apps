@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 import { getSessionWithRole, getProfileName } from "@/lib/auth";
 import { cacheGet, cacheSet, cacheClearPrefix } from "@/lib/ttl-cache";
 import { getRegionalSynonyms } from "@/lib/utils/regional";
-import { auditUpdatePO } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -242,28 +241,75 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid updates format" }, { status: 400 });
     }
 
-    // Perform transaction to update multiple rows
-    await prisma.$transaction(async (tx) => {
-      for (const update of updates) {
-        const dataToUpdate: any = { updatedAt: new Date() };
-        if (update.statusTagih !== undefined) dataToUpdate.statusTagih = update.statusTagih;
-        if (update.buktiTagih !== undefined) dataToUpdate.buktiTagih = update.buktiTagih;
-        if (update.statusBayar !== undefined) dataToUpdate.statusBayar = update.statusBayar;
-        if (update.buktiBayar !== undefined) {
-          dataToUpdate.buktiBayar = update.buktiBayar;
-          if (update.buktiBayar && update.buktiBayar.trim() !== "") {
-            dataToUpdate.statusBayar = true;
+    // Perform transaction to update multiple rows with increased timeout and batching
+    await prisma.$transaction(
+      async (tx) => {
+        const ids = updates.map((u: any) => u.id).filter(Boolean);
+        if (ids.length === 0) return;
+
+        // 1. Batch fetch old records in a single query
+        const oldRecords = await tx.purchaseOrder.findMany({
+          where: { id: { in: ids } },
+        });
+        const oldMap = new Map(oldRecords.map((r) => [r.id, r]));
+
+        const auditEntries: any[] = [];
+        const updatePromises = updates.map(async (update: any) => {
+          const oldData = oldMap.get(update.id);
+          if (!oldData) return null;
+
+          const dataToUpdate: any = { updatedAt: new Date() };
+          if (update.statusTagih !== undefined) dataToUpdate.statusTagih = update.statusTagih;
+          if (update.buktiTagih !== undefined) dataToUpdate.buktiTagih = update.buktiTagih;
+          if (update.statusBayar !== undefined) dataToUpdate.statusBayar = update.statusBayar;
+          if (update.buktiBayar !== undefined) {
+            dataToUpdate.buktiBayar = update.buktiBayar;
+            if (update.buktiBayar && update.buktiBayar.trim() !== "") {
+              dataToUpdate.statusBayar = true;
+            }
           }
+          if (update.statusKirim !== undefined) dataToUpdate.statusKirim = update.statusKirim;
+          if (update.buktiKirim !== undefined) dataToUpdate.buktiKirim = update.buktiKirim;
+          if (update.noInvoice !== undefined) dataToUpdate.noInvoice = update.noInvoice;
+
+          const updated = await tx.purchaseOrder.update({
+            where: { id: update.id },
+            data: dataToUpdate,
+          });
+
+          auditEntries.push({
+            entityId: oldData.id,
+            entity: "PurchaseOrder",
+            action: "UPDATE",
+            oldData: oldData as any,
+            newData: updated as any,
+            userId: dbUser?.id || null,
+            userName: getProfileName(session, dbUser) || null,
+            userRole: safeRole || null,
+          });
+
+          return updated;
+        });
+
+        await Promise.all(updatePromises);
+
+        // 2. Batch insert audit logs in a single query
+        if (auditEntries.length > 0) {
+          await tx.auditLog.createMany({
+            data: auditEntries,
+          });
         }
-        if (update.statusKirim !== undefined) dataToUpdate.statusKirim = update.statusKirim;
-        if (update.buktiKirim !== undefined) dataToUpdate.buktiKirim = update.buktiKirim;
-        if (update.noInvoice !== undefined) dataToUpdate.noInvoice = update.noInvoice;
-        await auditUpdatePO(tx as any, { id: update.id }, dataToUpdate, { id: dbUser?.id || "unknown", name: getProfileName(session, dbUser) });
+      },
+      {
+        maxWait: 15000,
+        timeout: 60000,
       }
-    });
+    );
 
     // Invalidate cache
+    cacheClearPrefix("checklist_summary:");
     cacheClearPrefix("checklist_total:");
+    cacheClearPrefix("po:");
     
     return NextResponse.json({ success: true, message: "Data berhasil disimpan" });
   } catch (error: any) {
