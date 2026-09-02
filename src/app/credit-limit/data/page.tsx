@@ -54,8 +54,9 @@ export default function CreditLimitDataPage() {
         header: "NO",
         size: 60,
         meta: { align: "center" },
-        cell: ({ row }) => {
-          const no = (data.currentPage - 1) * data.itemsPerPage + row.index + 1;
+        cell: ({ row, table }) => {
+          const { pageIndex, pageSize } = table.getState().pagination;
+          const no = pageIndex * pageSize + row.index + 1;
           return (
             <span className="text-slate-500 font-medium text-xs">
               {no}
@@ -276,6 +277,7 @@ export default function CreditLimitDataPage() {
       if (c.id === 'action') return activeFilter !== "submitted";
       return true;
     });
+    
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-7">
@@ -375,18 +377,9 @@ export default function CreditLimitDataPage() {
         ) : (
           <DataTableV2
             columns={columns}
-            data={data.paginatedPOs}
+            data={data.filteredPo}
             getRowId={(row: any) => row.id}
             loading={data.loading}
-            manualPagination={true}
-            pageCount={data.totalPages || 1}
-            pagination={{ pageIndex: Math.max(0, data.currentPage - 1), pageSize: data.itemsPerPage }}
-            onPaginationChange={(updater: any) => {
-              const next = typeof updater === "function" 
-                ? updater({ pageIndex: Math.max(0, data.currentPage - 1), pageSize: data.itemsPerPage }) 
-                : updater;
-              data.setCurrentPage(next.pageIndex + 1);
-            }}
             onRowClick={(po: any) => detail.handleViewRow(po)}
           />
         )}
