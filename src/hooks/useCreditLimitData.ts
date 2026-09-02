@@ -10,14 +10,16 @@ export function useCreditLimitData({
   selectedNamaPt,
   selectedInisial,
   selectedTujuan,
+  selectedStatus,
   tglFrom,
   tglTo,
 }: {
   search: string;
-  activeFilter: "all" | "pending" | "outdate" | "submitted";
+  activeFilter: "all" | "pending" | "outdate";
   selectedNamaPt: string;
   selectedInisial: string;
   selectedTujuan: string;
+  selectedStatus?: string;
   tglFrom: string;
   tglTo: string;
 }) {
@@ -42,7 +44,7 @@ export function useCreditLimitData({
     setLoading(true);
     try {
       const res = await fetch(
-        "/api/po?group=schedule_page&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
+        "/api/po?group=schedule_page&summary=true&includeItems=false&limit=5000&offset=0&sort=tglPo_desc",
         { cache: "no-store" },
       );
       const data = await res.json();
@@ -188,18 +190,40 @@ export function useCreditLimitData({
   const filteredPo = useMemo(() => {
     // Tahap 1: Filter berdasarkan Card yang diklik
     let categoryFiltered = poData;
-    if (activeFilter === "submitted") {
-      categoryFiltered = poData.filter(po => po.statusCreditLimit && po.statusCreditLimit !== "REJECTED");
-    } else {
-      categoryFiltered = poData.filter(po => !po.statusCreditLimit || po.statusCreditLimit === "REJECTED");
-      
-      if (activeFilter === "pending") {
-        categoryFiltered = categoryFiltered.filter(
-          (po) => getDueDateZone(po.expiredTgl) === "normal",
-        );
-      } else if (activeFilter === "outdate") {
-        categoryFiltered = categoryFiltered.filter((po) =>
+    if (activeFilter === "pending") {
+      categoryFiltered = poData.filter(
+        (po) =>
+          (!po.statusCreditLimit || po.statusCreditLimit === "REJECTED") &&
+          getDueDateZone(po.expiredTgl) === "normal",
+      );
+    } else if (activeFilter === "outdate") {
+      categoryFiltered = poData.filter(
+        (po) =>
+          (!po.statusCreditLimit || po.statusCreditLimit === "REJECTED") &&
           needsRemarks(getDueDateZone(po.expiredTgl)),
+      );
+    } else {
+      // activeFilter === "all" (Total Credit Limit): Menampilkan SEMUA PO (baik diajukan maupun belum diajukan)
+      categoryFiltered = poData;
+    }
+
+    // Tahap 1.5: Filter berdasarkan Status Dropdown (jika dipilih)
+    if (selectedStatus) {
+      if (selectedStatus === "PENDING") {
+        categoryFiltered = categoryFiltered.filter(
+          (po) => !po.statusCreditLimit || po.statusCreditLimit === "REJECTED",
+        );
+      } else if (selectedStatus === "WAITING_PUSAT") {
+        categoryFiltered = categoryFiltered.filter(
+          (po) => po.statusCreditLimit === "REQUESTED",
+        );
+      } else if (selectedStatus === "WAITING_DIREKSI") {
+        categoryFiltered = categoryFiltered.filter(
+          (po) => po.statusCreditLimit === "APPROVED",
+        );
+      } else if (selectedStatus === "COMPLETED") {
+        categoryFiltered = categoryFiltered.filter(
+          (po) => po.statusCreditLimit === "APPROVED_DIREKSI",
         );
       }
     }
@@ -249,12 +273,12 @@ export function useCreditLimitData({
         noInvoice.includes(query)
       );
     });
-  }, [poData, activeFilter, search, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
+  }, [poData, activeFilter, selectedStatus, search, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
 
   // Reset pagination to page 1 whenever search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, activeFilter, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
+  }, [search, activeFilter, selectedStatus, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
 
   // Compute paginated slice
   const paginatedPOs = useMemo(() => {
@@ -264,18 +288,22 @@ export function useCreditLimitData({
 
   const totalPages = Math.ceil(filteredPo.length / itemsPerPage);
 
-  // Stats for info banner
+  // Stats for 3 info cards
   const stats = useMemo(() => {
-    const notRequested = poData.filter(po => !po.statusCreditLimit || po.statusCreditLimit === "REJECTED");
-    const submitted = poData.filter(po => po.statusCreditLimit && po.statusCreditLimit !== "REJECTED").length;
-    
-    const normal = notRequested.filter(
+    const unsubmitted = poData.filter(
+      (po) => !po.statusCreditLimit || po.statusCreditLimit === "REJECTED",
+    );
+    const normal = unsubmitted.filter(
       (po) => getDueDateZone(po.expiredTgl) === "normal",
     ).length;
-    const remarksNeeded = notRequested.filter((po) =>
+    const remarksNeeded = unsubmitted.filter((po) =>
       needsRemarks(getDueDateZone(po.expiredTgl)),
     ).length;
-    return { total: notRequested.length, normal, remarksNeeded, submitted };
+    return {
+      total: poData.length, // Menampilkan total SEMUA PO (diajukan + belum diajukan)
+      normal,
+      remarksNeeded,
+    };
   }, [poData]);
 
   return {

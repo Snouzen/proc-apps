@@ -33,7 +33,7 @@ import { usePODetail } from "@/hooks/usePODetail";
 const helper = createColumnHelper<any>();
 
 export default function CreditLimitDataPage() {
-  const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "outdate" | "submitted">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "outdate">("all");
   
   const filters = useCreditLimitFilters();
   const detail = usePODetail();
@@ -44,6 +44,7 @@ export default function CreditLimitDataPage() {
     selectedNamaPt: filters.selectedNamaPt,
     selectedInisial: filters.selectedInisial,
     selectedTujuan: filters.selectedTujuan,
+    selectedStatus: filters.selectedStatus,
     tglFrom: filters.tglFrom,
     tglTo: filters.tglTo,
   });
@@ -54,12 +55,10 @@ export default function CreditLimitDataPage() {
         header: "NO",
         size: 60,
         meta: { align: "center" },
-        cell: ({ row, table }) => {
-          const { pageIndex, pageSize } = table.getState().pagination;
-          const no = pageIndex * pageSize + row.index + 1;
+        cell: ({ row }) => {
           return (
             <span className="text-slate-500 font-medium text-xs">
-              {no}
+              {row.index + 1}
             </span>
           );
         },
@@ -247,11 +246,18 @@ export default function CreditLimitDataPage() {
         cell: ({ row }) => {
           const po = row.original;
           const zone = getDueDateZone(po.expiredTgl);
+          const isSubmitted = !!(po.statusCreditLimit && po.statusCreditLimit !== "REJECTED");
+          
+          if (isSubmitted) {
+            return (
+              <span className="text-slate-400 dark:text-slate-500 font-medium text-xs">
+                -
+              </span>
+            );
+          }
+
           return (
-            <div
-              className="flex items-center justify-center gap-1.5"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="flex items-center justify-center">
               <ActionButton
                 icon={ShieldCheck}
                 tooltip={
@@ -272,11 +278,7 @@ export default function CreditLimitDataPage() {
         },
       }),
     ];
-    const columns = cols.filter(c => {
-      if (c.id === 'batchCode') return activeFilter === "submitted";
-      if (c.id === 'action') return activeFilter !== "submitted";
-      return true;
-    });
+    const columns = cols;
     
 
   return (
@@ -306,7 +308,7 @@ export default function CreditLimitDataPage() {
       </div>
 
       {/* ── Stat Cards ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
         {[
           {
             id: "all" as const,
@@ -335,15 +337,6 @@ export default function CreditLimitDataPage() {
             text: "text-amber-600 dark:text-amber-400",
             ring: "ring-rose-500 dark:ring-rose-500/50",
           },
-          {
-            id: "submitted" as const,
-            label: "Sudah Diajukan",
-            value: data.stats.submitted,
-            icon: <CheckCircle2 size={18} className="text-emerald-500" />,
-            bg: "bg-emerald-50 dark:bg-emerald-500/10",
-            text: "text-emerald-600 dark:text-emerald-400",
-            ring: "ring-emerald-500 dark:ring-emerald-500/50",
-          },
         ].map((stat) => (
           <StatsCard
             key={stat.id}
@@ -355,7 +348,7 @@ export default function CreditLimitDataPage() {
       </div>
 
       {/* ── Additional Filters ───────────────────────────────────────────── */}
-      <CreditLimitFilters {...filters} />
+      <CreditLimitFilters {...filters} totalCount={data.filteredPo.length} />
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">

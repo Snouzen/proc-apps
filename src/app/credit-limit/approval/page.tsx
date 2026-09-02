@@ -60,7 +60,7 @@ export default function CreditLimitApprovalPage() {
       </div>
 
       {/* ── Filters ──────────────────────────────────────────────────── */}
-      <CreditLimitFilters {...filters} />
+      <CreditLimitFilters {...filters} totalCount={data.filteredPo.length} />
 
       {/* ── Accordion List ──────────────────────────────────────────── */}
       {data.loading ? (

@@ -8,10 +8,12 @@ export function useCreditLimitFilters() {
   const [selectedNamaPt, setSelectedNamaPt] = useState<string>("");
   const [selectedInisial, setSelectedInisial] = useState<string>("");
   const [selectedTujuan, setSelectedTujuan] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
 
   const [openRitel, setOpenRitel] = useState(false);
   const [openInisial, setOpenInisial] = useState(false);
   const [openTujuan, setOpenTujuan] = useState(false);
+  const [openStatus, setOpenStatus] = useState(false);
 
   const [tglFrom, setTglFrom] = useState("");
   const [tglTo, setTglTo] = useState("");
@@ -56,9 +58,11 @@ export function useCreditLimitFilters() {
     selectedNamaPt, setSelectedNamaPt,
     selectedInisial, setSelectedInisial,
     selectedTujuan, setSelectedTujuan,
+    selectedStatus, setSelectedStatus,
     openRitel, setOpenRitel,
     openInisial, setOpenInisial,
     openTujuan, setOpenTujuan,
+    openStatus, setOpenStatus,
     tglFrom, setTglFrom,
     tglTo, setTglTo,
     search, setSearch,

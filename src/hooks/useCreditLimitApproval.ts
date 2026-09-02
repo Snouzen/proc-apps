@@ -33,7 +33,7 @@ export function useCreditLimitApproval({
     setLoading(true);
     try {
       const res = await fetch(
-        "/api/po?group=credit_approval&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
+        "/api/po?group=credit_approval&summary=true&includeItems=false&limit=5000&offset=0&sort=tglPo_desc",
         { cache: "no-store" },
       );
       const data = await res.json();
@@ -598,6 +598,7 @@ export function useCreditLimitApproval({
     totalPages,
     paginatedBatches,
     batchGroups,
+    filteredPo,
     expandedBatches,
     toggleBatch,
     handleAction,

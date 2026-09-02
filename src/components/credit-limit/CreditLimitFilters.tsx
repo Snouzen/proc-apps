@@ -28,18 +28,23 @@ export function CreditLimitFilters({
   setSelectedInisial,
   selectedTujuan,
   setSelectedTujuan,
+  selectedStatus,
+  setSelectedStatus,
   openRitel,
   setOpenRitel,
   openInisial,
   setOpenInisial,
   openTujuan,
   setOpenTujuan,
+  openStatus,
+  setOpenStatus,
   availableInisials,
   availableTujuans,
   tglFrom,
   setTglFrom,
   tglTo,
   setTglTo,
+  totalCount,
 }: {
   retailers: Retailer[];
   selectedNamaPt: string;
@@ -48,23 +53,37 @@ export function CreditLimitFilters({
   setSelectedInisial: (val: string) => void;
   selectedTujuan: string;
   setSelectedTujuan: (val: string) => void;
+  selectedStatus?: string;
+  setSelectedStatus?: (val: string) => void;
   openRitel: boolean;
   setOpenRitel: (val: boolean) => void;
   openInisial: boolean;
   setOpenInisial: (val: boolean) => void;
   openTujuan: boolean;
   setOpenTujuan: (val: boolean) => void;
+  openStatus?: boolean;
+  setOpenStatus?: (val: boolean) => void;
   availableInisials: string[];
   availableTujuans: string[];
   tglFrom: string;
   setTglFrom: (val: string) => void;
   tglTo: string;
   setTglTo: (val: string) => void;
+  totalCount?: number;
 }) {
+  const STATUS_OPTIONS = [
+    { value: "", label: "Semua Status" },
+    { value: "WAITING_PUSAT", label: "Waiting Pusat" },
+    { value: "WAITING_DIREKSI", label: "Waiting Direksi" },
+    { value: "COMPLETED", label: "Completed" },
+  ];
+
+  const currentStatusLabel = STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Semua Status";
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       {/* Dropdown 1: Ritel */}
-      <div className="md:col-span-3 space-y-2">
+      <div className="space-y-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ritel Modern</label>
         <Popover open={openRitel} onOpenChange={setOpenRitel}>
           <PopoverTrigger asChild>
@@ -125,7 +144,7 @@ export function CreditLimitFilters({
       </div>
 
       {/* Dropdown 2: Inisial */}
-      <div className="md:col-span-3 space-y-2">
+      <div className="space-y-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Inisial</label>
         <Popover open={openInisial} onOpenChange={setOpenInisial}>
           <PopoverTrigger asChild>
@@ -185,7 +204,7 @@ export function CreditLimitFilters({
       </div>
 
       {/* Dropdown 3: Tujuan Detail */}
-      <div className="md:col-span-3 space-y-2">
+      <div className="space-y-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tujuan Detail</label>
         <Popover open={openTujuan} onOpenChange={setOpenTujuan}>
           <PopoverTrigger asChild>
@@ -242,8 +261,57 @@ export function CreditLimitFilters({
         </Popover>
       </div>
 
+      {/* Dropdown 4: Status Credit Limit */}
+      {setSelectedStatus && (
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</label>
+          <Popover open={openStatus} onOpenChange={setOpenStatus}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={openStatus}
+                className="w-full justify-between bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 h-12 rounded-xl shadow-sm dark:shadow-none transition-all"
+                suppressHydrationWarning
+              >
+                <span className={!selectedStatus ? "text-slate-400 dark:text-slate-500 font-normal truncate" : "font-bold truncate text-indigo-600 dark:text-indigo-400"}>
+                  {currentStatusLabel}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverPrimitive.Portal>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-white dark:bg-slate-800" align="start">
+                <Command className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <CommandInput placeholder="Cari status..." className="!text-slate-900 dark:!text-slate-100 placeholder:!text-slate-400 dark:placeholder:!text-slate-500 font-medium bg-white dark:bg-slate-800" />
+                  <CommandListUI className="max-h-64 scrollbar-hide">
+                    <CommandEmpty className="text-slate-500 py-4 text-center">Status tidak ditemukan.</CommandEmpty>
+                    <CommandGroup>
+                      {STATUS_OPTIONS.map((opt) => (
+                        <CommandItem
+                          key={opt.value}
+                          value={opt.label}
+                          className="!text-slate-900 dark:!text-slate-100 font-medium cursor-pointer aria-selected:bg-slate-100 dark:aria-selected:bg-slate-700 aria-selected:!text-slate-900 dark:aria-selected:!text-slate-100 flex items-center px-4 py-2"
+                          onSelect={() => {
+                            setSelectedStatus(opt.value);
+                            setOpenStatus?.(false);
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", selectedStatus === opt.value ? "opacity-100" : "opacity-0")} />
+                          {opt.label}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandListUI>
+                </Command>
+              </PopoverContent>
+            </PopoverPrimitive.Portal>
+          </Popover>
+        </div>
+      )}
+
       {/* Date Filters */}
-      <div className="md:col-span-3 space-y-2">
+      <div className="space-y-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
           Periode Tgl PO
         </label>
@@ -252,6 +320,16 @@ export function CreditLimitFilters({
           <span className="hidden xl:inline text-slate-300 dark:text-slate-600">-</span>
           <DateInputHybrid value={tglTo} onChange={setTglTo} placeholder="Sampai..." />
         </div>
+        {totalCount !== undefined && (
+          <div className="flex items-center gap-1.5 pt-1">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Total PO:
+            </span>
+            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+              {totalCount.toLocaleString("id-ID")}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
