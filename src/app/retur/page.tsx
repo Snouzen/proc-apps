@@ -18,6 +18,7 @@ import { ReturTable } from "./components/ReturTable";
 import { useRetur } from "./hooks/useRetur";
 import { ReturBulkModal } from "./components/ReturBulkModal";
 import { ReturAddModal } from "./components/ReturAddModal";
+import { ReturExportModal } from "./components/ReturExportModal";
 
 function ReturContent() {
   const {
@@ -103,6 +104,9 @@ function ReturContent() {
     comboRef,
     addDropdownRef,
     fetchRetur,
+    showExportModal,
+    isExportAll,
+    handleCloseExportModal,
     handleExportExcel,
     handleExportAll,
     paginatedData,
@@ -421,6 +425,27 @@ function ReturContent() {
         addRetailerId={addRetailerId}
         filteredRetailers={filteredRetailers}
         router={router}
+      />
+
+      <ReturExportModal
+        isOpen={showExportModal}
+        onClose={handleCloseExportModal}
+        selectedRetailerId={selectedRetailerId}
+        selectedRetailerName={retailers.find((r: any) => r.id === selectedRetailerId)?.namaPt}
+        isExportAll={isExportAll}
+        search={search}
+        filterInisial={filterInisial}
+        filterToko={filterToko}
+        filterLokasi={filterLokasi}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        selectedStatus={selectedStatus}
+        previewData={data}
+        totalRecordsCount={isExportAll ? stats.total : (selectedRetailerId ? total : stats.total)}
+        retailers={retailers}
+        units={units}
+        filterOptions={filterOptions}
+        availableLocations={availableLocations}
       />
 
       {isFetchingPage && (

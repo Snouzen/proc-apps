@@ -16,6 +16,8 @@ export interface NeedAssignRow {
   buktiTagih?: string | null;
   buktiBayar?: string | null;
   pcsTotal?: number | null;
+  firstProductName?: string | null;
+  itemsCount?: number | null;
   Items: any[];
   UnitProduksi?: any;
   RitelModern?: any;

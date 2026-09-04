@@ -217,34 +217,25 @@ export function useRetur() {
     }
   }, [page, debouncedSearch, rowsPerPage, selectedRetailerId, filterInisial, filterToko, filterLokasi, dateFrom, dateTo, selectedStatus, fetchStats]);
 
-  const handleExportExcel = useCallback(async () => {
-    if (!selectedRetailerId) return;
-    try {
-      const params = new URLSearchParams();
-      params.set("retailerId", selectedRetailerId);
-      if (search) params.set("q", search);
-      if (filterInisial) params.set("inisial", filterInisial);
-      if (filterToko) params.set("toko", filterToko);
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      if (selectedStatus) params.set("status", selectedStatus);
-      if (filterLokasi) params.set("lokasi", filterLokasi);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isExportAll, setIsExportAll] = useState(false);
 
-      window.location.href = `/api/retur/export?${params.toString()}`;
-    } catch (err) {
-      console.error("Export Error:", err);
-      Swal.fire("Error", "Gagal melakukan export excel", "error");
-    }
-  }, [selectedRetailerId, search, filterInisial, filterToko, filterLokasi, dateFrom, dateTo, selectedStatus]);
-
-  const handleExportAll = useCallback(async () => {
-    try {
-      window.location.href = `/api/retur/export`;
-    } catch (err) {
-      console.error("Export All Error:", err);
-      Swal.fire("Error", "Gagal melakukan export keseluruhan", "error");
-    }
+  const handleOpenExportModal = useCallback((exportAll = false) => {
+    setIsExportAll(exportAll);
+    setShowExportModal(true);
   }, []);
+
+  const handleCloseExportModal = useCallback(() => {
+    setShowExportModal(false);
+  }, []);
+
+  const handleExportExcel = useCallback(() => {
+    handleOpenExportModal(false);
+  }, [handleOpenExportModal]);
+
+  const handleExportAll = useCallback(() => {
+    handleOpenExportModal(true);
+  }, [handleOpenExportModal]);
 
   const filteredData = useMemo(() => data, [data]);
   const paginatedData = useMemo(() => data, [data]);
@@ -876,6 +867,11 @@ export function useRetur() {
     comboRef,
     addDropdownRef,
     fetchRetur,
+    showExportModal,
+    setShowExportModal,
+    isExportAll,
+    handleOpenExportModal,
+    handleCloseExportModal,
     handleExportExcel,
     handleExportAll,
     fetchStats,

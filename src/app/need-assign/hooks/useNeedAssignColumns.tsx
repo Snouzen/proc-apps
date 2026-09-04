@@ -85,6 +85,55 @@ export function useNeedAssignColumns({
         </div>
       ),
     }),
+    helper.accessor(
+      (row) => {
+        if (row.firstProductName) {
+          return Number(row.itemsCount) > 1
+            ? `${row.firstProductName} (+${Number(row.itemsCount) - 1} lainnya)`
+            : row.firstProductName;
+        }
+        const items = Array.isArray(row.Items) ? row.Items : [];
+        if (items.length === 0) return "-";
+        const firstName = items[0]?.namaProduk || items[0]?.Product?.name || "-";
+        if (items.length > 1) {
+          return `${firstName} (+${items.length - 1} lainnya)`;
+        }
+        return firstName;
+      },
+      {
+        id: "produk",
+        header: "Produk",
+        size: 220,
+        cell: ({ row }) => {
+          const po = row.original;
+          const items = Array.isArray(po.Items) ? po.Items : [];
+          const firstProduct = po.firstProductName || items[0]?.namaProduk || items[0]?.Product?.name || "-";
+          const count = Number(po.itemsCount) || items.length;
+
+          if (!firstProduct || firstProduct === "-") {
+            return <span className="text-slate-400 text-xs font-medium">-</span>;
+          }
+
+          const allNames = items.length > 0
+            ? items.map((it: any) => it.namaProduk || it.Product?.name).filter(Boolean).join(", ")
+            : firstProduct;
+
+          return (
+            <div
+              className="text-slate-800 dark:text-slate-200 font-medium max-w-[220px] overflow-x-auto whitespace-nowrap scrollbar-hide text-xs"
+              title={allNames}
+            >
+              <span>{firstProduct}</span>
+              {count > 1 && (
+                <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  +{count - 1}
+                </span>
+              )}
+            </div>
+          );
+        },
+      }
+    ),
     helper.accessor("regional", {
       header: "Regional",
       size: 220,
