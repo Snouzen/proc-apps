@@ -8,6 +8,7 @@ import {
   CreditLimitSearchBar,
   CreditLimitFilters,
   BatchAccordion,
+  CreditLimitMaintenance,
 } from "@/components/credit-limit";
 import { CreateNdModal } from "@/components/credit-limit/CreateNdModal";
 import { GlobalPagination } from "@/components/global-pagination";
@@ -17,6 +18,9 @@ import { useCreditLimitApproval } from "@/hooks/useCreditLimitApproval";
 import { usePODetail } from "@/hooks/usePODetail";
 
 export default function CreditLimitApprovalPage() {
+  // ── MAINTENANCE MODE ── Hapus baris di bawah ini untuk mengembalikan tampilan normal
+  return <CreditLimitMaintenance />;
+
   const filters = useCreditLimitFilters();
   const detail = usePODetail();
 

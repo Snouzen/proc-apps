@@ -242,13 +242,15 @@ export function BatchAccordion({
       cell: ({ row, table }) => {
         const meta = table.options.meta as any;
         const po = row.original;
+        const isCompleted = po.statusCreditLimit === "APPROVED_DIREKSI";
         return (
           <div className="flex justify-center items-center" onClick={(e) => e.stopPropagation()}>
             <input
               type="checkbox"
               checked={po.isNotaDinas || false}
+              disabled={isCompleted}
               onChange={() => meta?.onToggleND(po.id, po.isNotaDinas || false)}
-              className="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
+              className="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             />
           </div>
         );
@@ -329,31 +331,34 @@ export function BatchAccordion({
       cell: ({ row, table }) => {
         const meta = table.options.meta as any;
         const po = row.original;
+        const isCompleted = po.statusCreditLimit === "APPROVED_DIREKSI";
         return (
           <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-            {meta?.editNdId === po.id ? (
-              <ActionButton
-                icon={Check}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  meta?.onUpdateNDDetails(po.id, meta?.tempNoNd, meta?.tempLinkNd);
-                  meta?.setEditNdId(null);
-                }}
-                tooltip="Simpan ND"
-                variant="indigo"
-              />
-            ) : (
-              <ActionButton
-                icon={Edit3}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  meta?.setTempNoNd(po.noNd || "");
-                  meta?.setTempLinkNd(po.linkNd || "");
-                  meta?.setEditNdId(po.id);
-                }}
-                tooltip="Edit ND"
-                variant="slate"
-              />
+            {!isCompleted && (
+              meta?.editNdId === po.id ? (
+                <ActionButton
+                  icon={Check}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    meta?.onUpdateNDDetails(po.id, meta?.tempNoNd, meta?.tempLinkNd);
+                    meta?.setEditNdId(null);
+                  }}
+                  tooltip="Simpan ND"
+                  variant="indigo"
+                />
+              ) : (
+                <ActionButton
+                  icon={Edit3}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    meta?.setTempNoNd(po.noNd || "");
+                    meta?.setTempLinkNd(po.linkNd || "");
+                    meta?.setEditNdId(po.id);
+                  }}
+                  tooltip="Edit ND"
+                  variant="slate"
+                />
+              )
             )}
             {po.statusCreditLimit === "REQUESTED" ? (
               <>

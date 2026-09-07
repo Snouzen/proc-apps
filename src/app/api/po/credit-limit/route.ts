@@ -30,10 +30,28 @@ export async function POST(req: Request) {
 
     // ── REQUEST: Auto-assign to batch ──────────────────────────────────
     if (action === "request") {
+      const existingPo = await prisma.purchaseOrder.findUnique({
+        where: { id: poId },
+        select: { id: true, noPo: true, statusCreditLimit: true },
+      });
+      if (!existingPo) {
+        return NextResponse.json({ error: "PO tidak ditemukan" }, { status: 404 });
+      }
+      if (existingPo.statusCreditLimit === "APPROVED_DIREKSI") {
+        return NextResponse.json({ error: "PO sudah disetujui Direksi (Completed) dan tidak dapat diajukan ulang" }, { status: 400 });
+      }
+
       const result = await prisma.$transaction(async (tx: any) => {
-        // 1. Find an OPEN batch (oldest first, so reopened batch gets priority)
+        // 1. Find an OPEN batch that has NO completed (APPROVED_DIREKSI) POs
         let batch = await tx.creditLimitBatch.findFirst({
-          where: { status: "OPEN" },
+          where: {
+            status: "OPEN",
+            PurchaseOrders: {
+              none: {
+                statusCreditLimit: "APPROVED_DIREKSI",
+              },
+            },
+          },
           orderBy: { seqNumber: "asc" },
           include: { _count: { select: { PurchaseOrders: true } } },
         });
@@ -47,7 +65,7 @@ export async function POST(req: Request) {
           batch = null;
         }
 
-        // 3. If no open batch, create a new one
+        // 3. If no open clean batch, create a new one
         if (!batch) {
           const lastBatch = await tx.creditLimitBatch.findFirst({
             orderBy: { seqNumber: "desc" },
@@ -105,7 +123,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Hanya Pusat yang dapat melakukan aksi ini" }, { status: 403 });
       }
       const result = await prisma.purchaseOrder.updateMany({
-        where: { id: { in: poIds } },
+        where: {
+          id: { in: poIds },
+          statusCreditLimit: { not: "APPROVED_DIREKSI" },
+        },
         data: { statusCreditLimit: "APPROVED" },
       });
       return NextResponse.json({ success: true, count: result.count });
@@ -116,15 +137,46 @@ export async function POST(req: Request) {
       if (safeRole !== "pusat") {
         return NextResponse.json({ error: "Hanya Pusat yang dapat melakukan aksi ini" }, { status: 403 });
       }
-      const result = await prisma.purchaseOrder.updateMany({
-        where: { id: { in: poIds } },
-        data: { statusCreditLimit: "APPROVED_DIREKSI" },
+      const result = await prisma.$transaction(async (tx: any) => {
+        const updateRes = await tx.purchaseOrder.updateMany({
+          where: { id: { in: poIds } },
+          data: { statusCreditLimit: "APPROVED_DIREKSI" },
+        });
+
+        // Auto-close affected batches if all POs are now APPROVED_DIREKSI
+        const affectedPos = await tx.purchaseOrder.findMany({
+          where: { id: { in: poIds } },
+          select: { creditLimitBatchId: true },
+          distinct: ["creditLimitBatchId"],
+        });
+
+        for (const { creditLimitBatchId } of affectedPos) {
+          if (creditLimitBatchId) {
+            const pendingCount = await tx.purchaseOrder.count({
+              where: {
+                creditLimitBatchId,
+                statusCreditLimit: { not: "APPROVED_DIREKSI" },
+              },
+            });
+            if (pendingCount === 0) {
+              await tx.creditLimitBatch.update({
+                where: { id: creditLimitBatchId },
+                data: { status: "CLOSED" },
+              });
+            }
+          }
+        }
+        return updateRes;
       });
       return NextResponse.json({ success: true, count: result.count });
     }
 
     // ── APPROVE PUSAT ──────────────────────────────────────────────────
     if (action === "approve") {
+      const currentPo = await prisma.purchaseOrder.findUnique({ where: { id: poId }, select: { statusCreditLimit: true } });
+      if (currentPo?.statusCreditLimit === "APPROVED_DIREKSI") {
+        return NextResponse.json({ error: "PO sudah disetujui Direksi (Completed)" }, { status: 400 });
+      }
       const po = await prisma.purchaseOrder.update({
         where: { id: poId },
         data: { statusCreditLimit: "APPROVED" },
@@ -134,9 +186,27 @@ export async function POST(req: Request) {
 
     // ── APPROVE DIREKSI ────────────────────────────────────────────────
     if (action === "approveDireksi") {
-      const po = await prisma.purchaseOrder.update({
-        where: { id: poId },
-        data: { statusCreditLimit: "APPROVED_DIREKSI" },
+      const po = await prisma.$transaction(async (tx: any) => {
+        const updatedPo = await tx.purchaseOrder.update({
+          where: { id: poId },
+          data: { statusCreditLimit: "APPROVED_DIREKSI" },
+        });
+
+        if (updatedPo.creditLimitBatchId) {
+          const pendingCount = await tx.purchaseOrder.count({
+            where: {
+              creditLimitBatchId: updatedPo.creditLimitBatchId,
+              statusCreditLimit: { not: "APPROVED_DIREKSI" },
+            },
+          });
+          if (pendingCount === 0) {
+            await tx.creditLimitBatch.update({
+              where: { id: updatedPo.creditLimitBatchId },
+              data: { status: "CLOSED" },
+            });
+          }
+        }
+        return updatedPo;
       });
       return NextResponse.json({ success: true, data: po });
     }
@@ -145,6 +215,9 @@ export async function POST(req: Request) {
     if (action === "reject") {
       const currentPo = await prisma.purchaseOrder.findUnique({ where: { id: poId } });
       if (!currentPo) return NextResponse.json({ error: "PO not found" }, { status: 404 });
+      if (currentPo.statusCreditLimit === "APPROVED_DIREKSI") {
+        return NextResponse.json({ error: "PO yang sudah disetujui Direksi (Completed) tidak dapat ditolak" }, { status: 400 });
+      }
 
       if (currentPo.statusCreditLimit === "REQUESTED") {
         // Rejected by Pusat -> Reset PO, remove from batch (goes back to Data page)
@@ -170,6 +243,11 @@ export async function POST(req: Request) {
 
     // ── RE-REQUEST (Dari halaman approval untuk PO yang ditolak Direksi) 
     if (action === "reRequest") {
+      const currentPo = await prisma.purchaseOrder.findUnique({ where: { id: poId } });
+      if (!currentPo) return NextResponse.json({ error: "PO not found" }, { status: 404 });
+      if (currentPo.statusCreditLimit === "APPROVED_DIREKSI") {
+        return NextResponse.json({ error: "PO sudah disetujui Direksi (Completed)" }, { status: 400 });
+      }
       const po = await prisma.purchaseOrder.update({
         where: { id: poId },
         data: {
@@ -181,6 +259,10 @@ export async function POST(req: Request) {
 
     // ── UPDATE KODE VENDOR ─────────────────────────────────────────────
     if (action === "updateKodeVendor") {
+      const currentPo = await prisma.purchaseOrder.findUnique({ where: { id: poId }, select: { statusCreditLimit: true } });
+      if (currentPo?.statusCreditLimit === "APPROVED_DIREKSI") {
+        return NextResponse.json({ error: "PO sudah disetujui Direksi (Completed)" }, { status: 400 });
+      }
       const po = await prisma.purchaseOrder.update({
         where: { id: poId },
         data: { kodeVendor: body.kodeVendor || null },
@@ -190,6 +272,10 @@ export async function POST(req: Request) {
 
     //  TOGGLE ND (NOTA DINAS) 
     if (action === "toggleND") {
+      const currentPo = await prisma.purchaseOrder.findUnique({ where: { id: poId }, select: { statusCreditLimit: true } });
+      if (currentPo?.statusCreditLimit === "APPROVED_DIREKSI") {
+        return NextResponse.json({ error: "PO sudah disetujui Direksi (Completed)" }, { status: 400 });
+      }
       const po = await prisma.purchaseOrder.update({
         where: { id: poId },
         data: { isNotaDinas: body.isNotaDinas },
@@ -200,7 +286,10 @@ export async function POST(req: Request) {
     //  TOGGLE ALL ND (NOTA DINAS) 
     if (action === "toggleAllND" && poIds && Array.isArray(poIds)) {
       const result = await prisma.purchaseOrder.updateMany({
-        where: { id: { in: poIds } },
+        where: {
+          id: { in: poIds },
+          statusCreditLimit: { not: "APPROVED_DIREKSI" },
+        },
         data: { isNotaDinas: body.isNotaDinas },
       });
       return NextResponse.json({ success: true, count: result.count });
@@ -208,11 +297,17 @@ export async function POST(req: Request) {
 
     // UPDATE ND DETAILS
     if (action === "updateNDDetails") {
+      const currentPo = await prisma.purchaseOrder.findUnique({ where: { id: poId }, select: { statusCreditLimit: true } });
+      if (currentPo?.statusCreditLimit === "APPROVED_DIREKSI") {
+        return NextResponse.json({ error: "PO sudah disetujui Direksi (Completed)" }, { status: 400 });
+      }
+      const hasNd = Boolean(body.noNd && String(body.noNd).trim() !== "");
       const po = await prisma.purchaseOrder.update({
         where: { id: poId },
         data: { 
           noNd: body.noNd || null,
           linkNd: body.linkNd || null,
+          ...(hasNd ? { isNotaDinas: true } : {}),
         },
       });
       return NextResponse.json({ success: true, data: po });
@@ -253,11 +348,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "batchCode is required" }, { status: 400 });
       }
 
-      // Check distance rule and PO count
+      // Check distance rule, PO count, and completed state
       const result = await prisma.$transaction(async (tx: any) => {
         const batch = await tx.creditLimitBatch.findUnique({
           where: { batchCode },
-          include: { _count: { select: { PurchaseOrders: true } } },
+          include: {
+            _count: { select: { PurchaseOrders: true } },
+            PurchaseOrders: { select: { statusCreditLimit: true } },
+          },
         });
 
         if (!batch) {
@@ -268,6 +366,12 @@ export async function POST(req: Request) {
         }
         if (batch._count.PurchaseOrders >= 50) {
           throw new Error("Batch sudah mencapai batas maksimal 50 PO");
+        }
+
+        // Do not allow unclosing if all POs in batch are already completed
+        const isAllCompleted = batch.PurchaseOrders.length > 0 && batch.PurchaseOrders.every((p: any) => p.statusCreditLimit === "APPROVED_DIREKSI");
+        if (isAllCompleted) {
+          throw new Error("Batch yang sudah selesai (Completed) tidak dapat dibuka kembali");
         }
 
         const lastBatch = await tx.creditLimitBatch.findFirst({

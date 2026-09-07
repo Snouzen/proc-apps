@@ -277,7 +277,9 @@ export function useCreditLimitApproval({
   };
 
   const handleChecklistAllND = async (batchCode: string, batchPos: any[], checked: boolean) => {
-    const poIds = batchPos.map(p => p.id);
+    const modifiablePos = batchPos.filter(p => p.statusCreditLimit !== "APPROVED_DIREKSI");
+    if (modifiablePos.length === 0) return;
+    const poIds = modifiablePos.map(p => p.id);
     
     // Optimistic UI update
     setPoData((prev) =>
@@ -465,9 +467,10 @@ export function useCreditLimitApproval({
 
     const groups = Array.from(map.values());
     
-    // Set isBatchUncloseable: must be CLOSED, distance <= 1, and PO count < 50
+    // Set isBatchUncloseable: must be CLOSED, distance <= 1, PO count < 50, and NOT all completed
     groups.forEach((g) => {
-      if (!g.isBatchOpen && g.seqNumber >= maxSeq - 1 && g.pos.length < 50) {
+      const isAllCompleted = g.pos.length > 0 && g.pos.every(p => p.statusCreditLimit === "APPROVED_DIREKSI");
+      if (!g.isBatchOpen && g.seqNumber >= maxSeq - 1 && g.pos.length < 50 && !isAllCompleted) {
         g.isBatchUncloseable = true;
       }
     });

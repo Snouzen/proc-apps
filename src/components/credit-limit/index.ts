@@ -7,3 +7,4 @@ export { CreditLimitFilters } from "./CreditLimitFilters";
 export { StatsCard } from "./StatsCard";
 export type { StatsCardItem } from "./StatsCard";
 export { BatchAccordion } from "./BatchAccordion";
+export { CreditLimitMaintenance } from "./CreditLimitMaintenance";
