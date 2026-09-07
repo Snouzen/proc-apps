@@ -380,7 +380,7 @@ export function BatchAccordion({
                 <ActionButton
                   icon={CheckCircle2}
                   onClick={(e) => { e.stopPropagation(); meta?.onAction(po, "approveDireksi"); }}
-                  tooltip="Setujui Credit Limit (Direksi)"
+                  tooltip={!po.noNd?.trim() ? "Wajib isi No ND sebelum Approve (Direksi)" : "Setujui Credit Limit (Direksi)"}
                   variant="indigo"
                 />
                 <ActionButton

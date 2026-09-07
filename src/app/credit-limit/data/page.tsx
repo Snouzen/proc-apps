@@ -25,7 +25,6 @@ import {
   CreditLimitSearchBar,
   CreditLimitFilters,
   StatsCard,
-  CreditLimitMaintenance,
 } from "@/components/credit-limit";
 import { useCreditLimitFilters } from "@/hooks/useCreditLimitFilters";
 import { useCreditLimitData } from "@/hooks/useCreditLimitData";
@@ -34,9 +33,6 @@ import { usePODetail } from "@/hooks/usePODetail";
 const helper = createColumnHelper<any>();
 
 export default function CreditLimitDataPage() {
-  // ── MAINTENANCE MODE ── Hapus baris di bawah ini untuk mengembalikan tampilan normal
-  return <CreditLimitMaintenance />;
-
   const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "outdate">("all");
   
   const filters = useCreditLimitFilters();

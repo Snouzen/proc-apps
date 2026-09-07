@@ -42,13 +42,15 @@ export async function POST(req: Request) {
       }
 
       const result = await prisma.$transaction(async (tx: any) => {
-        // 1. Find an OPEN batch that has NO completed (APPROVED_DIREKSI) POs
+        // 1. Find an OPEN batch that has NO approved (Pusat or Direksi) POs (Option A: batch belang/berjalan terkunci dari PO baru)
         let batch = await tx.creditLimitBatch.findFirst({
           where: {
             status: "OPEN",
             PurchaseOrders: {
               none: {
-                statusCreditLimit: "APPROVED_DIREKSI",
+                statusCreditLimit: {
+                  in: ["APPROVED", "APPROVED_DIREKSI"],
+                },
               },
             },
           },
@@ -137,6 +139,27 @@ export async function POST(req: Request) {
       if (safeRole !== "pusat") {
         return NextResponse.json({ error: "Hanya Pusat yang dapat melakukan aksi ini" }, { status: 403 });
       }
+
+      // Validasi: Seluruh PO wajib memiliki nomor Nota Dinas (ND) sebelum disetujui Direksi
+      const missingNdPos = await prisma.purchaseOrder.findMany({
+        where: {
+          id: { in: poIds },
+          OR: [
+            { noNd: null },
+            { noNd: "" }
+          ]
+        },
+        select: { noPo: true }
+      });
+
+      if (missingNdPos.length > 0) {
+        const sampleList = missingNdPos.slice(0, 3).map((p: any) => p.noPo).join(", ");
+        const moreCount = missingNdPos.length > 3 ? ` dan ${missingNdPos.length - 3} PO lainnya` : "";
+        return NextResponse.json({
+          error: `Terdapat ${missingNdPos.length} PO yang belum memiliki nomor Nota Dinas (ND) (${sampleList}${moreCount}). Lengkapi nomor ND terlebih dahulu sebelum persetujuan Direksi.`
+        }, { status: 400 });
+      }
+
       const result = await prisma.$transaction(async (tx: any) => {
         const updateRes = await tx.purchaseOrder.updateMany({
           where: { id: { in: poIds } },
@@ -184,8 +207,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, data: po });
     }
 
-    // ── APPROVE DIREKSI ────────────────────────────────────────────────
+    // ── APPROVE DIREKSI (Wajib No ND) ──────────────────────────────────
     if (action === "approveDireksi") {
+      const currentPo = await prisma.purchaseOrder.findUnique({
+        where: { id: poId },
+        select: { statusCreditLimit: true, noNd: true, noPo: true },
+      });
+      if (!currentPo) return NextResponse.json({ error: "PO tidak ditemukan" }, { status: 404 });
+      if (currentPo.statusCreditLimit === "APPROVED_DIREKSI") {
+        return NextResponse.json({ error: "PO sudah disetujui Direksi (Completed)" }, { status: 400 });
+      }
+
+      // Validasi: No ND wajib diisi sebelum disetujui Direksi
+      if (!currentPo.noNd || !currentPo.noNd.trim()) {
+        return NextResponse.json({
+          error: `PO #${currentPo.noPo} belum memiliki nomor Nota Dinas (ND). Harap lengkapi nomor ND terlebih dahulu sebelum disetujui Direksi.`
+        }, { status: 400 });
+      }
+
       const po = await prisma.$transaction(async (tx: any) => {
         const updatedPo = await tx.purchaseOrder.update({
           where: { id: poId },
@@ -211,7 +250,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, data: po });
     }
 
-    // ── REJECT ─────────────────────────────────────────────────────────
+    // ── REJECT (Rule 4: PO otomatis keluar dari batch & kembali ke Data page) ────
     if (action === "reject") {
       const currentPo = await prisma.purchaseOrder.findUnique({ where: { id: poId } });
       if (!currentPo) return NextResponse.json({ error: "PO not found" }, { status: 404 });
@@ -219,26 +258,45 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "PO yang sudah disetujui Direksi (Completed) tidak dapat ditolak" }, { status: 400 });
       }
 
-      if (currentPo.statusCreditLimit === "REQUESTED") {
-        // Rejected by Pusat -> Reset PO, remove from batch (goes back to Data page)
-        const po = await prisma.purchaseOrder.update({
+      const originalBatchId = currentPo.creditLimitBatchId;
+
+      const result = await prisma.$transaction(async (tx: any) => {
+        // Lepaskan PO dari batch dan set status REJECTED
+        const po = await tx.purchaseOrder.update({
           where: { id: poId },
           data: {
             statusCreditLimit: "REJECTED",
             creditLimitBatchId: null,
+            ...(remarks ? { remarksCreditLimit: remarks } : {}),
           },
         });
-        return NextResponse.json({ success: true, data: po });
-      } else {
-        // Rejected by Direksi -> Stay in batch, set status to REJECTED
-        const po = await prisma.purchaseOrder.update({
-          where: { id: poId },
-          data: {
-            statusCreditLimit: "REJECTED",
-          },
-        });
-        return NextResponse.json({ success: true, data: po });
-      }
+
+        // Jika batch asal masih memiliki PO dan seluruh sisanya sudah APPROVED_DIREKSI, auto-close batch
+        if (originalBatchId) {
+          const remainingCount = await tx.purchaseOrder.count({
+            where: { creditLimitBatchId: originalBatchId },
+          });
+
+          if (remainingCount > 0) {
+            const pendingCount = await tx.purchaseOrder.count({
+              where: {
+                creditLimitBatchId: originalBatchId,
+                statusCreditLimit: { not: "APPROVED_DIREKSI" },
+              },
+            });
+            if (pendingCount === 0) {
+              await tx.creditLimitBatch.update({
+                where: { id: originalBatchId },
+                data: { status: "CLOSED" },
+              });
+            }
+          }
+        }
+
+        return po;
+      });
+
+      return NextResponse.json({ success: true, data: result });
     }
 
     // ── RE-REQUEST (Dari halaman approval untuk PO yang ditolak Direksi) 
@@ -313,7 +371,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, data: po });
     }
 
-    // ── CLOSE BATCH (MANUAL) ─────────────────────────────────────────
+    // ── CLOSE BATCH (MANUAL - Rule 2: Syarat seluruh PO wajib APPROVED_DIREKSI) ──
     if (action === "closeBatch") {
       if (safeRole !== "pusat") {
         return NextResponse.json({ error: "Hanya Pusat yang dapat menutup batch" }, { status: 403 });
@@ -324,6 +382,9 @@ export async function POST(req: Request) {
       }
       const batch = await prisma.creditLimitBatch.findUnique({
         where: { batchCode },
+        include: {
+          PurchaseOrders: { select: { statusCreditLimit: true } },
+        },
       });
       if (!batch) {
         return NextResponse.json({ error: "Batch tidak ditemukan" }, { status: 404 });
@@ -331,6 +392,15 @@ export async function POST(req: Request) {
       if (batch.status === "CLOSED") {
         return NextResponse.json({ error: "Batch sudah ditutup" }, { status: 400 });
       }
+
+      // Rule 2: Validasi seluruh PO wajib APPROVED_DIREKSI
+      const isAllApprovedDireksi = batch.PurchaseOrders.length > 0 && batch.PurchaseOrders.every((p: any) => p.statusCreditLimit === "APPROVED_DIREKSI");
+      if (!isAllApprovedDireksi) {
+        return NextResponse.json({
+          error: `Batch ${batchCode} belum dapat ditutup karena masih ada PO yang belum disetujui Direksi (Approved Direksi).`
+        }, { status: 400 });
+      }
+
       await prisma.creditLimitBatch.update({
         where: { id: batch.id },
         data: { status: "CLOSED" },

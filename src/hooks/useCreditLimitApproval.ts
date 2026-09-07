@@ -89,6 +89,17 @@ export function useCreditLimitApproval({
       confirmBtnText = "Ya, Tolak!";
     }
 
+    // Validasi Direksi: Nomor ND wajib diisi
+    if (action === "approveDireksi" && (!po.noNd || !po.noNd.trim())) {
+      Swal.fire({
+        icon: "warning",
+        title: "Nomor ND Wajib Diisi",
+        text: `PO #${po.noPo} belum memiliki nomor Nota Dinas (ND). Harap isi nomor ND terlebih dahulu sebelum disetujui Direksi.`,
+        confirmButtonColor: "#f59e0b",
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: confirmText,
       text: `PO #${po.noPo} akan di-${isApprove ? 'setujui' : isReRequest ? 'ajukan ulang' : 'tolak'} untuk Credit Limit.`,
@@ -111,7 +122,8 @@ export function useCreditLimitApproval({
       });
 
       if (!res.ok) {
-        throw new Error("Gagal memproses approval");
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || "Gagal memproses approval");
       }
 
       Swal.fire({
@@ -122,8 +134,8 @@ export function useCreditLimitApproval({
       });
 
       setPoData((prev) => {
-        // Jika reject dan status REQUESTED (pusat), hilangkan dari tabel (hapus batch)
-        if (action === "reject" && po.statusCreditLimit === "REQUESTED") {
+        // Rule 4: Jika reject (baik oleh pusat maupun direksi), hilangkan dari tabel accordion approval
+        if (action === "reject") {
           return prev.filter(item => item.id !== po.id);
         }
         
@@ -138,8 +150,8 @@ export function useCreditLimitApproval({
             : item
         );
       });
-    } catch (err) {
-      Swal.fire({ icon: "error", title: "Oops...", text: "Terjadi kesalahan sistem" });
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "Gagal", text: err?.message || "Terjadi kesalahan sistem" });
     }
   };
 
@@ -231,6 +243,20 @@ export function useCreditLimitApproval({
     const action = hasRequested ? "approveAll" : "approveDireksiAll";
     const titleText = hasRequested ? "Approve Semua PO (Pusat)?" : "Approve Semua PO (Direksi)?";
 
+    // Validasi Direksi: Seluruh PO wajib memiliki nomor Nota Dinas (ND)
+    if (action === "approveDireksiAll") {
+      const missingNd = pos.filter(p => !p.noNd || !p.noNd.trim());
+      if (missingNd.length > 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "Nomor ND Belum Lengkap",
+          text: `Terdapat ${missingNd.length} PO dalam batch ini yang belum memiliki nomor Nota Dinas (ND). Harap lengkapi nomor ND untuk semua PO sebelum disetujui Direksi.`,
+          confirmButtonColor: "#f59e0b",
+        });
+        return;
+      }
+    }
+
     const result = await Swal.fire({
       title: titleText,
       text: `Anda akan menyetujui ${pos.length} PO dalam batch ${batchCode}.`,
@@ -253,7 +279,8 @@ export function useCreditLimitApproval({
       });
 
       if (!res.ok) {
-        throw new Error("Gagal memproses credit limit");
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || "Gagal memproses credit limit");
       }
 
       Swal.fire({
@@ -271,8 +298,8 @@ export function useCreditLimitApproval({
             : item
         )
       );
-    } catch (err) {
-      Swal.fire({ icon: "error", title: "Oops...", text: "Terjadi kesalahan sistem" });
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "Gagal", text: err?.message || "Terjadi kesalahan sistem" });
     }
   };
 
@@ -506,6 +533,23 @@ export function useCreditLimitApproval({
   };
 
   const handleCloseBatch = async (batchCode: string) => {
+    // Rule 2: Pre-check apakah seluruh PO dalam batch sudah APPROVED_DIREKSI
+    const targetGroup = batchGroups.find((g) => g.batchCode === batchCode);
+    const isAllApprovedDireksi =
+      targetGroup &&
+      targetGroup.pos.length > 0 &&
+      targetGroup.pos.every((p: any) => p.statusCreditLimit === "APPROVED_DIREKSI");
+
+    if (!isAllApprovedDireksi) {
+      Swal.fire({
+        icon: "warning",
+        title: "Belum Dapat Ditutup",
+        text: `Batch ${batchCode} belum dapat ditutup karena masih ada PO yang belum disetujui Direksi (Approved Direksi).`,
+        confirmButtonColor: "#f59e0b",
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: "Close Batch?",
       text: `Batch ${batchCode} akan ditutup. PO baru yang diajukan credit limit akan masuk ke batch berikutnya.`,
