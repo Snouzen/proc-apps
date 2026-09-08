@@ -32,6 +32,23 @@ export function MultiSelectFilterDropdown({
     (o) => o && o.toLowerCase().includes(inputValue.toLowerCase())
   );
 
+  const isAllSelected =
+    value.includes("__ALL__") ||
+    (options.length > 0 && options.every((o) => value.includes(o)));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      onChange([]);
+    } else if (inputValue.trim()) {
+      const combined = Array.from(
+        new Set([...value.filter((v) => v !== "__ALL__"), ...filteredOptions])
+      );
+      onChange(combined);
+    } else {
+      onChange(["__ALL__"]);
+    }
+  };
+
   return (
     <div className={`relative w-full ${open ? "z-50" : "z-0"}`} ref={wrapperRef}>
       <div
@@ -40,15 +57,15 @@ export function MultiSelectFilterDropdown({
       >
         {value.length > 0 && (
           <div className="flex flex-wrap gap-1 w-full mb-1">
-            {value.map((v) => (
-              <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold rounded-md max-w-full overflow-hidden">
-                <span className="truncate max-w-[150px]">{v}</span>
+            {isAllSelected ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold rounded-md max-w-full overflow-hidden">
+                <span className="truncate">Semua Terpilih ({options.length || value.length})</span>
                 {!disabled && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onChange(value.filter((val) => val !== v));
+                      onChange([]);
                     }}
                     className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors shrink-0"
                   >
@@ -56,7 +73,60 @@ export function MultiSelectFilterDropdown({
                   </button>
                 )}
               </span>
-            ))}
+            ) : value.length > 2 ? (
+              <>
+                {value.slice(0, 2).map((v) => (
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold rounded-md max-w-full overflow-hidden">
+                    <span className="truncate max-w-[120px]">{v}</span>
+                    {!disabled && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onChange(value.filter((val) => val !== v));
+                        }}
+                        className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors shrink-0"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </span>
+                ))}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold rounded-md shrink-0">
+                  <span>+{value.length - 2} lainnya</span>
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChange([]);
+                      }}
+                      className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors shrink-0 ml-0.5"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </span>
+              </>
+            ) : (
+              value.map((v) => (
+                <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold rounded-md max-w-full overflow-hidden">
+                  <span className="truncate max-w-[150px]">{v}</span>
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChange(value.filter((val) => val !== v));
+                      }}
+                      className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors shrink-0"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </span>
+              ))
+            )}
           </div>
         )}
         <div className="flex items-center justify-between w-full">
@@ -91,18 +161,35 @@ export function MultiSelectFilterDropdown({
       {open && !disabled && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent scrollbar-thumb-gray-200 dark:scrollbar-thumb-slate-700 rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl animate-in fade-in slide-in-from-top-1">
           <ul className="flex flex-col gap-0.5">
-            {value.length > 0 && (
-              <li
-                className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer flex items-center transition-colors border-b border-gray-50 dark:border-slate-700 mb-1"
-                onClick={() => {
-                  setInputValue("");
-                  onChange([]);
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <X size={14} />
-                  Hapus Semua Pilihan ({value.length})
-                </div>
+            {/* Action Bar: Pilih Semua & Hapus Semua */}
+            {options.length > 0 && (
+              <li className="px-2 py-1.5 flex items-center justify-between border-b border-gray-100 dark:border-slate-700 mb-1 gap-1">
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                >
+                  <Check size={12} strokeWidth={2.5} />
+                  {isAllSelected
+                    ? "Batalkan Semua"
+                    : inputValue.trim()
+                      ? `Pilih Hasil Cari (${filteredOptions.length})`
+                      : `Pilih Semua (${options.length})`}
+                </button>
+
+                {value.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputValue("");
+                      onChange([]);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                  >
+                    <X size={12} />
+                    Hapus Pilihan
+                  </button>
+                )}
               </li>
             )}
 
@@ -111,7 +198,7 @@ export function MultiSelectFilterDropdown({
                 className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 cursor-pointer flex items-center transition-colors mt-1"
                 onClick={() => {
                   if (!value.includes(inputValue)) {
-                    onChange([...value, inputValue]);
+                    onChange([...value.filter((v) => v !== "__ALL__"), inputValue]);
                   }
                   setInputValue("");
                 }}
@@ -124,35 +211,36 @@ export function MultiSelectFilterDropdown({
             )}
 
             {filteredOptions.length > 0 ? (
-              <>
-                <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
-                {filteredOptions.map((opt, i) => {
-                  const isSelected = value.includes(opt);
-                  return (
-                    <li
-                      key={i}
-                      onClick={() => {
-                        if (isSelected) {
-                          onChange(value.filter((v) => v !== opt));
+              filteredOptions.map((opt, i) => {
+                const isSelected = isAllSelected || value.includes(opt);
+                return (
+                  <li
+                    key={i}
+                    onClick={() => {
+                      if (isSelected) {
+                        if (isAllSelected) {
+                          onChange(options.filter((v) => v !== opt));
                         } else {
-                          onChange([...value, opt]);
+                          onChange(value.filter((v) => v !== opt));
                         }
-                        setInputValue("");
-                      }}
-                      className={`px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-between transition-colors ${
-                        isSelected ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate pr-2">
-                        <div className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-emerald-600 border-emerald-600 text-white dark:bg-emerald-500 dark:border-emerald-500" : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"}`}>
-                          {isSelected && <Check size={10} strokeWidth={3} />}
-                        </div>
-                        <span className="truncate">{opt}</span>
+                      } else {
+                        onChange([...value.filter((v) => v !== "__ALL__"), opt]);
+                      }
+                      setInputValue("");
+                    }}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer flex items-center justify-between transition-colors ${
+                      isSelected ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate pr-2">
+                      <div className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-emerald-600 border-emerald-600 text-white dark:bg-emerald-500 dark:border-emerald-500" : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"}`}>
+                        {isSelected && <Check size={10} strokeWidth={3} />}
                       </div>
-                    </li>
-                  );
-                })}
-              </>
+                      <span className="truncate">{opt}</span>
+                    </div>
+                  </li>
+                );
+              })
             ) : (
               !inputValue && <li className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">Tidak ada data yang tersedia</li>
             )}

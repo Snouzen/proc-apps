@@ -223,6 +223,59 @@ export async function GET(request: Request) {
         }
         if (vals.length === 0) continue;
 
+        if (vals.includes("__ALL__")) {
+          const emptyVals = ["", "-", "Unknown", "UNKNOWN"];
+          if (key === "company" || key === "inisial") {
+            const dbKey = key === "company" ? "namaPt" : "inisial";
+            AND.push({
+              RitelModern: {
+                is: { [dbKey]: { notIn: emptyVals } },
+              },
+            });
+          } else if (key === "siteArea") {
+            AND.push({
+              UnitProduksi: {
+                is: { siteArea: { notIn: emptyVals } },
+              },
+            });
+          } else if (key === "regional") {
+            AND.push({
+              OR: [
+                { regional: { notIn: emptyVals } },
+                {
+                  UnitProduksi: {
+                    is: { namaRegional: { notIn: emptyVals } },
+                  },
+                },
+              ],
+            });
+          } else if (key === "products" || key === "namaProduk") {
+            AND.push({
+              Items: {
+                some: {
+                  Product: { isNot: null },
+                },
+              },
+            });
+          } else if (
+            key === "noPo" ||
+            key === "tujuan" ||
+            key === "tujuanDetail" ||
+            key === "noInvoice" ||
+            key === "linkPo" ||
+            key === "remarks" ||
+            key === "buktiTagih" ||
+            key === "buktiBayar" ||
+            key === "namaSupir" ||
+            key === "platNomor"
+          ) {
+            const dbKey = key === "tujuan" ? "tujuanDetail" : key;
+            AND.push({ [dbKey]: { not: null } });
+            AND.push({ [dbKey]: { notIn: emptyVals } });
+          }
+          continue;
+        }
+
         const isBool = (v: string) => {
           const norm = v.toLowerCase();
           return ["1", "true", "ya", "yes", "y"].includes(norm)

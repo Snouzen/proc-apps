@@ -398,6 +398,10 @@ export function useReport() {
         if (!Array.isArray(vArr) || vArr.length === 0) continue;
         const key = String(k);
         const cell = upperClean(String((r as any)[key] ?? ""));
+        if (vArr.includes("__ALL__")) {
+          if (!cell || cell === "-" || cell === "UNKNOWN") return false;
+          continue;
+        }
         const match = vArr.some(v => cell.includes(upperClean(v)));
         if (!match) return false;
       }
@@ -408,12 +412,19 @@ export function useReport() {
   const pageRows = filteredRows;
 
   const getOptionsForColumn = useCallback((colId: string) => {
-    const mappedColId = colId === "namaProduk" ? "products" : colId === "tujuanDetail" ? "tujuan" : colId;
+    const mappedColId = colId === "namaProduk" ? "products" : colId === "tujuanDetail" ? "tujuanDetail" : colId;
     const activeFilters = Object.entries(colFilters).filter(([k, v]) => String(k) !== String(colId) && Array.isArray(v) && v.length > 0);
     const validCombos = masterCombinations.filter((combo) => {
       return activeFilters.every(([k, vArr]) => {
-        const comboKey = k === "namaProduk" ? "products" : k === "tujuanDetail" ? "tujuan" : k;
-        const comboVal = combo[comboKey];
+        const comboKey = k === "namaProduk" ? "products" : k === "tujuanDetail" ? "tujuanDetail" : k;
+        const comboVal = combo[comboKey] ?? (comboKey === "tujuanDetail" ? combo["tujuan"] : undefined);
+        if (vArr.includes("__ALL__")) {
+          if (Array.isArray(comboVal)) {
+            return comboVal.length > 0;
+          }
+          const str = String(comboVal ?? "").trim().toUpperCase();
+          return Boolean(str && str !== "-" && str !== "UNKNOWN");
+        }
         if (Array.isArray(comboVal)) {
           return vArr.some((fv) => {
             const filterValue = upperClean(fv);
@@ -430,7 +441,7 @@ export function useReport() {
 
     const uniqueValues = new Set<string>();
     validCombos.forEach((combo) => {
-      const val = combo[mappedColId];
+      const val = combo[mappedColId] ?? (mappedColId === "tujuanDetail" ? combo["tujuan"] : undefined);
       if (Array.isArray(val)) {
         val.forEach((v) => { const str = String(v || "").trim(); if (str) uniqueValues.add(str); });
       } else {
