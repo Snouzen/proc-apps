@@ -16,12 +16,15 @@ import {
   startOfDay,
 } from "date-fns";
 import { id } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface DateInputHybridProps {
   value: string; // YYYY-MM-DD
   onChange: (date: string) => void;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
+  disabled?: boolean;
   minDate?: string; // YYYY-MM-DD
   maxDate?: string; // YYYY-MM-DD
 }
@@ -31,6 +34,8 @@ export default function DateInputHybrid({
   onChange,
   placeholder = "DD/MM/YYYY",
   className = "",
+  inputClassName,
+  disabled = false,
   minDate,
   maxDate,
 }: DateInputHybridProps) {
@@ -168,11 +173,15 @@ export default function DateInputHybrid({
             onBlur={handleBlur}
             placeholder={placeholder}
             suppressHydrationWarning
-            className={`w-full pl-3 pr-10 py-2 border rounded-lg text-sm outline-none transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400
-              ${isError 
+            disabled={disabled}
+            className={cn(
+              "w-full pl-3 pr-9 border rounded-lg outline-none transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400 font-bold",
+              inputClassName || "py-2 text-sm",
+              isError 
                 ? "border-rose-500 focus:ring-2 focus:ring-rose-500/20" 
-                : "border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-              }`}
+                : "border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500",
+              disabled && "opacity-60 cursor-not-allowed bg-slate-100 dark:bg-slate-700"
+            )}
           />
           <div className="absolute right-2 flex items-center gap-1">
             {inputValue && (

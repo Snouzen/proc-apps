@@ -23,6 +23,7 @@ import {
   Target,
   ShieldCheck,
   ScrollText,
+  Presentation,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -84,6 +85,7 @@ export default function Sidebar({
   const [rekonMenuOpen, setRekonMenuOpen] = useState(false);
   const [creditLimitMenuOpen, setCreditLimitMenuOpen] = useState(false);
   const [actionPlanOpen, setActionPlanOpen] = useState(false);
+  const [reportMenuOpen, setReportMenuOpen] = useState(false);
   const [role, setRole] = useState<
     "pusat" | "rm" | "sitearea" | "spb_dki" | "magang" | null
   >(initialRole || null);
@@ -107,6 +109,9 @@ export default function Sidebar({
     }
     if (pathname.includes("/credit-limit")) {
       setCreditLimitMenuOpen(true);
+    }
+    if (pathname.includes("/report")) {
+      setReportMenuOpen(true);
     }
     if (pathname === "/schedule" || pathname === "/need-assign") {
       setActionPlanOpen(true);
@@ -186,6 +191,19 @@ export default function Sidebar({
     },
   ];
 
+  const reportSubItems = [
+    {
+      name: "Report PO",
+      icon: <FileText size={16} />,
+      path: "/report",
+    },
+    {
+      name: "Realisasi Pemenuhan",
+      icon: <Presentation size={16} />,
+      path: "/report/realisasi",
+    },
+  ];
+
   const branchSubItems = [
     {
       name: "Delivery Calendar",
@@ -254,7 +272,7 @@ export default function Sidebar({
               className="block transition-opacity hover:opacity-80"
             >
               <img
-                src="https://mytkqzkpywdrpnrgafss.supabase.co/storage/v1/object/public/img_logo/logo-bulog/logo-bulog.png"
+                src="https://rzjlkpumrsjpafduhlgt.supabase.co/storage/v1/object/public/logo-img/logo-bulog/logo-bulog.png"
                 alt="Bulog Logo"
                 className="h-10 w-auto object-contain"
               />
@@ -510,7 +528,63 @@ export default function Sidebar({
           )}
 
           {/* 8. Report */}
-          {role !== "magang" && <RenderLink item={reportItem} pathname={pathname} isOpen={isOpen} />}
+          {role !== "magang" && (
+            role === "pusat" ? (
+              <div className="space-y-1">
+                <div
+                  onClick={() =>
+                    isOpen ? setReportMenuOpen(!reportMenuOpen) : setIsOpen(true)
+                  }
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+                ${pathname.includes("/report") ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600 font-bold" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <BarChart3 size={20} />
+                    </div>
+                    {isOpen && (
+                      <span className="text-sm whitespace-nowrap">
+                        Report
+                      </span>
+                    )}
+                  </div>
+                  {isOpen && (
+                    <span
+                      className={`transition-transform duration-200 ${reportMenuOpen ? "rotate-90" : ""}`}
+                    >
+                      <ChevronRight size={16} />
+                    </span>
+                  )}
+                </div>
+
+                <div className={`grid transition-all duration-300 ease-in-out ${isOpen && reportMenuOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
+                  <div className="overflow-hidden">
+                    <div className="space-y-1 ml-4 border-l-2 border-slate-100 dark:border-slate-700">
+                      {reportSubItems.map((sub) => {
+                        const subActive = pathname === sub.path;
+                        return (
+                          <Link
+                            key={sub.name}
+                            href={sub.path}
+                            prefetch={false}
+                            className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer transition-all
+                          ${subActive ? "text-amber-600 font-bold" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+                          >
+                            <span className="shrink-0">{sub.icon}</span>
+                            <span className="text-xs whitespace-nowrap">
+                              {sub.name}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <RenderLink item={reportItem} pathname={pathname} isOpen={isOpen} />
+            )
+          )}
 
           {/* 8. Master Data */}
           {role !== "sitearea" && role !== "magang" && (

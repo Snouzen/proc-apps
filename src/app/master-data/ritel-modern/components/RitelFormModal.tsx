@@ -42,6 +42,8 @@ export default function RitelFormModal({
   setLogoInisial,
   setDataRitel,
 }: RitelFormModalProps) {
+  const [provinsi, setProvinsi] = React.useState("");
+
   if (!isOpen) return null;
 
   return (
@@ -71,7 +73,7 @@ export default function RitelFormModal({
           <div
             className="relative overflow-hidden transition-all duration-300"
             style={{
-              minHeight: modalMode === "addInisial" ? (isRm ? "180px" : "320px") : "120px",
+              minHeight: modalMode === "addInisial" ? (isRm ? "240px" : "380px") : "120px",
             }}
           >
             <div
@@ -106,6 +108,32 @@ export default function RitelFormModal({
                   onChange={(e) => setInisial(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200"
                 />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center justify-between">
+                  <span>Provinsi</span>
+                  <span className="text-[9px] font-normal lowercase">(opsional - untuk laporan realisasi)</span>
+                </label>
+                <input
+                  type="text"
+                  list="modal-provinsi-options"
+                  placeholder="Contoh: JAWA TENGAH, DKI JAKARTA"
+                  value={provinsi}
+                  onChange={(e) => setProvinsi(e.target.value.toUpperCase())}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-semibold text-slate-700 dark:text-slate-200 uppercase"
+                />
+                <datalist id="modal-provinsi-options">
+                  <option value="DKI JAKARTA" />
+                  <option value="JAWA BARAT" />
+                  <option value="JAWA TENGAH" />
+                  <option value="JAWA TIMUR" />
+                  <option value="BANTEN" />
+                  <option value="DI YOGYAKARTA" />
+                  <option value="SULAWESI SELATAN" />
+                  <option value="SUMATERA UTARA" />
+                  <option value="BALI" />
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -219,6 +247,7 @@ export default function RitelFormModal({
                   const payload = {
                     namaPt: selectedCompany,
                     inisial: modalMode === "addCompany" ? null : inisial,
+                    provinsi: modalMode === "addCompany" ? undefined : (provinsi.trim() || undefined),
                     logoPt: logoPt || undefined,
                     logoInisial: logoInisial || undefined,
                   };
@@ -226,6 +255,7 @@ export default function RitelFormModal({
                   onClose();
                   setSelectedCompany("");
                   setInisial("");
+                  setProvinsi("");
                   setLogoPt("");
                   setLogoInisial("");
                   setDataRitel((prev) => [result, ...prev]);

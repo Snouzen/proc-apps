@@ -123,6 +123,7 @@ model AuditLog {
 model RitelModern {
   id            String          @id
   namaPt        String
+  provinsi      String?
   inisial       String?
   tujuan        String?
   logoPt        String? // URL Logo Perusahaan
@@ -135,6 +136,7 @@ model RitelModern {
   Promos        Promo[]
 
   @@index([namaPt]) // company grouping/filtering
+  @@index([provinsi])
   @@map("ritel_modern")
 }
 
@@ -261,4 +263,37 @@ model CreditLimitBatch {
 
   @@index([status])
   @@map("credit_limit_batches")
+}
+
+model RealisasiPemenuhan {
+  id               String                  @id @default(cuid())
+  tanggal          DateTime
+  judul            String                  @default("PROGRES PEMENUHAN RITEL MODERN")
+  subjudul         String?
+  sumberCatatan    String?
+  totalRealisasiKg Float                   @default(0)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  createdBy        String?
+  items            RealisasiPemenuhanItem[]
+
+  @@index([tanggal])
+  @@map("realisasi_pemenuhan")
+}
+
+model RealisasiPemenuhanItem {
+  id          String             @id @default(cuid())
+  realisasiId String
+  ritelId     String?
+  companyName String?
+  provinsi    String?
+  namaRitel   String             // Inisial ritel (contoh: INDOMARET, BORMA, ALFAMIDI)
+  logoUrl     String?
+  volumeKg    Float              @default(0)
+  urutan      Int                @default(0)
+
+  Realisasi   RealisasiPemenuhan @relation(fields: [realisasiId], references: [id], onDelete: Cascade)
+
+  @@index([realisasiId])
+  @@map("realisasi_pemenuhan_items")
 }

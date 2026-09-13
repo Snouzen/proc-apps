@@ -61,6 +61,7 @@ export default function RitelModernPage() {
     originalNamaPt?: string;
     inisial: string | null;
     originalInisial: string | null;
+    provinsi?: string | null;
     logoPt?: string | null;
     logoInisial?: string | null;
     ptOnly?: boolean;
@@ -377,6 +378,7 @@ export default function RitelModernPage() {
           string,
           {
             logoInisial?: string | null;
+            provinsi?: string | null;
             stores: { id: string; tujuan: string }[];
           }
         >,
@@ -394,11 +396,15 @@ export default function RitelModernPage() {
     // Skip empty inisial placeholder if there are no stores attached
     if (alias !== "—" || hasStore) {
       if (!group.inisials[alias]) {
-        group.inisials[alias] = { logoInisial: item.logoInisial, stores: [] };
+        group.inisials[alias] = { logoInisial: item.logoInisial, provinsi: item.provinsi, stores: [] };
       }
       // Update logoInisial if current item has it
       if (item.logoInisial && !group.inisials[alias].logoInisial) {
         group.inisials[alias].logoInisial = item.logoInisial;
+      }
+      // Update provinsi if current item has it
+      if (item.provinsi && !group.inisials[alias].provinsi) {
+        group.inisials[alias].provinsi = item.provinsi;
       }
 
       if (hasStore) {
@@ -759,10 +765,18 @@ export default function RitelModernPage() {
                   variant="submit"
                   onClick={async () => {
                     try {
+                      const existingGroup = (dataRitel || []).find(
+                        (r) =>
+                          r.namaPt === addStoreFor.namaPt &&
+                          (r.inisial || null) === (addStoreFor.inisial || null),
+                      );
                       const payload = {
                         namaPt: addStoreFor.namaPt,
                         inisial: addStoreFor.inisial || null,
                         tujuan: newStoreForName,
+                        provinsi: existingGroup?.provinsi || null,
+                        logoPt: existingGroup?.logoPt || null,
+                        logoInisial: existingGroup?.logoInisial || null,
                       };
                       const result = await saveRitel(payload);
                       setDataRitel((prev) => [result, ...prev]);
@@ -905,8 +919,19 @@ export default function RitelModernPage() {
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black tracking-widest uppercase inline-block mb-1 border border-slate-200/50 dark:border-slate-600/50">
-                                {alias || "—"}
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                <div className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black tracking-widest uppercase inline-block border border-slate-200/50 dark:border-slate-600/50">
+                                  {alias || "—"}
+                                </div>
+                                {data.provinsi ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[9px] font-extrabold uppercase tracking-wider border border-blue-200 dark:border-blue-800/50">
+                                    📍 {data.provinsi}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[9px] font-medium border border-slate-200/50 dark:border-slate-700">
+                                    Belum ada provinsi
+                                  </span>
+                                )}
                               </div>
                               <div className="text-xs text-slate-400 dark:text-slate-500 font-medium">
                                 {data.stores.length} Distribusi Toko
@@ -940,6 +965,7 @@ export default function RitelModernPage() {
                                   inisial: alias === "—" ? null : alias,
                                   originalInisial:
                                     alias === "—" ? null : alias,
+                                  provinsi: data.provinsi || masterGroup?.provinsi || "",
                                   logoPt: masterGroup?.logoPt || null,
                                   logoInisial:
                                     masterGroup?.logoInisial || null,
@@ -1227,19 +1253,49 @@ export default function RitelModernPage() {
               )}
 
               {!editCompany.ptOnly && (
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    Inisial
-                  </label>
-                  <input
-                    type="text"
-                    value={editCompany.inisial ?? ""}
-                    onChange={(e) =>
-                      setEditCompany({ ...editCompany, inisial: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      Inisial
+                    </label>
+                    <input
+                      type="text"
+                      value={editCompany.inisial ?? ""}
+                      onChange={(e) =>
+                        setEditCompany({ ...editCompany, inisial: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center justify-between">
+                      <span>Provinsi</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Digunakan untuk Laporan Realisasi</span>
+                    </label>
+                    <input
+                      type="text"
+                      list="edit-provinsi-options"
+                      placeholder="Contoh: JAWA TENGAH, DKI JAKARTA"
+                      value={editCompany.provinsi ?? ""}
+                      onChange={(e) =>
+                        setEditCompany({ ...editCompany, provinsi: e.target.value.toUpperCase() })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-bold text-slate-800 dark:text-slate-200 uppercase"
+                    />
+                    <datalist id="edit-provinsi-options">
+                      <option value="DKI JAKARTA" />
+                      <option value="JAWA BARAT" />
+                      <option value="JAWA TENGAH" />
+                      <option value="JAWA TIMUR" />
+                      <option value="BANTEN" />
+                      <option value="DI YOGYAKARTA" />
+                      <option value="SULAWESI SELATAN" />
+                      <option value="SUMATERA UTARA" />
+                      <option value="BALI" />
+                    </datalist>
+                  </div>
+                </>
               )}
 
               <div className="space-y-3">
@@ -1301,6 +1357,7 @@ export default function RitelModernPage() {
                           newNamaPt: editCompany.namaPt,      // Send new name to update it
                           inisial: editCompany.originalInisial, // original value to find rows
                           newInisial: editCompany.inisial, // new value to update
+                          provinsi: editCompany.provinsi || null,
                           logoPt: editCompany.logoPt,
                           logoInisial: editCompany.logoInisial,
                         }),
@@ -1327,6 +1384,7 @@ export default function RitelModernPage() {
                               namaPt: editCompany.namaPt,
                               logoPt: editCompany.logoPt,
                               inisial: isTargetInisial ? (editCompany.inisial || null) : x.inisial,
+                              provinsi: isTargetInisial ? (editCompany.provinsi || null) : x.provinsi,
                               logoInisial: isTargetInisial ? (editCompany.logoInisial || null) : x.logoInisial,
                             };
                           }

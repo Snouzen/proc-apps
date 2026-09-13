@@ -11,6 +11,9 @@ export const RitelCreateSchema = z.object({
   namaPt: z.string().min(1, "namaPt wajib diisi").transform((v) => v.trim()),
   inisial: z.string().nullable().optional(),
   tujuan: z.string().nullable().optional(),
+  provinsi: z.string().nullable().optional(),
+  logoPt: z.string().nullable().optional(),
+  logoInisial: z.string().nullable().optional(),
 });
 
 export const RitelPatchSchema = z.object({
@@ -19,6 +22,7 @@ export const RitelPatchSchema = z.object({
   newNamaPt: z.string().optional().transform((v) => v?.trim()),
   inisial: z.string().nullable().optional(),
   newInisial: z.string().nullable().optional(),
+  provinsi: z.string().nullable().optional(),
   logoPt: z.string().nullable().optional(),
   logoInisial: z.string().nullable().optional(),
 });

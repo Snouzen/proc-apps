@@ -11,7 +11,7 @@ Pada insiden sebelumnya, sistem lama mengalami kebocoran data di mana batch lama
 
 ---
 
-## 📜 5 ATURAN BISNIS BAKU (CORE RULES)
+## 📜 6 ATURAN BISNIS BAKU (CORE RULES)
 
 ### 1. Rule 1: Maksimal 50 PO per Batch (Hard Cap)
 * **Kapasitas**: Jumlah maksimal Purchase Order (PO) dalam satu batch adalah tepat **50 PO**.
@@ -50,7 +50,7 @@ Pada insiden sebelumnya, sistem lama mengalami kebocoran data di mana batch lama
   $$\text{creditLimitBatchId} = \text{null} \quad \& \quad \text{statusCreditLimit} = \text{"REJECTED"}$$
 * **Tampilan UI**:
   * PO langsung hilang dari accordion halaman `/credit-limit/approval`.
-  * PO kembali muncul di halaman `/credit-limit/data` dengan status `Rejected`.
+  * PO kembali muncul di halaman `/credit-limit/data` dengan status `Rejected` (selama memenuhi Rule 6, yaitu belum memiliki invoice).
 * **Pengajuan Ulang**: Ketika cabang mengajukan ulang PO tersebut di halaman Data, PO akan **mengikuti urutan batch baru yang sedang berjalan (sequence baru)**, dan tidak akan pernah kembali ke batch lama asalnya.
 * **Auto-Close Batch Asal**: Jika PO yang di-reject adalah satu-satunya PO yang tersisa/menggantung sehingga seluruh sisa PO di batch asal sudah `APPROVED_DIREKSI`, batch asal otomatis berstatus `CLOSED`.
 
@@ -61,6 +61,19 @@ Pada insiden sebelumnya, sistem lama mengalami kebocoran data di mana batch lama
 * **Approval Direksi (`APPROVED` $\rightarrow$ `APPROVED_DIREKSI`)**: Nomor ND **WAJIB terisi** (`noNd` tidak boleh `null` atau string kosong).
   * **Approve Satuan**: Jika `noNd` kosong, sistem memblokir persetujuan dan menampilkan warning untuk melengkapi nomor ND terlebih dahulu.
   * **Approve Semua Direksi**: Jika ada satu saja PO dalam batch yang belum ber-ND, sistem memblokir aksi *"Approve Semua (Direksi)"* dan meminta nomor ND dilengkapi untuk seluruh PO.
+
+---
+
+### 6. Rule 6: Syarat Mutlak PO Masuk Credit Limit Data (Punya Tgl Kirim & Belum Ada Invoice)
+* **Wajib Memiliki Tanggal Kirim**: Hanya PO yang sudah dijadwalkan pengirimannya (`tglkirim != null`) yang berhak masuk ke halaman `/credit-limit/data`.
+* **Pcs Kirim Bebas**: PO dengan `pcsKirim` yang belum memenuhi total PO tetap masuk selama tanggal kirim sudah terisi.
+* **Dilarang Keras Memiliki Invoice**: PO yang **sudah memiliki nomor invoice** (`noInvoice` bukan null / string kosong / `"-"` / `"Unknown"`) **DILARANG KERAS** masuk ke halaman `/credit-limit/data`.
+* **Implementasi Filter Ganda (Backend & Frontend)**:
+  * Backend API (`/api/po?group=credit_data`):
+    `{ tglkirim: { not: null }, OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }] }`
+  * Frontend Hook (`useCreditLimitData.ts`):
+    `eligible = list.filter((po) => !!po.tglkirim && isInvoiceEmpty(po.noInvoice));`
+* **Konsekuensi Penolakan (Reject) PO Ber-Invoice**: Jika sebuah PO yang sudah memiliki nomor invoice sempat masuk ke batch approval lalu ditolak (*Reject*) oleh Pusat/Direksi, PO tersebut akan dilepas dari batch (`creditLimitBatchId = null`). Karena PO tersebut memiliki invoice, ia **tidak akan pernah muncul kembali di halaman `/credit-limit/data`**, sehingga otomatis lenyap sepenuhnya dari seluruh modul Credit Limit.
 
 ---
 
@@ -79,10 +92,11 @@ Pada insiden sebelumnya, sistem lama mengalami kebocoran data di mana batch lama
 
 | Komponen | Path File | Tanggung Jawab Utama |
 | :--- | :--- | :--- |
-| **Backend API** | `src/app/api/po/credit-limit/route.ts` | Validasi transaksi pengajuan, penolakan, persetujuan Pusat/Direksi, auto-close, dan manual close. |
+| **Backend PO API** | `src/app/api/po/route.ts` | Filter query `group=credit_data` untuk membatasi hanya PO ber-tglkirim dan tanpa invoice. |
+| **Backend Credit API** | `src/app/api/po/credit-limit/route.ts` | Validasi transaksi pengajuan, penolakan, persetujuan Pusat/Direksi, auto-close, dan manual close. |
 | **Approval Hook** | `src/hooks/useCreditLimitApproval.ts` | Manajemen state accordion approval, pre-validasi client-side, dan SweetAlert alerts. |
 | **Approval UI** | `src/components/credit-limit/BatchAccordion.tsx` | Tampilan accordion, badge status (*Waiting Pusat*, *Waiting Direksi*, *Completed*), aksi tombol, dan tooltip. |
-| **Data Hook** | `src/hooks/useCreditLimitData.ts` | Pengajuan PO dari cabang (`handleAjukanCreditLimit`). |
+| **Data Hook** | `src/hooks/useCreditLimitData.ts` | Pengajuan PO dari cabang (`handleAjukanCreditLimit`) & filter ganda `isInvoiceEmpty`. |
 | **Shared Lib** | `src/lib/credit-limit.ts` | Helper due date zone, validasi remarks, dan tipe data bersama. |
 
 ---

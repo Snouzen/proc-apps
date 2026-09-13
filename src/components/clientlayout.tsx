@@ -41,6 +41,13 @@ export default function ClientLayout({
     }
   }, []);
 
+  // Auto-collapse sidebar on Realisasi Pemenuhan page for full view
+  useEffect(() => {
+    if (pathname === "/report/realisasi") {
+      setSidebarOpen(false);
+    }
+  }, [pathname]);
+
   const toggleTheme = () => {
     if (theme === "light") {
       setTheme("dark");

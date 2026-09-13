@@ -93,13 +93,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const { namaPt, inisial, tujuan } = parsed.data;
+    const { namaPt, inisial, tujuan, provinsi, logoPt, logoInisial } = parsed.data;
     const result = await prisma.ritelModern.create({
       data: {
         id: randomUUID(),
         namaPt,
         inisial: inisial ?? null,
         tujuan: tujuan ?? null,
+        provinsi: provinsi ?? null,
+        logoPt: logoPt ?? null,
+        logoInisial: logoInisial ?? null,
         updatedAt: new Date(),
       },
     });
@@ -127,7 +130,7 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
-    const { id, namaPt: originalNamaPt, newNamaPt, inisial, newInisial, logoPt, logoInisial } = parsed.data;
+    const { id, namaPt: originalNamaPt, newNamaPt, inisial, newInisial, provinsi, logoPt, logoInisial } = parsed.data;
     let currentNamaPt = originalNamaPt;
 
     // 1. Update namaPt & logoPt untuk SEMUA baris dengan namaPt yang lama
@@ -144,10 +147,10 @@ export async function PATCH(request: Request) {
       if (newNamaPt) currentNamaPt = newNamaPt;
     }
 
-    // 2. Update inisial & logoInisial untuk baris yang spesifik
+    // 2. Update inisial, logoInisial & provinsi untuk baris yang spesifik
     const targetInisial = newInisial !== undefined ? newInisial : (inisial !== undefined ? inisial : undefined);
     
-    if (targetInisial !== undefined || logoInisial !== undefined) {
+    if (targetInisial !== undefined || logoInisial !== undefined || provinsi !== undefined) {
       const whereClause: any = { namaPt: { equals: currentNamaPt, mode: "insensitive" } };
       
       // Jika kita mengupdate inisial, kita harus tau inisial MANA yang mau diubah
@@ -162,6 +165,7 @@ export async function PATCH(request: Request) {
       const updateData: any = { updatedAt: new Date() };
       if (targetInisial !== undefined) updateData.inisial = targetInisial || null;
       if (logoInisial !== undefined) updateData.logoInisial = logoInisial || null;
+      if (provinsi !== undefined) updateData.provinsi = provinsi || null;
 
       const result = await prisma.ritelModern.updateMany({
         where: whereClause,

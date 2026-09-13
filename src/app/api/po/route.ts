@@ -876,6 +876,18 @@ export async function GET(request: Request) {
           ],
         },
       ];
+    } else if (group === "credit_data") {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        { tglkirim: { not: null } },
+        { OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }] },
+        { unitProduksiId: { not: "UNKNOWN" } },
+        {
+          UnitProduksi: {
+            isNot: { siteArea: "UNKNOWN" },
+          },
+        },
+      ];
     } else if (group === "credit_approval") {
       // Credit Limit Approval: fetch all POs that have a batch
       // so they can be shown as an archive after being approved/rejected.

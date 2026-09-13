@@ -44,7 +44,7 @@ export function useCreditLimitData({
     setLoading(true);
     try {
       const res = await fetch(
-        "/api/po?group=schedule_page&summary=true&includeItems=false&limit=5000&offset=0&sort=tglPo_desc",
+        "/api/po?group=credit_data&summary=true&includeItems=false&limit=5000&offset=0&sort=tglPo_desc",
         { cache: "no-store" },
       );
       const data = await res.json();
@@ -54,8 +54,16 @@ export function useCreditLimitData({
           ? data.data
           : [];
 
-      // Filter: Hanya yang sudah dijadwalkan (tglkirim ada)
-      const eligible = list.filter((po: any) => !!po.tglkirim);
+      // Filter: Hanya yang sudah dijadwalkan (tglkirim ada) dan belum memiliki nomor invoice
+      const isInvoiceEmpty = (inv: any) =>
+        !inv ||
+        String(inv).trim() === "" ||
+        String(inv).trim() === "-" ||
+        String(inv).trim().toLowerCase() === "unknown";
+
+      const eligible = list.filter(
+        (po: any) => !!po.tglkirim && isInvoiceEmpty(po.noInvoice),
+      );
 
       setPoData(eligible);
     } catch (err) {

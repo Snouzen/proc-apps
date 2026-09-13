@@ -1,0 +1,953 @@
+{
+  ".browserslistrc": {
+    "summary": "File kode/konfigurasi .browserslistrc yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  ".claude/CLAUDE.md": {
+    "summary": "Dokumen instruksi arsitektur dan aturan pengembangan untuk asisten AI agent (CLAUDE.md), mencakup referensi knowledge graph, aturan modul credit limit, dan protokol build/lint tanpa efek samping."
+  },
+  ".claude/settings.json": {
+    "summary": "File kode/konfigurasi settings.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  ".claude/skills/graphify/.graphify_version": {
+    "summary": "File kode/konfigurasi .graphify_version yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  ".claude/skills/graphify/references/add-watch.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (add-watch.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/graphify/references/exports.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (exports.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/graphify/references/extraction-spec.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (extraction-spec.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/graphify/references/github-and-merge.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (github-and-merge.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/graphify/references/hooks.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (hooks.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/graphify/references/query.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (query.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/graphify/references/transcribe.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (transcribe.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/graphify/references/update.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (update.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/graphify/SKILL.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (SKILL.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".claude/skills/ngodingpakeai/SKILL.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (SKILL.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  ".gitattributes": {
+    "summary": "File kode/konfigurasi .gitattributes yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  ".gitignore": {
+    "summary": "File kode/konfigurasi .gitignore yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  ".ngodingpakeaiignore": {
+    "summary": "File kode/konfigurasi .ngodingpakeaiignore yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  ".npmrc": {
+    "summary": "File kode/konfigurasi .npmrc yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "add-filters.js": {
+    "summary": "Skrip otomasi / utilitas data (add-filters.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "AGENTS.md": {
+    "summary": "Dokumen instruksi arsitektur dan aturan pengembangan untuk asisten AI agent (AGENTS.md), mencakup referensi knowledge graph, aturan modul credit limit, dan protokol build/lint tanpa efek samping."
+  },
+  "backfill.js": {
+    "summary": "Skrip otomasi / utilitas data (backfill.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "backup_proc-dev_fixed.sql": {
+    "summary": "File kode/konfigurasi backup_proc-dev_fixed.sql yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "check-user.js": {
+    "summary": "Skrip otomasi / utilitas data (check-user.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "CLAUDE.md": {
+    "summary": "Dokumen instruksi arsitektur dan aturan pengembangan untuk asisten AI agent (CLAUDE.md), mencakup referensi knowledge graph, aturan modul credit limit, dan protokol build/lint tanpa efek samping."
+  },
+  "components.json": {
+    "summary": "File kode/konfigurasi components.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "create_magang.js": {
+    "summary": "Skrip otomasi / utilitas data (create_magang.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "create_magang.ts": {
+    "summary": "File kode/konfigurasi create_magang.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "debug-data.js": {
+    "summary": "Skrip otomasi / utilitas data (debug-data.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "docs/db-index-recommendations.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (db-index-recommendations.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  "eslint.config.mjs": {
+    "summary": "File kode/konfigurasi eslint.config.mjs yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "generate-table.js": {
+    "summary": "Skrip otomasi / utilitas data (generate-table.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "graphify-out/.graphify_analysis.json": {
+    "summary": "File kode/konfigurasi .graphify_analysis.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/.graphify_root": {
+    "summary": "File kode/konfigurasi .graphify_root yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/cache/ast/v0.9.29/67f832df13213dd6f153d290583fc8f0e14e64a96903cb4f5ecd498356f3e093.json": {
+    "summary": "File kode/konfigurasi 67f832df13213dd6f153d290583fc8f0e14e64a96903cb4f5ecd498356f3e093.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/cache/ast/v0.9.29/70e7bff5cfca837c1317e378e0f9e72d6d37763a9470dce0c627adff0276d9df.json": {
+    "summary": "File kode/konfigurasi 70e7bff5cfca837c1317e378e0f9e72d6d37763a9470dce0c627adff0276d9df.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/cache/ast/v0.9.29/a16ca3c2a0dd4fbcda26164b2fa2dadfb713e07e847f02e264e20c11ff0b5522.json": {
+    "summary": "File kode/konfigurasi a16ca3c2a0dd4fbcda26164b2fa2dadfb713e07e847f02e264e20c11ff0b5522.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/cache/ast/v0.9.29/a4c59d1413b262978c6c3265dda4cf3669d68f09cc63c23237cfb7702b4a0a84.json": {
+    "summary": "File kode/konfigurasi a4c59d1413b262978c6c3265dda4cf3669d68f09cc63c23237cfb7702b4a0a84.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/cache/ast/v0.9.29/da587a6a7875a0bfcd8c788f5ce89ed5a0dd80c9f6ad95be27198acd216c153f.json": {
+    "summary": "File kode/konfigurasi da587a6a7875a0bfcd8c788f5ce89ed5a0dd80c9f6ad95be27198acd216c153f.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/cache/last_query_stamp": {
+    "summary": "File kode/konfigurasi last_query_stamp yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/cache/stat-index.json": {
+    "summary": "File kode/konfigurasi stat-index.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/graph.json": {
+    "summary": "File kode/konfigurasi graph.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "graphify-out/manifest.json": {
+    "summary": "File kode/konfigurasi manifest.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "inspect_db.js": {
+    "summary": "Skrip otomasi / utilitas data (inspect_db.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "inspect_dup.js": {
+    "summary": "Skrip otomasi / utilitas data (inspect_dup.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "inspect_lookup.js": {
+    "summary": "Skrip otomasi / utilitas data (inspect_lookup.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "inspect_mtd.js": {
+    "summary": "Skrip otomasi / utilitas data (inspect_mtd.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "inspect_mtd2.js": {
+    "summary": "Skrip otomasi / utilitas data (inspect_mtd2.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "inspect_ritel.js": {
+    "summary": "Skrip otomasi / utilitas data (inspect_ritel.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "inspect_ritels.js": {
+    "summary": "Skrip otomasi / utilitas data (inspect_ritels.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "next-env.d.ts": {
+    "summary": "File kode/konfigurasi next-env.d.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "next.config.ts": {
+    "summary": "Konfigurasi Next.js untuk optimasi kompilasi, eksperimen TurboPack, dan pengaturan header keamanan HTTP."
+  },
+  "package-lock.json": {
+    "summary": "File kode/konfigurasi package-lock.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "package.json": {
+    "summary": "File manifes npm (package.json) yang mendefinisikan metadata paket, dependensi proyek (Next.js, Prisma, Tailwind, Lucide, Radix UI), dan script otomasi (build, dev, lint, prisma:generate)."
+  },
+  "patch_pdf.js": {
+    "summary": "Skrip otomasi / utilitas data (patch_pdf.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "patch_retur.js": {
+    "summary": "Skrip otomasi / utilitas data (patch_retur.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "postcss.config.js": {
+    "summary": "Konfigurasi styling Tailwind CSS dan PostCSS (postcss.config.js) untuk desain antarmuka responsif, palet warna kustom, dan dukungan dark mode."
+  },
+  "prisma/migrations/20260214072814_add_tables/migration.sql": {
+    "summary": "File migrasi database Prisma (migration.sql) yang mendefinisikan perubahan skema DDL PostgreSQL, termasuk pembuatan tabel, penambahan foreign key, kolom baru, dan indeks performa."
+  },
+  "prisma/migrations/20260316_add_discount_to_purchase_order_item/migration.sql": {
+    "summary": "File migrasi database Prisma (migration.sql) yang mendefinisikan perubahan skema DDL PostgreSQL, termasuk pembuatan tabel, penambahan foreign key, kolom baru, dan indeks performa."
+  },
+  "prisma/migrations/20260330020011_sinkronisasi_awal_dev/migration.sql": {
+    "summary": "File migrasi database Prisma (migration.sql) yang mendefinisikan perubahan skema DDL PostgreSQL, termasuk pembuatan tabel, penambahan foreign key, kolom baru, dan indeks performa."
+  },
+  "prisma/migrations/migration_lock.toml": {
+    "summary": "File migrasi database Prisma (migration_lock.toml) yang mendefinisikan perubahan skema DDL PostgreSQL, termasuk pembuatan tabel, penambahan foreign key, kolom baru, dan indeks performa."
+  },
+  "prisma/schema.prisma": {
+    "summary": "Skema database PostgreSQL Prisma ORM yang mendefinisikan model-model inti aplikasi pengadaan: PurchaseOrder, PurchaseOrderItem, RitelModern, UnitProduksi, CreditLimitBatch, DataRetur, Reconcile, User, AuditLog, dan Promo. Mengatur relasi referensial, index performa, dan enum database."
+  },
+  "prisma.config.ts": {
+    "summary": "Konfigurasi Prisma CLI dan driver database PostgreSQL untuk aplikasi, mengelola koneksi database dan generasi client."
+  },
+  "query.js": {
+    "summary": "Skrip otomasi / utilitas data (query.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "README.md": {
+    "summary": "Dokumen panduan dan spesifikasi proyek (README.md) yang menjelaskan alur kerja, arsitektur sistem, atau panduan operasional kode."
+  },
+  "scripts/check-api.ts": {
+    "summary": "Skrip otomasi / utilitas data (check-api.ts) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "scripts/check-data.ts": {
+    "summary": "Skrip otomasi / utilitas data (check-data.ts) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "scripts/complete-invoiced-pos.js": {
+    "summary": "Skrip otomasi / utilitas data (complete-invoiced-pos.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "scripts/fix-bulk-date-shift.js": {
+    "summary": "Skrip otomasi / utilitas data (fix-bulk-date-shift.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "scripts/update-regional.ts": {
+    "summary": "Skrip otomasi / utilitas data (update-regional.ts) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "server/.gitignore": {
+    "summary": "File server backend (.gitignore) untuk konfigurasi dependensi, script server, atau utilitas runtime Express."
+  },
+  "server/generated/prisma/client.d.ts": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (client.d.ts) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/client.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (client.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/default.d.ts": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (default.d.ts) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/default.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (default.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/edge.d.ts": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (edge.d.ts) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/edge.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (edge.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/index-browser.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (index-browser.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/index.d.ts": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (index.d.ts) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/index.js": {
+    "summary": "Entry point server Express.js backend pendukung aplikasi, mengonfigurasi middleware CORS, JSON body parser, rute API sekunder, dan koneksi PostgreSQL pool."
+  },
+  "server/generated/prisma/package.json": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (package.json) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/query_compiler_fast_bg.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (query_compiler_fast_bg.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/query_compiler_fast_bg.wasm-base64.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (query_compiler_fast_bg.wasm-base64.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/runtime/client.d.ts": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (client.d.ts) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/runtime/client.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (client.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/runtime/index-browser.d.ts": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (index-browser.d.ts) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/runtime/index-browser.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (index-browser.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/runtime/wasm-compiler-edge.js": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (wasm-compiler-edge.js) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/schema.prisma": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (schema.prisma) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/wasm-edge-light-loader.mjs": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (wasm-edge-light-loader.mjs) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/generated/prisma/wasm-worker-loader.mjs": {
+    "summary": "File runtime Prisma Client yang di-generate otomatis (wasm-worker-loader.mjs) untuk mapping query TypeScript/JavaScript ke tabel PostgreSQL."
+  },
+  "server/index.js": {
+    "summary": "Entry point server Express.js backend pendukung aplikasi, mengonfigurasi middleware CORS, JSON body parser, rute API sekunder, dan koneksi PostgreSQL pool."
+  },
+  "server/lib/prisma.js": {
+    "summary": "File server backend (prisma.js) untuk konfigurasi dependensi, script server, atau utilitas runtime Express."
+  },
+  "server/package-lock.json": {
+    "summary": "File server backend (package-lock.json) untuk konfigurasi dependensi, script server, atau utilitas runtime Express."
+  },
+  "server/package.json": {
+    "summary": "File server backend (package.json) untuk konfigurasi dependensi, script server, atau utilitas runtime Express."
+  },
+  "src/app/actions/ritel.ts": {
+    "summary": "File kode/konfigurasi ritel.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/api/activities/route.ts": {
+    "summary": "Endpoint API rute /api/activities yang menangani request GET, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/auth/login/route.ts": {
+    "summary": "Endpoint API autentikasi (/api/auth/login) untuk verifikasi kredensial pengguna, pembuatan cookie sesi terenkripsi, logout, atau pembacaan profil sesi pengguna yang sedang login."
+  },
+  "src/app/api/auth/logout/route.ts": {
+    "summary": "Endpoint API autentikasi (/api/auth/logout) untuk verifikasi kredensial pengguna, pembuatan cookie sesi terenkripsi, logout, atau pembacaan profil sesi pengguna yang sedang login."
+  },
+  "src/app/api/auth/me/route.ts": {
+    "summary": "Endpoint API autentikasi (/api/auth/me) untuk verifikasi kredensial pengguna, pembuatan cookie sesi terenkripsi, logout, atau pembacaan profil sesi pengguna yang sedang login."
+  },
+  "src/app/api/debug-po/route.ts": {
+    "summary": "Endpoint API rute /api/debug-po yang menangani request GET, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/po/assign/route.ts": {
+    "summary": "Endpoint API rute /api/po/assign yang menangani request POST, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/po/bulk/route.ts": {
+    "summary": "Endpoint API rute /api/po/bulk yang menangani request POST, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/po/check-dupes/route.ts": {
+    "summary": "Endpoint API rute /api/po/check-dupes yang menangani request POST, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/po/checklist/route.ts": {
+    "summary": "Endpoint API rute /api/po/checklist yang menangani request GET, POST, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/po/credit-limit/route.ts": {
+    "summary": "Endpoint API Credit Limit (/api/po/credit-limit) yang mengelola transaksi persetujuan limit kredit Purchase Order. Mendukung aksi request pengajuan batch, approve pusat, approveDireksi dengan validasi Nota Dinas (noNd), reject dengan auto-eject batch, closeBatch manual, dan uncloseBatch."
+  },
+  "src/app/api/po/dict/route.ts": {
+    "summary": "Endpoint API kamus data PO (/api/po/dict) yang mengembalikan kombinasi nilai unik master data untuk fitur filter dinamis bertingkat (cascading) pada halaman Report: noPo, company, inisial, tujuanDetail, siteArea, regional, noInvoice, namaSupir, platNomor, buktiTagih, buktiBayar, dan produk."
+  },
+  "src/app/api/po/export/route.ts": {
+    "summary": "Endpoint API ekspor Purchase Order (/api/po/export) yang mengekspor data PO dan item ke file spreadsheet Excel (XLSX) dengan filter dinamis, kolom terpilih, dan penanganan token filter massal."
+  },
+  "src/app/api/po/pcs-kirim/route.ts": {
+    "summary": "Endpoint API rute /api/po/pcs-kirim yang menangani request PATCH, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/po/reject/route.ts": {
+    "summary": "Endpoint API rute /api/po/reject yang menangani request POST, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/po/route.ts": {
+    "summary": "Endpoint API utama Purchase Order (/api/po) yang melayani method GET, POST, DELETE untuk membuat PO baru, memperbarui data PO dan item produk, serta query pencarian daftar PO dengan filter multi-kolom (colFilters), paginasi, sorting, otorisasi sesi, dan agregasi ringkasan item."
+  },
+  "src/app/api/po/schedule/route.ts": {
+    "summary": "Endpoint API penjadwalan pengiriman PO (/api/po/schedule) yang mengelola status pengiriman, pembaruan tanggal kirim (tglkirim), nama supir, plat nomor armada, dan nomor invoice PO."
+  },
+  "src/app/api/po/stats/route.ts": {
+    "summary": "Endpoint API statistik PO (/api/po/stats) yang menghitung metrik agregat: PO aktif, hampir kedaluwarsa, kedaluwarsa, completed, dan rekapitulasi jumlah per status regional."
+  },
+  "src/app/api/po/trend/route.ts": {
+    "summary": "Endpoint API rute /api/po/trend yang menangani request GET, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/po/[id]/audit-logs/route.ts": {
+    "summary": "Endpoint API rute /api/po/[id]/audit-logs yang menangani request GET, validasi input, autentikasi sesi, dan interaksi database PostgreSQL via Prisma."
+  },
+  "src/app/api/product/route.ts": {
+    "summary": "Endpoint API master data (/api/product) yang melayani method GET, POST, PUT, DELETE untuk operasi CRUD tabel product: pengelolaan nama perusahaan, inisial, tujuan pengiriman, unit produksi, produk, dan promo."
+  },
+  "src/app/api/promo/route.ts": {
+    "summary": "Endpoint API master data (/api/promo) yang melayani method GET, POST, PUT, DELETE untuk operasi CRUD tabel promo: pengelolaan nama perusahaan, inisial, tujuan pengiriman, unit produksi, produk, dan promo."
+  },
+  "src/app/api/rekon/lookup/route.ts": {
+    "summary": "Endpoint API rekonsiliasi faktur (/api/rekon/lookup) untuk upload dokumen rekon, kalkulasi selisih nominal, dan pencocokan data faktur ritel modern."
+  },
+  "src/app/api/rekon/route.ts": {
+    "summary": "Endpoint API rekonsiliasi faktur (/api/rekon) untuk upload dokumen rekon, kalkulasi selisih nominal, dan pencocokan data faktur ritel modern."
+  },
+  "src/app/api/rekon/upload/route.ts": {
+    "summary": "Endpoint API rekonsiliasi faktur (/api/rekon/upload) untuk upload dokumen rekon, kalkulasi selisih nominal, dan pencocokan data faktur ritel modern."
+  },
+  "src/app/api/retur/check-dupes/route.ts": {
+    "summary": "Endpoint API modul Retur (/api/retur/check-dupes) yang melayani method POST untuk pencatatan retur barang, ekspor data retur, verifikasi duplikasi, dan kalkulasi statistik retur."
+  },
+  "src/app/api/retur/export/route.ts": {
+    "summary": "Endpoint API modul Retur (/api/retur/export) yang melayani method GET untuk pencatatan retur barang, ekspor data retur, verifikasi duplikasi, dan kalkulasi statistik retur."
+  },
+  "src/app/api/retur/route.ts": {
+    "summary": "Endpoint API modul Retur (/api/retur) yang melayani method GET, POST, PUT, DELETE untuk pencatatan retur barang, ekspor data retur, verifikasi duplikasi, dan kalkulasi statistik retur."
+  },
+  "src/app/api/retur/stats/route.ts": {
+    "summary": "Endpoint API modul Retur (/api/retur/stats) yang melayani method GET untuk pencatatan retur barang, ekspor data retur, verifikasi duplikasi, dan kalkulasi statistik retur."
+  },
+  "src/app/api/ritel/alias/route.ts": {
+    "summary": "Endpoint API master data (/api/ritel/alias) yang melayani method PATCH untuk operasi CRUD tabel ritel/alias: pengelolaan nama perusahaan, inisial, tujuan pengiriman, unit produksi, produk, dan promo."
+  },
+  "src/app/api/ritel/route.ts": {
+    "summary": "Endpoint API master data (/api/ritel) yang melayani method GET, POST, PUT, DELETE, PATCH untuk operasi CRUD tabel ritel: pengelolaan nama perusahaan, inisial, tujuan pengiriman, unit produksi, produk, dan promo."
+  },
+  "src/app/api/unit-produksi/route.ts": {
+    "summary": "Endpoint API master data (/api/unit-produksi) yang melayani method GET, POST, DELETE, PATCH untuk operasi CRUD tabel unit-produksi: pengelolaan nama perusahaan, inisial, tujuan pengiriman, unit produksi, produk, dan promo."
+  },
+  "src/app/branch/components/BranchCalendarGrid.tsx": {
+    "summary": "File kode/konfigurasi BranchCalendarGrid.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/components/BranchFilters.tsx": {
+    "summary": "File kode/konfigurasi BranchFilters.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/components/BranchInlineDetail.tsx": {
+    "summary": "File kode/konfigurasi BranchInlineDetail.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/components/BranchStats.tsx": {
+    "summary": "File kode/konfigurasi BranchStats.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/expired/components/ExpiredCalendarGrid.tsx": {
+    "summary": "File kode/konfigurasi ExpiredCalendarGrid.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/expired/components/ExpiredFilters.tsx": {
+    "summary": "File kode/konfigurasi ExpiredFilters.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/expired/components/ExpiredInlineDetail.tsx": {
+    "summary": "File kode/konfigurasi ExpiredInlineDetail.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/expired/hooks/useExpiredCalendar.ts": {
+    "summary": "File kode/konfigurasi useExpiredCalendar.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/expired/page.tsx": {
+    "summary": "Komponen halaman Next.js untuk rute /branch/expired yang menyusun layout, state management, pemanggilan API, dan komponen antarmuka pengguna."
+  },
+  "src/app/branch/hooks/useBranchCalendar.ts": {
+    "summary": "File kode/konfigurasi useBranchCalendar.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/branch/page.tsx": {
+    "summary": "Komponen halaman Next.js untuk rute /branch yang menyusun layout, state management, pemanggilan API, dan komponen antarmuka pengguna."
+  },
+  "src/app/checklist-docs/components/ChecklistDocsColumns.tsx": {
+    "summary": "File kode/konfigurasi ChecklistDocsColumns.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/checklist-docs/components/ChecklistFilters.tsx": {
+    "summary": "File kode/konfigurasi ChecklistFilters.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/checklist-docs/components/ChecklistSummaryCards.tsx": {
+    "summary": "File kode/konfigurasi ChecklistSummaryCards.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/checklist-docs/hooks/useChecklistDocs.ts": {
+    "summary": "File kode/konfigurasi useChecklistDocs.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/checklist-docs/page.tsx": {
+    "summary": "Halaman Checklist Dokumen PO (/checklist-docs) untuk verifikasi kelengkapan berkas fisik faktur pajak, surat jalan, invoice, kwitansi, bukti tagih, dan bukti bayar."
+  },
+  "src/app/credit-limit/approval/page.tsx": {
+    "summary": "Halaman antarmuka Approval Credit Limit (/credit-limit/approval) khusus role Pusat. Menampilkan accordion batch PO (BatchAccordion), filter ritel/tujuan/tanggal, modal pembuatan Nota Dinas (CreateNdModal), tombol approval bertingkat, dan aksi close batch."
+  },
+  "src/app/credit-limit/data/page.tsx": {
+    "summary": "Halaman pemantauan Data Credit Limit (/credit-limit/data) untuk semua role. Menampilkan daftar PO, kartu ringkasan status limit kredit, filter ritel/site, serta tombol ajukan credit limit untuk PO yang berstatus pending."
+  },
+  "src/app/credit-limit/RULES.md": {
+    "summary": "Dokumen panduan aturan bisnis baku (Core Business Rules) modul Credit Limit yang menetapkan 5 aturan mutlak: hard cap 50 PO per batch, syarat close manual seluruhnya APPROVED_DIREKSI, kunci batch approved dari PO baru, auto-eject PO reject, dan wajib noNd sebelum approval Direksi."
+  },
+  "src/app/globals.css": {
+    "summary": "File kode/konfigurasi globals.css yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/layout.tsx": {
+    "summary": "File kode/konfigurasi layout.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/loading.tsx": {
+    "summary": "File kode/konfigurasi loading.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/login/page.tsx": {
+    "summary": "Halaman Login aplikasi (/login) yang menyediakan form autentikasi email dan password, proteksi route, dan integrasi sesi berbasis token JWT/cookie."
+  },
+  "src/app/master-data/produk/page.tsx": {
+    "summary": "Halaman Master Data (master-data/produk) untuk pengelolaan entitas master ritel modern, unit produksi, produk beras, dan daftar promo."
+  },
+  "src/app/master-data/promo/page.tsx": {
+    "summary": "Halaman Master Data (master-data/promo) untuk pengelolaan entitas master ritel modern, unit produksi, produk beras, dan daftar promo."
+  },
+  "src/app/master-data/ritel-modern/components/RitelFormModal.tsx": {
+    "summary": "File kode/konfigurasi RitelFormModal.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/master-data/ritel-modern/components/RitelTable.tsx": {
+    "summary": "File kode/konfigurasi RitelTable.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/master-data/ritel-modern/page.tsx": {
+    "summary": "Halaman Master Data (master-data/ritel-modern) untuk pengelolaan entitas master ritel modern, unit produksi, produk beras, dan daftar promo."
+  },
+  "src/app/master-data/unit-produksi/page.tsx": {
+    "summary": "Halaman Master Data (master-data/unit-produksi) untuk pengelolaan entitas master ritel modern, unit produksi, produk beras, dan daftar promo."
+  },
+  "src/app/need-assign/hooks/useNeedAssignColumns.tsx": {
+    "summary": "File kode/konfigurasi useNeedAssignColumns.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/need-assign/page.tsx": {
+    "summary": "Komponen halaman Next.js untuk rute /need-assign yang menyusun layout, state management, pemanggilan API, dan komponen antarmuka pengguna."
+  },
+  "src/app/page.tsx": {
+    "summary": "Komponen halaman Next.js untuk rute /page.tsx yang menyusun layout, state management, pemanggilan API, dan komponen antarmuka pengguna."
+  },
+  "src/app/po/components/POFormSection.tsx": {
+    "summary": "File kode/konfigurasi POFormSection.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/po/components/POSummaryCards.tsx": {
+    "summary": "File kode/konfigurasi POSummaryCards.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/po/components/POTableSection.tsx": {
+    "summary": "File kode/konfigurasi POTableSection.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/po/hooks/usePOForm.ts": {
+    "summary": "File kode/konfigurasi usePOForm.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/po/page.tsx": {
+    "summary": "Halaman manajemen Purchase Order utama untuk input PO baru, monitoring tabel PO dengan status pengiriman/invoice/faktur/pembayaran, dan pencarian cepat data pengadaan."
+  },
+  "src/app/purchase-order/page.tsx": {
+    "summary": "Halaman manajemen Purchase Order utama untuk input PO baru, monitoring tabel PO dengan status pengiriman/invoice/faktur/pembayaran, dan pencarian cepat data pengadaan."
+  },
+  "src/app/purchase-order/[id]/page.tsx": {
+    "summary": "Komponen halaman Next.js untuk rute /purchase-order/[id] yang menyusun layout, state management, pemanggilan API, dan komponen antarmuka pengguna."
+  },
+  "src/app/purchase-order/_components/purchase-order-list.tsx": {
+    "summary": "File kode/konfigurasi purchase-order-list.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/purchase-order/_components/PurchaseOrderColumns.tsx": {
+    "summary": "File kode/konfigurasi PurchaseOrderColumns.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/purchase-order/_components/PurchaseOrderFilters.tsx": {
+    "summary": "File kode/konfigurasi PurchaseOrderFilters.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/purchase-order/_components/PurchaseOrderHeader.tsx": {
+    "summary": "File kode/konfigurasi PurchaseOrderHeader.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/rekon/calc/components/RekonForm.tsx": {
+    "summary": "File kode/konfigurasi RekonForm.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/rekon/calc/components/RekonSummary.tsx": {
+    "summary": "File kode/konfigurasi RekonSummary.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/rekon/calc/hooks/useRekonCalc.ts": {
+    "summary": "File kode/konfigurasi useRekonCalc.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/rekon/calc/page.tsx": {
+    "summary": "Halaman Rekonsiliasi (/rekon) untuk kalkulasi dan rekonsiliasi data faktur penjualan beras ritel modern terhadap data tagihan."
+  },
+  "src/app/rekon/data/components/DataRekonHeader.tsx": {
+    "summary": "File kode/konfigurasi DataRekonHeader.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/rekon/data/components/DataRekonModals.tsx": {
+    "summary": "File kode/konfigurasi DataRekonModals.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/rekon/data/components/DataRekonTable.tsx": {
+    "summary": "File kode/konfigurasi DataRekonTable.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/rekon/data/hooks/useRekonData.ts": {
+    "summary": "File kode/konfigurasi useRekonData.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/rekon/data/page.tsx": {
+    "summary": "Halaman Rekonsiliasi (/rekon) untuk kalkulasi dan rekonsiliasi data faktur penjualan beras ritel modern terhadap data tagihan."
+  },
+  "src/app/report/components/MultiSelectFilterDropdown.tsx": {
+    "summary": "File kode/konfigurasi MultiSelectFilterDropdown.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/report/components/ReportColumns.tsx": {
+    "summary": "File kode/konfigurasi ReportColumns.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/report/components/ReportComponents.tsx": {
+    "summary": "File kode/konfigurasi ReportComponents.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/report/components/ReportFilters.tsx": {
+    "summary": "File kode/konfigurasi ReportFilters.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/report/components/ReportHeader.tsx": {
+    "summary": "File kode/konfigurasi ReportHeader.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/report/components/ReportTable.tsx": {
+    "summary": "File kode/konfigurasi ReportTable.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/report/hooks/useReport.ts": {
+    "summary": "File kode/konfigurasi useReport.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/report/page.tsx": {
+    "summary": "Halaman Report PO (/report) yang menyediakan filter dinamis multi-select (MultiSelectFilterDropdown) untuk seluruh atribut PO, pemilihan visibilitas kolom (ReportColumns), tabel data terfilter (ReportTable), dan ekspor Excel."
+  },
+  "src/app/retur/components/ReturAddModal.tsx": {
+    "summary": "File kode/konfigurasi ReturAddModal.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/components/ReturBulkModal.tsx": {
+    "summary": "File kode/konfigurasi ReturBulkModal.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/components/ReturExportModal.tsx": {
+    "summary": "File kode/konfigurasi ReturExportModal.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/components/ReturFilterBar.tsx": {
+    "summary": "File kode/konfigurasi ReturFilterBar.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/components/ReturGroupedView.tsx": {
+    "summary": "File kode/konfigurasi ReturGroupedView.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/components/ReturShared.tsx": {
+    "summary": "File kode/konfigurasi ReturShared.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/components/ReturTable.tsx": {
+    "summary": "File kode/konfigurasi ReturTable.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/components/table-extract.txt": {
+    "summary": "File kode/konfigurasi table-extract.txt yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/hooks/useRetur.ts": {
+    "summary": "File kode/konfigurasi useRetur.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/new/components/NewReturInputs.tsx": {
+    "summary": "File kode/konfigurasi NewReturInputs.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/new/hooks/useNewRetur.ts": {
+    "summary": "File kode/konfigurasi useNewRetur.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/retur/new/page.tsx": {
+    "summary": "Halaman Retur Barang (/retur) untuk mencatat, melacak, dan memantau status pengembalian barang dari ritel modern beserta alasan retur."
+  },
+  "src/app/retur/page.tsx": {
+    "summary": "Halaman Retur Barang (/retur) untuk mencatat, melacak, dan memantau status pengembalian barang dari ritel modern beserta alasan retur."
+  },
+  "src/app/schedule/components/ScheduleColumns.tsx": {
+    "summary": "File kode/konfigurasi ScheduleColumns.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/schedule/components/ScheduleFilters.tsx": {
+    "summary": "File kode/konfigurasi ScheduleFilters.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/schedule/components/ScheduleModals.tsx": {
+    "summary": "File kode/konfigurasi ScheduleModals.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/schedule/components/ScheduleSummaryCards.tsx": {
+    "summary": "File kode/konfigurasi ScheduleSummaryCards.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/schedule/hooks/useSchedule.ts": {
+    "summary": "File kode/konfigurasi useSchedule.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/app/schedule/page.tsx": {
+    "summary": "Halaman Penjadwalan Pengiriman (/schedule) untuk mengatur jadwal kirim armada, input nama supir, plat nomor, tanggal kirim, dan pelacakan PO yang perlu dikirim."
+  },
+  "src/app/tools/nota-dinas/page.tsx": {
+    "summary": "Komponen halaman Next.js untuk rute /tools/nota-dinas yang menyusun layout, state management, pemanggilan API, dan komponen antarmuka pengguna."
+  },
+  "src/app/_components/DashboardColumns.tsx": {
+    "summary": "File kode/konfigurasi DashboardColumns.tsx yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "src/components/area-chart.tsx": {
+    "summary": "Komponen React UI (area-chart.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/assign-dropdown.tsx": {
+    "summary": "Komponen React UI (assign-dropdown.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/audit-trail/AuditDrawer.tsx": {
+    "summary": "Komponen React UI (AuditDrawer.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/auto-refresh.tsx": {
+    "summary": "Komponen React UI (auto-refresh.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/breadcrumbs.tsx": {
+    "summary": "Komponen React UI (breadcrumbs.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/bulk-upload-modal.tsx": {
+    "summary": "Komponen dialog modal (bulk-upload-modal.tsx) untuk interaksi form, konfirmasi aksi, edit detail data PO/retur, atau upload berkas."
+  },
+  "src/components/card.tsx": {
+    "summary": "Komponen React UI (card.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/chart-area-interactive.tsx": {
+    "summary": "Komponen React UI (chart-area-interactive.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/clientlayout.tsx": {
+    "summary": "Komponen ClientLayout yang membungkus aplikasi sisi klien, menyediakan konteks autentikasi sesi, penyedia tema dark/light mode, dan struktur layout halaman utama."
+  },
+  "src/components/combobox.tsx": {
+    "summary": "Komponen React UI (combobox.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/credit-limit/ActionButton.tsx": {
+    "summary": "Komponen UI modul Credit Limit (ActionButton.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/BatchAccordion.tsx": {
+    "summary": "Komponen UI modul Credit Limit (BatchAccordion.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/CreateNdModal.tsx": {
+    "summary": "Komponen UI modul Credit Limit (CreateNdModal.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/CreditLimitFilters.tsx": {
+    "summary": "Komponen UI modul Credit Limit (CreditLimitFilters.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/CreditLimitMaintenance.tsx": {
+    "summary": "Komponen UI modul Credit Limit (CreditLimitMaintenance.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/CreditLimitSearchBar.tsx": {
+    "summary": "Komponen UI modul Credit Limit (CreditLimitSearchBar.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/index.ts": {
+    "summary": "Komponen UI modul Credit Limit (index.ts) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/InlineVendorInput.tsx": {
+    "summary": "Komponen UI modul Credit Limit (InlineVendorInput.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/StandardTooltip.tsx": {
+    "summary": "Komponen UI modul Credit Limit (StandardTooltip.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/StatsCard.tsx": {
+    "summary": "Komponen UI modul Credit Limit (StatsCard.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/credit-limit/StatusBadge.tsx": {
+    "summary": "Komponen UI modul Credit Limit (StatusBadge.tsx) untuk menampilkan elemen antarmuka khusus: accordion batch, lencana status approval, tombol aksi, input vendor inline, modal pembuatan Nota Dinas, atau filter credit limit."
+  },
+  "src/components/dashboard-widgets.tsx": {
+    "summary": "Komponen React UI (dashboard-widgets.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/data-table/DataTable.tsx": {
+    "summary": "Komponen tabel data generik (DataTable.tsx) yang menyediakan fungsionalitas rendering baris, sorting kolom, paginasi, pencarian, dan state loading dengan dukungan dark mode."
+  },
+  "src/components/data-table/DataTableV2.tsx": {
+    "summary": "Komponen tabel data generik (DataTableV2.tsx) yang menyediakan fungsionalitas rendering baris, sorting kolom, paginasi, pencarian, dan state loading dengan dukungan dark mode."
+  },
+  "src/components/data-table/index.ts": {
+    "summary": "Komponen tabel data generik (index.ts) yang menyediakan fungsionalitas rendering baris, sorting kolom, paginasi, pencarian, dan state loading dengan dukungan dark mode."
+  },
+  "src/components/data-table/types.ts": {
+    "summary": "Komponen tabel data generik (types.ts) yang menyediakan fungsionalitas rendering baris, sorting kolom, paginasi, pencarian, dan state loading dengan dukungan dark mode."
+  },
+  "src/components/DateInputHybrid.tsx": {
+    "summary": "Komponen React UI (DateInputHybrid.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/excel-bulk-modal.tsx": {
+    "summary": "Komponen dialog modal (excel-bulk-modal.tsx) untuk interaksi form, konfirmasi aksi, edit detail data PO/retur, atau upload berkas."
+  },
+  "src/components/global-pagination.tsx": {
+    "summary": "Komponen React UI (global-pagination.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/modal.tsx": {
+    "summary": "Komponen dialog modal (modal.tsx) untuk interaksi form, konfirmasi aksi, edit detail data PO/retur, atau upload berkas."
+  },
+  "src/components/po-detail-modal.tsx": {
+    "summary": "Komponen dialog modal (po-detail-modal.tsx) untuk interaksi form, konfirmasi aksi, edit detail data PO/retur, atau upload berkas."
+  },
+  "src/components/po-edit-modal.tsx": {
+    "summary": "Komponen dialog modal (po-edit-modal.tsx) untuk interaksi form, konfirmasi aksi, edit detail data PO/retur, atau upload berkas."
+  },
+  "src/components/po-filters.tsx": {
+    "summary": "Komponen bar filter data (po-filters.tsx) untuk penyaringan multi-parameter berbasis tanggal, status, ritel, dan regional."
+  },
+  "src/components/PoDateBadge.tsx": {
+    "summary": "Komponen React UI (PoDateBadge.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/retur-detail-modal.tsx": {
+    "summary": "Komponen dialog modal (retur-detail-modal.tsx) untuk interaksi form, konfirmasi aksi, edit detail data PO/retur, atau upload berkas."
+  },
+  "src/components/select.tsx": {
+    "summary": "Komponen React UI (select.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/sidebar.tsx": {
+    "summary": "Komponen Sidebar navigasi utama aplikasi yang menampilkan menu berdasarkan role pengguna (Pusat, RM, Site Area), collapse menu, branding, dan dukungan tema terang/gelap."
+  },
+  "src/components/skeletons/dashboard-skeletons.tsx": {
+    "summary": "Komponen React UI (dashboard-skeletons.tsx) yang merender bagian antarmuka pengguna dengan Tailwind CSS dan interaksi interaktif."
+  },
+  "src/components/ui/action-button.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (action-button.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/badge.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (badge.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/button.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (button.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/card.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (card.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/chart.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (chart.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/command.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (command.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/custom-select.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (custom-select.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/data-table.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (data-table.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/dialog.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (dialog.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/loader.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (loader.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/popover.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (popover.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/select.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (select.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/smooth-select.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (smooth-select.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/stateful-button.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (stateful-button.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/components/ui/table.tsx": {
+    "summary": "Komponen antarmuka dasar reusable UI (table.tsx) berbasis Radix UI / Tailwind CSS seperti Button, Dialog, Popover, Select, Table, Badge, atau Command."
+  },
+  "src/hooks/useAuthData.ts": {
+    "summary": "Custom React Hook (useAuthData.ts) untuk mengabstraksi logika stateful, pemanggilan asynchronous API, dan manajemen event komponen."
+  },
+  "src/hooks/useCreditLimitApproval.ts": {
+    "summary": "Custom React Hook (useCreditLimitApproval) yang mengelola state approval Credit Limit: fetch batch PO berstatus kredit, expand/collapse accordion, aksi approve/reject Pusat dan Direksi, validasi Nota Dinas, dan ekspor Excel batch."
+  },
+  "src/hooks/useCreditLimitData.ts": {
+    "summary": "Custom React Hook (useCreditLimitData) yang mengelola data pengajuan limit kredit di halaman Data: filtering status, pengajuan PO ke batch baru, dan sinkronisasi status completed."
+  },
+  "src/hooks/useCreditLimitFilters.ts": {
+    "summary": "Custom React Hook (useCreditLimitFilters) untuk state filter ritel, inisial brand, tujuan pengiriman, rentang tanggal, dan kata kunci pencarian pada modul credit limit."
+  },
+  "src/hooks/useGlobalSearch.ts": {
+    "summary": "Custom React Hook (useGlobalSearch.ts) untuk mengabstraksi logika stateful, pemanggilan asynchronous API, dan manajemen event komponen."
+  },
+  "src/hooks/useMasterUnits.ts": {
+    "summary": "Custom React Hook (useMasterUnits.ts) untuk mengabstraksi logika stateful, pemanggilan asynchronous API, dan manajemen event komponen."
+  },
+  "src/hooks/useNeedAssignTable.ts": {
+    "summary": "Custom React Hook (useNeedAssignTable.ts) yang mengelola state data tabel PO, paginasi, filter status pengiriman/invoice, sorting, dan pemanggilan endpoint API."
+  },
+  "src/hooks/usePODetail.ts": {
+    "summary": "Custom React Hook (usePODetail.ts) untuk mengabstraksi logika stateful, pemanggilan asynchronous API, dan manajemen event komponen."
+  },
+  "src/hooks/usePoDetailModal.ts": {
+    "summary": "Custom React Hook (usePoDetailModal.ts) yang mengelola state data tabel PO, paginasi, filter status pengiriman/invoice, sorting, dan pemanggilan endpoint API."
+  },
+  "src/hooks/usePoStats.ts": {
+    "summary": "Custom React Hook (usePoStats.ts) yang mengelola state data tabel PO, paginasi, filter status pengiriman/invoice, sorting, dan pemanggilan endpoint API."
+  },
+  "src/hooks/usePoTable.ts": {
+    "summary": "Custom React Hook (usePoTable.ts) yang mengelola state data tabel PO, paginasi, filter status pengiriman/invoice, sorting, dan pemanggilan endpoint API."
+  },
+  "src/hooks/usePurchaseOrderTable.ts": {
+    "summary": "Custom React Hook (usePurchaseOrderTable.ts) yang mengelola state data tabel PO, paginasi, filter status pengiriman/invoice, sorting, dan pemanggilan endpoint API."
+  },
+  "src/hooks/useRetailerFilters.ts": {
+    "summary": "Custom React Hook (useRetailerFilters.ts) untuk mengabstraksi logika stateful, pemanggilan asynchronous API, dan manajemen event komponen."
+  },
+  "src/lib/api.ts": {
+    "summary": "Modul utilitas helper (api.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/audit.ts": {
+    "summary": "Fungsi helper pencatatan audit trail (auditActivity) untuk mencatat aktivitas create, update, dan delete entitas ke tabel AuditLog database."
+  },
+  "src/lib/auth-edge.ts": {
+    "summary": "Modul helper autentikasi dan otorisasi sesi pengguna: verifikasi JWT cookie, ekstraksi profil dan role pengguna (Pusat, RM, Site Area), proteksi middleware, dan utilitas enkripsi password."
+  },
+  "src/lib/auth.ts": {
+    "summary": "Modul helper autentikasi dan otorisasi sesi pengguna: verifikasi JWT cookie, ekstraksi profil dan role pengguna (Pusat, RM, Site Area), proteksi middleware, dan utilitas enkripsi password."
+  },
+  "src/lib/credit-limit.ts": {
+    "summary": "Fungsi utilitas dan definisi tipe bersama untuk modul Credit Limit: kalkulasi due date zone (normal, early_extended, late_extended), pembersihan nama site area, dan validasi remarks."
+  },
+  "src/lib/db.ts": {
+    "summary": "Modul utilitas helper (db.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/excel.ts": {
+    "summary": "Fungsi helper utilitas (excel.ts) untuk membangun dan memformat file spreadsheet Excel (XLSX) dengan styling header, alignment, dan formatting angka."
+  },
+  "src/lib/format.ts": {
+    "summary": "Modul utilitas helper (format.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/generateInvoice.ts": {
+    "summary": "Modul utilitas helper (generateInvoice.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/generateNdPdf.ts": {
+    "summary": "Fungsi utilitas (generateNdPdf.ts) untuk generate dokumen PDF faktur, kwitansi, atau surat jalan pengiriman Purchase Order."
+  },
+  "src/lib/generateNdWord.ts": {
+    "summary": "Modul utilitas helper (generateNdWord.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/generatePoInvoiceNumber.ts": {
+    "summary": "Modul utilitas helper (generatePoInvoiceNumber.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/generateRekonExcel.ts": {
+    "summary": "Fungsi helper utilitas (generateRekonExcel.ts) untuk membangun dan memformat file spreadsheet Excel (XLSX) dengan styling header, alignment, dan formatting angka."
+  },
+  "src/lib/generateRekonPdf.ts": {
+    "summary": "Fungsi utilitas (generateRekonPdf.ts) untuk generate dokumen PDF faktur, kwitansi, atau surat jalan pengiriman Purchase Order."
+  },
+  "src/lib/me.ts": {
+    "summary": "Modul utilitas helper (me.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/po-form-labels.ts": {
+    "summary": "Modul utilitas helper (po-form-labels.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/prisma.ts": {
+    "summary": "Inisialisasi singleton Prisma Client dengan adapter PostgreSQL connection pool (@prisma/adapter-pg) untuk akses database yang aman dari konkurensi serverless/edge."
+  },
+  "src/lib/schemas/master-data.ts": {
+    "summary": "Modul utilitas helper (master-data.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/schemas/po.ts": {
+    "summary": "Modul utilitas helper (po.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/supabase.ts": {
+    "summary": "Modul utilitas helper (supabase.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/text.ts": {
+    "summary": "Modul utilitas helper (text.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/ttl-cache.ts": {
+    "summary": "Modul utilitas helper (ttl-cache.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/units.ts": {
+    "summary": "Modul utilitas helper (units.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/utils/dates.ts": {
+    "summary": "Modul utilitas helper (dates.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/utils/error.ts": {
+    "summary": "Modul utilitas helper (error.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/utils/regional.ts": {
+    "summary": "Modul utilitas helper (regional.ts) yang menyediakan fungsi pemrosesan data, pemformatan tanggal/angka, sanitasi string, atau integrasi eksternal."
+  },
+  "src/lib/utils.ts": {
+    "summary": "Fungsi helper utilitas umum aplikasi seperti cn (clsx dan tailwind-merge) untuk penggabungan kelas Tailwind CSS secara kondisional."
+  },
+  "src/proxy.ts": {
+    "summary": "File kode/konfigurasi proxy.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "tailwind.config.js": {
+    "summary": "Konfigurasi styling Tailwind CSS dan PostCSS (tailwind.config.js) untuk desain antarmuka responsif, palet warna kustom, dan dukungan dark mode."
+  },
+  "test-api.js": {
+    "summary": "Skrip otomasi / utilitas data (test-api.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "test-pool.js": {
+    "summary": "Skrip otomasi / utilitas data (test-pool.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "test-prisma.ts": {
+    "summary": "File kode/konfigurasi test-prisma.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "test-rekon.js": {
+    "summary": "Skrip otomasi / utilitas data (test-rekon.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "test_api.js": {
+    "summary": "Skrip otomasi / utilitas data (test_api.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "test_api_stats.js": {
+    "summary": "Skrip otomasi / utilitas data (test_api_stats.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "test_audit.js": {
+    "summary": "Skrip otomasi / utilitas data (test_audit.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "test_spb.js": {
+    "summary": "Skrip otomasi / utilitas data (test_spb.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "tsconfig.json": {
+    "summary": "Konfigurasi kompilator TypeScript aplikasi yang mengatur path alias (@/*), target ECMAScript, module resolution, dan pemeriksaan tipe strict."
+  },
+  "tsconfig.tsbuildinfo": {
+    "summary": "File kode/konfigurasi tsconfig.tsbuildinfo yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "update-page.js": {
+    "summary": "Skrip otomasi / utilitas data (update-page.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "update-rejected.js": {
+    "summary": "Skrip otomasi / utilitas data (update-rejected.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "update-rejected.ts": {
+    "summary": "File kode/konfigurasi update-rejected.ts yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  },
+  "update_magang.js": {
+    "summary": "Skrip otomasi / utilitas data (update_magang.js) untuk pengecekan integritas data, migrasi nilai, verifikasi API, atau perbaikan batch database."
+  },
+  "vercel.json": {
+    "summary": "File kode/konfigurasi vercel.json yang menjadi bagian dari aplikasi pengadaan proc-apps, mengatur konfigurasi lingkungan, komponen, atau pemrosesan data."
+  }
+}
