@@ -7,6 +7,7 @@ import {
   Trophy,
   BookOpen,
   Wheat,
+  Leaf,
 } from "lucide-react";
 
 export interface RealisasiItemData {
@@ -147,12 +148,12 @@ export default function RealisasiSlide({
   // 8. Adaptive grid & card sizing for Middle Section (Mitra Ritel Yang Dilayani)
   const n = items.length;
   let gridColsClass = "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6";
-  let cardHeightClass = "min-h-[105px]";
-  let logoHeightClass = "h-11";
-  let logoImgClass = "max-h-9";
-  let nameTextClass = "text-[11px]";
-  let volTextClass = "text-xs";
-  let paddingClass = "p-2.5";
+  let cardHeightClass = "min-h-[74px] sm:min-h-[78px] xl:min-h-[82px]";
+  let logoHeightClass = "h-7 sm:h-8";
+  let logoImgClass = "max-h-7 sm:max-h-8";
+  let nameTextClass = "text-[9.5px] sm:text-[10px]";
+  let volTextClass = "text-xs sm:text-[13px]";
+  let paddingClass = "py-1.5 px-2";
 
   if (n <= 4) {
     gridColsClass =
@@ -163,45 +164,45 @@ export default function RealisasiSlide({
         : n === 3
         ? "grid-cols-3 max-w-2xl mx-auto"
         : "grid-cols-2 sm:grid-cols-4";
-    cardHeightClass = "min-h-[120px]";
-    logoHeightClass = "h-14";
-    logoImgClass = "max-h-12";
-    nameTextClass = "text-xs font-semibold";
-    volTextClass = "text-sm";
-    paddingClass = "p-3.5";
+    cardHeightClass = "min-h-[92px] sm:min-h-[98px]";
+    logoHeightClass = "h-9 sm:h-10";
+    logoImgClass = "max-h-9 sm:max-h-10";
+    nameTextClass = "text-xs font-bold";
+    volTextClass = "text-sm sm:text-base";
+    paddingClass = "p-2.5";
   } else if (n <= 6) {
     gridColsClass = "grid-cols-2 sm:grid-cols-3 md:grid-cols-6";
-    cardHeightClass = "min-h-[110px]";
-    logoHeightClass = "h-12";
-    logoImgClass = "max-h-10";
-    nameTextClass = "text-[11px]";
-    volTextClass = "text-xs";
-    paddingClass = "p-3";
+    cardHeightClass = "min-h-[82px] sm:min-h-[88px]";
+    logoHeightClass = "h-8 sm:h-9";
+    logoImgClass = "max-h-8 sm:max-h-9";
+    nameTextClass = "text-[10px] sm:text-[11px]";
+    volTextClass = "text-xs sm:text-sm";
+    paddingClass = "py-2 px-2.5";
   } else if (n <= 12) {
     gridColsClass = "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6";
-    cardHeightClass = "min-h-[100px]";
-    logoHeightClass = "h-10";
-    logoImgClass = "max-h-8";
-    nameTextClass = "text-[11px]";
-    volTextClass = "text-xs";
-    paddingClass = "p-2.5";
+    cardHeightClass = "min-h-[74px] sm:min-h-[78px] xl:min-h-[82px]";
+    logoHeightClass = "h-7 sm:h-8";
+    logoImgClass = "max-h-7 sm:max-h-8";
+    nameTextClass = "text-[9.5px] sm:text-[10px]";
+    volTextClass = "text-xs sm:text-[13px]";
+    paddingClass = "py-1.5 px-2";
   } else if (n <= 18) {
     gridColsClass = "grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6";
-    cardHeightClass = "min-h-[85px]";
-    logoHeightClass = "h-8";
-    logoImgClass = "max-h-7";
-    nameTextClass = "text-[10px]";
-    volTextClass = "text-[11px]";
-    paddingClass = "p-2";
+    cardHeightClass = "min-h-[68px] sm:min-h-[72px]";
+    logoHeightClass = "h-6 sm:h-7";
+    logoImgClass = "max-h-6 sm:max-h-7";
+    nameTextClass = "text-[9px]";
+    volTextClass = "text-[11px] sm:text-xs";
+    paddingClass = "py-1 px-1.5";
   } else {
     // > 18 items
     gridColsClass = "grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8";
-    cardHeightClass = "min-h-[75px]";
-    logoHeightClass = "h-7";
-    logoImgClass = "max-h-6";
-    nameTextClass = "text-[9px]";
+    cardHeightClass = "min-h-[60px] sm:min-h-[64px]";
+    logoHeightClass = "h-5 sm:h-6";
+    logoImgClass = "max-h-5 sm:max-h-6";
+    nameTextClass = "text-[8.5px]";
     volTextClass = "text-[10px]";
-    paddingClass = "p-1.5";
+    paddingClass = "p-1";
   }
 
   // Format Date
@@ -280,7 +281,7 @@ export default function RealisasiSlide({
         }}
       >
         <img
-          src="/img/pangan-vol-2.jpeg"
+          src="/img/pangan-vol-2.png"
           alt="Pangan Berkualitas untuk Negeri"
           className="w-full h-full object-cover object-right-top"
         />
@@ -318,7 +319,7 @@ export default function RealisasiSlide({
       </div>
 
       {/* ── 5 SUMMARY METRIC CARDS ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[0.95fr_1.5fr_1.1fr_1.15fr_1.3fr] gap-2 xl:gap-2.5 mt-2.5 sm:mt-3 items-stretch">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[0.95fr_1.5fr_1.1fr_1.15fr_1.3fr] gap-2 xl:gap-2.5 mt-2.5 sm:mt-3 -mr-3 sm:-mr-5 items-stretch">
         {/* Card 1: Dari Bumi Indonesia untuk Keluarga Indonesia (Bleed flush to Left Edge, expanded top & bottom) */}
         <div className="relative -ml-6 sm:-ml-8 -mr-3 sm:-mr-5 -mt-2.5 sm:-mt-3.5 -mb-1.5 sm:-mb-2 z-0 rounded-r-2xl overflow-hidden h-[calc(100%+1rem)] sm:h-[calc(100%+1.375rem)] min-h-[114px] sm:min-h-[124px] xl:min-h-[130px] flex items-center select-none shadow-xs">
           <img
@@ -439,35 +440,33 @@ export default function RealisasiSlide({
       </div>
 
       {/* ── MIDDLE SECTION: MITRA RITEL YANG DILAYANI ─────────────────────── */}
-      <div className="mt-3 sm:mt-3.5 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="mt-2.5 sm:mt-3 -mx-3 sm:-mx-5 rounded-xl border border-slate-200/90 overflow-hidden shadow-xs">
         {/* Banner Title */}
-        <div className="bg-[#0B2A59] text-white px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              MITRA RITEL YANG DILAYANI
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-amber-300 text-[11px] font-normal">
-            <Wheat size={14} />
+        <div className="bg-[#0B2A59] text-white px-4 sm:px-5 py-1.5 sm:py-2 flex items-center justify-between">
+          <span className="text-xs sm:text-[13px] font-bold uppercase tracking-wider">
+            MITRA RITEL YANG DILAYANI
+          </span>
+          <div className="flex items-center gap-1.5 text-white/95 text-[10px] sm:text-[11px] font-medium tracking-wide">
+            <Leaf size={14} className="text-[#F5A623] fill-[#F5A623]/40 shrink-0" />
             <span>BERSAMA MEMPERKUAT RANTAI PASOK PANGAN NASIONAL</span>
           </div>
         </div>
 
         {/* Dynamic Mitra Ritel Cards Grid */}
-        <div className="p-3 bg-slate-50/50">
+        <div className="p-2 sm:p-2.5 bg-slate-50/40">
           {items.length === 0 ? (
-            <div className="py-8 text-center text-slate-400 text-xs italic">
+            <div className="py-6 text-center text-slate-400 text-xs italic">
               Belum ada data mitra ritel yang diinput.
             </div>
           ) : (
-            <div className={`grid ${gridColsClass} gap-2.5`}>
+            <div className={`grid ${gridColsClass} gap-1.5 sm:gap-2`}>
               {items.map((item, idx) => (
                 <div
                   key={item.id || idx}
-                  className={`bg-white rounded-lg ${paddingClass} border border-slate-200/80 shadow-sm flex flex-col items-center justify-between text-center ${cardHeightClass} hover:border-blue-400 transition-all`}
+                  className={`bg-white rounded-xl ${paddingClass} border border-slate-200/80 shadow-2xs flex flex-col items-center justify-center text-center ${cardHeightClass} hover:border-blue-400 transition-all`}
                 >
                   {/* Retailer Logo */}
-                  <div className={`${logoHeightClass} w-full flex items-center justify-center mb-1 px-1`}>
+                  <div className={`${logoHeightClass} w-full flex items-center justify-center px-1`}>
                     {item.logoUrl ? (
                       <img
                         src={item.logoUrl}
@@ -476,7 +475,7 @@ export default function RealisasiSlide({
                         crossOrigin="anonymous"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-[#0B2A59] font-bold text-xs flex items-center justify-center">
+                      <div className="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg bg-blue-50 border border-blue-100 text-[#0B2A59] font-black text-[10px] sm:text-xs flex items-center justify-center shadow-2xs">
                         {item.namaRitel.slice(0, 2).toUpperCase()}
                       </div>
                     )}
@@ -484,14 +483,14 @@ export default function RealisasiSlide({
 
                   {/* Retailer Name */}
                   <p
-                    className={`${nameTextClass} font-medium text-slate-700 uppercase tracking-tight line-clamp-1`}
+                    className={`${nameTextClass} font-bold text-slate-800 uppercase tracking-tight line-clamp-1 leading-tight mt-0.5 max-w-full px-0.5`}
                     title={item.namaRitel}
                   >
                     {item.namaRitel}
                   </p>
 
                   {/* Volume KG */}
-                  <p className={`${volTextClass} font-bold text-[#0B2A59] tracking-tight mt-0.5`}>
+                  <p className={`${volTextClass} font-black text-[#0B2A59] tracking-tight leading-none mt-0.5`}>
                     {formatNumber(item.volumeKg)} KG
                   </p>
                 </div>
@@ -502,30 +501,35 @@ export default function RealisasiSlide({
       </div>
 
       {/* ── BOTTOM SECTION: TOP 3 & CAKUPAN WILAYAH ───────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 mt-2.5 sm:mt-3 -mx-3 sm:-mx-5 items-stretch">
         {/* Left Column: Top 3 Volume Realisasi (4 cols) */}
-        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col justify-between">
-          <div className="bg-[#0B2A59] text-white px-3.5 py-2 flex items-center gap-2">
-            <Trophy size={16} className="text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              TOP 3 VOLUME REALISASI
-            </span>
+        <div className="lg:col-span-4 bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+          <div className="bg-[#0B2A59] text-white px-3.5 py-1.5 sm:py-2 flex items-center gap-1.5">
+            <Trophy size={15} className="text-[#F5A623] shrink-0" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-[#F5A623]">
+                TOP 3
+              </span>
+              <span className="text-xs sm:text-[13px] font-bold uppercase tracking-wider text-white">
+                VOLUME REALISASI
+              </span>
+            </div>
           </div>
 
-          <div className="p-3 grid grid-cols-3 gap-2 flex-1 items-center">
+          <div className="p-2 sm:p-2.5 grid grid-cols-3 gap-1.5 sm:gap-2 flex-1 items-stretch">
             {sortedByVolume.map((topItem, topIdx) => {
               const rankStyles = [
                 {
-                  badge: "bg-amber-500 text-white",
-                  border: "border-amber-300",
+                  badge: "bg-[#E5A919] text-white",
+                  border: "border-amber-300 ring-1 ring-amber-300/30",
                 },
                 {
-                  badge: "bg-slate-400 text-white",
-                  border: "border-slate-300",
+                  badge: "bg-[#8C9AA8] text-white",
+                  border: "border-slate-300 ring-1 ring-slate-300/30",
                 },
                 {
-                  badge: "bg-amber-700 text-white",
-                  border: "border-amber-600",
+                  badge: "bg-[#A86E4B] text-white",
+                  border: "border-[#B87333]/40 ring-1 ring-[#B87333]/20",
                 },
               ];
               const st = rankStyles[topIdx] || rankStyles[0];
@@ -533,40 +537,43 @@ export default function RealisasiSlide({
               return (
                 <div
                   key={topItem.id || topIdx}
-                  className={`bg-slate-50/80 rounded-lg p-2 border ${st.border} flex flex-col items-center text-center h-full justify-between shadow-sm`}
+                  className={`bg-white rounded-xl p-1.5 sm:p-2 border ${st.border} flex flex-col items-center justify-between text-center shadow-2xs h-full`}
                 >
-                  {/* Rank Badge */}
-                  <span
-                    className={`w-5 h-5 rounded-full ${st.badge} font-bold text-xs flex items-center justify-center shadow-sm`}
+                  {/* Rank Badge + Logo side-by-side */}
+                  <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full">
+                    <span
+                      className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${st.badge} font-black text-xs flex items-center justify-center shrink-0 shadow-2xs`}
+                    >
+                      {topIdx + 1}
+                    </span>
+                    <div className="h-6 sm:h-7 flex-1 flex items-center justify-center px-0.5">
+                      {topItem.logoUrl ? (
+                        <img
+                          src={topItem.logoUrl}
+                          alt={topItem.namaRitel}
+                          className="max-h-5 sm:max-h-6 max-w-full object-contain"
+                          crossOrigin="anonymous"
+                        />
+                      ) : (
+                        <div className="w-5 h-5 rounded bg-blue-50 border border-blue-100 text-[#0B2A59] font-bold text-[8px] flex items-center justify-center">
+                          {topItem.namaRitel.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Name */}
+                  <p
+                    className="text-[9.5px] sm:text-[10.5px] font-bold text-slate-800 uppercase truncate w-full mt-1 leading-tight"
+                    title={topItem.namaRitel}
                   >
-                    {topIdx + 1}
-                  </span>
+                    {topItem.namaRitel}
+                  </p>
 
-                  {/* Logo */}
-                  <div className="h-8 w-full flex items-center justify-center my-1">
-                    {topItem.logoUrl ? (
-                      <img
-                        src={topItem.logoUrl}
-                        alt={topItem.namaRitel}
-                        className="max-h-7 max-w-full object-contain"
-                        crossOrigin="anonymous"
-                      />
-                    ) : (
-                      <span className="text-[10px] font-normal text-slate-600">
-                        {topItem.namaRitel}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Name & KG */}
-                  <div>
-                    <p className="text-[10px] font-medium text-slate-800 uppercase truncate max-w-[80px]">
-                      {topItem.namaRitel}
-                    </p>
-                    <p className="text-[11px] font-bold text-[#0B2A59]">
-                      {formatNumber(topItem.volumeKg)} KG
-                    </p>
-                  </div>
+                  {/* Volume KG */}
+                  <p className="text-xs sm:text-[13px] xl:text-sm font-black text-[#0B2A59] tracking-tight leading-none mt-0.5">
+                    {formatNumber(topItem.volumeKg)} KG
+                  </p>
                 </div>
               );
             })}
@@ -576,7 +583,7 @@ export default function RealisasiSlide({
               (_, pIdx) => (
                 <div
                   key={`top-empty-${pIdx}`}
-                  className="bg-slate-50/40 rounded-lg p-2 border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 text-[10px] h-full"
+                  className="bg-slate-50/40 rounded-xl p-2 border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 text-[10px] h-full"
                 >
                   -
                 </div>
@@ -586,59 +593,59 @@ export default function RealisasiSlide({
         </div>
 
         {/* Right Column: Cakupan Wilayah dan Mitra Ritel (8 cols) */}
-        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
-          <div className="bg-[#0B2A59] text-white px-3.5 py-2 flex items-center gap-2">
-            <BookOpen size={16} className="text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wider">
+        <div className="lg:col-span-8 bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+          <div className="bg-[#0B2A59] text-white px-3.5 py-1.5 sm:py-2 flex items-center gap-2">
+            <BookOpen size={15} className="text-[#F5A623] shrink-0" />
+            <span className="text-xs sm:text-[13px] font-bold uppercase tracking-wider">
               CAKUPAN WILAYAH DAN MITRA RITEL
             </span>
           </div>
 
           {dynamicRegions.length === 0 ? (
-            <div className="p-6 text-center text-slate-400 text-xs italic flex-1 flex items-center justify-center">
+            <div className="p-4 text-center text-slate-400 text-xs italic flex-1 flex items-center justify-center">
               Belum ada data cakupan wilayah yang diinput.
             </div>
           ) : (
             <div
-              className="grid divide-x divide-slate-100 p-2 flex-1 bg-slate-50/40 text-[10px] overflow-x-auto"
+              className="grid divide-x divide-slate-200/80 p-1.5 sm:p-2 flex-1 bg-white text-[10px] overflow-x-auto items-stretch"
               style={{
                 gridTemplateColumns:
                   dynamicRegions.length <= 6
                     ? `repeat(${dynamicRegions.length}, minmax(0, 1fr))`
-                    : `repeat(${dynamicRegions.length}, minmax(120px, 1fr))`,
+                    : `repeat(${dynamicRegions.length}, minmax(110px, 1fr))`,
               }}
             >
               {dynamicRegions.map((reg) => (
-                <div key={reg.key} className="px-2 flex flex-col min-w-0">
-                  {/* Column Header */}
+                <div key={reg.key} className="px-1.5 sm:px-2 flex flex-col min-w-0">
+                  {/* Column Header: Warm Beige Banner */}
                   <div
-                    className="bg-amber-500/10 text-[#0B2A59] font-bold uppercase text-center py-1 px-1 rounded mb-2 tracking-tight text-[9px] truncate"
+                    className="bg-[#F5EFE6] text-[#0B2A59] font-bold uppercase text-center py-0.5 sm:py-1 px-1 rounded-md mb-1.5 tracking-tight text-[8.5px] sm:text-[9.5px] truncate leading-tight shadow-2xs"
                     title={reg.label}
                   >
                     {reg.label}
                   </div>
 
-                  {/* Ritel List */}
-                  <div className="space-y-1.5 flex-1">
+                  {/* Ritel List: Tight, borderless rows */}
+                  <div className="space-y-1 flex-1">
                     {reg.items.map((r, rIdx) => (
                       <div
                         key={r.id || rIdx}
-                        className="flex items-center gap-1.5 bg-white p-1 rounded border border-slate-200/60 shadow-2xs min-w-0"
+                        className="flex items-center gap-1.5 py-0.5 min-w-0"
                       >
                         {r.logoUrl ? (
                           <img
                             src={r.logoUrl}
                             alt=""
-                            className="h-4 w-4 object-contain shrink-0"
+                            className="max-h-4 sm:max-h-4.5 max-w-[45px] sm:max-w-[55px] object-contain shrink-0"
                             crossOrigin="anonymous"
                           />
                         ) : (
-                          <div className="w-4 h-4 rounded bg-blue-100 text-[#0B2A59] font-bold text-[8px] flex items-center justify-center shrink-0">
+                          <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded bg-blue-100 text-[#0B2A59] font-bold text-[8px] flex items-center justify-center shrink-0">
                             {r.namaRitel.slice(0, 2).toUpperCase()}
                           </div>
                         )}
                         <span
-                          className="font-normal text-slate-800 text-[9px] truncate"
+                          className="font-semibold text-slate-700 text-[8.5px] sm:text-[9.5px] truncate leading-tight"
                           title={r.namaRitel}
                         >
                           {r.namaRitel}
@@ -654,15 +661,18 @@ export default function RealisasiSlide({
       </div>
 
       {/* ── FOOTER BANNER ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between pt-3.5 mt-4 border-t border-slate-100 text-[11px] text-slate-500 gap-2">
-        <div className="flex items-center gap-1.5 text-amber-700 font-normal italic">
-          <Wheat size={14} className="text-amber-500" />
+      <div className="flex flex-col sm:flex-row items-center justify-between pt-2 sm:pt-2.5 mt-2.5 sm:mt-3 -mx-3 sm:-mx-5 px-1 border-t border-slate-200/80 text-[10.5px] sm:text-[11px] text-slate-500 gap-2">
+        <div className="flex items-center gap-1.5 text-amber-800/90 font-medium italic">
+          <Leaf size={14} className="text-amber-500 fill-amber-400/40 shrink-0" />
           <span>Sinergi untuk Ketahanan Pangan dan Kesejahteraan Petani</span>
         </div>
 
-        <div className="font-normal text-slate-600">
-          {data.sumberCatatan ||
-            `Sumber: Realisasi Pelayanan UB Industri, ${dayFormatted} ${dateFormatted}.`}
+        <div className="font-normal text-slate-600 flex items-center">
+          <span>
+            {data.sumberCatatan ||
+              `Sumber: Realisasi Pelayanan UB Industri, ${dayFormatted} ${dateFormatted}.`}
+          </span>
+          <span className="hidden sm:inline-block w-8 sm:w-10 h-0.5 bg-[#F5A623] rounded-full ml-2" />
         </div>
       </div>
     </div>

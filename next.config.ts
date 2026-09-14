@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     optimizeCss: false,
   },
   transpilePackages: [],
-  serverExternalPackages: ["pg", "bcryptjs"],
+  serverExternalPackages: ["pg", "bcryptjs", "puppeteer", "puppeteer-core"],
 };
 
 export default nextConfig;
