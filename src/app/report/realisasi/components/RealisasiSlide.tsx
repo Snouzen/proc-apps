@@ -45,6 +45,31 @@ export default function RealisasiSlide({
   const totalKg = items.reduce((sum, it) => sum + Number(it.volumeKg || 0), 0);
   const totalTon = totalKg / 1000;
 
+  // 1b. Consolidated Items per Retailer (akumulasi volume jika ritel sama diinput di beda wilayah)
+  // Menjaga urutan kemunculan pertama, menjumlahkan volumeKg, dan mempertahankan logoUrl
+  const consolidatedMap = new Map<string, RealisasiItemData>();
+  items.forEach((it) => {
+    const cleanName = (it.namaRitel || "").trim();
+    if (!cleanName) return;
+    const key = cleanName.toLowerCase();
+    const vol = Number(it.volumeKg || 0);
+
+    if (!consolidatedMap.has(key)) {
+      consolidatedMap.set(key, {
+        ...it,
+        namaRitel: cleanName,
+        volumeKg: vol,
+      });
+    } else {
+      const existing = consolidatedMap.get(key)!;
+      existing.volumeKg += vol;
+      if (!existing.logoUrl && it.logoUrl) {
+        existing.logoUrl = it.logoUrl;
+      }
+    }
+  });
+  const consolidatedItems = Array.from(consolidatedMap.values());
+
   // 2. Realisasi Jabodetabek (items with provinsi including "DKI", "JAKARTA", or "JABODETABEK")
   const jabodetabekKg = items
     .filter((it) => {
@@ -121,7 +146,7 @@ export default function RealisasiSlide({
       : `(${rawSubtitle.toUpperCase()})`
     : "";
 
-  // 5. Cakupan Wilayah (pulau / daerah dynamically joined with " - ")
+  // 5. Cakupan Wilayah (pulau / daerah dynamically joined with " – ")
   const uniqueIslands = Array.from(
     new Set(
       items
@@ -132,8 +157,8 @@ export default function RealisasiSlide({
   const cakupanWilayahStr =
     uniqueIslands.length > 0 ? uniqueIslands.join(" – ") : "JAWA";
 
-  // 6. Top 3 Volume Realisasi
-  const sortedByVolume = [...items]
+  // 6. Top 3 Volume Realisasi (berdasarkan volume terakumulasi per mitra ritel)
+  const sortedByVolume = [...consolidatedItems]
     .filter((it) => Number(it.volumeKg || 0) > 0)
     .sort((a, b) => Number(b.volumeKg || 0) - Number(a.volumeKg || 0))
     .slice(0, 3);
@@ -166,7 +191,7 @@ export default function RealisasiSlide({
   );
 
   // 8. Adaptive grid & card sizing for Middle Section (Mitra Ritel Yang Dilayani)
-  const n = items.length;
+  const n = consolidatedItems.length;
   let gridColsClass = "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6";
   let cardHeightClass = "min-h-[74px] sm:min-h-[78px] xl:min-h-[82px]";
   let logoHeightClass = "h-7 sm:h-8";
@@ -473,15 +498,15 @@ export default function RealisasiSlide({
 
         {/* Dynamic Mitra Ritel Cards Grid */}
         <div className="p-2 sm:p-2.5 bg-slate-50/40">
-          {items.length === 0 ? (
+          {consolidatedItems.length === 0 ? (
             <div className="py-6 text-center text-slate-400 text-xs italic">
               Belum ada data mitra ritel yang diinput.
             </div>
           ) : (
             <div className={`grid ${gridColsClass} gap-1.5 sm:gap-2`}>
-              {items.map((item, idx) => (
+              {consolidatedItems.map((item, idx) => (
                 <div
-                  key={item.id || idx}
+                  key={item.id || item.namaRitel || idx}
                   className={`bg-white rounded-xl ${paddingClass} border border-slate-200/80 shadow-2xs flex flex-col items-center justify-center text-center ${cardHeightClass} hover:border-blue-400 transition-all`}
                 >
                   {/* Retailer Logo */}
