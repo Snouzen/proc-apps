@@ -130,7 +130,21 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
-    const { id, namaPt: originalNamaPt, newNamaPt, inisial, newInisial, provinsi, logoPt, logoInisial } = parsed.data;
+    const { id, namaPt, newNamaPt, inisial, newInisial, provinsi, logoPt, logoInisial } = parsed.data;
+    let originalNamaPt = namaPt;
+
+    // Fallback: If originalNamaPt is missing but id is provided, lookup namaPt from database
+    if (!originalNamaPt && id) {
+      const existing = await prisma.ritelModern.findUnique({ where: { id } });
+      if (existing) {
+        originalNamaPt = existing.namaPt;
+      }
+    }
+
+    if (!originalNamaPt) {
+      return NextResponse.json({ error: "namaPt wajib diisi" }, { status: 400 });
+    }
+
     let currentNamaPt = originalNamaPt;
 
     // 1. Update namaPt & logoPt untuk SEMUA baris dengan namaPt yang lama

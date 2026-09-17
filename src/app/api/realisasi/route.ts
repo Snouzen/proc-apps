@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { id, tanggal, judul, subjudul, sumberCatatan, items } = body;
+    const { id, tanggal, judul, subjudul, sumberCatatan, daftarRegional, items } = body;
 
     if (!tanggal) {
       return NextResponse.json(
@@ -177,6 +177,7 @@ export async function POST(req: Request) {
             judul: judul || "PROGRES PEMENUHAN RITEL MODERN",
             subjudul: subjudul || null,
             sumberCatatan: sumberCatatan || null,
+            daftarRegional: daftarRegional ? daftarRegional.trim() : null,
             totalRealisasiKg,
             createdBy: auth.email || "pusat",
             items: {
@@ -198,6 +199,7 @@ export async function POST(req: Request) {
           judul: judul || "PROGRES PEMENUHAN RITEL MODERN",
           subjudul: subjudul || null,
           sumberCatatan: sumberCatatan || null,
+          daftarRegional: daftarRegional ? daftarRegional.trim() : null,
           totalRealisasiKg,
           createdBy: auth.email || "pusat",
           items: {

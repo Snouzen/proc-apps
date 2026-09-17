@@ -192,6 +192,8 @@ interface RealisasiFormSplitProps {
   setSubjudul: (val: string) => void;
   sumberCatatan: string;
   setSumberCatatan: (val: string) => void;
+  daftarRegional: string;
+  setDaftarRegional: (val: string) => void;
   items: FormRowItem[];
   setItems: React.Dispatch<React.SetStateAction<FormRowItem[]>>;
   ritelOptions: OptionRitel[];
@@ -212,6 +214,8 @@ export default function RealisasiFormSplit({
   setSubjudul,
   sumberCatatan,
   setSumberCatatan,
+  daftarRegional,
+  setDaftarRegional,
   items,
   setItems,
   ritelOptions,
@@ -356,6 +360,41 @@ export default function RealisasiFormSplit({
               ⚠️ Laporan untuk tanggal ini sudah ada. Dalam 1 hari hanya diperbolehkan 1 laporan.
             </p>
           )}
+        </div>
+
+        {/* Input Manual: Daftar Regional (Tepat di bawah Tanggal Realisasi) */}
+        <div className="bg-slate-50/50 dark:bg-slate-800/30 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase">
+                Daftar Regional
+              </label>
+              <p className="text-[10px] text-slate-400">
+                Teks regional pada card &quot;Jumlah Regional&quot;
+              </p>
+            </div>
+            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-[#0B2A59] dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+              {(() => {
+                const entered = (daftarRegional || "")
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                return `${entered.length} Regional`;
+              })()}
+            </span>
+          </div>
+
+          <input
+            type="text"
+            value={daftarRegional}
+            onChange={(e) => setDaftarRegional(e.target.value)}
+            placeholder="Contoh: Jabodetabek, Jawa, Sulawesi"
+            className="w-full py-1.5 px-3 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
+          />
+
+          <p className="text-[10px] text-slate-400 leading-tight">
+            Ketik nama-nama regional dipisahkan koma. Angka jumlah regional akan dihitung otomatis sesuai entri yang diketik.
+          </p>
         </div>
 
         {/* Retailers Section Header */}

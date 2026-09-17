@@ -88,8 +88,36 @@ export async function POST(req: NextRequest) {
       width: 1280px !important;
       min-width: 1280px !important;
       max-width: 1280px !important;
+      border: none !important;
+      border-radius: 0 !important;
       box-shadow: none !important;
-      margin: 0 auto !important;
+      margin: 0 !important;
+    }
+    .font-slide p,
+    .font-slide span,
+    .font-slide h1,
+    .font-slide h2,
+    .font-slide h3 {
+      line-height: 1.35 !important;
+      padding-bottom: 2.5px !important;
+    }
+    .font-slide .truncate,
+    .font-slide [class*="line-clamp-1"] {
+      display: block !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      line-height: 1.35 !important;
+      padding-bottom: 2.5px !important;
+      -webkit-line-clamp: unset !important;
+    }
+    .font-slide [class*="line-clamp-2"] {
+      display: -webkit-box !important;
+      -webkit-box-orient: vertical !important;
+      -webkit-line-clamp: 2 !important;
+      overflow: hidden !important;
+      line-height: 1.3 !important;
+      padding-bottom: 2px !important;
     }
   </style>
 </head>
@@ -111,11 +139,16 @@ export async function POST(req: NextRequest) {
       timeout: 10000,
     });
 
-    // Ensure all images and fonts are loaded and decoded
+    // Ensure all images and fonts are loaded with safety timeouts
     await page.evaluate(async () => {
-      if (document.fonts) {
-        await document.fonts.ready;
-      }
+      try {
+        if (document.fonts) {
+          await Promise.race([
+            document.fonts.ready,
+            new Promise((r) => setTimeout(r, 2000)),
+          ]);
+        }
+      } catch {}
       const images = Array.from(document.images);
       await Promise.all(
         images.map((img) => {
@@ -123,6 +156,7 @@ export async function POST(req: NextRequest) {
           return new Promise((resolve) => {
             img.onload = resolve;
             img.onerror = resolve;
+            setTimeout(resolve, 1500);
           });
         })
       );
@@ -130,7 +164,11 @@ export async function POST(req: NextRequest) {
 
     // Capture element screenshot at ultra-high DPI
     const slideEl = await page.$(".font-slide");
+    const boundingBox = slideEl ? await slideEl.boundingBox() : null;
     const target = slideEl || page;
+    const origWidth = boundingBox?.width || 1280;
+    const origHeight = boundingBox?.height || 720;
+
     const screenshotBuffer = await target.screenshot({
       type: "png",
       omitBackground: false,
@@ -140,38 +178,19 @@ export async function POST(req: NextRequest) {
     await page.close();
     page = null;
 
-    // Embed into A4 Landscape jsPDF (297mm x 210mm)
+    // Embed into exact-fit presentation Landscape jsPDF matching slide aspect ratio perfectly
+    const pdfWidth = 297; // mm
+    const pdfHeight = (origHeight * pdfWidth) / origWidth;
+
     const pdf = new jsPDF({
       orientation: "landscape",
       unit: "mm",
-      format: "a4",
+      format: [pdfWidth, pdfHeight],
       compress: true,
     });
 
-    const pageWidth = pdf.internal.pageSize.getWidth(); // 297mm
-    const pageHeight = pdf.internal.pageSize.getHeight(); // 210mm
-    const marginX = 6;
-    const marginY = 6;
-    const maxW = pageWidth - marginX * 2;
-    const maxH = pageHeight - marginY * 2;
-
-    const boundingBox = await slideEl?.boundingBox();
-    const origWidth = boundingBox?.width || 1280;
-    const origHeight = boundingBox?.height || 720;
-
-    let imgWidth = maxW;
-    let imgHeight = (origHeight * imgWidth) / origWidth;
-
-    if (imgHeight > maxH) {
-      imgHeight = maxH;
-      imgWidth = (origWidth * imgHeight) / origHeight;
-    }
-
-    const xOffset = (pageWidth - imgWidth) / 2;
-    const yOffset = (pageHeight - imgHeight) / 2;
-
     const b64 = "data:image/png;base64," + Buffer.from(screenshotBuffer).toString("base64");
-    pdf.addImage(b64, "PNG", xOffset, yOffset, imgWidth, imgHeight, undefined, "FAST");
+    pdf.addImage(b64, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
     const pdfOutput = pdf.output("arraybuffer");
 
     return new NextResponse(pdfOutput, {

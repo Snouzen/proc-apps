@@ -962,13 +962,15 @@ export default function RitelModernPage() {
                                 setEditCompany({
                                   id: masterGroup?.id,
                                   namaPt: viewAliases.namaPt,
+                                  originalNamaPt: viewAliases.namaPt,
                                   inisial: alias === "—" ? null : alias,
                                   originalInisial:
                                     alias === "—" ? null : alias,
                                   provinsi: data.provinsi || masterGroup?.provinsi || "",
                                   logoPt: masterGroup?.logoPt || null,
                                   logoInisial:
-                                    masterGroup?.logoInisial || null,
+                                    data.logoInisial || masterGroup?.logoInisial || null,
+                                  ptOnly: false,
                                 });
                               }}
                               className="p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700"
@@ -1315,6 +1317,18 @@ export default function RitelModernPage() {
                       placeholder="https://..."
                       className="w-full px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px]"
                     />
+                    {editCompany.logoPt && (
+                      <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 max-h-16 overflow-hidden">
+                        <img
+                          src={editCompany.logoPt}
+                          alt="preview logo pt"
+                          className="h-8 object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -1333,6 +1347,18 @@ export default function RitelModernPage() {
                       placeholder="https://..."
                       className="w-full px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px]"
                     />
+                    {editCompany.logoInisial && (
+                      <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 max-h-16 overflow-hidden">
+                        <img
+                          src={editCompany.logoInisial}
+                          alt="preview logo inisial"
+                          className="h-8 object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               
@@ -1348,26 +1374,32 @@ export default function RitelModernPage() {
                 <button
                   onClick={async () => {
                     try {
+                      const payload: any = {
+                        id: editCompany.id,
+                        namaPt: editCompany.originalNamaPt || editCompany.namaPt,
+                      };
+
+                      if (editCompany.ptOnly) {
+                        payload.newNamaPt = editCompany.namaPt;
+                        payload.logoPt = editCompany.logoPt || null;
+                      } else {
+                        payload.inisial = editCompany.originalInisial;
+                        payload.newInisial = editCompany.inisial || null;
+                        payload.provinsi = editCompany.provinsi || null;
+                        payload.logoInisial = editCompany.logoInisial || null;
+                      }
+
                       const res = await fetch("/api/ritel", {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          id: editCompany.id,
-                          namaPt: editCompany.originalNamaPt, // Send original name to find the PT group
-                          newNamaPt: editCompany.namaPt,      // Send new name to update it
-                          inisial: editCompany.originalInisial, // original value to find rows
-                          newInisial: editCompany.inisial, // new value to update
-                          provinsi: editCompany.provinsi || null,
-                          logoPt: editCompany.logoPt,
-                          logoInisial: editCompany.logoInisial,
-                        }),
+                        body: JSON.stringify(payload),
                       });
                       if (!res.ok) {
                         const j = await res.json().catch(() => ({}));
                         Swal.fire({
                           icon: "error",
                           title: "Gagal",
-                          text: j?.error || "Gagal update inisial",
+                          text: j?.error || "Gagal update data ritel",
                         });
                         return;
                       }
@@ -1378,15 +1410,22 @@ export default function RitelModernPage() {
                           const isSamePt = x.namaPt.toLowerCase() === oldPtName;
                           
                           if (isSamePt) {
+                            if (editCompany.ptOnly) {
+                              return {
+                                ...x,
+                                namaPt: editCompany.namaPt,
+                                logoPt: editCompany.logoPt || null,
+                              };
+                            }
                             const isTargetInisial = (x.inisial ?? "—") === (editCompany.originalInisial ?? "—");
-                            return {
-                              ...x,
-                              namaPt: editCompany.namaPt,
-                              logoPt: editCompany.logoPt,
-                              inisial: isTargetInisial ? (editCompany.inisial || null) : x.inisial,
-                              provinsi: isTargetInisial ? (editCompany.provinsi || null) : x.provinsi,
-                              logoInisial: isTargetInisial ? (editCompany.logoInisial || null) : x.logoInisial,
-                            };
+                            if (isTargetInisial) {
+                              return {
+                                ...x,
+                                inisial: editCompany.inisial || null,
+                                provinsi: editCompany.provinsi || null,
+                                logoInisial: editCompany.logoInisial || null,
+                              };
+                            }
                           }
                           return x;
                         }),
@@ -1405,7 +1444,7 @@ export default function RitelModernPage() {
                       Swal.fire({
                         icon: "error",
                         title: "Oops...",
-                        text: "Gagal update inisial",
+                        text: "Gagal update data ritel",
                       });
                     }
                   }}

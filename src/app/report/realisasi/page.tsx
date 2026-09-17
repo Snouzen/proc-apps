@@ -59,6 +59,7 @@ export default function RealisasiPemenuhanPage() {
   const [judul, setJudul] = useState("PROGRES PEMENUHAN RITEL MODERN");
   const [subjudul, setSubjudul] = useState("");
   const [sumberCatatan, setSumberCatatan] = useState("");
+  const [daftarRegional, setDaftarRegional] = useState("");
   const [items, setItems] = useState<FormRowItem[]>([]);
 
   // Retailer options for dropdown
@@ -205,6 +206,7 @@ export default function RealisasiPemenuhanPage() {
     setJudul("PROGRES PEMENUHAN RITEL MODERN");
     setSubjudul("");
     setSumberCatatan("");
+    setDaftarRegional("");
     // Default 1 empty row
     setItems([
       {
@@ -232,6 +234,7 @@ export default function RealisasiPemenuhanPage() {
     setJudul(rec.judul || "PROGRES PEMENUHAN RITEL MODERN");
     setSubjudul(rec.subjudul || "");
     setSumberCatatan(rec.sumberCatatan || "");
+    setDaftarRegional(rec.daftarRegional || "");
 
     if (Array.isArray(rec.items) && rec.items.length > 0) {
       setItems(
@@ -293,6 +296,7 @@ export default function RealisasiPemenuhanPage() {
         judul,
         subjudul: subjudul || undefined,
         sumberCatatan: sumberCatatan || undefined,
+        daftarRegional: daftarRegional ? daftarRegional.trim() : undefined,
         items: validItems,
       };
 
@@ -362,7 +366,7 @@ export default function RealisasiPemenuhanPage() {
     setExportingPdf(true);
     try {
       const activeData = isSplitOpen
-        ? { tanggal, judul, subjudul, sumberCatatan, items }
+        ? { tanggal, judul, subjudul, sumberCatatan, daftarRegional, items }
         : selectedRecord || fallbackSampleData;
 
       const dateStr = activeData.tanggal
@@ -433,6 +437,7 @@ export default function RealisasiPemenuhanPage() {
         judul,
         subjudul,
         sumberCatatan,
+        daftarRegional,
         items,
       }
     : selectedRecord || fallbackSampleData;
@@ -599,6 +604,8 @@ export default function RealisasiPemenuhanPage() {
               setSubjudul={setSubjudul}
               sumberCatatan={sumberCatatan}
               setSumberCatatan={setSumberCatatan}
+              daftarRegional={daftarRegional}
+              setDaftarRegional={setDaftarRegional}
               items={items}
               setItems={setItems}
               ritelOptions={ritelOptions}

@@ -27,6 +27,7 @@ export interface RealisasiData {
   judul?: string;
   subjudul?: string;
   sumberCatatan?: string;
+  daftarRegional?: string | null;
   items: RealisasiItemData[];
 }
 
@@ -75,7 +76,7 @@ export default function RealisasiSlide({
     return firstWord;
   };
 
-  // 4. Unique Regionals (Pulau / Region grouping, with Jabodetabek as distinct regional)
+  // 4. Regionals: Manual input if provided by user, otherwise automatic based on items
   const uniqueRegionalNames = Array.from(
     new Set(
       items
@@ -94,12 +95,31 @@ export default function RealisasiSlide({
         .filter(Boolean)
     )
   );
+
+  const manualRegionalList = (data.daftarRegional || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   const jumlahRegional =
-    uniqueRegionalNames.length > 0 ? uniqueRegionalNames.length : 1;
-  const regionalSubtitle =
-    uniqueRegionalNames.length > 0
-      ? `(${uniqueRegionalNames.join(", ")})`
+    manualRegionalList.length > 0
+      ? manualRegionalList.length
+      : uniqueRegionalNames.length > 0
+      ? uniqueRegionalNames.length
+      : 1;
+
+  const rawSubtitle =
+    manualRegionalList.length > 0
+      ? manualRegionalList.join(", ")
+      : uniqueRegionalNames.length > 0
+      ? uniqueRegionalNames.join(", ")
       : "";
+
+  const regionalSubtitle = rawSubtitle
+    ? rawSubtitle.startsWith("(") && rawSubtitle.endsWith(")")
+      ? rawSubtitle.toUpperCase()
+      : `(${rawSubtitle.toUpperCase()})`
+    : "";
 
   // 5. Cakupan Wilayah (pulau / daerah dynamically joined with " - ")
   const uniqueIslands = Array.from(
@@ -247,9 +267,9 @@ export default function RealisasiSlide({
 
   const getDynamicCakupanFontSize = (valStr: string) => {
     const len = valStr.length;
-    if (len <= 16) return "text-xs sm:text-sm xl:text-base";
-    if (len <= 24) return "text-[11px] sm:text-xs xl:text-sm";
-    return "text-[10px] sm:text-[11px] xl:text-xs";
+    if (len <= 16) return "text-[12px] sm:text-[12.5px] xl:text-[13.5px]";
+    if (len <= 24) return "text-[11px] sm:text-[11.5px] xl:text-[12.5px]";
+    return "text-[10px] sm:text-[10.5px] xl:text-[11.5px]";
   };
 
   const totalKgStr = formatNumber(totalKg);
@@ -333,6 +353,8 @@ export default function RealisasiSlide({
                 "linear-gradient(to right, black 0%, black 72%, rgba(0,0,0,0.5) 88%, transparent 100%)",
             }}
           />
+          {/* Universal fade overlay for canvas/PDF renderers lacking mask-image */}
+          <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-r from-transparent via-white/40 to-white pointer-events-none" />
         </div>
 
         {/* Card 2: Total Realisasi (Smoothly elevated on top of Card 1's gradasi background) */}
@@ -401,7 +423,7 @@ export default function RealisasiSlide({
               </span>
             </div>
             {regionalSubtitle && (
-              <p className="text-[9px] sm:text-[10px] xl:text-[11px] font-bold text-[#0B2A59] uppercase truncate mt-1 leading-tight" title={regionalSubtitle}>
+              <p className="text-[8.5px] sm:text-[9.5px] xl:text-[10.5px] font-bold text-[#0B2A59] uppercase break-words line-clamp-2 mt-0.5 leading-normal pb-0.5" title={regionalSubtitle}>
                 {regionalSubtitle}
               </p>
             )}
@@ -409,30 +431,27 @@ export default function RealisasiSlide({
         </div>
 
         {/* Card 5: Cakupan Wilayah */}
-        <div className="sm:col-span-2 lg:col-span-1 bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center gap-2 xl:gap-2.5">
+        <div className="sm:col-span-2 lg:col-span-1 bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex flex-col justify-between items-center text-center shadow-sm h-full">
+          {/* Top: Judul Cakupan Wilayah */}
+          <p className="text-[11px] sm:text-xs xl:text-[13px] font-extrabold text-[#0B2A59] uppercase tracking-wider leading-none">
+            CAKUPAN WILAYAH
+          </p>
+
+          {/* Middle: Peta Wilayah Indonesia di Tengah */}
+          <div className="my-auto py-0.5 flex items-center justify-center w-full flex-1">
             <img
               src="/img/indonesia-map.png"
               alt="Peta Wilayah Indonesia"
-              className="w-14 sm:w-16 xl:w-20 h-auto shrink-0 object-contain"
+              className="w-full max-w-[170px] sm:max-w-[195px] xl:max-w-[215px] h-auto max-h-12 sm:max-h-13 xl:max-h-14 object-contain"
             />
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-[11px] xl:text-xs font-extrabold text-[#0B2A59] uppercase tracking-wider leading-tight">
-                CAKUPAN WILAYAH
-              </p>
-              <p
-                className={`${getDynamicCakupanFontSize(cakupanWilayahStr)} font-black text-[#0B2A59] tracking-tight truncate mt-0.5 leading-tight`}
-                title={cakupanWilayahStr}
-              >
-                {cakupanWilayahStr}
-              </p>
-            </div>
           </div>
-          <div className="mt-1 sm:mt-1.5 text-center">
-            <p className="text-[8px] sm:text-[9px] xl:text-[10px] font-bold text-[#0B2A59] uppercase leading-tight truncate">
+
+          {/* Bottom: Teks Melayani Ritel Modern */}
+          <div className="w-full text-center">
+            <p className="text-[8px] sm:text-[8.5px] xl:text-[9.5px] font-bold text-[#0B2A59] uppercase leading-normal pb-0.5 truncate">
               MELAYANI BERBAGAI RITEL MODERN
             </p>
-            <p className="text-[8px] sm:text-[9px] xl:text-[10px] font-bold text-[#0B2A59] uppercase leading-tight truncate">
+            <p className="text-[8px] sm:text-[8.5px] xl:text-[9.5px] font-bold text-[#0B2A59] uppercase leading-normal pb-0.5 truncate">
               DI BERBAGAI DAERAH
             </p>
           </div>
@@ -483,7 +502,7 @@ export default function RealisasiSlide({
 
                   {/* Retailer Name */}
                   <p
-                    className={`${nameTextClass} font-bold text-slate-800 uppercase tracking-tight line-clamp-1 leading-tight mt-0.5 max-w-full px-0.5`}
+                    className={`${nameTextClass} font-bold text-slate-800 uppercase tracking-tight line-clamp-1 leading-normal pb-0.5 mt-0.5 max-w-full px-0.5`}
                     title={item.namaRitel}
                   >
                     {item.namaRitel}
@@ -564,7 +583,7 @@ export default function RealisasiSlide({
 
                   {/* Name */}
                   <p
-                    className="text-[9.5px] sm:text-[10.5px] font-bold text-slate-800 uppercase truncate w-full mt-1 leading-tight"
+                    className="text-[9.5px] sm:text-[10.5px] font-bold text-slate-800 uppercase truncate w-full mt-0.5 leading-normal pb-0.5"
                     title={topItem.namaRitel}
                   >
                     {topItem.namaRitel}
@@ -616,7 +635,7 @@ export default function RealisasiSlide({
               }}
             >
               {dynamicRegions.map((reg) => (
-                <div key={reg.key} className="px-1.5 sm:px-2 flex flex-col min-w-0">
+                <div key={reg.key} className="px-1.5 sm:px-2 flex flex-col min-w-0 overflow-hidden">
                   {/* Column Header: Warm Beige Banner */}
                   <div
                     className="bg-[#F5EFE6] text-[#0B2A59] font-bold uppercase text-center py-0.5 sm:py-1 px-1 rounded-md mb-1.5 tracking-tight text-[8.5px] sm:text-[9.5px] truncate leading-tight shadow-2xs"
@@ -630,7 +649,7 @@ export default function RealisasiSlide({
                     {reg.items.map((r, rIdx) => (
                       <div
                         key={r.id || rIdx}
-                        className="flex items-center gap-1.5 py-0.5 min-w-0"
+                        className="flex items-center gap-1.5 py-0.5 min-w-0 overflow-hidden"
                       >
                         {r.logoUrl ? (
                           <img
@@ -645,7 +664,7 @@ export default function RealisasiSlide({
                           </div>
                         )}
                         <span
-                          className="font-semibold text-slate-700 text-[8.5px] sm:text-[9.5px] truncate leading-tight"
+                          className="font-semibold text-slate-700 text-[8.5px] sm:text-[9.5px] truncate leading-normal pb-0.5 min-w-0 flex-1 block"
                           title={r.namaRitel}
                         >
                           {r.namaRitel}

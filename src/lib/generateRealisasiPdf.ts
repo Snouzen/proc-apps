@@ -78,6 +78,9 @@ export async function generateRealisasiPdf({
         clonedSlide.style.width = "1280px";
         clonedSlide.style.minWidth = "1280px";
         clonedSlide.style.maxWidth = "1280px";
+        clonedSlide.style.border = "none";
+        clonedSlide.style.borderRadius = "0";
+        clonedSlide.style.boxShadow = "none";
       }
 
       const style = clonedDoc.createElement("style");
@@ -88,15 +91,24 @@ export async function generateRealisasiPdf({
         .font-slide h2,
         .font-slide h3 {
           line-height: 1.35 !important;
-          padding-bottom: 2px !important;
+          padding-bottom: 2.5px !important;
         }
         .font-slide .truncate,
-        .font-slide [class*="line-clamp"],
-        .font-slide [class*="leading-tight"],
-        .font-slide [class*="leading-none"] {
-          overflow: visible !important;
-          -webkit-line-clamp: unset !important;
+        .font-slide [class*="line-clamp-1"] {
+          display: block !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
           line-height: 1.35 !important;
+          padding-bottom: 2.5px !important;
+          -webkit-line-clamp: unset !important;
+        }
+        .font-slide [class*="line-clamp-2"] {
+          display: -webkit-box !important;
+          -webkit-box-orient: vertical !important;
+          -webkit-line-clamp: 2 !important;
+          overflow: hidden !important;
+          line-height: 1.3 !important;
           padding-bottom: 2px !important;
         }
       `;
@@ -106,32 +118,17 @@ export async function generateRealisasiPdf({
 
   const imgData = canvas.toDataURL("image/png");
 
+  // Borderless exact-fit PDF matching presentation slide aspect ratio
+  const pdfWidth = 297;
+  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
   const pdf = new jsPDF({
     orientation: "landscape",
     unit: "mm",
-    format: "a4",
+    format: [pdfWidth, pdfHeight],
     compress: true,
   });
 
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  const marginX = 6;
-  const marginY = 6;
-  const maxW = pageWidth - marginX * 2;
-  const maxH = pageHeight - marginY * 2;
-
-  let imgWidth = maxW;
-  let imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  if (imgHeight > maxH) {
-    imgHeight = maxH;
-    imgWidth = (canvas.width * imgHeight) / canvas.height;
-  }
-
-  const xOffset = (pageWidth - imgWidth) / 2;
-  const yOffset = (pageHeight - imgHeight) / 2;
-
-  pdf.addImage(imgData, "PNG", xOffset, yOffset, imgWidth, imgHeight, undefined, "FAST");
+  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
   pdf.save(fileName);
 }
