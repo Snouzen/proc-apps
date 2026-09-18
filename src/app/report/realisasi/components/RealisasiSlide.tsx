@@ -182,10 +182,27 @@ export default function RealisasiSlide({
     }
   });
 
+  // Helper: Format / shorten specific long province names for header display
+  const formatProvinceLabel = (prov: string): string => {
+    const clean = (prov || "").trim().toUpperCase().replace(/\s+/g, " ");
+    if (clean === "KEPULAUAN BANGKA BELITUNG") return "KEP. BANGKA BELITUNG";
+    if (
+      clean === "DAERAH ISTIMEWA YOGYAKARTA" ||
+      clean === "DI YOGYAKARTA" ||
+      clean === "D.I. YOGYAKARTA" ||
+      clean === "D. I. YOGYAKARTA"
+    ) {
+      return "D. I. YOGYAKARTA";
+    }
+    if (clean === "NUSA TENGGARA BARAT") return "NTB";
+    if (clean === "NUSA TENGGARA TIMUR") return "NTT";
+    return clean;
+  };
+
   const dynamicRegions = Array.from(dynamicRegionMap.entries()).map(
     ([regionName, regItems]) => ({
       key: regionName,
-      label: regionName,
+      label: formatProvinceLabel(regionName),
       items: regItems,
     })
   );
@@ -654,19 +671,19 @@ export default function RealisasiSlide({
               className="grid divide-x divide-slate-200/80 p-1.5 sm:p-2 flex-1 bg-white text-[10px] overflow-x-auto items-stretch"
               style={{
                 gridTemplateColumns:
-                  dynamicRegions.length <= 6
+                  dynamicRegions.length <= 8
                     ? `repeat(${dynamicRegions.length}, minmax(0, 1fr))`
-                    : `repeat(${dynamicRegions.length}, minmax(110px, 1fr))`,
+                    : `repeat(${dynamicRegions.length}, minmax(95px, 1fr))`,
               }}
             >
               {dynamicRegions.map((reg) => (
                 <div key={reg.key} className="px-1.5 sm:px-2 flex flex-col min-w-0 overflow-hidden">
                   {/* Column Header: Warm Beige Banner */}
                   <div
-                    className="bg-[#F5EFE6] text-[#0B2A59] font-bold uppercase text-center py-0.5 sm:py-1 px-1 rounded-md mb-1.5 tracking-tight text-[8.5px] sm:text-[9.5px] truncate leading-tight shadow-2xs"
+                    className="bg-[#F5EFE6] text-[#0B2A59] font-bold uppercase text-center py-0.5 sm:py-1 px-1 rounded-md mb-1.5 tracking-tight text-[8px] sm:text-[8.5px] leading-tight shadow-2xs min-h-[22px] sm:min-h-[25px] flex items-center justify-center"
                     title={reg.label}
                   >
-                    {reg.label}
+                    <span className="line-clamp-2 leading-tight">{reg.label}</span>
                   </div>
 
                   {/* Ritel List: Tight, borderless rows */}
@@ -680,7 +697,7 @@ export default function RealisasiSlide({
                           <img
                             src={r.logoUrl}
                             alt=""
-                            className="max-h-4 sm:max-h-4.5 max-w-[45px] sm:max-w-[55px] object-contain shrink-0"
+                            className="max-h-3.5 sm:max-h-4 max-w-[30px] sm:max-w-[34px] object-contain shrink-0"
                             crossOrigin="anonymous"
                           />
                         ) : (
@@ -689,7 +706,7 @@ export default function RealisasiSlide({
                           </div>
                         )}
                         <span
-                          className="font-semibold text-slate-700 text-[8.5px] sm:text-[9.5px] truncate leading-normal pb-0.5 min-w-0 flex-1 block"
+                          className="font-semibold text-slate-700 text-[8px] sm:text-[8.5px] line-clamp-2 leading-[1.2] pb-0.5 min-w-0 flex-1 break-words"
                           title={r.namaRitel}
                         >
                           {r.namaRitel}
