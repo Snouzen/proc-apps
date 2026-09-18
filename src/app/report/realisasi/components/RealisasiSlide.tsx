@@ -474,7 +474,7 @@ export default function RealisasiSlide({
           {/* Bottom: Teks Melayani Ritel Modern */}
           <div className="w-full text-center">
             <p className="text-[8px] sm:text-[8.5px] xl:text-[9.5px] font-bold text-[#0B2A59] uppercase leading-normal pb-0.5 truncate">
-              MELAYANI BERBAGAI RITEL MODERN
+              MELAYANI RITEL MODERN
             </p>
             <p className="text-[8px] sm:text-[8.5px] xl:text-[9.5px] font-bold text-[#0B2A59] uppercase leading-normal pb-0.5 truncate">
               DI BERBAGAI DAERAH
