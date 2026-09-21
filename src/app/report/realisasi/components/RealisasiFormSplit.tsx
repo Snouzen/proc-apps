@@ -7,6 +7,7 @@ import { OptionRitel, FormRowItem } from "./RealisasiFormModal";
 import { DAFTAR_PROVINSI_INDONESIA } from "@/lib/constants/provinces";
 import DateInputHybrid from "@/components/DateInputHybrid";
 import ProvinsiSelect from "./ProvinsiSelect";
+import RealisasiDatePicker from "./RealisasiDatePicker";
 
 interface RitelSearchInputProps {
   value: string;
@@ -186,6 +187,10 @@ function RitelSearchInput({
 interface RealisasiFormSplitProps {
   tanggal: string;
   setTanggal: (val: string) => void;
+  tanggalAkhir?: string | null;
+  setTanggalAkhir?: (val: string | null) => void;
+  daftarTanggal?: string[];
+  setDaftarTanggal?: (val: string[]) => void;
   judul: string;
   setJudul: (val: string) => void;
   subjudul: string;
@@ -208,6 +213,10 @@ interface RealisasiFormSplitProps {
 export default function RealisasiFormSplit({
   tanggal,
   setTanggal,
+  tanggalAkhir = null,
+  setTanggalAkhir,
+  daftarTanggal = [],
+  setDaftarTanggal,
   judul,
   setJudul,
   subjudul,
@@ -227,9 +236,17 @@ export default function RealisasiFormSplit({
   existingReportDates = [],
 }: RealisasiFormSplitProps) {
   const standardProvinces = DAFTAR_PROVINSI_INDONESIA;
-  const isDateConflict = Boolean(
-    existingReportDates && tanggal && existingReportDates.includes(tanggal)
+  
+  const activeDatesToCheck =
+    daftarTanggal && daftarTanggal.length > 0
+      ? daftarTanggal
+      : tanggal
+      ? [tanggal]
+      : [];
+  const conflictDates = activeDatesToCheck.filter((d) =>
+    existingReportDates.includes(d)
   );
+  const isDateConflict = conflictDates.length > 0;
 
   const handleAddItem = () => {
     setItems((prev) => [
@@ -339,25 +356,34 @@ export default function RealisasiFormSplit({
 
       {/* Form Content (Scrollable) */}
       <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar flex-1 max-h-[calc(100vh-200px)]">
-        {/* Basic Info: Hanya Tanggal Realisasi */}
-        <div className="bg-slate-50/50 dark:bg-slate-800/30 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
-          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
-            Tanggal Realisasi <span className="text-rose-500">*</span>
-          </label>
-          <DateInputHybrid
-            value={tanggal}
-            onChange={(val) => setTanggal(val)}
-            placeholder="Pilih tanggal..."
+        {/* Basic Info: Tanggal Realisasi / Periode Rapel */}
+        <div className="bg-slate-50/50 dark:bg-slate-800/30 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase">
+              Tanggal / Periode Realisasi <span className="text-rose-500">*</span>
+            </label>
+            {daftarTanggal && daftarTanggal.length > 1 && (
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-[#0B2A59] dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+                Rapel {daftarTanggal.length} Hari
+              </span>
+            )}
+          </div>
+          <RealisasiDatePicker
+            tanggal={tanggal}
+            tanggalAkhir={tanggalAkhir}
+            daftarTanggal={daftarTanggal}
+            onChange={({ tanggal: newStart, tanggalAkhir: newEnd, daftarTanggal: newList }) => {
+              setTanggal(newStart);
+              if (setTanggalAkhir) setTanggalAkhir(newEnd);
+              if (setDaftarTanggal) setDaftarTanggal(newList);
+            }}
+            disabledDates={existingReportDates}
+            placeholder="Pilih tanggal / periode rapel..."
             className="w-full"
-            inputClassName={`py-1.5 px-3 text-xs font-bold rounded-lg ${
-              isDateConflict
-                ? "border-rose-400 dark:border-rose-600 text-rose-700 dark:text-rose-400"
-                : "border-slate-200 dark:border-slate-700"
-            }`}
           />
           {isDateConflict && (
             <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold mt-1.5 flex items-center gap-1">
-              ⚠️ Laporan untuk tanggal ini sudah ada. Dalam 1 hari hanya diperbolehkan 1 laporan.
+              ⚠️ Tanggal {conflictDates.join(", ")} sudah ada di laporan lain.
             </p>
           )}
         </div>

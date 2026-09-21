@@ -268,6 +268,8 @@ model CreditLimitBatch {
 model RealisasiPemenuhan {
   id               String                  @id @default(cuid())
   tanggal          DateTime
+  tanggalAkhir     DateTime?
+  daftarTanggal    String[]                @default([])
   judul            String                  @default("PROGRES PEMENUHAN RITEL MODERN")
   subjudul         String?
   sumberCatatan    String?

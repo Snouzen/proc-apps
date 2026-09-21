@@ -56,6 +56,8 @@ export default function RealisasiPemenuhanPage() {
   const [tanggal, setTanggal] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
+  const [tanggalAkhir, setTanggalAkhir] = useState<string | null>(null);
+  const [daftarTanggal, setDaftarTanggal] = useState<string[]>([]);
   const [judul, setJudul] = useState("PROGRES PEMENUHAN RITEL MODERN");
   const [subjudul, setSubjudul] = useState("");
   const [sumberCatatan, setSumberCatatan] = useState("");
@@ -118,19 +120,38 @@ export default function RealisasiPemenuhanPage() {
     return dateStrings[0];
   }, [records]);
 
+  // Helper to check if a record covers a specific date (single or rapel range)
+  const isRecordCoveringDate = (rec: any, dateStr: string): boolean => {
+    if (!dateStr || !rec) return false;
+    if (Array.isArray(rec.daftarTanggal) && rec.daftarTanggal.length > 0) {
+      return rec.daftarTanggal.some((d: string) => d.split("T")[0] === dateStr);
+    }
+    return formatDateToYYYYMMDD(rec.tanggal) === dateStr;
+  };
+
   // Matching records for the selected date
   const matchingDateRecords = useMemo(() => {
     if (!selectedDateStr || !records || records.length === 0) return [];
-    return records.filter(
-      (r) => formatDateToYYYYMMDD(r.tanggal) === selectedDateStr
-    );
+    return records.filter((r) => isRecordCoveringDate(r, selectedDateStr));
   }, [records, selectedDateStr]);
 
   // Dates that already have a report (excluding currently edited record)
   const existingReportDates = useMemo(() => {
-    return records
+    const datesSet = new Set<string>();
+    records
       .filter((r) => r.id !== editingId)
-      .map((r) => formatDateToYYYYMMDD(r.tanggal));
+      .forEach((r) => {
+        if (Array.isArray(r.daftarTanggal) && r.daftarTanggal.length > 0) {
+          r.daftarTanggal.forEach((d: string) => {
+            const clean = typeof d === "string" ? d.split("T")[0] : "";
+            if (clean) datesSet.add(clean);
+          });
+        } else {
+          const single = formatDateToYYYYMMDD(r.tanggal);
+          if (single) datesSet.add(single);
+        }
+      });
+    return Array.from(datesSet);
   }, [records, editingId]);
 
   // Handle user changing date via input date
@@ -139,9 +160,7 @@ export default function RealisasiPemenuhanPage() {
       newDate = minDateStr;
     }
     setSelectedDateStr(newDate);
-    const matches = records.filter(
-      (r) => formatDateToYYYYMMDD(r.tanggal) === newDate
-    );
+    const matches = records.filter((r) => isRecordCoveringDate(r, newDate));
     if (matches.length > 0) {
       setSelectedRecord(matches[0]);
     } else {
@@ -164,8 +183,8 @@ export default function RealisasiPemenuhanPage() {
             setSelectedDateStr(formatDateToYYYYMMDD(found.tanggal));
           }
         } else if (selectedDateStr) {
-          const matching = json.data.filter(
-            (r: any) => formatDateToYYYYMMDD(r.tanggal) === selectedDateStr
+          const matching = json.data.filter((r: any) =>
+            isRecordCoveringDate(r, selectedDateStr)
           );
           if (matching.length > 0) {
             const stillSelected = matching.find(
@@ -198,11 +217,13 @@ export default function RealisasiPemenuhanPage() {
   // 5. Open Create Split Form
   const handleOpenCreate = (dateToUse?: string) => {
     setEditingId(null);
-    setTanggal(
+    const initialDate =
       typeof dateToUse === "string" && dateToUse
         ? dateToUse
-        : selectedDateStr || new Date().toISOString().split("T")[0]
-    );
+        : selectedDateStr || new Date().toISOString().split("T")[0];
+    setTanggal(initialDate);
+    setTanggalAkhir(null);
+    setDaftarTanggal([initialDate]);
     setJudul("PROGRES PEMENUHAN RITEL MODERN");
     setSubjudul("");
     setSumberCatatan("");
@@ -226,11 +247,26 @@ export default function RealisasiPemenuhanPage() {
   const handleOpenEdit = (rec: any) => {
     setEditingId(rec.id);
     const dt = new Date(rec.tanggal);
-    setTanggal(
-      !isNaN(dt.getTime())
-        ? dt.toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0]
-    );
+    const startStr = !isNaN(dt.getTime())
+      ? dt.toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0];
+    setTanggal(startStr);
+
+    if (rec.tanggalAkhir) {
+      const dtEnd = new Date(rec.tanggalAkhir);
+      setTanggalAkhir(
+        !isNaN(dtEnd.getTime()) ? dtEnd.toISOString().split("T")[0] : null
+      );
+    } else {
+      setTanggalAkhir(null);
+    }
+
+    if (Array.isArray(rec.daftarTanggal) && rec.daftarTanggal.length > 0) {
+      setDaftarTanggal(rec.daftarTanggal.map((d: string) => d.split("T")[0]));
+    } else {
+      setDaftarTanggal([startStr]);
+    }
+
     setJudul(rec.judul || "PROGRES PEMENUHAN RITEL MODERN");
     setSubjudul(rec.subjudul || "");
     setSumberCatatan(rec.sumberCatatan || "");
@@ -261,22 +297,25 @@ export default function RealisasiPemenuhanPage() {
       return;
     }
 
-    // Rule: Dalam 1 hari hanya diperbolehkan 1 laporan
-    const existingOnDate = records.find(
-      (r) => formatDateToYYYYMMDD(r.tanggal) === tanggal && r.id !== editingId
+    // Determine active dates to validate and persist
+    const activeDates =
+      daftarTanggal && daftarTanggal.length > 0 ? daftarTanggal : [tanggal];
+
+    // Conflict check: make sure none of the selected dates already belong to another report
+    const conflictingDate = activeDates.find((d) =>
+      existingReportDates.includes(d)
     );
-    if (existingOnDate) {
-      const tglFormatted = new Date(tanggal + "T00:00:00").toLocaleDateString(
-        "id-ID",
-        {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }
-      );
+    if (conflictingDate) {
+      const tglFormatted = new Date(
+        conflictingDate + "T00:00:00"
+      ).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
       Swal.fire({
         title: "Tanggal Sudah Ada Laporan",
-        text: `Dalam 1 hari hanya diperbolehkan membuat 1 laporan. Laporan untuk tanggal ${tglFormatted} sudah ada. Silakan gunakan fitur 'Edit Data' jika ingin mengubah rekapan ini.`,
+        text: `Tanggal ${tglFormatted} sudah termasuk dalam rekapan laporan lain. Silakan gunakan fitur 'Edit Data' jika ingin mengubah rekapan ini.`,
         icon: "warning",
       });
       return;
@@ -293,6 +332,8 @@ export default function RealisasiPemenuhanPage() {
       const payload = {
         id: editingId || undefined,
         tanggal,
+        tanggalAkhir: tanggalAkhir || undefined,
+        daftarTanggal: activeDates,
         judul,
         subjudul: subjudul || undefined,
         sumberCatatan: sumberCatatan || undefined,
@@ -366,10 +407,26 @@ export default function RealisasiPemenuhanPage() {
     setExportingPdf(true);
     try {
       const activeData = isSplitOpen
-        ? { tanggal, judul, subjudul, sumberCatatan, daftarRegional, items }
+        ? {
+            tanggal,
+            tanggalAkhir,
+            daftarTanggal:
+              daftarTanggal && daftarTanggal.length > 0
+                ? daftarTanggal
+                : [tanggal],
+            judul,
+            subjudul,
+            sumberCatatan,
+            daftarRegional,
+            items,
+          }
         : selectedRecord || fallbackSampleData;
 
-      const dateStr = activeData.tanggal
+      const dateStr = activeData.tanggalAkhir
+        ? `${new Date(activeData.tanggal).toISOString().split("T")[0]}_sd_${
+            new Date(activeData.tanggalAkhir).toISOString().split("T")[0]
+          }`
+        : activeData.tanggal
         ? new Date(activeData.tanggal).toISOString().split("T")[0]
         : "laporan";
       const fileName = `Realisasi_Pemenuhan_${dateStr}.pdf`;
@@ -434,6 +491,11 @@ export default function RealisasiPemenuhanPage() {
   const activeSlideData = isSplitOpen
     ? {
         tanggal: tanggal ? new Date(tanggal) : new Date(),
+        tanggalAkhir: tanggalAkhir ? new Date(tanggalAkhir) : null,
+        daftarTanggal:
+          daftarTanggal && daftarTanggal.length > 0
+            ? daftarTanggal
+            : [tanggal],
         judul,
         subjudul,
         sumberCatatan,
@@ -546,6 +608,14 @@ export default function RealisasiPemenuhanPage() {
                   {selectedRecord.items?.length || 0} Mitra Ritel Dilayani
                 </span>
 
+                {Array.isArray(selectedRecord.daftarTanggal) &&
+                  selectedRecord.daftarTanggal.length > 1 && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                      Laporan Rapel ({selectedRecord.daftarTanggal.length} Hari)
+                    </span>
+                  )}
+
                 {/* If multiple records exist on the same date, show switcher */}
                 {matchingDateRecords.length > 1 && (
                   <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -598,6 +668,10 @@ export default function RealisasiPemenuhanPage() {
             <RealisasiFormSplit
               tanggal={tanggal}
               setTanggal={setTanggal}
+              tanggalAkhir={tanggalAkhir}
+              setTanggalAkhir={setTanggalAkhir}
+              daftarTanggal={daftarTanggal}
+              setDaftarTanggal={setDaftarTanggal}
               judul={judul}
               setJudul={setJudul}
               subjudul={subjudul}
@@ -670,16 +744,36 @@ export default function RealisasiPemenuhanPage() {
         <div className="space-y-4">
           {selectedRecord && (
             <div className="flex items-center justify-between px-4 py-2 bg-slate-100 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                Menampilkan Data:{" "}
-                <strong className="font-bold">
-                  {new Date(selectedRecord.tanggal).toLocaleDateString("id-ID", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </strong>
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  Menampilkan Data:{" "}
+                  <strong className="font-bold">
+                    {selectedRecord.tanggalAkhir ? (
+                      `${new Date(selectedRecord.tanggal).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                      })} – ${new Date(selectedRecord.tanggalAkhir).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}`
+                    ) : (
+                      new Date(selectedRecord.tanggal).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })
+                    )}
+                  </strong>
+                </span>
+
+                {Array.isArray(selectedRecord.daftarTanggal) &&
+                  selectedRecord.daftarTanggal.length > 1 && (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
+                      Rapel {selectedRecord.daftarTanggal.length} Hari
+                    </span>
+                  )}
+              </div>
 
               <div className="flex items-center gap-2">
                 <button

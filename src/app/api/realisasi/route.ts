@@ -36,8 +36,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, data: record });
     }
 
-    // 2. Single Record by Tanggal
+    // 2. Single Record by Tanggal (checks single date or within multi-date rapel)
     if (tanggal) {
+      const cleanDateStr = tanggal.split("T")[0];
       const startOfDay = new Date(tanggal);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(tanggal);
@@ -45,10 +46,19 @@ export async function GET(req: Request) {
 
       const record = await prisma.realisasiPemenuhan.findFirst({
         where: {
-          tanggal: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          OR: [
+            {
+              tanggal: {
+                gte: startOfDay,
+                lte: endOfDay,
+              },
+            },
+            {
+              daftarTanggal: {
+                has: cleanDateStr,
+              },
+            },
+          ],
         },
         include: {
           items: {
@@ -91,7 +101,17 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { id, tanggal, judul, subjudul, sumberCatatan, daftarRegional, items } = body;
+    const {
+      id,
+      tanggal,
+      tanggalAkhir,
+      daftarTanggal,
+      judul,
+      subjudul,
+      sumberCatatan,
+      daftarRegional,
+      items,
+    } = body;
 
     if (!tanggal) {
       return NextResponse.json(
@@ -114,30 +134,73 @@ export async function POST(req: Request) {
       );
     }
 
-    const tglDate = new Date(tanggal);
+    // Compute normalized dates array
+    let computedDaftarTanggal: string[] = [];
+    if (Array.isArray(daftarTanggal) && daftarTanggal.length > 0) {
+      computedDaftarTanggal = Array.from(
+        new Set(
+          daftarTanggal
+            .map((d: any) => (typeof d === "string" ? d.split("T")[0] : ""))
+            .filter(Boolean)
+        )
+      ).sort();
+    } else if (tanggalAkhir && tanggalAkhir !== tanggal) {
+      const cur = new Date(tanggal.split("T")[0]);
+      const end = new Date(tanggalAkhir.split("T")[0]);
+      const list: string[] = [];
+      while (cur <= end) {
+        list.push(cur.toISOString().split("T")[0]);
+        cur.setDate(cur.getDate() + 1);
+      }
+      computedDaftarTanggal = list;
+    } else {
+      computedDaftarTanggal = [tanggal.split("T")[0]];
+    }
 
-    // Business Rule: Dalam 1 hari hanya diperbolehkan 1 laporan
-    const startOfDay = new Date(tglDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(tglDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    if (computedDaftarTanggal.length === 0) {
+      computedDaftarTanggal = [tanggal.split("T")[0]];
+    }
 
-    const existingSameDay = await prisma.realisasiPemenuhan.findFirst({
+    const tglDate = new Date(computedDaftarTanggal[0]);
+    const tglAkhirDate =
+      computedDaftarTanggal.length > 1
+        ? new Date(computedDaftarTanggal[computedDaftarTanggal.length - 1])
+        : null;
+
+    // Business Rule: Tanggal yang sudah masuk laporan (baik single maupun rapel) tidak boleh dipakai lagi
+    const conflicting = await prisma.realisasiPemenuhan.findFirst({
       where: {
-        tanggal: {
-          gte: new Date(startOfDay.getTime() - 4 * 3600 * 1000),
-          lte: new Date(endOfDay.getTime() + 4 * 3600 * 1000),
-        },
         ...(id ? { NOT: { id } } : {}),
+        OR: [
+          {
+            daftarTanggal: {
+              hasSome: computedDaftarTanggal,
+            },
+          },
+          // Backward compatibility check for records with empty daftarTanggal
+          ...computedDaftarTanggal.map((dStr) => {
+            const d = new Date(dStr);
+            const s = new Date(d);
+            s.setHours(0, 0, 0, 0);
+            const e = new Date(d);
+            e.setHours(23, 59, 59, 999);
+            return {
+              tanggal: {
+                gte: new Date(s.getTime() - 4 * 3600 * 1000),
+                lte: new Date(e.getTime() + 4 * 3600 * 1000),
+              },
+            };
+          }),
+        ],
       },
-      select: { id: true, tanggal: true },
+      select: { id: true, tanggal: true, tanggalAkhir: true, daftarTanggal: true },
     });
 
-    if (existingSameDay) {
+    if (conflicting) {
       return NextResponse.json(
         {
           error:
-            "Laporan untuk tanggal ini sudah ada. Dalam 1 hari hanya boleh ada 1 laporan. Silakan gunakan fitur Edit Data jika ingin mengubah rekapan.",
+            "Salah satu tanggal yang dipilih sudah terdaftar dalam laporan lain. Setiap tanggal hanya boleh dimasukkan ke dalam 1 laporan (baik harian maupun rapel).",
         },
         { status: 400 }
       );
@@ -174,6 +237,8 @@ export async function POST(req: Request) {
           where: { id },
           data: {
             tanggal: tglDate,
+            tanggalAkhir: tglAkhirDate,
+            daftarTanggal: computedDaftarTanggal,
             judul: judul || "PROGRES PEMENUHAN RITEL MODERN",
             subjudul: subjudul || null,
             sumberCatatan: sumberCatatan || null,
@@ -196,6 +261,8 @@ export async function POST(req: Request) {
       result = await prisma.realisasiPemenuhan.create({
         data: {
           tanggal: tglDate,
+          tanggalAkhir: tglAkhirDate,
+          daftarTanggal: computedDaftarTanggal,
           judul: judul || "PROGRES PEMENUHAN RITEL MODERN",
           subjudul: subjudul || null,
           sumberCatatan: sumberCatatan || null,

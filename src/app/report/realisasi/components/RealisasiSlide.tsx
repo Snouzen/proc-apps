@@ -24,6 +24,8 @@ export interface RealisasiItemData {
 export interface RealisasiData {
   id?: string;
   tanggal: string | Date;
+  tanggalAkhir?: string | Date | null;
+  daftarTanggal?: string[];
   judul?: string;
   subjudul?: string;
   sumberCatatan?: string;
@@ -267,19 +269,70 @@ export default function RealisasiSlide({
     paddingClass = "p-1";
   }
 
-  // Format Date
-  const dateObj = new Date(data.tanggal);
-  const dateFormatted = !isNaN(dateObj.getTime())
-    ? dateObj.toLocaleDateString("id-ID", {
+  // Format Date (Single date or Multi-Date / Range Rapel)
+  const startDateObj = new Date(data.tanggal);
+  let endDateObj: Date | null = null;
+  if (data.tanggalAkhir) {
+    const end = new Date(data.tanggalAkhir);
+    if (!isNaN(end.getTime()) && end.getTime() !== startDateObj.getTime()) {
+      endDateObj = end;
+    }
+  } else if (Array.isArray(data.daftarTanggal) && data.daftarTanggal.length > 1) {
+    const sorted = [...data.daftarTanggal].sort();
+    const end = new Date(sorted[sorted.length - 1]);
+    if (!isNaN(end.getTime()) && end.getTime() !== startDateObj.getTime()) {
+      endDateObj = end;
+    }
+  }
+
+  let dateFormatted = "7 September 2026";
+  let dayFormatted = "Senin";
+
+  if (!isNaN(startDateObj.getTime())) {
+    if (endDateObj && !isNaN(endDateObj.getTime())) {
+      // Date Range (Rapel)
+      const startDay = startDateObj.toLocaleDateString("id-ID", { weekday: "long" });
+      const endDay = endDateObj.toLocaleDateString("id-ID", { weekday: "long" });
+      dayFormatted = `${startDay} – ${endDay}`;
+
+      const startMonth = startDateObj.getMonth();
+      const endMonth = endDateObj.getMonth();
+      const startYear = startDateObj.getFullYear();
+      const endYear = endDateObj.getFullYear();
+
+      if (startYear === endYear && startMonth === endMonth) {
+        // Same month & year: "7 – 9 September 2026"
+        const monthName = startDateObj.toLocaleDateString("id-ID", { month: "long" });
+        dateFormatted = `${startDateObj.getDate()} – ${endDateObj.getDate()} ${monthName} ${startYear}`;
+      } else if (startYear === endYear) {
+        // Same year, different month: "30 September – 2 Oktober 2026"
+        const startMonthName = startDateObj.toLocaleDateString("id-ID", { month: "long" });
+        const endMonthName = endDateObj.toLocaleDateString("id-ID", { month: "long" });
+        dateFormatted = `${startDateObj.getDate()} ${startMonthName} – ${endDateObj.getDate()} ${endMonthName} ${startYear}`;
+      } else {
+        // Different years
+        const startFormatted = startDateObj.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        const endFormatted = endDateObj.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        dateFormatted = `${startFormatted} – ${endFormatted}`;
+      }
+    } else {
+      // Single Date
+      dateFormatted = startDateObj.toLocaleDateString("id-ID", {
         day: "numeric",
         month: "long",
         year: "numeric",
-      })
-    : "7 September 2026";
-
-  const dayFormatted = !isNaN(dateObj.getTime())
-    ? dateObj.toLocaleDateString("id-ID", { weekday: "long" })
-    : "Senin";
+      });
+      dayFormatted = startDateObj.toLocaleDateString("id-ID", { weekday: "long" });
+    }
+  }
 
   const formatNumber = (num: number) =>
     num ? Math.round(num).toLocaleString("id-ID") : "0";
