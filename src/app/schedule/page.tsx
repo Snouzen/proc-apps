@@ -39,6 +39,7 @@ import ScheduleFilters from "./components/ScheduleFilters";
 
 import { ActionButton, StandardTooltip } from "@/components/ui/action-button";
 import ScheduleModals from "./components/ScheduleModals";
+import ScheduleProductBreakdown from "./components/ScheduleProductBreakdown";
 
 // SkeletonRow removed as DataTableV2 has its own skeleton
 
@@ -55,6 +56,7 @@ export default function SchedulePage() {
     namaSupir, setNamaSupir,
     platNomor, setPlatNomor,
     savingPcsId, setSavingPcsId,
+    savingBatchPoId, setSavingBatchPoId,
     expandedRows, setExpandedRows,
     isViewOpen, setIsViewOpen,
     loadingDetail, setLoadingDetail,
@@ -67,6 +69,7 @@ export default function SchedulePage() {
     handleUpdateSchedule,
     toggleRow,
     handleUpdateItemPcsKirim,
+    handleBatchUpdateItemPcsKirim,
     handleUpdatePcsKirim,
     handleRejectPo,
     handleDownloadInvoice,
@@ -162,54 +165,11 @@ export default function SchedulePage() {
             return (
               <tr className="bg-slate-50/10 dark:bg-slate-900/10" onClick={(e) => e.stopPropagation()}>
                 <td colSpan={14} className="px-5 py-6 border-b border-slate-100 dark:border-slate-800">
-                  <div className="bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-[32px] overflow-x-auto overflow-y-hidden shadow-2xl shadow-indigo-200/10 dark:shadow-none mx-4">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
-                          <th className="px-8 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-12">Product Breakdown</th>
-                          <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Order</th>
-                          <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Kirim</th>
-                          <th className="px-12 py-4 text-right text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {po.Items.map((item: any, idx: number) => (
-                          <tr key={item.id} className={idx !== po.Items.length - 1 ? "border-b border-slate-50 dark:border-slate-700" : ""}>
-                            <td className="px-8 py-4 text-xs font-bold text-slate-700 dark:text-slate-300 pl-12">{item.namaProduk}</td>
-                            <td className="px-6 py-4 text-center text-xs font-black text-slate-300 dark:text-slate-500">{item.pcs}</td>
-                            <td className="px-6 py-4 text-center">
-                              <div className="relative inline-block">
-                                <input
-                                  type="number"
-                                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                  min={0}
-                                  max={item.pcs}
-                                  value={item.pcsKirim ?? ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    const numVal = Number(val);
-                                    const finalVal = numVal > item.pcs ? item.pcs.toString() : val === "" ? "" : numVal.toString();
-                                    setPoData((prev: any) => prev.map((p: any) => 
-                                      p.id === po.id 
-                                      ? { ...p, Items: p.Items.map((it: any) => it.id === item.id ? { ...it, pcsKirim: finalVal } : it) } 
-                                      : p
-                                    ));
-                                  }}
-                                  onBlur={(e) => handleUpdateItemPcsKirim(po.id, item.id, e.target.value)}
-                                  className="w-24 px-3 py-1.5 text-center text-xs font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-400 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                              </div>
-                            </td>
-                            <td className="px-12 py-4 text-right">
-                              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${item.pcsKirim >= item.pcs ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-500"}`}>
-                                {item.pcsKirim >= item.pcs ? "Full" : "Partial"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <ScheduleProductBreakdown
+                    po={po}
+                    isSaving={savingBatchPoId === po.id}
+                    onSave={(items) => handleBatchUpdateItemPcsKirim(po.id, items)}
+                  />
                 </td>
               </tr>
             );

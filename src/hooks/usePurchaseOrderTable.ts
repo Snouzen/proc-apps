@@ -161,8 +161,14 @@ export function usePurchaseOrderTable(retailers: Retailer[]) {
 
     if (statusFilter !== "all") {
       data = data.filter((po) => {
+        const inv = String(po.noInvoice || "").trim().toLowerCase();
+        const hasInvoice = inv.length > 0 && inv !== "-" && inv !== "unknown" && inv !== "null";
+
+        if (statusFilter === "scheduled") {
+          return !!po.tglkirim && !hasInvoice;
+        }
         if (statusFilter === "verified") {
-          return !!po.noInvoice && !po.buktiTagih && !po.buktiBayar && po.statusBayar !== true;
+          return hasInvoice && !po.buktiTagih && !po.buktiBayar && po.statusBayar !== true;
         }
         if (statusFilter === "tagih") {
           return !!po.buktiTagih;

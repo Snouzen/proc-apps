@@ -20,6 +20,7 @@ export function useSchedule() {
   const [namaSupir, setNamaSupir] = useState("");
   const [platNomor, setPlatNomor] = useState("");
   const [savingPcsId, setSavingPcsId] = useState<string | null>(null);
+  const [savingBatchPoId, setSavingBatchPoId] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // -- Action State --
@@ -44,8 +45,8 @@ export function useSchedule() {
   const [sortField, setSortField] = useState<"tglPo" | "expiredTgl" | "tglkirim" | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(
         "/api/po?group=schedule_page&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
@@ -61,7 +62,7 @@ export function useSchedule() {
     } catch (err) {
       console.error("Failed to fetch PO data:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -240,7 +241,7 @@ export function useSchedule() {
         timerProgressBar: true,
         background: "#fff1f2",
       });
-      fetchData(); 
+      fetchData(true); 
       return;
     }
 
@@ -255,7 +256,7 @@ export function useSchedule() {
       });
 
       if (res.ok) {
-        fetchData();
+        fetchData(true);
         router.refresh();
       } else {
         const err = await res.json();
@@ -265,6 +266,100 @@ export function useSchedule() {
       console.error("Update Pcs Kirim failed:", err);
     } finally {
       setSavingPcsId(null);
+    }
+  };
+
+  const handleBatchUpdateItemPcsKirim = async (
+    poId: string,
+    itemsToUpdate: Array<{ itemId: string; pcsKirim: number }>
+  ) => {
+    const targetPo = poData.find((p) => p.id === poId);
+    if (!targetPo) return;
+
+    // 1. Validasi batas pesanan per item
+    for (const item of itemsToUpdate) {
+      const origItem = targetPo.Items?.find((it: any) => it.id === item.itemId);
+      const maxPcs = Number(origItem?.pcs || 0);
+      if (item.pcsKirim > maxPcs) {
+        Swal.fire({
+          toast: true,
+          position: "top-end",
+          icon: "error",
+          title: "Pcs Kirim Melebihi Pesanan!",
+          text: `Item ${origItem?.namaProduk || "produk"} maksimum: ${maxPcs}`,
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          background: "#fff1f2",
+        });
+        return;
+      }
+    }
+
+    setSavingBatchPoId(poId);
+
+    // 2. Optimistic UI update secara lokal tanpa menunggu network
+    const newTotalKirim = itemsToUpdate.reduce(
+      (acc, curr) => acc + (Number(curr.pcsKirim) || 0),
+      0
+    );
+    setPoData((prev: any[]) =>
+      prev.map((p: any) => {
+        if (p.id !== poId) return p;
+        const updatedItems = (p.Items || []).map((it: any) => {
+          const match = itemsToUpdate.find((u) => u.itemId === it.id);
+          return match ? { ...it, pcsKirim: match.pcsKirim } : it;
+        });
+        return {
+          ...p,
+          pcsKirimTotal: newTotalKirim,
+          Items: updatedItems,
+        };
+      })
+    );
+
+    // 3. Simpan ke database via Batch API
+    try {
+      const res = await fetch("/api/po/pcs-kirim", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: poId,
+          items: itemsToUpdate,
+        }),
+      });
+
+      if (res.ok) {
+        Swal.fire({
+          toast: true,
+          position: "top-end",
+          icon: "success",
+          title: "Pcs Kirim Berhasil Disimpan",
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true,
+        });
+        await fetchData(true);
+        router.refresh();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        Swal.fire({
+          icon: "error",
+          title: "Gagal Menyimpan",
+          text: err.error || "Gagal mengupdate Pcs Kirim.",
+        });
+        await fetchData(true);
+      }
+    } catch (err: any) {
+      console.error("Batch update Pcs Kirim failed:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Kesalahan Sistem",
+        text: err.message || "Gagal menghubungi server.",
+      });
+      await fetchData(true);
+    } finally {
+      setSavingBatchPoId(null);
     }
   };
 
@@ -506,6 +601,7 @@ export function useSchedule() {
     namaSupir, setNamaSupir,
     platNomor, setPlatNomor,
     savingPcsId, setSavingPcsId,
+    savingBatchPoId, setSavingBatchPoId,
     expandedRows, setExpandedRows,
     isViewOpen, setIsViewOpen,
     loadingDetail, setLoadingDetail,
@@ -518,6 +614,7 @@ export function useSchedule() {
     handleUpdateSchedule,
     toggleRow,
     handleUpdateItemPcsKirim,
+    handleBatchUpdateItemPcsKirim,
     handleUpdatePcsKirim,
     handleRejectPo,
     handleDownloadInvoice,

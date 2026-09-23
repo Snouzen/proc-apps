@@ -10,7 +10,54 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id, itemId, pcsKirim } = await request.json();
+    const body = await request.json();
+    const { id, itemId, pcsKirim, items } = body;
+
+    // [ACTION 1] Batch Update (Multi Item per PO)
+    if (Array.isArray(items) && items.length > 0) {
+      const itemIds = items
+        .map((it: any) => it.itemId || it.id)
+        .filter(Boolean);
+
+      if (itemIds.length === 0) {
+        return NextResponse.json({ error: "Daftar itemId tidak valid" }, { status: 400 });
+      }
+
+      const dbItems = await prisma.purchaseOrderItem.findMany({
+        where: { id: { in: itemIds } },
+        select: { id: true, hargaPcs: true, discount: true, pcs: true },
+      });
+
+      if (dbItems.length === 0) {
+        return NextResponse.json({ error: "Item tidak ditemukan" }, { status: 404 });
+      }
+
+      const updates = dbItems.map((dbItem) => {
+        const payloadItem = items.find(
+          (it: any) => (it.itemId || it.id) === dbItem.id
+        );
+        const val = Math.max(0, Number(payloadItem?.pcsKirim) || 0);
+        const orderPcs = Number(dbItem.pcs) || 1;
+        const actualDiscount = (Number(dbItem.discount || 0) / orderPcs) * val;
+        const rpTagih = Math.max(0, val * dbItem.hargaPcs - actualDiscount);
+
+        return prisma.purchaseOrderItem.update({
+          where: { id: dbItem.id },
+          data: {
+            pcsKirim: val,
+            rpTagih: rpTagih,
+            updatedAt: new Date(),
+          },
+        });
+      });
+
+      await prisma.$transaction(updates);
+
+      cacheClearPrefix("po:");
+      cacheClearPrefix("po_total:");
+
+      return NextResponse.json({ ok: true, count: updates.length });
+    }
 
     if (!id && !itemId) {
       return NextResponse.json({ error: "id PO atau itemId wajib diisi" }, { status: 400 });
@@ -21,7 +68,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Jumlah Pcs Kirim tidak valid" }, { status: 400 });
     }
 
-    // [ACTION] Update Granular (Per Item) atau Global (Per PO)
+    // [ACTION 2] Update Granular (Per Item) atau Global (Per PO)
     if (itemId) {
       // Update specific item
       const item = await prisma.purchaseOrderItem.findUnique({
