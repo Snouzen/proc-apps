@@ -1,3 +1,4 @@
+import { getRegionalSynonyms } from "@/lib/utils/regional";
 import { useState, useEffect, useMemo } from "react";
 
 export type Retailer = {
@@ -13,7 +14,9 @@ export type UnitProduksi = {
   siteArea: string;
 };
 
-export function useRetailerFilters() {
+export function useRetailerFilters(scope?: { role: string | null; regional: string | null; siteArea: string | null }) {
+  const regionalLocked = Boolean(scope?.role && scope.role !== "pusat");
+  const siteAreaLocked = Boolean(scope?.role && !["pusat", "rm"].includes(scope.role));
   const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [unitProduksis, setUnitProduksis] = useState<UnitProduksi[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -33,6 +36,11 @@ export function useRetailerFilters() {
   const [openSiteArea, setOpenSiteArea] = useState(false);
 
   useEffect(() => {
+    setSelectedRegional(regionalLocked ? scope?.regional || "" : "");
+    setSelectedSiteArea(siteAreaLocked ? scope?.siteArea || "" : "");
+  }, [scope?.role, scope?.regional, scope?.siteArea, regionalLocked, siteAreaLocked]);
+
+  useEffect(() => {
     Promise.all([
       fetch("/api/ritel").then((res) => res.json()),
       fetch("/api/unit-produksi").then((res) => res.json()),
@@ -48,16 +56,14 @@ export function useRetailerFilters() {
   }, []);
 
   const availableInisials = useMemo(() => {
-    if (!selectedNamaPt) return [];
-    const samePtRetailers = retailers.filter((r) => r.namaPt === selectedNamaPt);
+    const samePtRetailers = retailers.filter((r) => !selectedNamaPt || r.namaPt === selectedNamaPt);
     const inisials = samePtRetailers.map((r) => r.inisial).filter(Boolean) as string[];
     return Array.from(new Set(inisials)).sort();
   }, [selectedNamaPt, retailers]);
 
   const availableTujuans = useMemo(() => {
-    if (!selectedNamaPt) return [];
     const validRetailers = retailers.filter((r) => {
-      if (r.namaPt !== selectedNamaPt) return false;
+      if (selectedNamaPt && r.namaPt !== selectedNamaPt) return false;
       if (selectedInisial && r.inisial !== selectedInisial) return false;
       return true;
     });
@@ -66,18 +72,19 @@ export function useRetailerFilters() {
   }, [selectedNamaPt, selectedInisial, retailers]);
 
   const availableRegionals = useMemo(() => {
-    const regionals = unitProduksis.map((u) => u.namaRegional).filter(Boolean) as string[];
+    const regionals = unitProduksis.filter(u => !regionalLocked || getRegionalSynonyms(u.namaRegional).some(name => getRegionalSynonyms(scope?.regional || "").includes(name))).map((u) => u.namaRegional).filter(Boolean) as string[];
     return Array.from(new Set(regionals)).sort();
-  }, [unitProduksis]);
+  }, [unitProduksis, regionalLocked, scope?.regional]);
 
   const availableSiteAreas = useMemo(() => {
     let validUnits = unitProduksis;
     if (selectedRegional) {
-      validUnits = validUnits.filter((u) => u.namaRegional === selectedRegional);
+      validUnits = validUnits.filter((u) => getRegionalSynonyms(u.namaRegional).some(name => getRegionalSynonyms(selectedRegional).includes(name)));
     }
+    if (siteAreaLocked) validUnits = validUnits.filter(u => (scope?.siteArea || "").split(",").map(s => s.trim().toLowerCase()).includes(u.siteArea.toLowerCase()));
     const sites = validUnits.map((u) => u.siteArea).filter(Boolean) as string[];
     return Array.from(new Set(sites)).sort();
-  }, [selectedRegional, unitProduksis]);
+  }, [selectedRegional, unitProduksis, siteAreaLocked, scope?.siteArea]);
 
   const handleSelectNamaPt = (namaPt: string) => {
     setSelectedNamaPt(namaPt);
@@ -98,17 +105,20 @@ export function useRetailerFilters() {
   };
   
   const handleSelectRegional = (regional: string) => {
+    if (regionalLocked) return;
     setSelectedRegional(regional);
     setSelectedSiteArea("");
     setOpenRegional(false);
   };
 
   const handleSelectSiteArea = (siteArea: string) => {
+    if (siteAreaLocked) return;
     setSelectedSiteArea(siteArea);
     setOpenSiteArea(false);
   };
 
   return {
+    regionalLocked, siteAreaLocked,
     retailers,
     unitProduksis,
     isInitialLoad,

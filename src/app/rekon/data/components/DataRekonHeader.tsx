@@ -1,4 +1,4 @@
-import { Layers, Search, Database, FileEdit, CheckCircle2, AlertCircle } from "lucide-react";
+import { Layers, Search, Database, FileEdit, CheckCircle2, AlertCircle, FileSpreadsheet, Loader2 } from "lucide-react";
 import DateInputHybrid from "@/components/DateInputHybrid";
 
 export default function DataRekonHeader({ hook }: { hook: any }) {
@@ -11,10 +11,10 @@ export default function DataRekonHeader({ hook }: { hook: any }) {
   } = hook;
 
   return (
-    <div className="space-y-6 mb-6 px-4">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-[#0f172a] dark:bg-slate-800 rounded-xl flex items-center justify-center text-white shadow-lg dark:shadow-none">
+    <div className="space-y-6 mb-6 px-2 sm:px-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-10 h-10 bg-[#0f172a] dark:bg-slate-800 rounded-xl flex items-center justify-center text-white shadow-lg dark:shadow-none shrink-0">
             <Layers size={22} strokeWidth={2.5} />
           </div>
           <div>
@@ -27,32 +27,31 @@ export default function DataRekonHeader({ hook }: { hook: any }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch sm:items-center gap-3 w-full lg:w-auto">
           {/* Custom Date Filters */}
-          <div className="flex items-center bg-white dark:bg-slate-900/50 rounded-full border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none px-4 h-11 gap-3">
-             <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">From</span>
+          <div className="grid grid-cols-1 sm:flex items-stretch sm:items-center bg-white dark:bg-slate-900/50 rounded-2xl sm:rounded-full border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none p-2 sm:px-4 sm:py-0 sm:h-11 gap-2 sm:gap-3 w-full sm:w-auto shrink-0">
+             <div className="flex items-center justify-between sm:justify-start gap-2">
+                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap min-w-[32px] sm:min-w-0">From</span>
                 <DateInputHybrid 
                   value={startDate}
                   onChange={(val) => { setStartDate(val); setPage(1); }}
                   placeholder="Mulai"
-                  className="w-32 border-none ring-0 focus:ring-0 [&_input]:bg-slate-50/50 dark:[&_input]:bg-slate-800/50 [&_input]:h-8 [&_input]:rounded-full [&_input]:text-[10px] [&_input]:border-none dark:[&_input]:text-slate-300"
+                  className="flex-1 sm:w-32 border-none ring-0 focus:ring-0 [&_input]:bg-slate-50/50 dark:[&_input]:bg-slate-800/50 [&_input]:h-8 [&_input]:rounded-xl sm:[&_input]:rounded-full [&_input]:text-[11px] sm:[&_input]:text-[10px] [&_input]:border-none dark:[&_input]:text-slate-300"
                 />
              </div>
-             <div className="w-[1px] h-4 bg-slate-100 dark:bg-slate-700/50"></div>
-             <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">To</span>
+             <div className="hidden sm:block w-[1px] h-4 bg-slate-100 dark:bg-slate-700/50 shrink-0"></div>
+             <div className="flex items-center justify-between sm:justify-start gap-2">
+                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap min-w-[32px] sm:min-w-0">To</span>
                 <DateInputHybrid 
                   value={endDate}
                   onChange={(val) => { setEndDate(val); setPage(1); }}
                   placeholder="Sampai"
-                  className="w-32 border-none ring-0 focus:ring-0 [&_input]:bg-slate-50/50 dark:[&_input]:bg-slate-800/50 [&_input]:h-8 [&_input]:rounded-full [&_input]:text-[10px] [&_input]:border-none dark:[&_input]:text-slate-300"
+                  className="flex-1 sm:w-32 border-none ring-0 focus:ring-0 [&_input]:bg-slate-50/50 dark:[&_input]:bg-slate-800/50 [&_input]:h-8 [&_input]:rounded-xl sm:[&_input]:rounded-full [&_input]:text-[11px] sm:[&_input]:text-[10px] [&_input]:border-none dark:[&_input]:text-slate-300"
                 />
              </div>
           </div>
 
-          <div className="relative group w-64">
+          <div className="relative group w-full sm:w-auto sm:flex-1 md:w-64 md:flex-initial min-w-[200px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors" size={16} />
             <input 
               type="text" 
@@ -64,9 +63,17 @@ export default function DataRekonHeader({ hook }: { hook: any }) {
             />
           </div>
         </div>
-        </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={hook.handleExportAllExcel} disabled={hook.allExportLoading || hook.exportLoading}
+          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 w-full sm:w-auto">
+          {hook.allExportLoading ? <Loader2 size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />}
+          {hook.allExportLoading ? "Menyiapkan Excel..." : "Export Excel — Semua Hasil Filter"}
+        </button>
+        <span className="text-xs text-slate-500" aria-live="polite">{hook.allExportLoading ? hook.exportProgress : "Mencakup seluruh halaman sesuai pencarian, tanggal, status, dan akses akun."}</span>
+        {hook.allExportLoading && <button type="button" onClick={hook.cancelAllExport} className="text-sm underline">Batalkan</button>}
+      </div>
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Total Rekon Card */}
@@ -126,12 +133,12 @@ export default function DataRekonHeader({ hook }: { hook: any }) {
 
       {/* Reminder Banner for Draft */}
       {hook.nominalDraft > 0 && (
-        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-3 transition-all">
+        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-start sm:items-center gap-3 transition-all">
           <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
             <AlertCircle size={20} strokeWidth={2.5} />
           </div>
-          <div>
-            <p className="text-base font-bold text-amber-800 dark:text-amber-300 leading-tight">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm sm:text-base font-bold text-amber-800 dark:text-amber-300 leading-tight break-words">
               Nominal Rekening Koran yang menggantung : {hook.formatRp(hook.nominalDraft)}
             </p>
           </div>

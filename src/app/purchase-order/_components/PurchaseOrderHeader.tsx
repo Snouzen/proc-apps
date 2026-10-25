@@ -60,7 +60,7 @@ export function PurchaseOrderHeader({
 
           {/* Floating Results Dropdown */}
           {(globalSearch.globalResults !== null || globalSearch.globalLoading) && globalSearch.globalQuery.trim().length >= 2 && (
-            <div className="absolute left-0 top-full mt-2 w-[380px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-[9999] max-h-[420px] overflow-auto animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="absolute left-0 top-full mt-2 w-[calc(100vw-48px)] sm:w-[380px] max-w-[380px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-[9999] max-h-[420px] overflow-auto animate-in fade-in slide-in-from-top-2 duration-200">
               {globalSearch.globalLoading ? (
                 <div className="flex items-center justify-center gap-2 py-8 text-slate-500">
                   <Loader2 className="w-5 h-5 animate-spin" />

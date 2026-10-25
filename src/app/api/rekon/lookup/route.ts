@@ -1,31 +1,117 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSessionWithRole } from "@/lib/auth";
+import { getRegionalSynonyms } from "@/lib/utils/regional";
+import { hasPermission } from "@/lib/accessControl";
+import { resolveRitelGroup } from "../services/rekonAccessHelper";
 
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request);
-    if (!session) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const { role: safeRole, dbUser, session } = auth;
+    const canLookup =
+      (await hasPermission(safeRole, "rekon_calc_save")) ||
+      (await hasPermission(safeRole, "rekon_calc_process")) ||
+      (await hasPermission(safeRole, "rekon_view")) ||
+      (await hasPermission(safeRole, "rekon_create"));
+    if (!canLookup) {
+      return NextResponse.json(
+        { error: "Forbidden: Akun Anda tidak memiliki izin mengakses data rekonsiliasi" },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const invoiceNo = searchParams.get("invoiceNo")?.trim();
     const rtvNo = searchParams.get("rtvNo")?.trim();
     const companyName = searchParams.get("companyName")?.trim();
+    const inisial = searchParams.get("inisial")?.trim();
     const ritelId = searchParams.get("ritelId")?.trim();
     const editId = searchParams.get("editId")?.trim(); // ID rekon yang sedang di-edit
 
-    // --- CASE A: Suggestion Mode (Hanya Company Name disediakan) ---
+    const userRegional = dbUser?.regional || session?.regional || null;
+    const userSiteArea = dbUser?.siteArea || session?.siteArea || null;
+
+    let poScopeFilter: any = {};
+    let returScopeFilter: any = {};
+
+    if (safeRole !== "pusat") {
+      if (safeRole === "rm") {
+        if (!userRegional) {
+          return NextResponse.json({ invoices: [], rtvs: [], data: [] });
+        }
+        const syn = getRegionalSynonyms(userRegional);
+        poScopeFilter = {
+          OR: [
+            ...syn.map((s) => ({ regional: { equals: s, mode: "insensitive" as const } })),
+            {
+              UnitProduksi: {
+                OR: syn.map((s) => ({ namaRegional: { equals: s, mode: "insensitive" as const } })),
+              },
+            },
+          ],
+        };
+        returScopeFilter = {
+          OR: [
+            { LokasiBarang: { OR: syn.map((s) => ({ namaRegional: { equals: s, mode: "insensitive" as const } })) } },
+            { PembebananReturn: { OR: syn.map((s) => ({ namaRegional: { equals: s, mode: "insensitive" as const } })) } },
+            { AND: [{ lokasiBarangId: null }, { pembebananReturnId: null }] },
+          ],
+        };
+      } else if (safeRole === "sitearea" || (safeRole as string) === "picsite" || (safeRole as string) === "spbdki") {
+        if (!userSiteArea && !userRegional) {
+          return NextResponse.json({ invoices: [], rtvs: [], data: [] });
+        }
+        const saList = (userSiteArea || "").split(",").map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+        poScopeFilter = {
+          UnitProduksi: {
+            siteArea: { in: saList, mode: "insensitive" as const },
+          },
+        };
+        returScopeFilter = {
+          OR: [
+            { LokasiBarang: { siteArea: { in: saList, mode: "insensitive" as const } } },
+            { PembebananReturn: { siteArea: { in: saList, mode: "insensitive" as const } } },
+            { AND: [{ lokasiBarangId: null }, { pembebananReturnId: null }] },
+          ],
+        };
+      }
+    }
+
+    // Resolve seluruh ritelId yang memiliki kombinasi (namaPt, inisial) yang sama tanpa melihat kolom tujuan
+    const ritelGroup =
+      companyName || ritelId
+        ? await resolveRitelGroup(prisma, ritelId, companyName, inisial)
+        : null;
+    const siblingRitelIds = ritelGroup?.siblingRitelIds || [];
+
+    const buildCompanyFilter = () => {
+      if (siblingRitelIds.length > 0) {
+        return { ritelId: { in: siblingRitelIds } };
+      }
+      if (companyName) {
+        return { RitelModern: { namaPt: { equals: companyName, mode: "insensitive" as const } } };
+      }
+      if (ritelId) {
+        return { ritelId };
+      }
+      return {};
+    };
+
+    // --- CASE A: Suggestion Mode (Company & Inisial disediakan) ---
     // Dipakai untuk dropdown autocomplete di frontend
     if ((companyName || ritelId) && !invoiceNo && !rtvNo) {
-      // Jika companyName dikirim, prioritaskan pencarian berdasarkan namaPt karena UI melakukan grouping nama perusahaan.
-      const companyFilter = companyName ? { RitelModern: { namaPt: { equals: companyName, mode: "insensitive" } } } : { ritelId };
+      const companyFilter = buildCompanyFilter();
       
-      // 1. Ambil semua invoice & RTV yang tersedia untuk company ini
+      // 1. Ambil semua invoice & RTV yang tersedia untuk company + inisial ini
       const [availableInvoices, availableRtvs] = await Promise.all([
         prisma.purchaseOrder.findMany({
           where: { 
              ...companyFilter as any,
+             ...poScopeFilter,
              AND: [
                { noInvoice: { not: null } },
                { noInvoice: { not: "" } },
@@ -37,6 +123,7 @@ export async function GET(request: Request) {
         prisma.dataRetur.findMany({
           where: { 
              ...companyFilter as any,
+             ...returScopeFilter,
              AND: [
                { rtvCn: { not: null } },
                { rtvCn: { not: "" } }
@@ -95,20 +182,15 @@ export async function GET(request: Request) {
     // --- CASE B: Lookup Invoice Terpilih ---
     if (invoiceNo) {
       const where: any = {
-        noInvoice: { equals: invoiceNo, mode: "insensitive" }
+        noInvoice: { equals: invoiceNo, mode: "insensitive" },
+        ...buildCompanyFilter(),
       };
 
-      // Prioritaskan companyName karena UI melakukan grouping ritel dengan namaPt yang sama
-      if (companyName) {
-        where.RitelModern = {
-          namaPt: { equals: companyName, mode: "insensitive" }
-        };
-      } else if (ritelId) {
-        where.ritelId = ritelId;
-      }
-
       const pos = await prisma.purchaseOrder.findMany({
-        where,
+        where: {
+          ...where,
+          ...poScopeFilter,
+        },
         include: {
           RitelModern: true,
           UnitProduksi: true,
@@ -128,7 +210,9 @@ export async function GET(request: Request) {
     // --- CASE C: Lookup RTV Terpilih ---
     const rtvId = searchParams.get("rtvId")?.trim();
     if (rtvNo || rtvId) {
-      const where: any = {};
+      const where: any = {
+        ...buildCompanyFilter(),
+      };
       
       if (rtvId) {
         where.id = rtvId;
@@ -136,17 +220,11 @@ export async function GET(request: Request) {
         where.rtvCn = { equals: rtvNo, mode: "insensitive" };
       }
 
-      // Prioritaskan companyName karena UI melakukan grouping ritel dengan namaPt yang sama
-      if (companyName) {
-        where.RitelModern = {
-          namaPt: { equals: companyName, mode: "insensitive" }
-        };
-      } else if (ritelId) {
-        where.ritelId = ritelId;
-      }
-
       const returs = await prisma.dataRetur.findMany({
-        where,
+        where: {
+          ...where,
+          ...returScopeFilter,
+        },
         include: {
           RitelModern: true,
           Product: true,

@@ -75,7 +75,7 @@ export function ReturFilterBar({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="relative group w-full md:w-[450px]">
+        <div className="relative group flex-1 min-w-[240px] max-w-[450px]">
           <Search
             className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
             size={18}
@@ -93,7 +93,7 @@ export function ReturFilterBar({
         <div className="flex items-center gap-3">
           {!isGroupedMode && (
             <div className="flex items-center gap-3">
-              <div className="hidden lg:flex items-center gap-3">
+              <div className="hidden sm:flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-xl">
                     <span className="text-[10px] font-black text-indigo-400 dark:text-indigo-400 uppercase tracking-widest">Total Record</span>
                     <span className="text-sm font-black text-indigo-700 dark:text-indigo-300 tabular-nums">{total}</span>

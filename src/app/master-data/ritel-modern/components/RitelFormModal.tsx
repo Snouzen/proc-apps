@@ -4,6 +4,7 @@ import Combobox from "@/components/combobox";
 import { StatefulButton } from "@/components/ui/stateful-button";
 import Swal from "sweetalert2";
 import { saveRitel } from "@/lib/api";
+import RitelLogo from "./RitelLogo";
 
 type ModalMode = "addInisial" | "addCompany";
 
@@ -150,8 +151,8 @@ export default function RitelFormModal({
                       className="w-full px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px] dark:text-blue-100"
                     />
                     {logoPt && (
-                      <div className="mt-1 flex justify-center p-1 bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-lg">
-                        <img src={logoPt} alt="preview" className="h-8 object-contain" />
+                      <div className="mt-1 bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-lg">
+                        <RitelLogo src={logoPt} alt="preview logo pt" variant="preview" />
                       </div>
                     )}
                   </div>
@@ -167,8 +168,8 @@ export default function RitelFormModal({
                       className="w-full px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px] dark:text-amber-100"
                     />
                     {logoInisial && (
-                      <div className="mt-1 flex justify-center p-1 bg-white dark:bg-slate-800 border border-amber-100 dark:border-amber-800 rounded-lg">
-                        <img src={logoInisial} alt="preview" className="h-8 object-contain" />
+                      <div className="mt-1 bg-white dark:bg-slate-800 border border-amber-100 dark:border-amber-800 rounded-lg">
+                        <RitelLogo src={logoInisial} alt="preview logo inisial" variant="preview" />
                       </div>
                     )}
                   </div>

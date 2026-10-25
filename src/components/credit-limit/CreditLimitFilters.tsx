@@ -81,7 +81,7 @@ export function CreditLimitFilters({
   const currentStatusLabel = STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Semua Status";
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
       {/* Dropdown 1: Ritel */}
       <div className="space-y-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ritel Modern</label>
@@ -315,9 +315,8 @@ export function CreditLimitFilters({
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
           Periode Tgl PO
         </label>
-        <div className="flex flex-col xl:flex-row xl:items-center gap-2">
+        <div className="flex flex-col gap-2">
           <DateInputHybrid value={tglFrom} onChange={setTglFrom} placeholder="Dari..." />
-          <span className="hidden xl:inline text-slate-300 dark:text-slate-600">-</span>
           <DateInputHybrid value={tglTo} onChange={setTglTo} placeholder="Sampai..." />
         </div>
         {totalCount !== undefined && (

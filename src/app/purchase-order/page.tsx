@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Loader2, Trash2 } from "lucide-react";
 
 import { useAuthData } from "@/hooks/useAuthData";
@@ -33,18 +33,23 @@ function AlertCircle(props: any) {
 }
 
 export default function PurchaseOrderPage() {
-  const { role, regional, siteArea } = useAuthData();
+  const { role, regional, siteArea, roleReady } = useAuthData();
 
-  const ritelFilters = useRetailerFilters();
+  const ritelFilters = useRetailerFilters({ role, regional, siteArea });
   const globalSearch = useGlobalSearch();
   const poTable = usePurchaseOrderTable(ritelFilters.retailers);
+  useEffect(() => {
+    if (roleReady && role) void poTable.handleFetchData("", "", "", role !== "pusat" ? regional || "" : "", role === "sitearea" ? siteArea || "" : "");
+  }, [roleReady, role, regional, siteArea, poTable.handleFetchData]);
   const detailModal = usePoDetailModal({ role, regional });
 
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editNoPo, setEditNoPo] = useState<string | null>(null);
 
-  if (ritelFilters.isInitialLoad) {
+  if (roleReady && !role) return <div role="alert" className="p-6">Sesi belum terverifikasi. <a href="/login" className="underline">Masuk kembali</a> untuk memuat PO.</div>;
+  if (roleReady && ((role === "rm" && !regional?.trim()) || (role === "sitearea" && !siteArea?.trim()))) return <div role="alert" className="p-6">Wilayah akun belum dikonfigurasi. Minta Pusat mengisi regional/sitearea akun sebelum mengakses PO.</div>;
+  if (ritelFilters.isInitialLoad || !roleReady) {
     return (
       <div className="py-32 flex flex-col items-center justify-center">
         <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
@@ -56,9 +61,9 @@ export default function PurchaseOrderPage() {
   const columns = getPurchaseOrderColumns({ poTable, role, setEditNoPo, setEditOpen });
 
   return (
-    <div className="w-full space-y-8 p-4 md:p-8 animate-in fade-in duration-700">
+    <div className="w-full space-y-6 animate-in fade-in duration-700">
       <Card className="border border-slate-100 shadow-xl bg-white relative rounded-3xl">
-        <CardHeader className="relative z-50 pb-4">
+        <CardHeader className="relative z-20 pb-4">
           <PurchaseOrderHeader 
             globalSearch={globalSearch} 
             poTable={poTable} 
@@ -73,6 +78,7 @@ export default function PurchaseOrderPage() {
         </CardContent>
       </Card>
 
+      {poTable.error && <div role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">{poTable.error}<button onClick={poTable.retry} className="ml-4 underline">Coba Lagi</button></div>}
       {poTable.poData === null ? (
         <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
           <div className="p-8 bg-slate-50 rounded-full text-slate-200 border border-slate-100 shadow-inner">
@@ -83,42 +89,22 @@ export default function PurchaseOrderPage() {
             <p className="text-slate-400 max-w-xs mx-auto text-sm">Pilih filter Ritel, Regional, atau Unit Produksi di atas untuk memuat data Purchase Order.</p>
           </div>
         </div>
-      ) : poTable.poData.length === 0 && !poTable.loadingData ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
-          <div className="p-8 bg-rose-50 rounded-full text-rose-200 border border-rose-100">
-            <AlertCircle size={80} />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-xl font-bold text-slate-800">Data Tidak Ditemukan</h3>
-            <p className="text-slate-400 max-w-xs mx-auto text-sm">Tidak ada Purchase Order yang sesuai dengan kriteria filter tersebut.</p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                ritelFilters.handleSelectNamaPt("");
-                poTable.setManualData(null as any, "", "");
-              }}
-              className="mt-4 rounded-xl border-slate-200 text-slate-800"
-            >
-              Reset Filter
-            </Button>
-          </div>
-        </div>
       ) : (
-        <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-700">
+        <div className="space-y-6 animate-in slide-in-from-bottom-6 duration-700">
           <Card className="mb-8 border-none shadow-xl bg-slate-50/30 dark:bg-slate-800/30 rounded-3xl relative z-10 w-full overflow-visible">
-            <CardHeader className="bg-slate-50/30 border-b border-slate-100 p-8 space-y-6 relative z-40">
+            <CardHeader className="bg-slate-50/30 border-b border-slate-100 p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 relative z-40">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3 flex-wrap">
                     <CardTitle className="text-2xl font-black text-slate-800 dark:text-slate-100">Daftar Purchase Order</CardTitle>
                     {poTable.activeNamaPt && (
                       <span className="text-xs font-semibold px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full shadow-sm">
-                        Total {poTable.filteredPo.length} PO
+                        Total {poTable.total} PO
                       </span>
                     )}
                   </div>
                   <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Menampilkan data untuk <span className="font-bold text-slate-900 dark:text-slate-100">{poTable.activeNamaPt}</span>
+                    Menampilkan data untuk <span className="font-bold text-slate-900 dark:text-slate-100">{poTable.activeNamaPt || "seluruh ritel dalam akses akun"}</span>
                     {poTable.activeInisial && <span> - Inisial <span className="font-bold text-slate-900 dark:text-slate-100">{poTable.activeInisial}</span></span>}
                   </CardDescription>
                 </div>
@@ -135,10 +121,10 @@ export default function PurchaseOrderPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3 text-sm font-medium text-slate-600">
-                <div className="w-full sm:w-[150px]"><DateInputHybrid value={poTable.tglFrom} onChange={(v) => poTable.setTglFrom(v)} placeholder="Dari Tgl PO..." maxDate={poTable.tglTo} /></div>
-                <div className="w-full sm:w-[150px]"><DateInputHybrid value={poTable.tglTo} onChange={(v) => poTable.setTglTo(v)} placeholder="Sampai Tgl..." minDate={poTable.tglFrom} /></div>
-                <div className="w-full sm:w-[160px] relative z-20">
+              <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-3 text-sm font-medium text-slate-600">
+                <div className="w-full sm:w-40 md:w-44"><DateInputHybrid value={poTable.tglFrom} onChange={(v) => poTable.setTglFrom(v)} placeholder="Dari Tgl PO..." maxDate={poTable.tglTo} /></div>
+                <div className="w-full sm:w-40 md:w-44"><DateInputHybrid value={poTable.tglTo} onChange={(v) => poTable.setTglTo(v)} placeholder="Sampai Tgl..." minDate={poTable.tglFrom} /></div>
+                <div className="w-full sm:w-44 relative z-20">
                   <SmoothSelect value={poTable.statusFilter} onChange={(v) => poTable.setStatusFilter(v as any)} options={[{ value: "all", label: "All Status" }, { value: "scheduled", label: "Scheduled" }, { value: "verified", label: "Verified" }, { value: "tagih", label: "Tagih" }, { value: "paid", label: "Paid" }]} />
                 </div>
               </div>
@@ -148,6 +134,10 @@ export default function PurchaseOrderPage() {
                 <DataTableV2
                   columns={columns}
                   data={poTable.filteredPo}
+                  manualPagination manualSorting manualFiltering
+                  pageCount={poTable.totalPages} pagination={poTable.pagination} onPaginationChange={poTable.setPagination}
+                  sorting={poTable.sorting} onSortingChange={poTable.setSorting}
+                  columnFilters={poTable.columnFilters} onColumnFiltersChange={poTable.setColumnFilters}
                   loading={poTable.loadingData}
                   onRowClick={(po: any) => detailModal.openModal(po)}
                 />
@@ -160,7 +150,7 @@ export default function PurchaseOrderPage() {
       <PODetailModal open={detailModal.openDetail} onClose={() => detailModal.setOpenDetail(false)} data={detailModal.detailData} />
 
       {editOpen && editNoPo && (
-        <POEditModal open={editOpen} noPo={editNoPo} onClose={() => { setEditOpen(false); setEditNoPo(null); }} onSaved={() => { setEditOpen(false); setEditNoPo(null); poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, ritelFilters.selectedTujuan); }} />
+        <POEditModal open={editOpen} noPo={editNoPo} onClose={() => { setEditOpen(false); setEditNoPo(null); }} onSaved={() => { setEditOpen(false); setEditNoPo(null); poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, ritelFilters.selectedTujuan, ritelFilters.selectedRegional, ritelFilters.selectedSiteArea); }} />
       )}
 
       {poTable.confirmDelete && (
@@ -179,7 +169,7 @@ export default function PurchaseOrderPage() {
         </div>
       )}
 
-      <BulkUploadModal open={isBulkOpen} onClose={() => setIsBulkOpen(false)} onSuccess={() => poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, ritelFilters.selectedTujuan)} />
+      <BulkUploadModal open={isBulkOpen} onClose={() => setIsBulkOpen(false)} onSuccess={() => poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, ritelFilters.selectedTujuan, ritelFilters.selectedRegional, ritelFilters.selectedSiteArea)} />
     </div>
   );
 }

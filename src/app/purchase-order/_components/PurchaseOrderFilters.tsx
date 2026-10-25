@@ -118,7 +118,7 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
             <Button
               variant="outline"
               role="combobox"
-              disabled={!ritelFilters.selectedNamaPt}
+              disabled={ritelFilters.isInitialLoad}
               aria-expanded={ritelFilters.openInisial}
               className={cn(
                 "w-full justify-between h-12 rounded-xl transition-all duration-200 bg-white dark:bg-slate-800 disabled:opacity-50",
@@ -214,7 +214,7 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
             <Button
               variant="outline"
               role="combobox"
-              disabled={!ritelFilters.selectedNamaPt}
+              disabled={ritelFilters.isInitialLoad}
               aria-expanded={ritelFilters.openTujuan}
               className={cn(
                 "w-full justify-between h-12 rounded-xl transition-all duration-200 bg-white dark:bg-slate-800 disabled:opacity-50",
@@ -310,6 +310,7 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
             <Button
               variant="outline"
               role="combobox"
+              disabled={ritelFilters.regionalLocked}
               aria-expanded={ritelFilters.openRegional}
               className={cn(
                 "w-full justify-between h-12 rounded-xl transition-all duration-200 bg-white dark:bg-slate-800",
@@ -405,6 +406,7 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
             <Button
               variant="outline"
               role="combobox"
+              disabled={ritelFilters.siteAreaLocked}
               aria-expanded={ritelFilters.openSiteArea}
               className={cn(
                 "w-full justify-between h-12 rounded-xl transition-all duration-200 bg-white dark:bg-slate-800",
@@ -498,7 +500,7 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
             ritelFilters.selectedRegional,
             ritelFilters.selectedSiteArea
           )}
-          disabled={(!ritelFilters.selectedNamaPt && !ritelFilters.selectedRegional && !ritelFilters.selectedSiteArea) || poTable.loadingData}
+          disabled={poTable.loadingData}
           className="w-full h-12 bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 text-white dark:text-white font-black rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-slate-100 disabled:dark:bg-slate-800 disabled:text-slate-400 disabled:dark:text-slate-500"
         >
           {poTable.loadingData ? (

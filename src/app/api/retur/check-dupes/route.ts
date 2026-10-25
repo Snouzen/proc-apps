@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { getSessionWithRole } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
@@ -12,11 +11,8 @@ export async function POST(request: Request) {
     }
 
     // [RBAC] Verify Session
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get("session")?.value;
-    const user = verifySession(sessionToken);
-
-    if (!user) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

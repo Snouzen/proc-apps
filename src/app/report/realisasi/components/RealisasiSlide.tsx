@@ -518,7 +518,7 @@ export default function RealisasiSlide({
               </span>
             </div>
             {regionalSubtitle && (
-              <p className="text-[8.5px] sm:text-[9.5px] xl:text-[10.5px] font-bold text-[#0B2A59] uppercase break-words line-clamp-2 mt-0.5 leading-normal pb-0.5" title={regionalSubtitle}>
+              <p className="text-[8.5px] sm:text-[9.5px] xl:text-[10.5px] font-bold text-[#0B2A59] uppercase break-words line-clamp-2 mt-0.5 leading-[1.25]" title={regionalSubtitle}>
                 {regionalSubtitle}
               </p>
             )}
@@ -595,13 +595,21 @@ export default function RealisasiSlide({
                     )}
                   </div>
 
-                  {/* Retailer Name */}
-                  <p
-                    className={`${nameTextClass} font-bold text-slate-800 uppercase tracking-tight line-clamp-1 leading-normal pb-0.5 mt-0.5 max-w-full px-0.5`}
-                    title={item.namaRitel}
-                  >
-                    {item.namaRitel}
-                  </p>
+                  {/* Retailer Name (Dynamic 2-line wrap with auto-fit font) */}
+                  <div className="w-full flex-1 flex items-center justify-center min-h-[22px] sm:min-h-[25px] my-0.5 px-0.5">
+                    <p
+                      className={`${
+                        item.namaRitel.length > 25
+                          ? "text-[8px] sm:text-[8.5px] xl:text-[9px] leading-[1.15]"
+                          : item.namaRitel.length > 18
+                          ? "text-[8.5px] sm:text-[9px] xl:text-[9.5px] leading-[1.2]"
+                          : `${nameTextClass} leading-tight`
+                      } font-bold text-slate-800 uppercase tracking-tight line-clamp-2 break-words max-w-full text-center`}
+                      title={item.namaRitel}
+                    >
+                      {item.namaRitel}
+                    </p>
+                  </div>
 
                   {/* Volume KG */}
                   <p className={`${volTextClass} font-black text-[#0B2A59] tracking-tight leading-none mt-0.5`}>
@@ -676,13 +684,21 @@ export default function RealisasiSlide({
                     </div>
                   </div>
 
-                  {/* Name */}
-                  <p
-                    className="text-[9.5px] sm:text-[10.5px] font-bold text-slate-800 uppercase truncate w-full mt-0.5 leading-normal pb-0.5"
-                    title={topItem.namaRitel}
-                  >
-                    {topItem.namaRitel}
-                  </p>
+                  {/* Name (Dynamic 2-line wrap with consistent height baseline) */}
+                  <div className="w-full my-auto py-0.5 min-h-[26px] sm:min-h-[28px] flex items-center justify-center">
+                    <p
+                      className={`${
+                        topItem.namaRitel.length > 20
+                          ? "text-[8px] sm:text-[8.5px] xl:text-[9px] leading-[1.15]"
+                          : topItem.namaRitel.length > 14
+                          ? "text-[8.5px] sm:text-[9.5px] leading-[1.2]"
+                          : "text-[9.5px] sm:text-[10.5px] leading-tight"
+                      } font-bold text-slate-800 uppercase line-clamp-2 break-words w-full px-0.5 text-center`}
+                      title={topItem.namaRitel}
+                    >
+                      {topItem.namaRitel}
+                    </p>
+                  </div>
 
                   {/* Volume KG */}
                   <p className="text-xs sm:text-[13px] xl:text-sm font-black text-[#0B2A59] tracking-tight leading-none mt-0.5">
@@ -730,13 +746,15 @@ export default function RealisasiSlide({
               }}
             >
               {dynamicRegions.map((reg) => (
-                <div key={reg.key} className="px-1.5 sm:px-2 flex flex-col min-w-0 overflow-hidden">
+                <div key={reg.key} className="px-1.5 sm:px-2 flex flex-col min-w-0">
                   {/* Column Header: Warm Beige Banner */}
                   <div
-                    className="bg-[#F5EFE6] text-[#0B2A59] font-bold uppercase text-center py-0.5 sm:py-1 px-1 rounded-md mb-1.5 tracking-tight text-[8px] sm:text-[8.5px] leading-tight shadow-2xs min-h-[22px] sm:min-h-[25px] flex items-center justify-center"
+                    className="bg-[#F5EFE6] text-[#0B2A59] font-bold uppercase text-center py-1 px-1 rounded-md mb-1.5 tracking-tight shadow-2xs min-h-[24px] sm:min-h-[26px] flex items-center justify-center"
                     title={reg.label}
                   >
-                    <span className="line-clamp-2 leading-tight">{reg.label}</span>
+                    <span className={`${reg.label.length > 14 ? "text-[7.5px] sm:text-[8px] leading-[1.15]" : "text-[8px] sm:text-[8.5px] leading-tight"} line-clamp-2 text-center`}>
+                      {reg.label}
+                    </span>
                   </div>
 
                   {/* Ritel List: Tight, borderless rows */}
@@ -744,7 +762,7 @@ export default function RealisasiSlide({
                     {reg.items.map((r, rIdx) => (
                       <div
                         key={r.id || rIdx}
-                        className="flex items-center gap-1.5 py-0.5 min-w-0 overflow-hidden"
+                        className="flex items-center gap-1.5 py-0.5 min-w-0"
                       >
                         {r.logoUrl ? (
                           <img
@@ -759,7 +777,13 @@ export default function RealisasiSlide({
                           </div>
                         )}
                         <span
-                          className="font-semibold text-slate-700 text-[8px] sm:text-[8.5px] line-clamp-2 leading-[1.2] pb-0.5 min-w-0 flex-1 break-words"
+                          className={`font-semibold text-slate-700 ${
+                            r.namaRitel.length > 25
+                              ? "text-[7px] sm:text-[7.5px] xl:text-[8px] leading-[1.15] line-clamp-3"
+                              : r.namaRitel.length > 16
+                              ? "text-[7.5px] sm:text-[8px] leading-[1.2] line-clamp-2"
+                              : "text-[8px] sm:text-[8.5px] leading-[1.25] line-clamp-2"
+                          } min-w-0 flex-1 break-words`}
                           title={r.namaRitel}
                         >
                           {r.namaRitel}

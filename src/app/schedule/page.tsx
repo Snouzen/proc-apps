@@ -120,6 +120,21 @@ export default function SchedulePage() {
         </div>
       </div>
 
+      {hook.fetchError && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={18} className="shrink-0" />
+            <span className="text-sm font-semibold">{hook.fetchError}</span>
+          </div>
+          <button
+            onClick={() => hook.fetchData()}
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      )}
+
       <ScheduleSummaryCards 
         stats={hook.stats} 
         activeFilter={hook.activeFilter} 

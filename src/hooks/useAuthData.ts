@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { getMe } from "@/lib/me";
+import { getMe, getMeSync } from "@/lib/me";
 
 export type RoleType = "pusat" | "rm" | "sitearea" | "magang" | null;
 
@@ -11,17 +11,28 @@ export function useAuthData() {
   const [roleReady, setRoleReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const fetchMe = useCallback(async () => {
+  const fetchMe = useCallback(async (force = false) => {
+    const syncMe = !force ? getMeSync() : null;
+    if (syncMe) {
+      setRole(syncMe.authenticated ? (syncMe.role as RoleType) : null);
+      setRegional(syncMe.regional || null);
+      setSiteArea((syncMe as any)?.siteArea || null);
+      setEmail(syncMe.email || null);
+      setRoleReady(true);
+      setAuthLoading(false);
+      return;
+    }
+
     setAuthLoading(true);
     try {
-      const me = await getMe();
-      setRole(me?.role as RoleType);
+      const me = await getMe(force);
+      setRole(me?.authenticated ? (me.role as RoleType) : null);
       setRegional(me?.regional || null);
       setSiteArea((me as any)?.siteArea || null);
       setEmail(me?.email || null);
       setRoleReady(true);
     } catch {
-      setRole("pusat");
+      setRole(null);
       setRegional(null);
       setSiteArea(null);
       setEmail(null);
@@ -35,18 +46,10 @@ export function useAuthData() {
     let mounted = true;
     const run = () => {
       if (!mounted) return;
-      fetchMe();
+      fetchMe(false);
     };
-    
-    // Defer execution if document is not focused
-    if (typeof document !== "undefined" && !document.hasFocus()) {
-      window.addEventListener("focus", run, { once: true });
-      return () => {
-        mounted = false;
-        window.removeEventListener("focus", run);
-      };
-    }
-    
+
+    // Auth must load even while DevTools or another tab has focus.
     run();
     return () => {
       mounted = false;

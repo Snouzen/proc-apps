@@ -44,8 +44,10 @@ export async function generateRealisasiPdf({
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => {
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      }, 2000);
       return;
     } else {
       console.warn("Puppeteer export status not OK, falling back to html2canvas");
@@ -91,7 +93,6 @@ export async function generateRealisasiPdf({
         .font-slide h2,
         .font-slide h3 {
           line-height: 1.35 !important;
-          padding-bottom: 2.5px !important;
         }
         .font-slide .truncate,
         .font-slide [class*="line-clamp-1"] {
@@ -100,7 +101,6 @@ export async function generateRealisasiPdf({
           text-overflow: ellipsis !important;
           white-space: nowrap !important;
           line-height: 1.35 !important;
-          padding-bottom: 2.5px !important;
           -webkit-line-clamp: unset !important;
         }
         .font-slide [class*="line-clamp-2"] {
@@ -108,8 +108,14 @@ export async function generateRealisasiPdf({
           -webkit-box-orient: vertical !important;
           -webkit-line-clamp: 2 !important;
           overflow: hidden !important;
+          line-height: 1.35 !important;
+        }
+        .font-slide [class*="line-clamp-3"] {
+          display: -webkit-box !important;
+          -webkit-box-orient: vertical !important;
+          -webkit-line-clamp: 3 !important;
+          overflow: hidden !important;
           line-height: 1.3 !important;
-          padding-bottom: 2px !important;
         }
       `;
       clonedDoc.head.appendChild(style);

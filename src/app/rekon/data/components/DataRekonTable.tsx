@@ -1,3 +1,4 @@
+import PusatOnly from "@/components/PusatOnly";
 import React, { Fragment, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { 
@@ -35,7 +36,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
     toggleRow,
     formatRp,
     handleDelete,
-    handleRowExport
+    handleRowExport, handleExcelExport, exportLoading
   } = hook;
 
   const columns = useMemo(() => [
@@ -237,6 +238,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                 <Paperclip size={14} />
               </button>
             )}
+            <button disabled={exportLoading} onClick={() => handleExcelExport(item)} title="Export Excel" className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center disabled:opacity-50"><FileSpreadsheet size={14} /></button>
             <button 
               onClick={() => handleRowExport(item)}
               suppressHydrationWarning
@@ -245,14 +247,14 @@ export default function DataRekonTable({ hook }: { hook: any }) {
             >
               <Eye size={14} />
             </button>
-            <button 
+            <PusatOnly><button 
               onClick={() => handleDelete(item)}
               suppressHydrationWarning
               className="w-8 h-8 bg-rose-50 dark:bg-rose-500/10 text-rose-400 rounded-full flex items-center justify-center hover:bg-rose-600 hover:text-white dark:hover:bg-rose-500/20 transition-all shadow-sm dark:shadow-none"
               title="Hapus Data"
             >
               <Trash2 size={14} />
-            </button>
+            </button></PusatOnly>
             {item.status === "draft" && (
               <button 
                 onClick={() => router.push(`/rekon/calc?edit=${item.id}`)}
@@ -266,7 +268,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
         );
       },
     }),
-  ], [expandedRows, toggleRow, formatRp, handleDelete, handleRowExport, router, setBuktiBayarPreviewUrl]);
+  ], [expandedRows, toggleRow, formatRp, handleDelete, handleRowExport, handleExcelExport, exportLoading, router, setBuktiBayarPreviewUrl]);
 
   return (
     <div className="bg-white dark:bg-slate-900/40 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
@@ -374,7 +376,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                                       <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight">{inv.noInvoice}</span>
                                     </td>
                                     <td className="px-5 py-2.5 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                      {formatRp(inv.nominal)}
+                                      {inv.sourceRitelMismatch ? "Ritel/inisial berbeda" : inv.sourceMissing || inv.nominal == null ? "Data tidak tersedia" : formatRp(inv.nominal)}
                                     </td>
                                   </tr>
                                 )) : (
@@ -384,7 +386,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                             </table>
                           </div>
                           <div className="px-5 py-2.5 bg-blue-50/50 dark:bg-blue-500/10 flex justify-between items-center border-t border-slate-100 dark:border-slate-700/50">
-                            <span className="text-[8px] font-black text-blue-400 dark:text-blue-500 uppercase tracking-widest">Total</span>
+                            <span className="text-[8px] font-black text-blue-400 dark:text-blue-500 uppercase tracking-widest">Total tersimpan</span>
                             <span className="text-[11px] font-black text-blue-600 dark:text-blue-400 tabular-nums">{formatRp(item.totalInvoices || 0)}</span>
                           </div>
                         </div>
@@ -583,20 +585,22 @@ export default function DataRekonTable({ hook }: { hook: any }) {
 
                   {/* Bukti & Rincian Bayar Section */}
                   <div className="mt-4 pt-4 border-t border-slate-100/50 dark:border-slate-800/50">
-                    <div className="flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center">
-                        <Paperclip size={14} />
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0">
+                          <Paperclip size={14} />
+                        </div>
+                        <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Bukti & Rincian Bayar</h4>
                       </div>
-                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bukti & Rincian Bayar</h4>
-                      <div className="flex-1 h-[1px] bg-slate-100 dark:bg-slate-700/50"></div>
-                      <div className="flex items-center gap-2">
+                      <div className="hidden sm:block flex-1 h-[1px] bg-slate-100 dark:bg-slate-700/50"></div>
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                         {item.rincianBayarUrl && (
                           <a
                             href={item.rincianBayarUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/rincian border border-blue-100 dark:border-blue-500/20"
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/rincian border border-blue-100 dark:border-blue-500/20"
                           >
                             <FileSpreadsheet size={12} className="group-hover/rincian:scale-110 transition-transform" />
                             Rincian Bayar
@@ -605,7 +609,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                         {item.buktiBayarUrl ? (
                           <button
                             onClick={(e) => { e.stopPropagation(); setBuktiBayarPreviewUrl(item.buktiBayarUrl); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/bukti border border-amber-100 dark:border-amber-500/20"
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all group/bukti border border-amber-100 dark:border-amber-500/20 cursor-pointer"
                           >
                             <Eye size={12} className="group-hover/bukti:scale-110 transition-transform" />
                             Lihat Bukti

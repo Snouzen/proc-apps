@@ -101,28 +101,57 @@ export function useExpiredCalendar() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Fetch PO Data
+  // Fetch PO Data (With multi-page complete fetching if total > 5000)
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const fetchPOData = useCallback(async () => {
     setPoLoading(true);
+    setFetchError(null);
     try {
-      const params = new URLSearchParams({
-        limit: "5000",
-        filterBy: "expired",
-        month: selectedMonth,
-        year: selectedYear,
-        includeItems: "true",
-      });
-      if (selectedRegional && selectedRegional !== "ALL")
-        params.set("regional", selectedRegional);
-      if (selectedSiteArea && selectedSiteArea !== "ALL")
-        params.set("siteArea", selectedSiteArea);
+      const pageSize = 2000;
+      let offset = 0;
+      let allItems: any[] = [];
+      let total = 0;
 
-      const res = await fetch(`/api/po?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const json = await res.json();
-      setPoData(json?.data || []);
-    } catch {
+      do {
+        const params = new URLSearchParams({
+          limit: String(pageSize),
+          offset: String(offset),
+          filterBy: "expired",
+          month: selectedMonth,
+          year: selectedYear,
+          includeItems: "true",
+        });
+        if (selectedRegional && selectedRegional !== "ALL")
+          params.set("regional", selectedRegional);
+        if (selectedSiteArea && selectedSiteArea !== "ALL")
+          params.set("siteArea", selectedSiteArea);
+
+        const res = await fetch(`/api/po?${params.toString()}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          setFetchError(`Pengambilan data terhenti di halaman offset ${offset} (HTTP ${res.status}). Menampilkan data sebagian.`);
+          break;
+        }
+        const json = await res.json().catch(() => null);
+        const pageItems = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+            ? json
+            : [];
+        allItems = allItems.concat(pageItems);
+        total = typeof json?.total === "number" ? json.total : pageItems.length;
+        offset += pageItems.length;
+
+        if (pageItems.length < pageSize || allItems.length >= total) {
+          break;
+        }
+      } while (offset < total);
+
+      setPoData(allItems);
+    } catch (err: any) {
+      setFetchError(err?.message || "Gagal memuat data kalender expired");
       setPoData([]);
     } finally {
       setPoLoading(false);
@@ -225,5 +254,7 @@ export function useExpiredCalendar() {
     inlineDateTo,
     setInlineDateTo,
     filteredDetailPOs,
+    fetchError,
+    fetchPOData,
   };
 }

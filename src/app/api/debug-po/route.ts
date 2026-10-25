@@ -1,8 +1,25 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getSessionWithRole } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (auth.role !== "pusat") {
+      return NextResponse.json(
+        { error: "Forbidden: Hanya Pusat yang dapat mengakses debug PO" },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const noPo = searchParams.get("noPo");
     

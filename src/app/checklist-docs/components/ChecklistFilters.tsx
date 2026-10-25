@@ -34,9 +34,9 @@ export default function ChecklistFilters({
     <>
       {/* Advanced Filters Row */}
       <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
           {/* Dropdown 1: Ritel */}
-          <div className="md:col-span-3 space-y-2">
+          <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
               <Building2 size={12} className="text-blue-500" />
               Ritel Modern
@@ -133,7 +133,7 @@ export default function ChecklistFilters({
           </div>
 
           {/* Dropdown 2: Inisial */}
-          <div className="md:col-span-3 space-y-2">
+          <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
               <Tags size={12} className="text-indigo-500" />
               Inisial
@@ -229,7 +229,7 @@ export default function ChecklistFilters({
           </div>
 
           {/* Input 3: Tujuan Detail */}
-          <div className="md:col-span-3 space-y-2">
+          <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
               <MapPin size={12} className="text-teal-500" />
               Tujuan Detail
@@ -325,18 +325,13 @@ export default function ChecklistFilters({
           </div>
 
           {/* Date Pickers */}
-          <div className="md:col-span-3 space-y-2">
+          <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
               Periode Tgl PO
             </label>
-            <div className="flex items-center gap-2">
-              <div className="w-full">
-                <DateInputHybrid value={tglFrom} onChange={setTglFrom} placeholder="Dari..." maxDate={tglTo} />
-              </div>
-              <span className="text-slate-400">-</span>
-              <div className="w-full">
-                <DateInputHybrid value={tglTo} onChange={setTglTo} placeholder="Sampai..." minDate={tglFrom} />
-              </div>
+            <div className="flex flex-col gap-2">
+              <DateInputHybrid value={tglFrom} onChange={setTglFrom} placeholder="Dari..." maxDate={tglTo} />
+              <DateInputHybrid value={tglTo} onChange={setTglTo} placeholder="Sampai..." minDate={tglFrom} />
             </div>
           </div>
         </div>

@@ -24,17 +24,22 @@ export default function RekonForm({ calc }: { calc: any }) {
     buktiBayarFile, setBuktiBayarFile,
     rincianBayarUrl, setRincianBayarUrl,
     selectedCompany, setSelectedCompany,
+    selectedInisial,
+    availableInisials,
+    handleSelectCompany, handleSelectInisial,
     selectedInvoices, setSelectedInvoices,
     selectedRtvs, setSelectedRtvs,
     selectedPromos, setSelectedPromos,
     adminFee, setAdminFee,
     notesList, setNotesList,
     companySearch, setCompanySearch,
+    inisialSearch, setInisialSearch,
     invSearch, setInvSearch,
     rtvSearch, setRtvSearch,
     promoSearch, setPromoSearch,
     refInvoiceSearch, setRefInvoiceSearch,
     isCompanyOpen, setIsCompanyOpen,
+    isInisialOpen, setIsInisialOpen,
     isPromoOpen, setIsPromoOpen,
     isInvOpen, setIsInvOpen,
     isRtvOpen, setIsRtvOpen,
@@ -47,9 +52,9 @@ export default function RekonForm({ calc }: { calc: any }) {
   } = calc;
 
   return (
-    <div className="flex-1 space-y-12 min-w-0">
+    <div className="flex-1 space-y-8 sm:space-y-12 min-w-0">
       {/* STEP 1: Rekening Koran & Bukti Bayar */}
-      <div className="bg-white dark:bg-slate-800 rounded-[32px] sm:rounded-[40px] p-6 sm:p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-8 sm:space-y-10 relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[40px] p-4 sm:p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-6 sm:space-y-10 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none"></div>
         
         <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
@@ -219,7 +224,7 @@ export default function RekonForm({ calc }: { calc: any }) {
       </div>
 
       {/* STEP 2: Lookup Invoice, Retur & Promo */}
-      <div className="bg-white dark:bg-slate-800 rounded-[32px] sm:rounded-[48px] p-6 sm:p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-8 sm:space-y-10 relative overflow-hidden w-full max-w-full min-w-0">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[48px] p-4 sm:p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-6 sm:space-y-10 relative overflow-hidden w-full max-w-full min-w-0">
         <div className="flex items-center gap-3 sm:gap-4 mb-2">
             <div className="w-8 h-8 rounded-full bg-[#5c56f6] text-white flex items-center justify-center font-black text-xs shadow-lg shrink-0">2</div>
             <h3 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em] leading-snug">Lookup Invoice, Retur & Promo</h3>
@@ -252,9 +257,9 @@ export default function RekonForm({ calc }: { calc: any }) {
                         {Array.from(new Map(masterCompanies.map((item: any) => [item.namaPt, item])).values())
                           .filter((c: any) => c.namaPt.toLowerCase().includes(companySearch.toLowerCase()))
                           .map((c: any) => (
-                          <button key={c.id} onClick={() => { setSelectedCompany(c); setCompanySearch(""); setIsCompanyOpen(false); setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromos([]); fetchCompanyData(c.namaPt, c.id); }} className={`w-full text-left p-4 sm:p-5 rounded-[22px] transition-all font-black text-[10px] sm:text-[11px] uppercase flex items-center justify-between ${selectedCompany?.id === c.id ? 'bg-[#5c56f6] text-white shadow-2xl dark:shadow-none' : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'}`}>
+                          <button key={c.id} onClick={() => handleSelectCompany(c)} className={`w-full text-left p-4 sm:p-5 rounded-[22px] transition-all font-black text-[10px] sm:text-[11px] uppercase flex items-center justify-between ${selectedCompany?.namaPt?.toLowerCase() === c.namaPt?.toLowerCase() ? 'bg-[#5c56f6] text-white shadow-2xl dark:shadow-none' : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'}`}>
                               <span className="truncate pr-2">{highlightMatch(c.namaPt, companySearch)}</span>
-                              <ChevronRight size={14} className={`shrink-0 ${selectedCompany?.id === c.id ? 'opacity-100' : 'opacity-0'}`} />
+                              <ChevronRight size={14} className={`shrink-0 ${selectedCompany?.namaPt?.toLowerCase() === c.namaPt?.toLowerCase() ? 'opacity-100' : 'opacity-0'}`} />
                           </button>
                         ))}
                         {Array.from(new Map(masterCompanies.map((item: any) => [item.namaPt, item])).values())
@@ -269,7 +274,57 @@ export default function RekonForm({ calc }: { calc: any }) {
             </Popover.Root>
         </div>
 
-          {selectedCompany ? (
+        {selectedCompany && (
+          <div className="w-full relative group animate-in fade-in duration-300">
+            <Popover.Root open={isInisialOpen} onOpenChange={setIsInisialOpen} modal={false}>
+              <Popover.Anchor asChild>
+                <div className={`relative w-full h-16 rounded-[28px] border transition-all flex items-center justify-between overflow-hidden cursor-pointer ${selectedInisial && !isInisialOpen ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20 shadow-xl shadow-indigo-100/30 dark:shadow-none' : 'bg-[#f8fafc] dark:bg-slate-900/50 border-slate-50 dark:border-slate-700 focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:ring-4 focus-within:ring-indigo-50/50 dark:focus-within:ring-indigo-500/20'}`}>
+                  <div className="flex items-center gap-3 sm:gap-5 w-full pl-4 sm:pl-10 pr-10 sm:pr-12">
+                    <FileText size={22} className={`shrink-0 ${selectedInisial && !isInisialOpen ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-500 transition-colors'}`} />
+                    <input
+                      type="text"
+                      placeholder={selectedInisial ? `INISIAL: ${selectedInisial}` : "PILIH INISIAL RITEL..."}
+                      className={`w-full bg-transparent border-none outline-none font-black uppercase tracking-widest sm:tracking-[0.2em] text-[9px] sm:text-[10px] truncate ${selectedInisial && !isInisialOpen ? 'text-indigo-600 dark:text-indigo-300 italic cursor-pointer' : 'text-slate-600 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:italic'}`}
+                      value={inisialSearch}
+                      onChange={e => { setInisialSearch(e.target.value); setIsInisialOpen(true); }}
+                      onFocus={() => setIsInisialOpen(true)}
+                      onBlur={() => setTimeout(() => setIsInisialOpen(false), 300)}
+                    />
+                  </div>
+                  <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <ChevronDown size={18} className={selectedInisial && !isInisialOpen ? 'text-indigo-400' : 'text-slate-200 dark:text-slate-600'} />
+                  </div>
+                </div>
+              </Popover.Anchor>
+              <Popover.Portal>
+                <Popover.Content className="z-[110] w-[var(--radix-popover-trigger-width)] bg-white dark:bg-slate-800 rounded-[40px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-50 dark:border-slate-700 p-4 sm:p-6 animate-in fade-in zoom-in-95 mt-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                  <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
+                    {(availableInisials || [])
+                      .filter((opt: any) => opt.inisial.toLowerCase().includes((inisialSearch || "").toLowerCase()))
+                      .map((opt: any) => (
+                        <button
+                          key={opt.inisial}
+                          onClick={() => handleSelectInisial(opt)}
+                          className={`w-full text-left p-4 sm:p-5 rounded-[22px] transition-all font-black text-[10px] sm:text-[11px] uppercase flex items-center justify-between ${selectedInisial?.toLowerCase() === opt.inisial.toLowerCase() ? 'bg-[#5c56f6] text-white shadow-2xl dark:shadow-none' : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'}`}
+                        >
+                          <span className="truncate pr-2">{highlightMatch(opt.inisial, inisialSearch)}</span>
+                          <ChevronRight size={14} className={`shrink-0 ${selectedInisial?.toLowerCase() === opt.inisial.toLowerCase() ? 'opacity-100' : 'opacity-0'}`} />
+                        </button>
+                      ))}
+                    {(availableInisials || [])
+                      .filter((opt: any) => opt.inisial.toLowerCase().includes((inisialSearch || "").toLowerCase())).length === 0 && (
+                      <div className="p-8 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">
+                        Tidak ada Inisial ditemukan
+                      </div>
+                    )}
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+          </div>
+        )}
+
+          {selectedCompany && selectedInisial ? (
             <div className="space-y-8 animate-in fade-in duration-500 pt-4 w-full min-w-0">
                 <div className="flex flex-col gap-12 w-full min-w-0">
               
@@ -557,7 +612,7 @@ export default function RekonForm({ calc }: { calc: any }) {
                 </div>
                 </div>
 
-              <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[32px] p-8 border border-blue-100/50 dark:border-blue-800/30 shadow-[inset_0_1px_1px_rgba(255,255,255,1)] dark:shadow-none mt-4 mb-2">
+              <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl sm:rounded-[32px] p-4 sm:p-8 border border-blue-100/50 dark:border-blue-800/30 shadow-[inset_0_1px_1px_rgba(255,255,255,1)] dark:shadow-none mt-4 mb-2">
                 <div className="absolute -top-10 -right-10 p-8 text-blue-600/5 dark:text-blue-400/5 transform rotate-12 pointer-events-none">
                     <FileText size={180} strokeWidth={1} />
                 </div>
@@ -756,15 +811,15 @@ export default function RekonForm({ calc }: { calc: any }) {
                 {selectedPromos.length > 0 && (
                     <div className="space-y-4 mt-6">
                       {selectedPromos.map((promo: any) => (
-                          <div key={promo.id} className="bg-white dark:bg-slate-800 rounded-[32px] p-6 border border-emerald-100 dark:border-slate-700 shadow-[0_20px_40px_-15px_rgba(16,185,129,0.1)] dark:shadow-none animate-in slide-in-from-top-4 flex items-center justify-between group relative overflow-hidden">
+                          <div key={promo.id} className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] p-4 sm:p-6 border border-emerald-100 dark:border-slate-700 shadow-[0_20px_40px_-15px_rgba(16,185,129,0.1)] dark:shadow-none animate-in slide-in-from-top-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group relative overflow-hidden">
                             <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
-                            <div className="flex items-center gap-6">
-                                <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                                  <Percent size={24} />
+                            <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                  <Percent size={22} />
                                 </div>
-                                <div className="space-y-1">
-                                  <h5 className="font-black text-sm text-slate-800 dark:text-slate-200 uppercase tracking-tight leading-none">{promo.nomor}</h5>
-                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">{promo.kegiatan} • {promo.periode}</p>
+                                <div className="space-y-1 min-w-0">
+                                  <h5 className="font-black text-sm text-slate-800 dark:text-slate-200 uppercase tracking-tight leading-none truncate">{promo.nomor}</h5>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic truncate">{promo.kegiatan} • {promo.periode}</p>
                                   <div className="flex items-center gap-3 mt-1">
                                       <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-700/50 text-[8px] font-black text-slate-400 rounded-md border border-slate-100 dark:border-slate-700 uppercase italic">
                                         {promo.tanggal ? new Date(promo.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "-"}
@@ -772,14 +827,14 @@ export default function RekonForm({ calc }: { calc: any }) {
                                   </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-8">
-                                <div className="text-right">
+                            <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 sm:gap-8 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-700/50">
+                                <div className="text-left sm:text-right">
                                   <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1">Total Promo</p>
-                                  <p className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400 tracking-tighter leading-none">{formatRp(promo.total)}</p>
+                                  <p className="text-xl sm:text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400 tracking-tighter leading-none">{formatRp(promo.total)}</p>
                                 </div>
                                 <button 
                                   onClick={() => setSelectedPromos(selectedPromos.filter((p: any) => p.id !== promo.id))} 
-                                  className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-400 dark:text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all shadow-sm"
+                                  className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-400 dark:text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all shadow-sm shrink-0"
                                   title="Hapus Promo"
                                 >
                                   <X size={18} />
@@ -796,25 +851,31 @@ export default function RekonForm({ calc }: { calc: any }) {
                 <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-200 dark:text-slate-600 shadow-sm dark:shadow-none">
                   <CircleDollarSign size={32} />
                 </div>
-                <p className="text-[10px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest italic leading-relaxed">Pilih rujukan company terlebih dahulu <br/> untuk membuka database Invoice & RTV</p>
+                <p className="text-[10px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest italic leading-relaxed">
+                  {selectedCompany ? (
+                    <>Pilih inisial ritel terlebih dahulu <br/> untuk membuka database Invoice & RTV</>
+                  ) : (
+                    <>Pilih rujukan company terlebih dahulu <br/> untuk membuka database Invoice & RTV</>
+                  )}
+                </p>
             </div>
           )}
       </div>
 
       {/* STEP 3: Biaya Admin */}
-      <div className="bg-white dark:bg-slate-800 rounded-[40px] p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-8 relative">
-          <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-full bg-slate-800 dark:bg-slate-700 text-white flex items-center justify-center font-black text-xs shadow-lg dark:shadow-none">3</div>
-            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Biaya Admin (Bank Charges)</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[40px] p-4 sm:p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-6 sm:space-y-8 relative">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-8 h-8 rounded-full bg-slate-800 dark:bg-slate-700 text-white flex items-center justify-center font-black text-xs shadow-lg dark:shadow-none shrink-0">3</div>
+            <h3 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Biaya Admin (Bank Charges)</h3>
           </div>
           <div className="relative group">
-            <div className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-200 dark:text-slate-600 group-focus-within:text-slate-800 dark:group-focus-within:text-slate-300 transition-colors">
-                <CreditCard size={28} />
+            <div className="absolute left-5 sm:left-8 top-1/2 -translate-y-1/2 text-slate-200 dark:text-slate-600 group-focus-within:text-slate-800 dark:group-focus-within:text-slate-300 transition-colors pointer-events-none">
+                <CreditCard size={24} className="sm:w-[28px] sm:h-[28px]" />
             </div>
             <input 
                 type="text" 
                 placeholder="Input Biaya Admin..." 
-                className="w-full h-20 pl-24 pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[28px] border-none outline-none font-black text-2xl text-slate-700 dark:text-slate-100 placeholder:text-slate-200 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-slate-100/50 dark:focus:ring-slate-700/50"
+                className="w-full h-16 sm:h-20 pl-16 sm:pl-24 pr-4 sm:pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-2xl sm:rounded-[28px] border-none outline-none font-black text-lg sm:text-2xl text-slate-700 dark:text-slate-100 placeholder:text-slate-200 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-slate-100/50 dark:focus:ring-slate-700/50"
                 onChange={e => calc.setAdminFee(Number(e.target.value.replace(/[^0-9]/g, '')))}
                 value={calc.adminFee ? new Intl.NumberFormat("id-ID").format(calc.adminFee) : ""}
             />
@@ -822,18 +883,18 @@ export default function RekonForm({ calc }: { calc: any }) {
       </div>
 
       {/* STEP 4: Remarks */}
-      <div className="bg-white dark:bg-slate-800 rounded-[40px] p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-8 relative">
-          <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-full bg-slate-800 dark:bg-slate-700 text-white flex items-center justify-center font-black text-xs shadow-lg dark:shadow-none">4</div>
-            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Catatan Tambahan (Remarks)</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[40px] p-4 sm:p-10 border border-white dark:border-slate-700 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none space-y-6 sm:space-y-8 relative">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-8 h-8 rounded-full bg-slate-800 dark:bg-slate-700 text-white flex items-center justify-center font-black text-xs shadow-lg dark:shadow-none shrink-0">4</div>
+            <h3 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Catatan Tambahan (Remarks)</h3>
           </div>
           <div className="relative group">
-            <div className="absolute left-8 top-8 text-slate-200 dark:text-slate-600 group-focus-within:text-slate-800 dark:group-focus-within:text-slate-300 transition-colors">
-                <FileText size={28} />
+            <div className="absolute left-5 sm:left-8 top-6 sm:top-8 text-slate-200 dark:text-slate-600 group-focus-within:text-slate-800 dark:group-focus-within:text-slate-300 transition-colors pointer-events-none">
+                <FileText size={24} className="sm:w-[28px] sm:h-[28px]" />
             </div>
             <textarea 
                 placeholder="Tulis catatan tambahan untuk rekonsiliasi ini (opsional)..." 
-                className="w-full h-40 pt-8 pl-24 pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-[28px] border-none outline-none font-bold text-[13px] text-slate-700 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-slate-100/50 dark:focus:ring-slate-700/50 resize-none"
+                className="w-full h-32 sm:h-40 pt-6 sm:pt-8 pl-16 sm:pl-24 pr-4 sm:pr-12 bg-[#f8fafc] dark:bg-slate-900/50 rounded-2xl sm:rounded-[28px] border-none outline-none font-bold text-xs sm:text-[13px] text-slate-700 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-all focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-slate-100/50 dark:focus:ring-slate-700/50 resize-none"
                 onChange={e => calc.setRemarks(e.target.value)}
                 value={calc.remarks}
             />

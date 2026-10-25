@@ -1,7 +1,9 @@
 "use client";
+import { setMeCache, announceSessionChange } from "@/lib/me";
 import React, { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, LogIn } from "lucide-react";
+import { sanitizeInternalRedirect } from "@/lib/utils/redirect";
 
 function LoginPageInner() {
   const router = useRouter();
@@ -45,7 +47,9 @@ function LoginPageInner() {
         (window as any).__me__ = meData;
       }
 
-      const next = params.get("next") || "/";
+      setMeCache(meData);
+      announceSessionChange();
+      const next = sanitizeInternalRedirect(params.get("next"));
       router.replace(next);
       // Force reload to ensure layout picks up the new role
       setTimeout(() => {
@@ -128,14 +132,16 @@ function LoginPageInner() {
           <div className="bg-white px-8 pt-8 pb-6">
             <div className="flex items-center justify-center gap-5">
               <img
-                src="https://rzjlkpumrsjpafduhlgt.supabase.co/storage/v1/object/public/logo-img/logo-bulog/logo-ubi-full.png"
+                src="/logo-ubi-full.webp"
                 alt="UBI Logo"
+                decoding="async"
                 className="h-11 w-auto object-contain"
               />
               <div className="w-px h-9 bg-slate-800" />
               <img
-                src="https://rzjlkpumrsjpafduhlgt.supabase.co/storage/v1/object/public/logo-img/logo-bulog/logo-bulog.png"
+                src="/logo-bulog.webp"
                 alt="Bulog Logo"
+                decoding="async"
                 className="h-11 w-auto object-contain"
               />
             </div>

@@ -104,6 +104,7 @@ export function getPurchaseOrderColumns({
     }),
     helper.accessor((row) => Number(row.itemsCount) > 1 ? `${row.firstProductName || "Item"} (+${Number(row.itemsCount) - 1} lainnya)` : row.firstProductName || "-", {
       id: "produk",
+      enableSorting: false,
       header: "PRODUK",
       size: 240,
       cell: (info) => {
@@ -115,6 +116,7 @@ export function getPurchaseOrderColumns({
       },
     }),
     helper.accessor("pcsKirimTotal", {
+      enableSorting: false,
       header: "PCS KIRIM",
       size: 100,
       meta: { align: "right" },
@@ -167,6 +169,7 @@ export function getPurchaseOrderColumns({
       },
     }),
     helper.accessor("totalKg", {
+      enableSorting: false,
       header: "KG",
       size: 90,
       meta: { align: "right" },
@@ -182,6 +185,7 @@ export function getPurchaseOrderColumns({
       },
     }),
     helper.accessor("totalDiscount", {
+      enableSorting: false,
       header: "DISCOUNT",
       size: 110,
       meta: { align: "right" },
@@ -197,6 +201,7 @@ export function getPurchaseOrderColumns({
       },
     }),
     helper.accessor("totalNominal", {
+      enableSorting: false,
       header: "NOMINAL",
       size: 140,
       meta: { align: "right" },
@@ -366,7 +371,7 @@ export function getPurchaseOrderColumns({
             >
               <Pencil size={16} />
             </button>
-            {String(role) !== "magang" && (
+            {role === "pusat" && (
               <button
                 title="Delete"
                 onClick={(e) => {

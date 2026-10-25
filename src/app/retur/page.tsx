@@ -139,7 +139,7 @@ function ReturContent() {
   } = useRetur();
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6 animate-in fade-in duration-500 overflow-x-hidden">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {selectedRetailerId && (

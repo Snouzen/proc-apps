@@ -119,6 +119,16 @@ export function ExpiredInlineDetail({
         );
       },
     }),
+    helper.accessor((row) => row.RitelModern?.namaPt || row.company || "-", {
+      id: "company",
+      header: "NAMA COMPANY",
+      size: 180,
+      cell: ({ row }) => (
+        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase whitespace-nowrap">
+          {row.original.RitelModern?.namaPt || row.original.company || "-"}
+        </span>
+      ),
+    }),
     helper.accessor("namaSupir", {
       header: "NAMA SUPIR",
       size: 150,
@@ -244,19 +254,19 @@ export function ExpiredInlineDetail({
               className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-rose-500 outline-none"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
             <DateInputHybrid
               value={inlineDateFrom}
               onChange={setInlineDateFrom}
               placeholder="Date From"
-              className="w-36"
+              className="w-full sm:w-36"
             />
-            <span className="text-slate-300 dark:text-slate-600 font-bold">to</span>
+            <span className="text-slate-400 dark:text-slate-500 text-xs font-bold text-center sm:text-left shrink-0">to</span>
             <DateInputHybrid
               value={inlineDateTo}
               onChange={setInlineDateTo}
               placeholder="Date To"
-              className="w-36"
+              className="w-full sm:w-36"
             />
           </div>
         </div>

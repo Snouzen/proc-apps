@@ -1,85 +1,78 @@
 "use client";
 
-const getXLSX = () => import("xlsx");
-
-import {
-  Building2,
-  ChevronDown,
-  ChevronRight,
-  ChevronLeft,
-  Eye,
-  Zap,
-  Edit2,
-  Plus,
-  Store,
-  Trash2,
-  X,
-} from "lucide-react";
-import Swal from "sweetalert2";
 import React, { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
+import Swal from "sweetalert2";
+import dynamic from "next/dynamic";
 import { saveRitel } from "@/lib/api";
 import { getMeSync } from "@/lib/me";
-import { StatefulButton } from "@/components/ui/stateful-button";
-import Combobox from "@/components/combobox";
-import dynamic from "next/dynamic";
+import { useRitelData } from "./hooks/useRitelData";
+import RitelFormModal from "./components/RitelFormModal";
+import RitelTable from "./components/RitelTable";
+import RitelEditCompanyModal, {
+  EditCompanyState,
+} from "./components/RitelEditCompanyModal";
+import RitelViewStoresModal, {
+  ViewCompanyState,
+} from "./components/RitelViewStoresModal";
+import RitelViewAliasesModal from "./components/RitelViewAliasesModal";
+import RitelStoreDialogs from "./components/RitelStoreDialogs";
+import RitelBulkConfirmModal, {
+  BulkDialogState,
+} from "./components/RitelBulkConfirmModal";
+
 const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), {
   ssr: false,
 });
-import { useAutoRefreshTick } from "@/components/auto-refresh";
-import RitelFormModal from "./components/RitelFormModal";
-import RitelTable from "./components/RitelTable";
-import { GlobalPagination } from "@/components/global-pagination";
 
 export default function RitelModernPage() {
   const me = getMeSync();
   const isRm = me?.role === "rm";
   const isPusat = me?.role === "pusat";
   const canEdit = isRm || isPusat;
-  const refreshTick = useAutoRefreshTick();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"addInisial" | "addCompany">("addInisial");
+
   const [isMounted, setIsMounted] = useState(false);
-  
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  const [expandedRows, setExpandedRows] = useState<string[]>([]);
-  const [bulkDialog, setBulkDialog] = useState<{
-    rows: any[];
-    dupeCount: number;
-    namaPtKey: string | null;
-    tujuanKey: string | null;
-    inisialAliases: string[];
-  } | null>(null);
 
+  const {
+    dataRitel,
+    setDataRitel,
+    isLoading,
+    setIsLoading,
+    loadError,
+    searchTerm,
+    setSearchTerm,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    groupedData,
+    filteredData,
+    allCompanyOptions,
+    currentItems,
+    totalPages,
+    indexOfFirstItem,
+    indexOfLastItem,
+    companyMapping,
+  } = useRitelData();
+
+  // Modal & Dialog States
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"addInisial" | "addCompany">("addInisial");
   const [selectedCompany, setSelectedCompany] = useState("");
   const [inisial, setInisial] = useState("");
+  const [logoPt, setLogoPt] = useState("");
+  const [logoInisial, setLogoInisial] = useState("");
 
-  const [editCompany, setEditCompany] = useState<{
-    id?: string;
-    namaPt: string;
-    originalNamaPt?: string;
-    inisial: string | null;
-    originalInisial: string | null;
-    provinsi?: string | null;
-    logoPt?: string | null;
-    logoInisial?: string | null;
-    ptOnly?: boolean;
-  } | null>(null);
-  const [viewCompany, setViewCompany] = useState<{
-    namaPt: string;
-    inisial: string | null;
-    stores: { id: string; tujuan: string }[];
-  } | null>(null);
+  const [editCompany, setEditCompany] = useState<EditCompanyState | null>(null);
+  const [viewCompany, setViewCompany] = useState<ViewCompanyState | null>(null);
   const [deleteCompany, setDeleteCompany] = useState<string | null>(null);
-  const [deleteInisial, setDeleteInisial] = useState<{ namaPt: string; inisial: string } | null>(null);
-  const [viewPage, setViewPage] = useState(1);
-  useEffect(() => {
-    if (viewCompany) setViewPage(1);
-  }, [viewCompany]);
+  const [deleteInisial, setDeleteInisial] = useState<{
+    namaPt: string;
+    inisial: string;
+  } | null>(null);
 
-  const [dataRitel, setDataRitel] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [editStore, setEditStore] = useState<{
     id: string;
     tujuan: string;
@@ -91,164 +84,50 @@ export default function RitelModernPage() {
     namaPt: string;
   } | null>(null);
   const [newStoreName, setNewStoreName] = useState("");
+
   const [editAlias, setEditAlias] = useState<{
     namaPt: string;
     inisial: string;
   } | null>(null);
   const [newAlias, setNewAlias] = useState("");
-  const [viewAliases, setViewAliases] = useState<{ namaPt: string } | null>(
-    null,
-  );
-  const [aliasPage, setAliasPage] = useState(1);
-  const aliasItemsPerPage = 6; // 3 rows x 2 grid
-  useEffect(() => {
-    if (viewAliases) setAliasPage(1);
-  }, [viewAliases]);
+  const [viewAliases, setViewAliases] = useState<{ namaPt: string } | null>(null);
+
   const [addStoreFor, setAddStoreFor] = useState<{
     namaPt: string;
     inisial: string;
   } | null>(null);
   const [newStoreForName, setNewStoreForName] = useState("");
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [logoPt, setLogoPt] = useState("");
-  const [logoInisial, setLogoInisial] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15;
-  const [bulkResult, setBulkResult] = useState<{
+  const [openExcelBulk, setOpenExcelBulk] = useState(false);
+  const [bulkResult] = useState<{
     text: string;
     type: "success" | "error";
   } | null>(null);
-  const [openExcelBulk, setOpenExcelBulk] = useState(false);
+  const [bulkDialog, setBulkDialog] = useState<BulkDialogState | null>(null);
 
-  // Mapping Nama PT -> Inisial (sama seperti form manual, untuk bulk upload dipakai juga)
-  const companyMapping: Record<string, string> = {
-    "PERUM BULOG - UBSN": "BOSSFOOD",
-    "PT GRACIA MITRA SELARAS": "MARKET CITY",
-    "PT SUMBER ALFARIA TRIJAYA, TBK": "ALFAMART",
-    "PT LUCKY STRATEGIS": "GRAND LUCKY",
-    "PT MITRA BELANJA ANDA": "GRAND LUCKY",
-    "PT HOKKY TE IT": "GRAND LUCKY",
-    "PT LUCKY BERSAMA": "GRAND LUCKY",
-    "PT LION SUPER INDO (LSI)": "SUPERINDO",
-    "PT TRANS RITEL INDONESIA": "TRANSMART",
-    "PT TRANS GROSIR INDONESIA": "GROSERINDO",
-    "CV HOKKI FAMILY": "HOKKY SURABAYA",
-    "PT HOKKY PRADANA UTAMA": "HOKKY SURABAYA",
-    "PT NAGA SWALAYAN": "NAGA SWALAYAN",
-    "PT TIP TOP": "TIP TOP",
+  const findColumnKey = (row: any, aliases: string[]): string | null => {
+    if (!row || typeof row !== "object") return null;
+    const norm = (s: string) =>
+      (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    const normAliases = aliases.map((a) => norm(a));
+    for (const key of Object.keys(row)) {
+      if (normAliases.includes(norm(key))) return key;
+    }
+    return null;
   };
 
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const safeDataRitel = Array.isArray(dataRitel) ? dataRitel : [];
-
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading((v) => v || dataRitel.length === 0);
-      setLoadError(null);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 detik timeout
-
-      try {
-        const fetchOnce = async () => {
-          const res = await fetch("/api/ritel", {
-            signal: controller.signal,
-            cache: "no-store",
-          });
-          let result: unknown;
-          try {
-            result = await res.json();
-          } catch {
-            return {
-              ok: false,
-              statusText: res.statusText,
-              error: "Response bukan JSON. Cek API / server.",
-              data: null,
-            };
-          }
-          if (!res.ok) {
-            const msg =
-              (result as { error?: string })?.error ||
-              res.statusText ||
-              "Gagal mengambil data";
-            return {
-              ok: false,
-              statusText: res.statusText,
-              error: msg,
-              data: null,
-            };
-          }
-          const list = Array.isArray(result)
-            ? result
-            : ((result as { data?: unknown[] })?.data ?? []);
-          return {
-            ok: true,
-            statusText: res.statusText,
-            error: null,
-            data: list,
-          };
-        };
-
-        let lastErr: string | null = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const out = await fetchOnce();
-          if (out.ok) {
-            setDataRitel(out.data as any[]);
-            lastErr = null;
-            break;
-          }
-          lastErr = out.error || "Gagal mengambil data";
-          const isMaxClient =
-            typeof lastErr === "string" &&
-            lastErr.toLowerCase().includes("maxclientsinsessionmode");
-          if (!isMaxClient || attempt === 2) break;
-          await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
-        }
-        if (lastErr) {
-          setLoadError(lastErr);
-          if (dataRitel.length === 0) setDataRitel([]);
-        }
-      } catch (err) {
-        clearTimeout(timeoutId);
-        console.error("Gagal load data:", err);
-        if (err instanceof Error) {
-          if (err.name === "AbortError") {
-            setLoadError(
-              "Timeout. Database/API tidak merespons. Cek DATABASE_URL dan koneksi.",
-            );
-          } else {
-            setLoadError(err.message);
-          }
-        } else {
-          setLoadError("Tidak bisa connect ke server. Cek koneksi / database.");
-        }
-        if (dataRitel.length === 0) setDataRitel([]);
-      } finally {
-        clearTimeout(timeoutId);
-        setIsLoading(false);
-      }
-    };
-    loadData();
-  }, [refreshTick]);
-
-  const toggleRow = (id: string) => {
-    setExpandedRows((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
+  const getCellValue = (row: any, key: string | null): string => {
+    if (!key || row[key] == null) return "";
+    return String(row[key]).trim();
   };
+
   const executeRitelBulk = async (replaceDupes: boolean) => {
     if (!bulkDialog) return;
-    const { rows, dupeCount, namaPtKey, tujuanKey, inisialAliases } =
-      bulkDialog;
+    const { rows, dupeCount, namaPtKey, tujuanKey, inisialAliases } = bulkDialog;
     const existingKeySet = new Set(
       (Array.isArray(dataRitel) ? dataRitel : []).map(
         (row: any) =>
-          `${String(row.namaPt || "")
-            .trim()
-            .toLowerCase()}|${String(row.tujuan || "")
-            .trim()
-            .toLowerCase()}`,
+          `${String(row.namaPt || "").trim().toLowerCase()}|${String(row.tujuan || "").trim().toLowerCase()}`,
       ),
     );
     setIsLoading(true);
@@ -262,9 +141,8 @@ export default function RitelModernPage() {
 
         const inisialKey = findColumnKey(row, inisialAliases);
         const excelInisial = getCellValue(row, inisialKey);
-        const inisial = companyMapping[namaPt] ?? (excelInisial || null);
+        const inisialVal = companyMapping[namaPt] ?? (excelInisial || null);
 
-        // Find logo keys if they exist in Excel (Logo PT, Logo Inisial)
         const logoPtKey = findColumnKey(row, ["logo pt", "logopt", "logo_pt"]);
         const logoInisialKey = findColumnKey(row, [
           "logo inisial",
@@ -276,7 +154,7 @@ export default function RitelModernPage() {
 
         const payload = {
           namaPt,
-          inisial: inisial || undefined,
+          inisial: inisialVal || undefined,
           tujuan,
           logoPt: excelLogoPt || undefined,
           logoInisial: excelLogoInisial || undefined,
@@ -285,18 +163,12 @@ export default function RitelModernPage() {
         const key = `${namaPt.trim().toLowerCase()}|${tujuan.trim().toLowerCase()}`;
         const isDupe = existingKeySet.has(key);
 
-        if (isDupe && !replaceDupes) {
-          continue;
-        }
+        if (isDupe && !replaceDupes) continue;
         if (isDupe && replaceDupes) {
           const match = (Array.isArray(dataRitel) ? dataRitel : []).find(
             (r: any) =>
-              String(r.namaPt || "")
-                .trim()
-                .toLowerCase() === namaPt.trim().toLowerCase() &&
-              String(r.tujuan || "")
-                .trim()
-                .toLowerCase() === tujuan.trim().toLowerCase(),
+              String(r.namaPt || "").trim().toLowerCase() === namaPt.trim().toLowerCase() &&
+              String(r.tujuan || "").trim().toLowerCase() === tujuan.trim().toLowerCase(),
           );
           if (match?.id) {
             try {
@@ -332,240 +204,31 @@ export default function RitelModernPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const payload = {
-      namaPt: selectedCompany,
-      inisial: inisial,
-      tujuan: newStoreName,
-    };
-
-    try {
-      const result = await saveRitel(payload);
-
-      if (result) {
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil",
-          text: "Data Berhasil disimpan!",
-          timer: 1500,
-        });
-        setIsModalOpen(false);
-        setSelectedCompany("");
-        setNewStoreName("");
-
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error("Error Submit Data:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Gagal",
-        text: "Gagal konek server backend",
-      });
-    }
-  };
-
-  const groupedData = safeDataRitel.reduce((acc: any[], item: any) => {
-    let group = acc.find((g) => g.namaPt === item.namaPt);
-    if (!group) {
-      group = {
-        displayId: item.id,
-        namaPt: item.namaPt,
-        logoPt: item.logoPt,
-        inisials: {} as Record<
-          string,
-          {
-            logoInisial?: string | null;
-            provinsi?: string | null;
-            stores: { id: string; tujuan: string }[];
-          }
-        >,
-      };
-      acc.push(group);
-    }
-
-    // Always update logoPt if current item has it (in case some rows don't)
-    if (item.logoPt && !group.logoPt) group.logoPt = item.logoPt;
-
-    const alias = String(item.inisial ?? "—");
-    
-    const hasStore = item.tujuan && String(item.tujuan).trim().length > 0;
-    
-    // Skip empty inisial placeholder if there are no stores attached
-    if (alias !== "—" || hasStore) {
-      if (!group.inisials[alias]) {
-        group.inisials[alias] = { logoInisial: item.logoInisial, provinsi: item.provinsi, stores: [] };
-      }
-      // Update logoInisial if current item has it
-      if (item.logoInisial && !group.inisials[alias].logoInisial) {
-        group.inisials[alias].logoInisial = item.logoInisial;
-      }
-      // Update provinsi if current item has it
-      if (item.provinsi && !group.inisials[alias].provinsi) {
-        group.inisials[alias].provinsi = item.provinsi;
-      }
-
-      if (hasStore) {
-        group.inisials[alias].stores.push({ id: item.id, tujuan: item.tujuan });
-      }
-    }
-    return acc;
-  }, []);
-
-  const existingCompanies = Array.from(
-    new Set(safeDataRitel.map((item) => item.namaPt)),
-  ).sort();
-  const allCompanyOptions = Array.from(
-    new Set([...Object.keys(companyMapping), ...existingCompanies]),
-  ).sort();
-
-  const filteredData = groupedData
-    .filter((item) => {
-      const term = searchTerm.toLowerCase();
-      const matchPt = item.namaPt.toLowerCase().includes(term);
-      const matchAlias = Object.keys(item.inisials).some((a) =>
-        a.toLowerCase().includes(term),
-      );
-      const matchStore = Object.values(item.inisials).some((data: any) =>
-        data.stores.some((s: any) =>
-          String(s.tujuan || "")
-            .toLowerCase()
-            .includes(term),
-        ),
-      );
-      return matchPt || matchAlias || matchStore;
-    })
-    .sort((a, b) => a.namaPt.localeCompare(b.namaPt));
-
-  // Pagination Logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-
-  // Cari key kolom di row yang cocok dengan salah satu alias (case-insensitive, trim, spasi ganda dinormalisasi)
-  const findColumnKey = (row: any, aliases: string[]): string | null => {
-    if (!row || typeof row !== "object") return null;
-    const norm = (s: string) =>
-      (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-    const normAliases = aliases.map((a) => norm(a));
-    for (const key of Object.keys(row)) {
-      if (normAliases.includes(norm(key))) return key;
-    }
-    return null;
-  };
-
-  const getCellValue = (row: any, key: string | null): string => {
-    if (!key || row[key] == null) return "";
-    return String(row[key]).trim();
-  };
-
-  const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const XLSX = await getXLSX();
-      const workbook = XLSX.read(event.target?.result, { type: "binary" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
-
-      if (!jsonData.length) {
-        Swal.fire({
-          icon: "error",
-          title: "Gagal",
-          text: "File Excel kosong atau tidak ada data di sheet pertama.",
-        });
-        e.target.value = "";
-        return;
-      }
-
-      const first = jsonData[0];
-      const namaPtAliases = [
-        "nama pt",
-        "namapt",
-        "company",
-        "nama perusahaan",
-        "pt",
-      ];
-      const tujuanAliases = [
-        "tujuan",
-        "destination",
-        "lokasi",
-        "store",
-        "nama toko",
-        "dc",
-      ];
-      const inisialAliases = ["inisial", "initial"];
-
-      const namaPtKey = findColumnKey(first, namaPtAliases);
-      const tujuanKey = findColumnKey(first, tujuanAliases);
-
-      if (!namaPtKey || !tujuanKey) {
-        const existingKeys =
-          Object.keys(first || {}).join(", ") || "(tidak ada kolom)";
-        Swal.fire({
-          icon: "error",
-          title: "Format Salah",
-          text: `Format Excel tidak dikenali. Gunakan header: "Nama PT" dan "Tujuan". Kolom terbaca: ${existingKeys}.`,
-        });
-        e.target.value = "";
-        return;
-      }
-
-      const existingKeySet = new Set(
-        safeDataRitel.map(
-          (row: any) =>
-            `${String(row.namaPt || "")
-              .trim()
-              .toLowerCase()}|${String(row.tujuan || "")
-              .trim()
-              .toLowerCase()}`,
-        ),
-      );
-      const uploadKeys = jsonData.map((row) => {
-        const namaPt = getCellValue(row, namaPtKey);
-        const tujuan = getCellValue(row, tujuanKey);
-        return `${namaPt.trim().toLowerCase()}|${tujuan.trim().toLowerCase()}`;
-      });
-      const dupeCount = uploadKeys.filter((k) => existingKeySet.has(k)).length;
-      setBulkDialog({
-        rows: jsonData,
-        dupeCount,
-        namaPtKey,
-        tujuanKey,
-        inisialAliases,
-      });
-      e.target.value = "";
-    };
-    reader.readAsBinaryString(file);
-  };
-
   if (!isMounted) return null;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Ritel Modern</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Ritel Modern</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+            Ritel Modern
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Ritel Modern
+          </p>
         </div>
 
         <div className="flex gap-2">
           {!isRm && (
-          <button
-            suppressHydrationWarning
-            onClick={() => setOpenExcelBulk(true)}
-            className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-sm active:scale-95 text-sm"
-          >
-            <Plus size={18} />
-            Bulk Upload (Excel)
-          </button> 
-        )}
+            <button
+              suppressHydrationWarning
+              onClick={() => setOpenExcelBulk(true)}
+              className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-sm active:scale-95 text-sm"
+            >
+              <Plus size={18} />
+              Bulk Upload (Excel)
+            </button>
+          )}
           <button
             suppressHydrationWarning
             onClick={() => {
@@ -595,6 +258,7 @@ export default function RitelModernPage() {
           {bulkResult.text}
         </div>
       )}
+
       <ExcelBulkModal
         open={openExcelBulk}
         onClose={() => setOpenExcelBulk(false)}
@@ -632,571 +296,55 @@ export default function RitelModernPage() {
         totalPages={totalPages}
         itemsPerPage={itemsPerPage}
       />
-      {editStore && (
-        <div className="fixed inset-0 z-[190] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setEditStore(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                Ubah Nama Store
-              </h3>
-              <button
-                onClick={() => setEditStore(null)}
-                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Company: <span className="font-bold text-slate-800 dark:text-slate-200">{editStore.namaPt}</span>
-              </p>
-              <input
-                type="text"
-                value={newStoreName}
-                onChange={(e) => setNewStoreName(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
-              />
-              <div className="flex gap-2">
-                <StatefulButton
-                  variant="cancel"
-                  onClick={() => setEditStore(null)}
-                  className="flex-1"
-                >
-                  Batal
-                </StatefulButton>
-                <StatefulButton
-                  variant="submit"
-                  onClick={async () => {
-                    try {
-                      await fetch("/api/ritel", {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          id: editStore.id,
-                          tujuan: newStoreName,
-                        }),
-                      });
-                      setEditStore(null);
-                      setDataRitel((prev) =>
-                        prev.map((r) =>
-                          r.id === editStore.id
-                            ? { ...r, tujuan: newStoreName }
-                            : r,
-                        ),
-                      );
-                      if (viewCompany) {
-                        setViewCompany({
-                          ...viewCompany,
-                          stores: viewCompany.stores.map((s) =>
-                            s.id === editStore.id
-                              ? { ...s, tujuan: newStoreName }
-                              : s,
-                          ),
-                        });
-                      }
-                    } catch {}
-                  }}
-                  className="flex-1"
-                >
-                  Simpan
-                </StatefulButton>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {addStoreFor && (
-        <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setAddStoreFor(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddStoreFor(null);
-                  }}
-                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                >
-                  <ChevronLeft size={16} />
-                  <span className="text-xs font-bold">Back</span>
-                </button>
-                <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                  Tambah Toko/DC
-                </h3>
-              </div>
-              <button
-                onClick={() => setAddStoreFor(null)}
-                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                <span className="font-bold text-slate-800 dark:text-slate-200">{addStoreFor.namaPt}</span>{" "}
-                {addStoreFor.inisial ? `(${addStoreFor.inisial})` : ""}
-              </p>
-              <input
-                type="text"
-                placeholder="Nama Toko/DC"
-                value={newStoreForName}
-                onChange={(e) => setNewStoreForName(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
-              />
-              <div className="flex gap-2 justify-end">
-                <StatefulButton
-                  variant="cancel"
-                  onClick={() => {
-                    setAddStoreFor(null);
 
-                  }}
-                >
-                  Batal
-                </StatefulButton>
-                <StatefulButton
-                  variant="submit"
-                  onClick={async () => {
-                    try {
-                      const existingGroup = (dataRitel || []).find(
-                        (r) =>
-                          r.namaPt === addStoreFor.namaPt &&
-                          (r.inisial || null) === (addStoreFor.inisial || null),
-                      );
-                      const payload = {
-                        namaPt: addStoreFor.namaPt,
-                        inisial: addStoreFor.inisial || null,
-                        tujuan: newStoreForName,
-                        provinsi: existingGroup?.provinsi || null,
-                        logoPt: existingGroup?.logoPt || null,
-                        logoInisial: existingGroup?.logoInisial || null,
-                      };
-                      const result = await saveRitel(payload);
-                      setDataRitel((prev) => [result, ...prev]);
-                      
-                      // Sync with viewCompany if active
-                      if (viewCompany && 
-                          viewCompany.namaPt === addStoreFor.namaPt && 
-                          (viewCompany.inisial || "—") === (addStoreFor.inisial || "—")) {
-                        setViewCompany({
-                          ...viewCompany,
-                          stores: [...viewCompany.stores, { id: result.id, tujuan: result.tujuan }]
-                        });
-                      }
+      {/* ── Extracted Dialogs & Modals ── */}
+      <RitelStoreDialogs
+        editStore={editStore}
+        setEditStore={setEditStore}
+        newStoreName={newStoreName}
+        setNewStoreName={setNewStoreName}
+        addStoreFor={addStoreFor}
+        setAddStoreFor={setAddStoreFor}
+        newStoreForName={newStoreForName}
+        setNewStoreForName={setNewStoreForName}
+        deleteStore={deleteStore}
+        setDeleteStore={setDeleteStore}
+        editAlias={editAlias}
+        setEditAlias={setEditAlias}
+        newAlias={newAlias}
+        setNewAlias={setNewAlias}
+        deleteCompany={deleteCompany}
+        setDeleteCompany={setDeleteCompany}
+        deleteInisial={deleteInisial}
+        setDeleteInisial={setDeleteInisial}
+        dataRitel={dataRitel}
+        setDataRitel={setDataRitel}
+        viewCompany={viewCompany}
+        setViewCompany={setViewCompany}
+      />
 
-                      setAddStoreFor(null);
-                      setNewStoreForName("");
-                    } catch {
-                      // noop
-                    }
-                  }}
-                >
-                  Simpan
-                </StatefulButton>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {deleteStore && (
-        <div className="fixed inset-0 z-[190] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setDeleteStore(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-rose-50/50 dark:bg-rose-900/10">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                Hapus Store?
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {deleteStore.tujuan} di {deleteStore.namaPt}
-              </p>
-            </div>
-            <div className="p-5 flex items-center justify-end gap-2">
-              <StatefulButton
-                variant="cancel"
-                onClick={() => setDeleteStore(null)}
-              >
-                Batal
-              </StatefulButton>
-              <StatefulButton
-                variant="submit"
-                onClick={async () => {
-                  try {
-                    await fetch(
-                      `/api/ritel?id=${encodeURIComponent(deleteStore.id)}`,
-                      {
-                        // REFACTOR: DELETE via query param
-                        method: "DELETE",
-                      },
-                    );
-                    setDeleteStore(null);
-                    setDataRitel((prev) =>
-                      prev.filter((r) => r.id !== deleteStore.id),
-                    );
-                    if (viewCompany) {
-                      setViewCompany({
-                        ...viewCompany,
-                        stores: viewCompany.stores.filter(
-                          (s) => s.id !== deleteStore.id,
-                        ),
-                      });
-                    }
-                  } catch {}
-                }}
-                className="bg-rose-600 hover:bg-rose-700"
-              >
-                Hapus
-              </StatefulButton>
-            </div>
-          </div>
-        </div>
-      )}
-      {viewAliases && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setViewAliases(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                Inisial - {viewAliases.namaPt}
-              </h3>
-              <button
-                onClick={() => setViewAliases(null)}
-                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 space-y-3">
-              {(() => {
-                const group = groupedData.find(
-                  (g) => g.namaPt === viewAliases.namaPt,
-                );
-                const aliases = group ? Object.entries(group.inisials) : [];
-                const totalPages = Math.max(
-                  1,
-                  Math.ceil(aliases.length / aliasItemsPerPage),
-                );
-                const start = (aliasPage - 1) * aliasItemsPerPage;
-                const pageAliases = aliases.slice(
-                  start,
-                  start + aliasItemsPerPage,
-                );
-                return (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {pageAliases.length === 0 ? (
-                        <div className="col-span-1 sm:col-span-2 text-center text-slate-400 py-6 text-sm font-medium">
-                          Belum ada Inisial terdaftar.
-                        </div>
-                      ) : (
-                        pageAliases.map(([alias, data]: [string, any]) => (
-                          <div
-                          key={alias}
-                          className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-700 p-4 bg-white dark:bg-slate-800/50"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-24 h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
-                              {data.logoInisial ? (
-                                <img
-                                  src={data.logoInisial}
-                                  alt="logo"
-                                  className="w-full h-full object-contain"
-                                />
-                              ) : (
-                                <Store size={20} className="text-slate-200 dark:text-slate-700" />
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                <div className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black tracking-widest uppercase inline-block border border-slate-200/50 dark:border-slate-600/50">
-                                  {alias || "—"}
-                                </div>
-                                {data.provinsi ? (
-                                  <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[9px] font-extrabold uppercase tracking-wider border border-blue-200 dark:border-blue-800/50">
-                                    📍 {data.provinsi}
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[9px] font-medium border border-slate-200/50 dark:border-slate-700">
-                                    Belum ada provinsi
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                                {data.stores.length} Distribusi Toko
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                setViewCompany({
-                                  namaPt: viewAliases.namaPt,
-                                  inisial: alias,
-                                  stores: data.stores,
-                                });
-                              }}
-                              className="p-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-800"
-                              title="Lihat Toko"
-                            >
-                              <Eye size={14} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                const masterGroup = (dataRitel || []).find(
-                                  (r) =>
-                                    r.namaPt === viewAliases.namaPt &&
-                                    (r.inisial || "—") === alias,
-                                );
-                                setEditCompany({
-                                  id: masterGroup?.id,
-                                  namaPt: viewAliases.namaPt,
-                                  originalNamaPt: viewAliases.namaPt,
-                                  inisial: alias === "—" ? null : alias,
-                                  originalInisial:
-                                    alias === "—" ? null : alias,
-                                  provinsi: data.provinsi || masterGroup?.provinsi || "",
-                                  logoPt: masterGroup?.logoPt || null,
-                                  logoInisial:
-                                    data.logoInisial || masterGroup?.logoInisial || null,
-                                  ptOnly: false,
-                                });
-                              }}
-                              className="p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-                              title="Edit Data & Logo"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setAddStoreFor({
-                                  namaPt: viewAliases.namaPt,
-                                  inisial: alias,
-                                });
-                                setNewStoreForName("");
-                              }}
-                              className="p-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
-                              title="Tambah Toko/DC"
-                            >
-                              <Plus size={14} />
-                            </button>
-                            {(isPusat || isRm) && (
-                              <button
-                                onClick={() => {
-  
-                                  setTimeout(() => {
-                                    setDeleteInisial({
-                                      namaPt: viewAliases.namaPt,
-                                      inisial: alias,
-                                    });
-                                  }, 0);
-                                }}
-                                className="p-1.5 rounded-md bg-rose-600 text-white hover:bg-rose-700"
-                                title="Hapus Inisial"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )))}
-                    </div>
-                    <div className="pt-3">
-                      <GlobalPagination
-                        currentPage={aliasPage}
-                        totalPages={totalPages}
-                        onPageChange={setAliasPage}
-                        itemsCount={pageAliases.length}
-                        totalItems={aliases.length}
-                        itemName="inisial"
-                      />
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
-      {bulkDialog && (
-        <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setBulkDialog(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-blue-50/50 dark:bg-indigo-500/10">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                Konfirmasi Bulk Upload
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Total {bulkDialog.rows.length} baris. Duplikat terdeteksi:{" "}
-                {bulkDialog.dupeCount}.
-              </p>
-            </div>
-            <div className="p-6 space-y-3">
-              <div className="max-h-40 overflow-y-auto border border-slate-100 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-xs">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0">
-                    <tr>
-                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">
-                        Nama PT
-                      </th>
-                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">
-                        Inisial
-                      </th>
-                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">Tujuan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {bulkDialog.rows.slice(0, 5).map((row, i) => {
-                      const namaPt = getCellValue(row, bulkDialog.namaPtKey);
-                      const tujuan = getCellValue(row, bulkDialog.tujuanKey);
-                      const inisialKey = findColumnKey(
-                        row,
-                        bulkDialog.inisialAliases,
-                      );
-                      const excelInisial = getCellValue(row, inisialKey);
-                      const inisial =
-                        companyMapping[namaPt] ?? (excelInisial || "");
-                      return (
-                        <tr key={i}>
-                          <td className="p-2 text-slate-700 dark:text-slate-300">{namaPt}</td>
-                          <td className="p-2 text-slate-700 dark:text-slate-300">
-                            {inisial || "—"}
-                          </td>
-                          <td className="p-2 text-slate-700 dark:text-slate-300">{tujuan}</td>
-                        </tr>
-                      );
-                    })}
-                    {bulkDialog.rows.length > 5 && (
-                      <tr>
-                        <td
-                          colSpan={3}
-                          className="p-2 text-center text-slate-400 dark:text-slate-500 italic"
-                        >
-                          ...dan {bulkDialog.rows.length - 5} data lain
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {bulkDialog.dupeCount > 0 ? (
-                  <>
-                    <button
-                      onClick={() => executeRitelBulk(true)}
-                      className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700"
-                    >
-                      Replace Duplikat
-                    </button>
-                    <button
-                      onClick={() => executeRitelBulk(false)}
-                      className="px-4 py-2 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700"
-                    >
-                      Skip Duplikat
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => executeRitelBulk(false)}
-                    className="col-span-2 px-4 py-2 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700"
-                  >
-                    Submit
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => setBulkDialog(null)}
-                className="w-full px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {editAlias && (
-        <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setEditAlias(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                Ubah Inisial
-              </h3>
-              <button
-                onClick={() => setEditAlias(null)}
-                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Company: <span className="font-bold text-slate-800 dark:text-slate-200">{editAlias.namaPt}</span>
-              </p>
-              <input
-                type="text"
-                value={newAlias}
-                onChange={(e) => setNewAlias(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
-              />
-              <div className="flex gap-2">
-                <StatefulButton
-                  variant="cancel"
-                  onClick={() => setEditAlias(null)}
-                  className="flex-1"
-                >
-                  Batal
-                </StatefulButton>
-                <StatefulButton
-                  variant="submit"
-                  onClick={async () => {
-                    try {
-                      await fetch("/api/ritel/alias", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          namaPt: editAlias.namaPt,
-                          inisial: editAlias.inisial,
-                          newInisial: newAlias,
-                        }),
-                      });
-                      setEditAlias(null);
-                      setDataRitel((prev) =>
-                        prev.map((r) =>
-                          r.namaPt === editAlias.namaPt &&
-                          (r.inisial ?? "—") === editAlias.inisial
-                            ? { ...r, inisial: newAlias }
-                            : r,
-                        ),
-                      );
-                    } catch {}
-                  }}
-                  className="flex-1"
-                >
-                  Simpan
-                </StatefulButton>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <RitelViewAliasesModal
+        viewAliases={viewAliases}
+        setViewAliases={setViewAliases}
+        groupedData={groupedData}
+        dataRitel={dataRitel}
+        isPusat={isPusat}
+        isRm={isRm}
+        setViewCompany={setViewCompany}
+        setEditCompany={setEditCompany}
+        setAddStoreFor={setAddStoreFor}
+        setNewStoreForName={setNewStoreForName}
+        setDeleteInisial={setDeleteInisial}
+      />
+
+      <RitelBulkConfirmModal
+        bulkDialog={bulkDialog}
+        setBulkDialog={setBulkDialog}
+        companyMapping={companyMapping}
+        executeRitelBulk={executeRitelBulk}
+        findColumnKey={findColumnKey}
+        getCellValue={getCellValue}
+      />
 
       <RitelFormModal
         isOpen={isModalOpen}
@@ -1216,479 +364,21 @@ export default function RitelModernPage() {
         setDataRitel={setDataRitel}
       />
 
-      {/* Edit Inisial Modal */}
-      {editCompany && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setEditCompany(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                {editCompany.ptOnly 
-                  ? "Edit Profil Perusahaan" 
-                  : `Edit Inisial - ${editCompany.namaPt}`}
-              </h3>
-              <button
-                onClick={() => setEditCompany(null)}
-                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {editCompany.ptOnly && (
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    Nama PT (Perusahaan)
-                  </label>
-                  <input
-                    type="text"
-                    value={editCompany.namaPt ?? ""}
-                    onChange={(e) =>
-                      setEditCompany({ ...editCompany, namaPt: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-bold text-slate-800 dark:text-slate-200 shadow-sm"
-                  />
-                </div>
-              )}
+      <RitelEditCompanyModal
+        editCompany={editCompany}
+        setEditCompany={setEditCompany}
+        isRm={isRm}
+        setDataRitel={setDataRitel}
+      />
 
-              {!editCompany.ptOnly && (
-                <>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                      Inisial
-                    </label>
-                    <input
-                      type="text"
-                      value={editCompany.inisial ?? ""}
-                      onChange={(e) =>
-                        setEditCompany({ ...editCompany, inisial: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center justify-between">
-                      <span>Provinsi</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Digunakan untuk Laporan Realisasi</span>
-                    </label>
-                    <input
-                      type="text"
-                      list="edit-provinsi-options"
-                      placeholder="Contoh: JAWA TENGAH, DKI JAKARTA"
-                      value={editCompany.provinsi ?? ""}
-                      onChange={(e) =>
-                        setEditCompany({ ...editCompany, provinsi: e.target.value.toUpperCase() })
-                      }
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-bold text-slate-800 dark:text-slate-200 uppercase"
-                    />
-                    <datalist id="edit-provinsi-options">
-                      <option value="DKI JAKARTA" />
-                      <option value="JAWA BARAT" />
-                      <option value="JAWA TENGAH" />
-                      <option value="JAWA TIMUR" />
-                      <option value="BANTEN" />
-                      <option value="DI YOGYAKARTA" />
-                      <option value="SULAWESI SELATAN" />
-                      <option value="SUMATERA UTARA" />
-                      <option value="BALI" />
-                    </datalist>
-                  </div>
-                </>
-              )}
-
-              <div className="space-y-3">
-                {!isRm && (<>
-
-                {editCompany.ptOnly ? (
-                  <div>
-                    <label className="block text-[11px] font-bold text-blue-600 mb-1 uppercase tracking-wider">
-                      Suntik Logo PT (URL)
-                    </label>
-                    <input
-                      type="text"
-                      value={editCompany.logoPt ?? ""}
-                      onChange={(e) =>
-                        setEditCompany({ ...editCompany, logoPt: e.target.value })
-                      }
-                      placeholder="https://..."
-                      className="w-full px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[11px]"
-                    />
-                    {editCompany.logoPt && (
-                      <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 max-h-16 overflow-hidden">
-                        <img
-                          src={editCompany.logoPt}
-                          alt="preview logo pt"
-                          className="h-8 object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = "none";
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-[11px] font-bold text-amber-600 mb-1 uppercase tracking-wider">
-                      Suntik Logo Inisial (URL)
-                    </label>
-                    <input
-                      type="text"
-                      value={editCompany.logoInisial ?? ""}
-                      onChange={(e) =>
-                        setEditCompany({
-                          ...editCompany,
-                          logoInisial: e.target.value,
-                        })
-                      }
-                      placeholder="https://..."
-                      className="w-full px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all text-[11px]"
-                    />
-                    {editCompany.logoInisial && (
-                      <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 max-h-16 overflow-hidden">
-                        <img
-                          src={editCompany.logoInisial}
-                          alt="preview logo inisial"
-                          className="h-8 object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = "none";
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              
-                </>)}
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  onClick={() => setEditCompany(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      const payload: any = {
-                        id: editCompany.id,
-                        namaPt: editCompany.originalNamaPt || editCompany.namaPt,
-                      };
-
-                      if (editCompany.ptOnly) {
-                        payload.newNamaPt = editCompany.namaPt;
-                        payload.logoPt = editCompany.logoPt || null;
-                      } else {
-                        payload.inisial = editCompany.originalInisial;
-                        payload.newInisial = editCompany.inisial || null;
-                        payload.provinsi = editCompany.provinsi || null;
-                        payload.logoInisial = editCompany.logoInisial || null;
-                      }
-
-                      const res = await fetch("/api/ritel", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
-                      });
-                      if (!res.ok) {
-                        const j = await res.json().catch(() => ({}));
-                        Swal.fire({
-                          icon: "error",
-                          title: "Gagal",
-                          text: j?.error || "Gagal update data ritel",
-                        });
-                        return;
-                      }
-                      // Update state locally
-                      setDataRitel((prev) =>
-                        prev.map((x: any) => {
-                          const oldPtName = (editCompany.originalNamaPt || editCompany.namaPt).toLowerCase();
-                          const isSamePt = x.namaPt.toLowerCase() === oldPtName;
-                          
-                          if (isSamePt) {
-                            if (editCompany.ptOnly) {
-                              return {
-                                ...x,
-                                namaPt: editCompany.namaPt,
-                                logoPt: editCompany.logoPt || null,
-                              };
-                            }
-                            const isTargetInisial = (x.inisial ?? "—") === (editCompany.originalInisial ?? "—");
-                            if (isTargetInisial) {
-                              return {
-                                ...x,
-                                inisial: editCompany.inisial || null,
-                                provinsi: editCompany.provinsi || null,
-                                logoInisial: editCompany.logoInisial || null,
-                              };
-                            }
-                          }
-                          return x;
-                        }),
-                      );
-                      Swal.fire({
-                        icon: "success",
-                        title: "Tersimpan",
-                        text: "Data Berhasil di-update!",
-                        timer: 1500,
-                        showConfirmButton: false,
-                        position: "top-end",
-                        toast: true,
-                      });
-                      setEditCompany(null);
-                    } catch {
-                      Swal.fire({
-                        icon: "error",
-                        title: "Oops...",
-                        text: "Gagal update data ritel",
-                      });
-                    }
-                  }}
-                  className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800"
-                >
-                  Simpan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Stores Modal */}
-      {viewCompany && (
-        <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setViewCompany(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setViewCompany(null);
-                  }}
-                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                >
-                  <ChevronLeft size={16} />
-                  <span className="text-xs font-bold">Back</span>
-                </button>
-                <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 truncate">
-                  {viewCompany.namaPt}{" "}
-                  {viewCompany.inisial ? `(${viewCompany.inisial})` : ""}
-                </h3>
-              </div>
-              <button
-                onClick={() => setViewCompany(null)}
-                className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-gray-400 hover:text-red-500"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6">
-              {(() => {
-                const perPage = 6;
-                const total = viewCompany.stores.length;
-                const totalPages = Math.max(1, Math.ceil(total / perPage));
-                const start = (viewPage - 1) * perPage;
-                const end = Math.min(start + perPage, total);
-                const pageStores = viewCompany.stores.slice(start, end);
-                return (
-                  <>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {pageStores.map((s) => (
-                        <li
-                          key={s.id}
-                          className="px-4 py-2.5 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-2 group/store-item hover:border-amber-200 dark:hover:border-indigo-500/50 transition-all shadow-sm"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Store size={14} className="text-amber-600 dark:text-indigo-400 flex-shrink-0" />
-                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">
-                              {s.tujuan}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {canEdit && (
-                              <button
-                                onClick={() => {
-                                  setNewStoreName(s.tujuan);
-                                  setEditStore({ id: s.id, tujuan: s.tujuan, namaPt: viewCompany.namaPt });
-                                }}
-                                className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
-                                title="Edit Nama Toko"
-                              >
-                                <Edit2 size={13} />
-                              </button>
-                            )}
-                            {canEdit && (
-                              <button
-                                onClick={() => {
-                                  setDeleteStore({ id: s.id, tujuan: s.tujuan, namaPt: viewCompany.namaPt });
-                                }}
-                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
-                                title="Hapus Toko"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="flex items-center justify-between mt-4">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Showing {total ? start + 1 : 0}–{end} of {total}
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setViewPage((p) => Math.max(p - 1, 1))}
-                          disabled={viewPage === 1}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          onClick={() =>
-                            setViewPage((p) => Math.min(p + 1, totalPages))
-                          }
-                          disabled={viewPage === totalPages}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Company Modal */}
-      {deleteCompany && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setDeleteCompany(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-rose-50/50 dark:bg-rose-900/10">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                Hapus semua store untuk {deleteCompany}?
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Tindakan ini tidak bisa dibatalkan.
-              </p>
-            </div>
-            <div className="p-5 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setDeleteCompany(null)}
-                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
-              >
-                Batal
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await fetch(
-                      `/api/ritel?namaPt=${encodeURIComponent(deleteCompany!)}`,
-                      {
-                        // REFACTOR: DELETE via query param
-                        method: "DELETE",
-                      },
-                    );
-                    if (!res.ok) {
-                      const j = await res.json().catch(() => ({}));
-                      alert(j?.error || "Gagal menghapus data");
-                      return;
-                    }
-                    setDataRitel((prev) =>
-                      prev.filter(
-                        (x: any) =>
-                          x.namaPt.toLowerCase() !==
-                          deleteCompany!.toLowerCase(),
-                      ),
-                    );
-                    setDeleteCompany(null);
-                  } catch {
-                    alert("Gagal menghapus data");
-                  }
-                }}
-                className="px-4 py-2 rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-700"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Inisial Modal */}
-      {deleteInisial && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setDeleteInisial(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-5 border-b border-gray-50 dark:border-slate-800 bg-rose-50/50 dark:bg-rose-900/10">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                Hapus Inisial {deleteInisial.inisial}?
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Tindakan ini akan menghapus secara permanen semua data toko/DC yang bernaung di bawah inisial ini.
-              </p>
-            </div>
-            <div className="p-5 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setDeleteInisial(null)}
-                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
-              >
-                Batal
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await fetch(
-                      `/api/ritel?namaPt=${encodeURIComponent(deleteInisial.namaPt)}&inisial=${encodeURIComponent(deleteInisial.inisial)}`,
-                      {
-                        method: "DELETE",
-                      },
-                    );
-                    if (!res.ok) {
-                      const j = await res.json().catch(() => ({}));
-                      alert(j?.error || "Gagal menghapus data");
-                      return;
-                    }
-                    setDataRitel((prev) =>
-                      prev.filter((x: any) => {
-                        const ptMatch = x.namaPt.toLowerCase() === deleteInisial.namaPt.toLowerCase();
-                        const xInisial = x.inisial || "—";
-                        const inMatch = xInisial.toLowerCase() === deleteInisial.inisial.toLowerCase();
-                        return !(ptMatch && inMatch);
-                      }),
-                    );
-                    setDeleteInisial(null);
-                  } catch {
-                    alert("Gagal menghapus data");
-                  }
-                }}
-                className="px-4 py-2 rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-700"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <RitelViewStoresModal
+        viewCompany={viewCompany}
+        setViewCompany={setViewCompany}
+        canEdit={canEdit}
+        setNewStoreName={setNewStoreName}
+        setEditStore={setEditStore}
+        setDeleteStore={setDeleteStore}
+      />
     </div>
   );
 }

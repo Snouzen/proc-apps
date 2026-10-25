@@ -125,7 +125,7 @@ export const EliteSearchableInput = memo(
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content
-              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl dark:shadow-slate-900/50 py-2 w-[var(--radix-popover-trigger-width)] max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl dark:shadow-slate-900/50 py-2 w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-32px)] max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
               sideOffset={5}
               align="start"
               sticky="always"
@@ -252,7 +252,7 @@ export const EliteProductInput = memo(
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content
-              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl dark:shadow-slate-900/50 py-2 w-[var(--radix-popover-trigger-width)] max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl dark:shadow-slate-900/50 py-2 w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-32px)] max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
               sideOffset={5}
               align="start"
               sticky="always"
@@ -336,7 +336,7 @@ export function CustomInlineDatePicker({
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
-          className="z-[9999] w-72 bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 p-4 animate-in fade-in zoom-in-95 duration-200"
+          className="z-[9999] w-72 max-w-[calc(100vw-32px)] bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 p-4 animate-in fade-in zoom-in-95 duration-200"
           align="start"
           sideOffset={5}
         >

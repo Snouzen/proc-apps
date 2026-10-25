@@ -1,3 +1,4 @@
+import { prepareRekonExport } from "./rekonExportData";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -10,6 +11,7 @@ export const generateRekonPdf = (
   filters: { startDate?: string; endDate?: string; search?: string },
   action: "download" | "preview" = "preview",
 ) => {
+  data = prepareRekonExport(data);
   const doc = new jsPDF({
     orientation: "landscape",
     unit: "mm",
@@ -358,7 +360,7 @@ export const generateRekonPdf = (
       
       // Get Unit Produksi from the related invoice's siteArea (to match UI calc/page.tsx)
       const relatedInv = (item.invoices || []).find((inv: any) => inv.noInvoice === refInv);
-      const unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
+      const unitProduksi = rtv.pembebananRetur || relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
       
       return [String(i + 1), rtvNo || "-", String(pcs), refInv || "-", unitProduksi, lokasi, tujuan, produk, formatRp(rpKg), formatRp(nominal || 0)];
     });

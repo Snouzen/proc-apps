@@ -1,3 +1,4 @@
+import PusatOnly from "@/components/PusatOnly";
 import React, { useMemo } from "react";
 import { Pencil, Trash2, Check, X, FileSpreadsheet, Loader2 } from "lucide-react";
 import { DataTableV2 } from "@/components/data-table/DataTableV2";
@@ -465,9 +466,9 @@ export function ReturTable(props: any) {
                   <Pencil size={15} />
                 </button>
                 {role === "pusat" && (
-                  <button onClick={() => handleDelete(item.id)} className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-90 cursor-pointer">
+                  <PusatOnly><button onClick={() => handleDelete(item.id)} className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-90 cursor-pointer">
                     <Trash2 size={15} />
-                  </button>
+                  </button></PusatOnly>
                 )}
               </>
             )}

@@ -294,6 +294,10 @@ export async function POST(req: Request) {
 // ── DELETE: Remove Realisasi Record ──────────────────────────────────────────
 export async function DELETE(req: Request) {
   try {
+    const deletionAuth = await getSessionWithRole(req);
+    if (!deletionAuth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if ((deletionAuth.safeRole || deletionAuth.role) !== "pusat") return NextResponse.json({ error: "Hanya Pusat yang boleh menghapus data" }, { status: 403 });
+
     const auth = await getSessionWithRole(req);
     if (!auth || auth.role !== "pusat") {
       return NextResponse.json(

@@ -16,7 +16,7 @@ export default function DataRekonPage() {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      <div className="max-w-full mx-auto p-6 bg-[#f8fafc] dark:bg-transparent min-h-screen font-sans">
+      <div className="max-w-full mx-auto p-3 sm:p-6 bg-[#f8fafc] dark:bg-transparent min-h-screen font-sans">
         <DataRekonHeader hook={hook} />
         <DataRekonTable hook={hook} />
       </div>

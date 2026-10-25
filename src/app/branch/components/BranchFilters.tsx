@@ -21,7 +21,7 @@ export function BranchFilters({
   return (
     <div className="relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500 rounded-t-2xl" />
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-5">
           <Filter size={14} className="text-slate-500 dark:text-slate-400" />
           <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">

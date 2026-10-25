@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionEdge } from "@/lib/auth-edge";
+import { sanitizeInternalRedirect } from "@/lib/utils/redirect";
 
 // ── P2-8: Rate Limiting (in-memory, per-IP) ──
 const LOGIN_WINDOW_MS = 60_000; // 1 minute
@@ -38,6 +39,8 @@ function isPublicPath(pathname: string) {
   if (pathname.startsWith("/images")) return true;
   if (pathname.startsWith("/img")) return true;
   if (pathname.startsWith("/static")) return true;
+  if (pathname.startsWith("/fonts")) return true;
+  if (pathname.startsWith("/logo-")) return true;
   return false;
 }
 
@@ -51,30 +54,39 @@ function isPublicApi(pathname: string) {
 function isValidOrigin(req: NextRequest): boolean {
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
-  const host = req.headers.get("host");
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
   if (!host) return true; // can't validate without host
 
-  // If no Origin header (e.g. same-origin GET), allow
+  // If no Origin or Referer header, allow
   if (!origin && !referer) return true;
 
-  const allowed = host.split(":")[0]; // strip port
-  if (origin) {
-    try {
-      const u = new URL(origin);
-      return u.hostname === allowed || u.hostname === "localhost";
-    } catch {
-      return false;
-    }
+  const expectedProto = (
+    req.headers.get("x-forwarded-proto") ||
+    req.nextUrl.protocol.replace(/:$/, "")
+  ).toLowerCase();
+  const isDev = process.env.NODE_ENV !== "production";
+
+  const target = origin || referer;
+  if (!target) return true;
+
+  try {
+    const u = new URL(target);
+    const targetProto = u.protocol.replace(/:$/, "").toLowerCase();
+    const targetHost = u.host.toLowerCase();
+    const expectedHost = host.toLowerCase();
+
+    // Check full origin (protocol, host with port)
+    const matchesHost =
+      targetHost === expectedHost ||
+      (isDev && (u.hostname === "localhost" || u.hostname === "127.0.0.1"));
+    const matchesProto =
+      targetProto === expectedProto ||
+      (isDev && (targetProto === "http" || targetProto === "https"));
+
+    return matchesHost && matchesProto;
+  } catch {
+    return false;
   }
-  if (referer) {
-    try {
-      const u = new URL(referer);
-      return u.hostname === allowed || u.hostname === "localhost";
-    } catch {
-      return false;
-    }
-  }
-  return true;
 }
 
 export async function proxy(req: NextRequest) {
@@ -97,6 +109,17 @@ export async function proxy(req: NextRequest) {
       }
     }
 
+    // CSRF origin check for all mutating requests
+    const method = req.method.toUpperCase();
+    if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
+      if (!isValidOrigin(req)) {
+        return NextResponse.json(
+          { error: "Forbidden: invalid origin" },
+          { status: 403 },
+        );
+      }
+    }
+
     // Allow public API routes (login, logout, etc.)
     if (isPublicApi(pathname)) {
       return NextResponse.next();
@@ -107,28 +130,16 @@ export async function proxy(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Enforce Content-Type + CSRF check for mutating requests
-    const method = req.method.toUpperCase();
-    if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
-      // CSRF: validate Origin header
-      if (!isValidOrigin(req)) {
+    // Content-Type enforcement: strictly for mutating methods that submit a body (POST, PUT, PATCH)
+    // Also skip file upload endpoints that use multipart/form-data
+    if ((method === "POST" || method === "PUT" || method === "PATCH") && !pathname.endsWith("/upload")) {
+      const ct = req.headers.get("content-type") || "";
+      const isJson = ct.toLowerCase().includes("application/json");
+      if (!isJson) {
         return NextResponse.json(
-          { error: "Forbidden: invalid origin" },
-          { status: 403 },
+          { error: "Content-Type harus application/json" },
+          { status: 415 },
         );
-      }
-
-      // Content-Type enforcement (skip DELETE which typically has no body)
-      // Also skip file upload endpoints that use multipart/form-data
-      if (method !== "DELETE" && !pathname.endsWith("/upload")) {
-        const ct = req.headers.get("content-type") || "";
-        const isJson = ct.toLowerCase().includes("application/json");
-        if (!isJson) {
-          return NextResponse.json(
-            { error: "Content-Type harus application/json" },
-            { status: 415 },
-          );
-        }
       }
     }
 
@@ -148,7 +159,7 @@ export async function proxy(req: NextRequest) {
     const url = new URL("/login", req.url);
     url.searchParams.set(
       "next",
-      `${req.nextUrl.pathname}${req.nextUrl.search}`,
+      sanitizeInternalRedirect(`${req.nextUrl.pathname}${req.nextUrl.search}`),
     );
     return NextResponse.redirect(url);
   }
@@ -164,6 +175,6 @@ export async function proxy(req: NextRequest) {
 export const config = {
   matcher: [
     "/api/:path*",
-    "/((?!_next|favicon.ico|images|img|static).*)",
+    "/((?!_next|favicon.ico|images|img|static|fonts|logo-).*)",
   ],
 };

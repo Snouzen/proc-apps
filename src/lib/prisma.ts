@@ -25,8 +25,9 @@ const getPrisma = () => {
 
   const pool = new pg.Pool({
     connectionString: connectionString.replace('&sslmode=require', '').replace('?sslmode=require', ''),
-    max: isProd ? 10 : 3,
-    idleTimeoutMillis: 5000,
+    max: 10,
+    idleTimeoutMillis: 60000,
+    keepAlive: true,
     ssl: {
       rejectUnauthorized: false,
     },
@@ -35,7 +36,12 @@ const getPrisma = () => {
   const adapter = new PrismaPg(pool);
   const client = new PrismaClient({
     adapter,
-    log: isProd ? ["error"] : ["query", "error", "warn"],
+    log:
+      process.env.PRISMA_LOG_QUERIES === "true"
+        ? ["query", "error", "warn"]
+        : isProd
+          ? ["error"]
+          : ["error", "warn"],
   });
 
   // Always use singleton to prevent connection pool exhaustion (EMAXCONN)

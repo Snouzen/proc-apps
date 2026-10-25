@@ -11,11 +11,82 @@ import { LoaderThree } from "@/components/ui/loader";
 import { useAutoRefreshTick } from "@/components/auto-refresh";
 import { PoDateBadge } from "@/components/PoDateBadge";
 
+function mapPoToRows(poData: any[]) {
+  const out: any[] = [];
+  for (const po of poData) {
+    const items = Array.isArray(po?.Items) ? po.Items : [];
+    const base = {
+      po,
+      noPo: po?.noPo || "-",
+      tglPo: po?.tglPo,
+      expiredTgl: po?.expiredTgl,
+      company: po?.RitelModern?.namaPt || "-",
+      inisial: po?.RitelModern?.inisial || "-",
+      regional: po?.regional || po?.UnitProduksi?.namaRegional || "-",
+      siteArea:
+        po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
+          ? po.UnitProduksi.siteArea
+          : "-",
+      tujuan: po?.tujuanDetail || "-",
+      noInvoice: po?.noInvoice || "",
+    };
+    if (items.length === 0) {
+      const itemsCount = Number(po?.itemsCount) || 0;
+      const firstProduct = String(po?.firstProductName || "").trim();
+      const productDisplay =
+        itemsCount > 0
+          ? itemsCount > 1
+            ? `${firstProduct || "Item"} (+${itemsCount - 1} lainnya)`
+            : firstProduct || "Item"
+          : "-";
+      out.push({
+        ...base,
+        key: `${po?.id || po?.noPo || "po"}-empty`,
+        product: productDisplay,
+        pcs: Number(po?.pcsTotal) || 0,
+        pcsKirim: Number(po?.pcsKirimTotal) || 0,
+        hargaPcs: 0,
+        discount: Number(po?.totalDiscount) || 0,
+        nominal: Number(po?.totalNominal) || 0,
+        rpTagih: Number(po?.totalTagihan) || 0,
+      });
+    } else {
+      items.forEach((it: any, idx: number) => {
+        const pcs = Number(it?.pcs) || 0;
+        const pcsKirim = Number(it?.pcsKirim) || 0;
+        const hargaPcs = Number(it?.hargaPcs) || 0;
+        const discount = Number(it?.discount) || 0;
+        const nominalFromDb = Number(it?.nominal);
+        const rpTagihFromDb = Number(it?.rpTagih);
+        const nominal = Number.isFinite(nominalFromDb)
+          ? nominalFromDb
+          : Math.max(0, hargaPcs * pcs - discount) || 0;
+        const rpTagih = Number.isFinite(rpTagihFromDb)
+          ? rpTagihFromDb
+          : Math.max(0, hargaPcs * pcsKirim - discount) || 0;
+        out.push({
+          ...base,
+          key: `${po?.id || po?.noPo || "po"}-${it?.id || idx}`,
+          product: it?.Product?.name || it?.namaProduk || "-",
+          pcs,
+          pcsKirim,
+          hargaPcs,
+          discount,
+          nominal,
+          rpTagih,
+        });
+      });
+    }
+  }
+  return out;
+}
+
 export default function PurchaseOrderDetail() {
   const params = useParams<{ id: string }>();
   const company = decodeURIComponent(params.id);
   const [loading, setLoading] = useState(true);
   const [poData, setPoData] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -24,6 +95,7 @@ export default function PurchaseOrderDetail() {
   const [openDetail, setOpenDetail] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editNoPo, setEditNoPo] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const toDate = (d: any) => {
     if (!d) return null;
@@ -45,19 +117,25 @@ export default function PurchaseOrderDetail() {
       .toLowerCase()
       .replace(/\s+/g, " ");
 
+  // Server-side Fetch with Search and Pagination
   useEffect(() => {
     let mounted = true;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      setLoading((v) => v || poData.length === 0);
+      setLoading(true);
       try {
-        const res = await fetch(
-          `/api/po?summary=true&includeUnknown=true&company=${encodeURIComponent(company)}`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+        const params = new URLSearchParams();
+        params.set("summary", "true");
+        params.set("includeUnknown", "true");
+        params.set("company", company);
+        if (search.trim()) params.set("q", search.trim());
+        params.set("limit", String(itemsPerPage));
+        params.set("offset", String((page - 1) * itemsPerPage));
+
+        const res = await fetch(`/api/po?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
         const data = await res.json().catch(() => null);
         if (!mounted) return;
         if (!res.ok || !data) {
@@ -70,149 +148,118 @@ export default function PurchaseOrderDetail() {
           : Array.isArray((data as any)?.data)
             ? (data as any).data
             : [];
+        const total =
+          typeof (data as any)?.total === "number"
+            ? (data as any).total
+            : list.length;
         setPoData(list);
+        setTotalCount(total);
         setLoadError(null);
       } catch (e: any) {
         if (e?.name === "AbortError") return;
         const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
-        setLoadError(msg);
-        if (poData.length === 0) setPoData([]);
+        if (msg.toLowerCase().includes("unauthorized")) {
+          setLoadError(null);
+        } else {
+          setLoadError(msg);
+        }
+        setPoData([]);
+        setTotalCount(0);
       } finally {
         setLoading(false);
       }
-    }, 100);
+    }, 150);
     return () => {
       mounted = false;
       clearTimeout(timer);
       controller.abort();
     };
-  }, [company]);
+  }, [company, search, page, itemsPerPage]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, itemsPerPage, company]);
+  }, [search, itemsPerPage]);
 
-  const rows = useMemo(() => {
-    const out: any[] = [];
-    for (const po of poData) {
-      const items = Array.isArray(po?.Items) ? po.Items : [];
-      const base = {
-        po,
-        noPo: po?.noPo || "-",
-        tglPo: po?.tglPo,
-        expiredTgl: po?.expiredTgl,
-        company: po?.RitelModern?.namaPt || "-",
-        inisial: po?.RitelModern?.inisial || "-",
-        regional: po?.regional || po?.UnitProduksi?.namaRegional || "-",
-        siteArea:
-          po?.UnitProduksi?.siteArea && po.UnitProduksi.siteArea !== "UNKNOWN"
-            ? po.UnitProduksi.siteArea
-            : "-",
-        tujuan: po?.tujuanDetail || "-",
-        noInvoice: po?.noInvoice || "",
-      };
-      if (items.length === 0) {
-        const itemsCount = Number(po?.itemsCount) || 0;
-        const firstProduct = String(po?.firstProductName || "").trim();
-        const productDisplay =
-          itemsCount > 0
-            ? itemsCount > 1
-              ? `${firstProduct || "Item"} (+${itemsCount - 1} lainnya)`
-              : firstProduct || "Item"
-            : "-";
-        out.push({
-          ...base,
-          key: `${po?.id || po?.noPo || "po"}-empty`,
-          product: productDisplay,
-          pcs: Number(po?.pcsTotal) || 0,
-          pcsKirim: Number(po?.pcsKirimTotal) || 0,
-          hargaPcs: 0,
-          discount: Number(po?.totalDiscount) || 0,
-          nominal: Number(po?.totalNominal) || 0,
-          rpTagih: Number(po?.totalTagihan) || 0,
-        });
-      } else {
-        items.forEach((it: any, idx: number) => {
-          const pcs = Number(it?.pcs) || 0;
-          const pcsKirim = Number(it?.pcsKirim) || 0;
-          const hargaPcs = Number(it?.hargaPcs) || 0;
-          const discount = Number(it?.discount) || 0;
-          const nominalFromDb = Number(it?.nominal);
-          const rpTagihFromDb = Number(it?.rpTagih);
-          const nominal = Number.isFinite(nominalFromDb)
-            ? nominalFromDb
-            : Math.max(0, hargaPcs * pcs - discount) || 0;
-          const rpTagih = Number.isFinite(rpTagihFromDb)
-            ? rpTagihFromDb
-            : Math.max(0, hargaPcs * pcsKirim - discount) || 0;
-          out.push({
-            ...base,
-            key: `${po?.id || po?.noPo || "po"}-${it?.id || idx}`,
-            product: it?.Product?.name || it?.namaProduk || "-",
-            pcs,
-            pcsKirim,
-            hargaPcs,
-            discount,
-            nominal,
-            rpTagih,
-          });
-        });
-      }
-    }
-    return out;
-  }, [poData]);
-
-  const filteredRows = useMemo(() => {
-    const q = norm(search);
-    if (!q) return rows;
-    return rows.filter((r) => {
-      const hay = [
-        r.noPo,
-        r.inisial,
-        r.siteArea,
-        r.tujuan,
-        r.product,
-        r.noInvoice,
-        formatDate(r.tglPo),
-        formatDate(r.expiredTgl),
-      ]
-        .map(norm)
-        .join(" ");
-      return hay.includes(q);
-    });
-  }, [rows, search, formatDate]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
+  const rows = useMemo(() => mapPoToRows(poData), [poData]);
+  const pageRows = rows;
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
   const start = (page - 1) * itemsPerPage;
-  const pageRows = filteredRows.slice(start, start + itemsPerPage);
 
   const onExport = async () => {
-    const data = filteredRows.map((r) => ({
-      "No PO": r.noPo,
-      Company: r.company,
-      Inisial: r.inisial,
-      "Tgl PO": formatDate(r.tglPo),
-      "Expired PO": formatDate(r.expiredTgl),
-      Regional: r.regional,
-      "Site Area": r.siteArea,
-      Tujuan: r.tujuan,
-      Produk: r.product,
-      "PCS PO": r.pcs,
-      "PCS Kirim": r.pcsKirim,
-      "Harga/PCS": r.hargaPcs,
-      Discount: r.discount,
-      Nominal: r.nominal,
-      "No Invoice": r.noInvoice || "",
-    }));
-    const XLSX = await getXLSX();
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "PO");
-    const dateStamp = new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:T]/g, "-");
-    XLSX.writeFile(wb, `PO-${company}-${dateStamp}.xlsx`);
+    setIsExporting(true);
+    try {
+      const allList: any[] = [];
+      let offset = 0;
+      const batchSize = 2000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const params = new URLSearchParams();
+        params.set("summary", "true");
+        params.set("includeUnknown", "true");
+        params.set("company", company);
+        if (search.trim()) params.set("q", search.trim());
+        params.set("limit", String(batchSize));
+        params.set("offset", String(offset));
+
+        const res = await fetch(`/api/po?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error(`Gagal mengambil data untuk export (HTTP ${res.status}). Proses dibatalkan.`);
+        }
+        const data = await res.json();
+        const pageItems = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.data)
+            ? (data as any).data
+            : [];
+        allList.push(...pageItems);
+
+        const total = typeof data?.total === "number" ? data.total : undefined;
+        if (pageItems.length < batchSize || (total !== undefined && allList.length >= total)) {
+          hasMore = false;
+        } else {
+          offset += pageItems.length;
+        }
+      }
+
+      if (allList.length === 0) {
+        alert("Tidak ada data untuk diekspor");
+        return;
+      }
+
+      const exportRows = mapPoToRows(allList);
+      const exportData = exportRows.map((r) => ({
+        "No PO": r.noPo,
+        Company: r.company,
+        Inisial: r.inisial,
+        "Tgl PO": formatDate(r.tglPo),
+        "Expired PO": formatDate(r.expiredTgl),
+        Regional: r.regional,
+        "Site Area": r.siteArea,
+        Tujuan: r.tujuan,
+        Produk: r.product,
+        "PCS PO": r.pcs,
+        "PCS Kirim": r.pcsKirim,
+        "Harga/PCS": r.hargaPcs,
+        Discount: r.discount,
+        Nominal: r.nominal,
+        "No Invoice": r.noInvoice || "",
+      }));
+      const XLSX = await getXLSX();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "PO");
+      const dateStamp = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:T]/g, "-");
+      XLSX.writeFile(wb, `PO-${company}-${dateStamp}.xlsx`);
+    } catch (e: any) {
+      console.error("Export error:", e);
+      alert(e?.message || "Gagal melakukan export Excel");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const openModal = async (po: any) => {
@@ -294,13 +341,13 @@ export default function PurchaseOrderDetail() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">{company}</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">{company}</h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Daftar Purchase Order lengkap per company
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-          <div className="relative w-full sm:w-96">
+          <div className="relative w-full sm:w-80 md:w-96">
             <Search
               size={18}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -309,12 +356,12 @@ export default function PurchaseOrderDetail() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search No PO / Tujuan / Produk / Site Area / Invoice..."
-              className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-slate-200"
+              className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700"
             />
           </div>
           <button
             onClick={onExport}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shrink-0"
           >
             <Download size={18} />
             Export
@@ -322,31 +369,31 @@ export default function PurchaseOrderDetail() {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-2 sm:p-4">
-        <div className="flex items-center justify-between px-2 sm:px-0 pb-3">
-          <div className="text-sm text-slate-500">
+      <div className="bg-white dark:bg-slate-800/80 rounded-2xl sm:rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 sm:px-0 pb-3">
+          <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Total:{" "}
-            <span className="font-bold text-slate-800">
-              {filteredRows.length}
+            <span className="font-bold text-slate-800 dark:text-slate-100">
+              {totalCount}
             </span>{" "}
             rows
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">Show</span>
+            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Show</span>
             <select
               value={itemsPerPage}
               onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              className="px-3 py-1.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
-            <span className="text-sm text-slate-500">data</span>
+            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">data</span>
           </div>
         </div>
-        {loadError && (
+        {loadError && !loadError.toLowerCase().includes("unauthorized") && (
           <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
             Gagal load data: {loadError}
           </div>
@@ -360,7 +407,86 @@ export default function PurchaseOrderDetail() {
           <div className="text-sm text-slate-500 px-2 py-6">Tidak ada data</div>
         ) : (
           <>
-            <div className="rounded-2xl border border-slate-200 overflow-hidden">
+            {/* Mobile Card List View */}
+            <div className="md:hidden space-y-3">
+              {pageRows.map((r, idx) => {
+                const n = (v: number) => v.toLocaleString("id-ID");
+                return (
+                  <div
+                    key={`card-${r.key || r.noPo}-${idx}`}
+                    onClick={() => openModal(r.po)}
+                    className="p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-3 hover:border-indigo-200 dark:hover:border-indigo-500/40 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="font-mono font-bold text-sm text-slate-800 dark:text-slate-100 truncate block">
+                          {r.noPo}
+                        </span>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                          {r.inisial} • {r.siteArea}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditNoPo(r.noPo);
+                            setEditOpen(true);
+                          }}
+                          className="p-2 rounded-lg bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700 cursor-pointer"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      <PoDateBadge 
+                        dateNode={formatDate(r.tglPo)}
+                        type="TAGIH"
+                        buktiData={r.po?.buktiTagih}
+                      />
+                      <PoDateBadge 
+                        dateNode={formatDate(r.expiredTgl)}
+                        type="PAID"
+                        buktiData={r.po?.buktiBayar}
+                      />
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-2">
+                        {r.product}
+                      </p>
+                      {r.tujuan && r.tujuan !== "-" && (
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
+                          Tujuan: {r.tujuan}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/50 p-2.5 rounded-xl text-xs">
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">PCS Kirim / PO</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-200 break-words [overflow-wrap:anywhere]">
+                          {n(r.pcsKirim)} / {n(r.pcs)}
+                        </span>
+                      </div>
+                      <div className="text-left sm:text-right min-w-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
+                        <span className="text-[10px] text-indigo-500 uppercase font-bold block">Rp Tagih</span>
+                        <span className="font-black text-indigo-600 dark:text-indigo-400 break-words [overflow-wrap:anywhere] text-sm sm:text-xs">
+                          Rp {n(r.rpTagih)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
               <div className="max-h-[70vh] overflow-auto">
                 <table className="w-full min-w-[1400px] text-left text-sm">
                   <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
@@ -502,25 +628,25 @@ export default function PurchaseOrderDetail() {
               </div>
             </div>
 
-            {filteredRows.length > itemsPerPage && (
-              <div className="flex items-center justify-between px-2 py-4 mt-2">
-                <p className="text-sm text-slate-500">
+            {totalCount > itemsPerPage && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 sm:px-2 py-4 mt-2">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   Showing {start + 1} -{" "}
-                  {Math.min(start + itemsPerPage, filteredRows.length)} of{" "}
-                  {filteredRows.length}
+                  {Math.min(start + itemsPerPage, totalCount)} of{" "}
+                  {totalCount}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                   <button
                     onClick={() => setPage((p) => Math.max(p - 1, 1))}
                     disabled={page === 1}
-                    className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
+                    className="flex-1 sm:flex-none px-4 py-2 text-xs sm:text-sm font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all text-center"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                    disabled={page === totalPages}
-                    className="px-4 py-2 text-sm font-medium bg-white border border-gray-200 rounded-xl disabled:opacity-50 hover:bg-gray-50 transition-all"
+                    disabled={page >= totalPages}
+                    className="flex-1 sm:flex-none px-4 py-2 text-xs sm:text-sm font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all text-center"
                   >
                     Next
                   </button>

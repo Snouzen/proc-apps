@@ -45,6 +45,38 @@ export function cacheClearPrefix(prefix: string) {
   }
 }
 
+export function invalidatePoCache(): void {
+  cacheClearPrefix("po:");
+  cacheClearPrefix("po_total:");
+  cacheClearPrefix("po_stats:");
+  cacheClearPrefix("po_stats_v2:");
+  cacheClearPrefix("po_stats_group:");
+  cacheClearPrefix("checklist_summary:");
+  cacheClearPrefix("checklist_total:");
+  cacheClearPrefix("ritel:");
+  cacheClearPrefix("company");
+
+  try {
+    // Invalidate Next.js unstable_cache tags
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { revalidateTag } = require("next/cache");
+    if (typeof revalidateTag === "function") {
+      try {
+        (revalidateTag as any)("po_stats", "max");
+      } catch (innerErr: any) {
+        // Only fallback to single-arg if "max" was an unrecognized argument error in older Next
+        if (innerErr && typeof innerErr.message === "string" && !innerErr.message.includes("static generation store")) {
+          revalidateTag("po_stats");
+        }
+      }
+    }
+  } catch (err: any) {
+    if (err && typeof err.message === "string" && !err.message.includes("static generation store")) {
+      console.warn("Failed to invalidate Next.js cache tag 'po_stats':", err);
+    }
+  }
+}
+
 export function cachePrune() {
   const now = Date.now();
   for (const [k, v] of store.entries()) {

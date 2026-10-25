@@ -227,6 +227,7 @@ export function useReport() {
     { id: "pcs", label: "PCS", kind: "number", defaultVisible: true, value: (r) => r.pcs },
     { id: "pcsKirim", label: "PCS Kirim", kind: "number", defaultVisible: true, value: (r) => r.pcsKirim },
     { id: "satuanKg", label: "Berat Satuan (Kg)", kind: "number", defaultVisible: true, value: (r) => r.satuanKg },
+    { id: "kgKirim", label: "KG Kirim", kind: "number", defaultVisible: true, value: (r) => (Number(r.pcsKirim) || 0) * (Number(r.satuanKg) || 0) },
     { id: "kg", label: "Total Kg", kind: "number", defaultVisible: true, value: (r) => r.kg },
     { id: "hargaPcs", label: "Harga/Pcs", kind: "number", defaultVisible: true, value: (r) => r.hargaPcs },
     { id: "hargaKg", label: "Harga/Kg", kind: "number", defaultVisible: true, value: (r) => r.hargaKg },
@@ -308,7 +309,12 @@ export function useReport() {
       requestAnimationFrame(() => { setServerTotal(Number(data?.total) || 0); });
     } catch (e: any) {
       if (e?.name === "AbortError") return;
-      setError(e instanceof Error ? e.message : "Gagal load data");
+      const msg = e instanceof Error ? e.message : "Gagal load data";
+      if (!msg.toLowerCase().includes("unauthorized")) {
+        setError(msg);
+      } else {
+        setError(null);
+      }
       setRaw([]);
       setServerTotal(0);
     } finally {
@@ -523,6 +529,7 @@ export function useReport() {
         params.set("offset", String(currentOffset));
         const res = await fetch(`/api/po?${params.toString()}`, { cache: "no-store", credentials: "same-origin", headers: { Accept: "application/json" } });
         const json = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(json?.error || "Gagal mengambil data report untuk export");
         const list = Array.isArray(json?.data) ? json.data : [];
         all.push(...list);
         if (list.length < chunk) break;
@@ -608,6 +615,8 @@ export function useReport() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Report");
       XLSX.writeFile(wb, `report-po-${toYMD(new Date())}.xlsx`);
+    } catch (error: any) {
+      alert(error?.message || "Export report gagal. Silakan coba lagi.");
     } finally {
       setExporting(false);
     }

@@ -13,6 +13,8 @@ const routeNameMap: Record<string, string> = {
   "purchase-order": "Purchase Order List",
   po: "Add Purchase Order",
   report: "Report",
+  settings: "Settings",
+  "access-control": "Access Control",
 };
 
 export default function Breadcrumbs() {

@@ -1,244 +1,74 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 
-interface Retailer {
-  id: string;
-  namaPt: string;
-  inisial: string | null;
-  tujuan: string | null;
-}
-
-export function usePurchaseOrderTable(retailers: Retailer[]) {
-  const [loadingData, setLoadingData] = useState(false);
+interface Retailer { id: string; namaPt: string; inisial: string | null; tujuan: string | null }
+export function usePurchaseOrderTable(_retailers: Retailer[]) {
   const [poData, setPoData] = useState<any[] | null>(null);
-
+  const [loadingData, setLoadingData] = useState(false);
+  const [error, setError] = useState("");
+  const [total, setTotal] = useState(0);
   const [searchFilter, setSearchFilter] = useState("");
   const [tglFrom, setTglFrom] = useState("");
   const [tglTo, setTglTo] = useState("");
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [perPage, setPerPage] = useState("10");
+  const [sortOrder, setSortOrder] = useState("newest");
   const [statusFilter, setStatusFilter] = useState("all");
-
-  const [activeNamaPt, setActiveNamaPt] = useState<string>("");
-  const [activeInisial, setActiveInisial] = useState<string>("");
-  const [activeTujuan, setActiveTujuan] = useState<string>("");
-  const [activeRegional, setActiveRegional] = useState<string>("");
-  const [activeSiteArea, setActiveSiteArea] = useState<string>("");
-
-  const [currentPage, setCurrentPage] = useState(1);
-
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [sorting, setSorting] = useState<any[]>([]);
+  const [columnFilters, setColumnFilters] = useState<any[]>([]);
+  const [active, setActive] = useState({ company: "", inisial: "", tujuan: "", regional: "", siteArea: "", noPo: "" });
+  const [enabled, setEnabled] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const requestId = useRef(0);
 
-  const lastCtrlRef = useRef<AbortController | null>(null);
-
-  const handleFetchData = useCallback(
-    async (selectedNamaPt: string, selectedInisial: string, selectedTujuan: string, selectedRegional?: string, selectedSiteArea?: string) => {
-      if (!selectedNamaPt && !selectedRegional && !selectedSiteArea) return;
-
-      setLoadingData(true);
-      setPoData(null);
-      if (lastCtrlRef.current) lastCtrlRef.current.abort();
-      
-      const ctrl = new AbortController();
-      lastCtrlRef.current = ctrl;
-
+  const handleFetchData = useCallback(async (company = "", inisial = "", tujuan = "", regional = "", siteArea = "") => {
+    setActive({ company, inisial, tujuan, regional, siteArea, noPo: "" });
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    setEnabled(true); setRevision(r => r + 1);
+  }, []);
+  useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [searchFilter, tglFrom, tglTo, statusFilter, sorting, columnFilters]);
+  useEffect(() => {
+    if (!enabled) return;
+    const ctrl = new AbortController();
+    const current = ++requestId.current;
+    setLoadingData(true); setError("");
+    const timer = setTimeout(async () => {
       try {
-        let allIds = "";
-        if (selectedNamaPt) {
-          const ritelsToFetch = selectedInisial
-            ? retailers.filter((r) => r.namaPt === selectedNamaPt && r.inisial === selectedInisial)
-            : retailers.filter((r) => r.namaPt === selectedNamaPt);
-          allIds = ritelsToFetch.map((r) => r.id).join(",");
-        }
-
-        let url = `/api/po?summary=true`;
-        if (allIds) url += `&retailerId=${encodeURIComponent(allIds)}`;
-        if (selectedRegional) url += `&regional=${encodeURIComponent(selectedRegional)}`;
-        if (selectedSiteArea) url += `&siteArea=${encodeURIComponent(selectedSiteArea)}`;
-        
-        const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+        const params = new URLSearchParams({ summary: "true", limit: String(pagination.pageSize), offset: String(pagination.pageIndex * pagination.pageSize),
+          q: searchFilter, tglFrom, tglTo, boardStatus: statusFilter, sort: sortOrder === "newest" ? "tglPo_desc" : "tglPo_asc" });
+        Object.entries(active).forEach(([key, value]) => { if (value) params.set(key, value); });
+        if (columnFilters.length) params.set("colFilters", JSON.stringify(Object.fromEntries(columnFilters.map(f => [f.id, f.value]))));
+        if (sorting[0]) params.set("sort", sorting[0].id + (sorting[0].desc ? "_desc" : "_asc"));
+        const res = await fetch("/api/po?" + params, { cache: "no-store", signal: ctrl.signal });
         const json = await res.json();
-        const combinedList = Array.isArray(json) ? json : json?.data || [];
-
-        setPoData(combinedList);
-        setActiveNamaPt(selectedNamaPt);
-        setActiveInisial(selectedInisial);
-        setActiveTujuan(selectedTujuan);
-        setActiveRegional(selectedRegional || "");
-        setActiveSiteArea(selectedSiteArea || "");
-        setCurrentPage(1);
+        if (!res.ok) throw new Error(json.error || "Gagal memuat PO");
+        if (current !== requestId.current || ctrl.signal.aborted) return;
+        setPoData(json.data || []); setTotal(Number(json.total) || 0);
       } catch (e: any) {
-        if (e.name !== "AbortError") console.error(e);
-      } finally {
-        setLoadingData(false);
-      }
-    },
-    [retailers]
-  );
-
-  const handleDelete = useCallback(
-    async (noPo: string) => {
-      setDeleting(true);
-      try {
-        await fetch(`/api/po?noPo=${encodeURIComponent(noPo)}`, { method: "DELETE" });
-        await handleFetchData(activeNamaPt, activeInisial, activeTujuan, activeRegional, activeSiteArea);
-        setConfirmDelete(null);
-      } catch (e) {
-        alert("Gagal menghapus PO");
-      } finally {
-        setDeleting(false);
-      }
-    },
-    [handleFetchData, activeNamaPt, activeInisial, activeTujuan, activeRegional, activeSiteArea]
-  );
-
-  const stats = useMemo(() => {
-    if (!poData || poData.length === 0) return null;
-    const totalPo = poData.length;
-    const totalNominal = poData.reduce((acc, po) => acc + (Number(po.totalNominal) || 0), 0);
-    const totalItems = poData.reduce((acc, po) => acc + (Number(po.pcsTotal) || 0), 0);
-    return { totalPo, totalNominal, totalItems };
-  }, [poData]);
-
-  const toDate = (d: any) => {
-    if (!d) return null;
-    const dt = new Date(d);
-    return isNaN(dt.getTime()) ? null : dt;
+        if (!ctrl.signal.aborted && current === requestId.current) { setError(e.message || "Gagal memuat PO"); setPoData([]); }
+      } finally { if (!ctrl.signal.aborted && current === requestId.current) setLoadingData(false); }
+    }, 250);
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [enabled, active, pagination, searchFilter, tglFrom, tglTo, statusFilter, sortOrder, sorting, columnFilters, revision]);
+  const handleDelete = async (noPo: string) => {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/po?noPo=" + encodeURIComponent(noPo), { method: "DELETE" });
+      if (!res.ok) { const json = await res.json(); throw new Error(json.error || "Gagal menghapus PO"); }
+      setConfirmDelete(null); setRevision(r => r + 1);
+    } catch (e: any) { setError(e.message); } finally { setDeleting(false); }
   };
-
-  const isCompleted = (po: any) => {
-    const inv = String(po?.noInvoice || "").trim();
-    return inv.length > 0 && inv !== "-" && inv.toLowerCase() !== "unknown";
+  const setManualData = (data: any[] | null, company: string, inisial: string) => {
+    setPoData(data); setTotal(data?.length || 0);
+    setActive({ company: "", inisial: "", tujuan: "", regional: "", siteArea: "", noPo: data?.[0]?.noPo || "" });
+    setEnabled(Boolean(data?.length)); setPagination(p => ({ ...p, pageIndex: 0 }));
   };
-
-  const daysUntil = (d: Date | null) => {
-    if (!d) return null;
-    const ms = d.getTime() - Date.now();
-    return Math.ceil(ms / (1000 * 60 * 60 * 24));
-  };
-
-  const filteredPo = useMemo(() => {
-    if (!poData) return [];
-    let data = [...poData];
-
-    const q = searchFilter.toLowerCase().trim();
-    if (q) {
-      data = data.filter((po) =>
-        (po.noPo || "").toLowerCase().includes(q) ||
-        (po.noInvoice || "").toLowerCase().includes(q)
-      );
-    }
-
-    const tujuanQ = activeTujuan.toLowerCase().trim();
-    if (tujuanQ) {
-      data = data.filter((po) => (po.tujuanDetail || "").toLowerCase().includes(tujuanQ));
-    }
-    
-    const regionalQ = activeRegional.toLowerCase().trim();
-    if (regionalQ) {
-      data = data.filter((po) => (po.regional || "").toLowerCase().includes(regionalQ));
-    }
-    
-    const siteAreaQ = activeSiteArea.toLowerCase().trim();
-    if (siteAreaQ) {
-      data = data.filter((po) => {
-        const site = po.UnitProduksi?.siteArea || "";
-        return site.toLowerCase().includes(siteAreaQ);
-      });
-    }
-
-    if (tglFrom) {
-      const fromDate = new Date(tglFrom);
-      fromDate.setHours(0, 0, 0, 0);
-      data = data.filter((po) => new Date(po.tglPo) >= fromDate);
-    }
-    
-    if (tglTo) {
-      const toDateObj = new Date(tglTo);
-      toDateObj.setHours(23, 59, 59, 999);
-      data = data.filter((po) => new Date(po.tglPo) <= toDateObj);
-    }
-
-    if (statusFilter !== "all") {
-      data = data.filter((po) => {
-        const inv = String(po.noInvoice || "").trim().toLowerCase();
-        const hasInvoice = inv.length > 0 && inv !== "-" && inv !== "unknown" && inv !== "null";
-
-        if (statusFilter === "scheduled") {
-          return !!po.tglkirim && !hasInvoice;
-        }
-        if (statusFilter === "verified") {
-          return hasInvoice && !po.buktiTagih && !po.buktiBayar && po.statusBayar !== true;
-        }
-        if (statusFilter === "tagih") {
-          return !!po.buktiTagih;
-        }
-        if (statusFilter === "paid") {
-          return !!po.buktiBayar || po.statusBayar === true;
-        }
-        return true;
-      });
-    }
-
-    data.sort((a, b) => {
-      const dateA = new Date(a.tglPo || 0).getTime();
-      const dateB = new Date(b.tglPo || 0).getTime();
-      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
-    });
-
-    return data;
-  }, [poData, searchFilter, tglFrom, tglTo, sortOrder, statusFilter, activeTujuan, activeRegional, activeSiteArea]);
-
-  const limitData = perPage === "all" ? filteredPo.length || 1 : parseInt(perPage, 10);
-  const totalPages = Math.ceil(filteredPo.length / limitData) || 1;
-
-  const paginatedPo = useMemo(() => {
-    if (perPage === "all") return filteredPo;
-    const limit = parseInt(perPage, 10);
-    const start = (currentPage - 1) * limit;
-    return filteredPo.slice(start, start + limit);
-  }, [filteredPo, perPage, currentPage]);
-
-  const setManualData = (data: any[], namaPt: string, inisial: string) => {
-    setPoData(data);
-    setActiveNamaPt(namaPt);
-    setActiveInisial(inisial);
-    setActiveTujuan("");
-    setActiveRegional("");
-    setActiveSiteArea("");
-    setCurrentPage(1);
-  };
-
-  return {
-    loadingData,
-    poData,
-    stats,
-    paginatedPo,
-    filteredPo,
-    limitData,
-    totalPages,
-    
-    searchFilter, setSearchFilter,
-    tglFrom, setTglFrom,
-    tglTo, setTglTo,
-    sortOrder, setSortOrder,
-    perPage, setPerPage,
-    statusFilter, setStatusFilter,
-    
-    currentPage, setCurrentPage,
-    
-    handleFetchData,
-    setManualData,
-    setLoadingData,
-    
-    deleting,
-    confirmDelete, setConfirmDelete,
-    handleDelete,
-    
-    activeNamaPt,
-    activeInisial,
-    activeTujuan,
-    activeRegional,
-    activeSiteArea,
-  };
+  const stats = useMemo(() => poData ? { totalPo: total, totalNominal: poData.reduce((s,p) => s + Number(p.totalNominal || 0),0), totalItems: poData.reduce((s,p) => s + Number(p.pcsTotal || 0),0) } : null, [poData,total]);
+  return { poData, loadingData, error, retry: () => setRevision(r => r + 1), total, stats,
+    filteredPo: poData || [], paginatedPo: poData || [], totalPages: Math.max(1, Math.ceil(total / pagination.pageSize)),
+    currentPage: pagination.pageIndex + 1, perPage: String(pagination.pageSize),
+    pagination, setPagination, sorting, setSorting, columnFilters, setColumnFilters,
+    searchFilter, setSearchFilter, tglFrom, setTglFrom, tglTo, setTglTo, sortOrder, setSortOrder, statusFilter, setStatusFilter,
+    handleFetchData, setManualData, setLoadingData, deleting, confirmDelete, setConfirmDelete, handleDelete,
+    activeNamaPt: active.company, activeInisial: active.inisial, activeTujuan: active.tujuan, activeRegional: active.regional, activeSiteArea: active.siteArea };
 }

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { getSessionWithRole } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
@@ -15,9 +14,10 @@ export async function GET(request: Request) {
     const dateTo = searchParams.get("dateTo");
 
     // [RBAC] Ambil Session & Role
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get("session")?.value;
-    const user = verifySession(sessionToken);
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // Access is now global for all roles as per user request
     const filters: any[] = [];

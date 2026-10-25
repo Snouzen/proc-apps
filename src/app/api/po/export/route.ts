@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { getSessionWithRole } from "@/lib/auth";
+import { hasPermission } from "@/lib/accessControl";
 import ExcelJS from "exceljs";
 import { upperClean } from "@/lib/text";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
@@ -22,29 +22,54 @@ const formatDateId = (d: any) => {
 
 export async function GET(request: Request) {
   try {
-    const bag = await cookies();
-    let token = bag.get("session")?.value;
-    if (!token) {
-      const hdr = request.headers.get("cookie") || "";
-      const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-      if (m && m[1]) token = decodeURIComponent(m[1]);
-    }
-    const session = verifySession(token);
-    if (!session) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const safeRole = auth.safeRole || auth.role;
+    const session = auth.session || (auth as any);
+    const canExport = (await hasPermission(safeRole, "po_export")) || (await hasPermission(safeRole, "rep_export"));
+    if (!canExport) {
+      return NextResponse.json(
+        { error: "Forbidden: Akun Anda tidak memiliki izin mengekspor data PO (po_export / rep_export)." },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
+
+    // Use DB user as authoritative source; do not resurrect old session scope if DB field was cleared
+    const userRegional = auth.dbUser !== undefined ? (auth.dbUser?.regional || null) : (session?.regional || null);
+    const userSiteArea = auth.dbUser !== undefined ? (auth.dbUser?.siteArea || null) : (session?.siteArea || null);
+
+    // Fail-closed security: missing required regional/siteArea scope for non-pusat must return 403 Forbidden
+    if (safeRole === "rm" && (!userRegional || !userRegional.trim())) {
+      return NextResponse.json(
+        { error: "Forbidden: Akun Regional Manager tidak memiliki konfigurasi wilayah regional." },
+        { status: 403 }
+      );
+    }
+
+    if (safeRole === "sitearea" && (!userSiteArea || !userSiteArea.trim())) {
+      return NextResponse.json(
+        { error: "Forbidden: Akun Cabang / Site Area tidak memiliki konfigurasi siteArea." },
+        { status: 403 }
+      );
+    }
 
     const company = searchParams.get("company") || undefined;
     const noPo = searchParams.get("noPo") || undefined;
     const includeUnknown =
       (searchParams.get("includeUnknown") || "true") === "true";
     const regionalParam =
-      session.role === "rm"
-        ? session.regional || undefined
+      safeRole === "rm"
+        ? userRegional || undefined
         : searchParams.get("regional") || undefined;
-    const siteAreaParam = searchParams.get("siteArea") || undefined;
+    const siteAreaParam =
+      safeRole === "sitearea"
+        ? userSiteArea || undefined
+        : searchParams.get("siteArea") || undefined;
     const q = (searchParams.get("q") || "").trim();
     const tglFrom = parseYmdOrIsoToUtcNoon(searchParams.get("tglFrom"));
     const tglTo = parseYmdOrIsoToUtcNoon(searchParams.get("tglTo"));
@@ -78,76 +103,114 @@ export async function GET(request: Request) {
         ...(submitTo ? { lte: submitTo } : {}),
       };
     }
-    if (regionalParam && regionalParam.trim()) {
-      const rp = regionalParam.trim().toLowerCase();
-      const syn = getRegionalSynonyms(rp);
-      where.OR = [
-        ...syn.map((s) => ({
-          regional: { contains: s, mode: "insensitive" as const },
-        })),
-        {
-          UnitProduksi: {
-            is: {
-              OR: syn.map((s) => ({
-                namaRegional: { contains: s, mode: "insensitive" as const },
-              })),
+
+    // Regional scoping: Utamakan regional UnitProduksi; fallback ke regional PO hanya jika unit tidak ada / tidak punya info regional
+    const buildAuthoritativeRegionalFilter = (regionalValue: string) => {
+      const syn = getRegionalSynonyms(regionalValue.trim());
+      return {
+        OR: [
+          // 1. Authoritative: UnitProduksi telah ditetapkan dan regionalnya cocok
+          {
+            UnitProduksi: {
+              is: {
+                OR: [
+                  { namaRegional: { in: syn, mode: "insensitive" as const } },
+                  { kodeRegional: { in: syn, mode: "insensitive" as const } },
+                ],
+              },
             },
           },
-        },
+          // 2. Fallback: UnitProduksi tidak memiliki info regional (kosong/tidak diisi) dan PO.regional cocok
+          {
+            AND: [
+              {
+                OR: [
+                  { unitProduksiId: "" },
+                  {
+                    UnitProduksi: {
+                      is: {
+                        AND: [
+                          { namaRegional: { in: ["", "-", " "] } },
+                          {
+                            OR: [
+                              { kodeRegional: null },
+                              { kodeRegional: "" },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                ],
+              },
+              { regional: { in: syn, mode: "insensitive" as const } },
+            ],
+          },
+        ],
+      };
+    };
+
+    if (safeRole === "rm") {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        buildAuthoritativeRegionalFilter(userRegional!),
+      ];
+    } else if (regionalParam && regionalParam.trim()) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        buildAuthoritativeRegionalFilter(regionalParam.trim()),
       ];
     }
-    if (session.role === "rm" && session.regional) {
+
+    // Site Area scoping: SiteArea is strictly scoped to userSiteArea; Pusat/RM can filter by siteAreaParam
+    if (safeRole === "sitearea") {
+      const allowedAreas = (userSiteArea as string)
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean);
+
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         {
           OR: [
-            {
-              regional: {
-                equals: session.regional,
-                mode: "insensitive" as const,
-              },
-            },
+            { unitProduksiId: { in: allowedAreas } },
             {
               UnitProduksi: {
                 is: {
-                  namaRegional: {
-                    equals: session.regional,
-                    mode: "insensitive" as const,
-                  },
+                  OR: [
+                    { siteArea: { in: allowedAreas, mode: "insensitive" as const } },
+                    { idRegional: { in: allowedAreas } },
+                  ],
                 },
               },
             },
           ],
         },
       ];
-    }
-    if (siteAreaParam && siteAreaParam.trim()) {
-      const sa = siteAreaParam.trim();
-      const saFilter =
-        session.role === "rm" && session.regional
-          ? {
-              AND: [
-                {
-                  UnitProduksi: {
-                    is: {
-                      siteArea: { contains: sa, mode: "insensitive" as const },
-                      namaRegional: {
-                        equals: session.regional,
-                        mode: "insensitive" as const,
-                      },
-                    },
-                  },
-                },
-              ],
-            }
-          : {
+    } else if (siteAreaParam && siteAreaParam.trim()) {
+      const allowedAreas = (siteAreaParam as string)
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean);
+
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [
+            { unitProduksiId: { in: allowedAreas } },
+            {
               UnitProduksi: {
                 is: {
-                  siteArea: { contains: sa, mode: "insensitive" as const },
+                  OR: [
+                    { siteArea: { in: allowedAreas, mode: "insensitive" as const } },
+                    { idRegional: { in: allowedAreas } },
+                  ],
                 },
               },
-            };
-      where.AND = [...(Array.isArray(where.AND) ? where.AND : []), saFilter];
+            },
+          ],
+        },
+      ];
     }
     if (company && company.trim()) {
       where.RitelModern = {
@@ -506,6 +569,7 @@ export async function GET(request: Request) {
           products: it?.Product?.name || "-",
           pcs,
           pcsKirim,
+          kgKirim: pcsKirim * satuanKg,
           satuanKg,
           kg,
           hargaPcs,

@@ -1,8 +1,30 @@
+import { resolvePoScope } from "@/lib/resolvePoScope";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionWithRole, getProfileName } from "@/lib/auth";
-import { cacheGet, cacheSet, cacheClearPrefix } from "@/lib/ttl-cache";
-import { getRegionalSynonyms } from "@/lib/utils/regional";
+import { cacheGet, cacheSet, cacheClearPrefix, invalidatePoCache } from "@/lib/ttl-cache";
+import { getRegionalSynonyms, checkPOOwnership } from "@/lib/utils/regional";
+import { hasPermission } from "@/lib/accessControl";
+import { canonicalInvoiceNumber } from "@/lib/utils/invoice";
+import { z } from "zod";
+
+const ChecklistItemUpdateSchema = z.object({
+  id: z.string().min(1, "ID PO wajib diisi"),
+  statusTagih: z.boolean().optional(),
+  buktiTagih: z.string().nullable().optional(),
+  statusBayar: z.boolean().optional(),
+  buktiBayar: z.string().nullable().optional(),
+  statusKirim: z.boolean().optional(),
+  buktiKirim: z.string().nullable().optional(),
+  noInvoice: z.string().nullable().optional(),
+});
+
+const ChecklistBatchUpdateSchema = z.object({
+  updates: z
+    .array(ChecklistItemUpdateSchema)
+    .min(1, "Daftar pembaruan checklist tidak boleh kosong")
+    .max(100, "Batas maksimal pembaruan checklist adalah 100 PO per permintaan"),
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,6 +33,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { session, role: safeRole, dbUser } = auth;
+
+    const canView =
+      (await hasPermission(safeRole, "check_view")) ||
+      (await hasPermission(safeRole, "po_view"));
+    if (!canView) {
+      return NextResponse.json(
+        { error: "Forbidden: Akun Anda tidak memiliki izin melihat checklist dokumen (check_view)" },
+        { status: 403 }
+      );
+    }
 
     const { searchParams } = new URL(req.url);
 
@@ -22,6 +54,10 @@ export async function GET(req: NextRequest) {
       overrideSiteArea = dbUser?.siteArea || (session as any)?.user_metadata?.siteArea || null;
     } else if (safeRole === 'rm') {
       overrideRegional = dbUser?.regional || (session as any)?.regional || null;
+    }
+    if ((safeRole === "rm" && !overrideRegional?.trim()) ||
+        (safeRole === "sitearea" && !overrideSiteArea?.trim())) {
+      return NextResponse.json({ error: "Scope akun belum dikonfigurasi" }, { status: 403 });
     }
     const limit = Number(searchParams.get("limit") || "10");
     const offset = Number(searchParams.get("offset") || "0");
@@ -109,32 +145,7 @@ export async function GET(req: NextRequest) {
       baseConditions.push({ tglPo: { lte: new Date(tglTo) } });
     }
 
-    // Apply RBAC filters
-    if (safeRole === "rm" && overrideRegional) {
-      const syn = getRegionalSynonyms(overrideRegional);
-      baseConditions.push({
-        OR: [
-          ...syn.map((s) => ({ regional: { contains: s, mode: "insensitive" as const } })),
-          { UnitProduksi: { OR: syn.map((s) => ({ namaRegional: { contains: s, mode: "insensitive" as const } })) } }
-        ]
-      });
-    }
-
-    if (safeRole === "sitearea" && overrideSiteArea) {
-      const sa = overrideSiteArea.trim();
-      baseConditions.push({
-        UnitProduksi: { siteArea: { contains: sa, mode: "insensitive" as const } }
-      });
-      if (overrideRegional) {
-        const syn = getRegionalSynonyms(overrideRegional);
-        baseConditions.push({
-          OR: [
-            ...syn.map((s) => ({ regional: { contains: s, mode: "insensitive" as const } })),
-            { UnitProduksi: { OR: syn.map((s) => ({ namaRegional: { contains: s, mode: "insensitive" as const } })) } }
-          ]
-        });
-      }
-    }
+    baseConditions.push(await resolvePoScope(auth));
 
     const wherePending: any = { AND: [pendingCondition, ...baseConditions] };
     const whereCompleted: any = { AND: [completedCondition, ...baseConditions] };
@@ -233,28 +244,64 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { session, role: safeRole, dbUser } = auth;
+    const userRegional = dbUser?.regional || session?.regional || null;
+    const userSiteArea = dbUser?.siteArea || session?.siteArea || null;
 
-    const body = await req.json();
-    const { updates } = body;
-
-    if (!Array.isArray(updates) || updates.length === 0) {
-      return NextResponse.json({ error: "Invalid updates format" }, { status: 400 });
+    const canUpdate =
+      (await hasPermission(safeRole, "check_update")) ||
+      (await hasPermission(safeRole, "po_invoice")) ||
+      (await hasPermission(safeRole, "po_edit"));
+    if (!canUpdate) {
+      return NextResponse.json(
+        { error: "Forbidden: Akun Anda tidak memiliki izin mengubah status dokumen checklist (check_update)" },
+        { status: 403 }
+      );
     }
+
+    const body = await req.json().catch(() => null);
+    const parsed = ChecklistBatchUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Format pembaruan dokumen tidak valid" },
+        { status: 400 }
+      );
+    }
+    const { updates } = parsed.data;
 
     // Perform transaction to update multiple rows with increased timeout and batching
     await prisma.$transaction(
       async (tx) => {
-        const ids = updates.map((u: any) => u.id).filter(Boolean);
+        const ids = updates.map((u) => u.id).filter(Boolean);
         if (ids.length === 0) return;
 
-        // 1. Batch fetch old records in a single query
+        // Kunci baris terlebih dahulu dengan urutan konsisten (ORDER BY id ASC FOR UPDATE)
+        const sortedIds = Array.from(new Set(ids)).sort();
+        await tx.$queryRaw`
+          SELECT id FROM "PurchaseOrder" WHERE id = ANY(${sortedIds}::text[]) ORDER BY id ASC FOR UPDATE
+        `;
+
+        // 1. Batch fetch old records in a single query (now safely locked)
         const oldRecords = await tx.purchaseOrder.findMany({
-          where: { id: { in: ids } },
+          where: { id: { in: sortedIds } },
+          include: { UnitProduksi: true },
         });
+
         const oldMap = new Map(oldRecords.map((r) => [r.id, r]));
+        const missingIds = sortedIds.filter((id) => !oldMap.has(id));
+        if (missingIds.length > 0) {
+          throw new Error(`NOT_FOUND: PO dengan ID berikut tidak ditemukan: ${missingIds.join(", ")}`);
+        }
+
+        // Verifikasi kepemilikan dan wewenang wilayah untuk setiap PO
+        for (const po of oldRecords) {
+          const check = checkPOOwnership(po, safeRole, userRegional, userSiteArea);
+          if (!check.allowed) {
+            throw new Error(`FORBIDDEN: ${check.reason}`);
+          }
+        }
 
         const auditEntries: any[] = [];
-        const updatePromises = updates.map(async (update: any) => {
+        const updatePromises = updates.map(async (update) => {
           const oldData = oldMap.get(update.id);
           if (!oldData) return null;
 
@@ -270,7 +317,9 @@ export async function POST(req: NextRequest) {
           }
           if (update.statusKirim !== undefined) dataToUpdate.statusKirim = update.statusKirim;
           if (update.buktiKirim !== undefined) dataToUpdate.buktiKirim = update.buktiKirim;
-          if (update.noInvoice !== undefined) dataToUpdate.noInvoice = update.noInvoice;
+          if (update.noInvoice !== undefined) {
+            dataToUpdate.noInvoice = canonicalInvoiceNumber(update.noInvoice);
+          }
 
           const updated = await tx.purchaseOrder.update({
             where: { id: update.id },
@@ -307,16 +356,16 @@ export async function POST(req: NextRequest) {
     );
 
     // Invalidate cache
-    cacheClearPrefix("checklist_summary:");
-    cacheClearPrefix("checklist_total:");
-    cacheClearPrefix("po:");
+    invalidatePoCache();
     
     return NextResponse.json({ success: true, message: "Data berhasil disimpan" });
   } catch (error: any) {
     console.error("Checklist Docs POST error:", error);
+    const msg = error?.message || "Internal server error";
+    const status = msg.includes("NOT_FOUND") ? 404 : msg.includes("FORBIDDEN") ? 403 : 500;
     return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: 500 }
+      { error: msg.replace(/^(?:Error:\s*)?(?:NOT_FOUND:\s*|FORBIDDEN:\s*)?/, "") },
+      { status }
     );
   }
 }
