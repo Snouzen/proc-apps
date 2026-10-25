@@ -413,14 +413,14 @@ export function DataTableV2<TData, TValue>({
 
       {/* Pagination Footer */}
       {!hidePagination && (
-        <div className="flex items-center justify-between px-2 text-sm text-slate-500">
-          <div className="flex-1 text-sm text-slate-500">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-sm text-slate-500">
+          <div className="text-xs sm:text-sm text-slate-500 text-center sm:text-left">
             Halaman {table.getState().pagination.pageIndex + 1} dari{" "}
             {table.getPageCount()} (Total {table.getFilteredRowModel().rows.length} data)
           </div>
-          <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-6">
             <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium">Data per halaman</p>
+              <p className="text-xs sm:text-sm font-medium">Baris:</p>
               <SmoothSelect
                 value={String(table.getState().pagination.pageSize)}
                 onChange={(v) => table.setPageSize(Number(v))}
@@ -430,15 +430,16 @@ export function DataTableV2<TData, TValue>({
                   { value: "50", label: "50" },
                   { value: "100", label: "100" },
                 ]}
-                className="w-[80px]"
+                className="w-[75px]"
                 menuPlacement="top"
               />
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
               <button
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
                 className="h-8 w-8 p-0 rounded border border-slate-200 dark:border-slate-700 flex items-center justify-center disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="First page"
               >
                 <ChevronsLeft size={16} />
               </button>
@@ -446,6 +447,7 @@ export function DataTableV2<TData, TValue>({
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
                 className="h-8 w-8 p-0 rounded border border-slate-200 dark:border-slate-700 flex items-center justify-center disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="Previous page"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -453,6 +455,7 @@ export function DataTableV2<TData, TValue>({
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
                 className="h-8 w-8 p-0 rounded border border-slate-200 dark:border-slate-700 flex items-center justify-center disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="Next page"
               >
                 <ChevronRight size={16} />
               </button>
@@ -460,6 +463,7 @@ export function DataTableV2<TData, TValue>({
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
                 className="h-8 w-8 p-0 rounded border border-slate-200 dark:border-slate-700 flex items-center justify-center disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="Last page"
               >
                 <ChevronsRight size={16} />
               </button>

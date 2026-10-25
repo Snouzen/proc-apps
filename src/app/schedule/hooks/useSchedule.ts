@@ -44,23 +44,48 @@ export function useSchedule() {
   const [tglTo, setTglTo] = useState("");
   const [sortField, setSortField] = useState<"tglPo" | "expiredTgl" | "tglkirim" | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
+    setFetchError(null);
     try {
-      const res = await fetch(
-        "/api/po?group=schedule_page&summary=true&includeItems=false&limit=500&offset=0&sort=tglPo_desc",
-        { cache: "no-store" },
-      );
-      const data = await res.json();
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-          ? data.data
-          : [];
-      setPoData(list);
-    } catch (err) {
+      const pageSize = 1000;
+      let offset = 0;
+      let allItems: any[] = [];
+      let total = 0;
+
+      do {
+        const res = await fetch(
+          `/api/po?group=schedule_page&summary=true&includeItems=false&limit=${pageSize}&offset=${offset}&sort=tglPo_desc`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          const msg = errData?.error || `Gagal memuat data jadwal (HTTP ${res.status})`;
+          throw new Error(msg);
+        }
+        const data = await res.json();
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
+        allItems = allItems.concat(list);
+        total = typeof data?.total === "number" ? data.total : list.length;
+        offset += list.length;
+
+        if (list.length < pageSize || allItems.length >= total) {
+          break;
+        }
+      } while (offset < total);
+
+      setPoData(allItems);
+    } catch (err: any) {
       console.error("Failed to fetch PO data:", err);
+      const msg = err instanceof Error ? err.message : "Gagal mengambil data jadwal PO";
+      setFetchError(msg);
+      setPoData([]);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -225,7 +250,7 @@ export function useSchedule() {
   const handleUpdatePcsKirim = async (id: string, value: string) => {
     const pcs = Number(value);
     const targetPo = poData.find((p) => p.id === id);
-    if (!targetPo) return;
+    if (!targetPo) return false;
 
     const maxPcs = Number(targetPo.pcsTotal || 0);
 
@@ -242,10 +267,10 @@ export function useSchedule() {
         background: "#fff1f2",
       });
       fetchData(true); 
-      return;
+      return false;
     }
 
-    if (isNaN(pcs) || pcs < 0) return;
+    if (!value.trim() || !Number.isInteger(pcs) || pcs < 0) return false;
 
     setSavingPcsId(id);
     try {
@@ -258,6 +283,7 @@ export function useSchedule() {
       if (res.ok) {
         fetchData(true);
         router.refresh();
+        return true;
       } else {
         const err = await res.json();
         alert(err.error || "Gagal update Pcs Kirim");
@@ -267,6 +293,7 @@ export function useSchedule() {
     } finally {
       setSavingPcsId(null);
     }
+    return false;
   };
 
   const handleBatchUpdateItemPcsKirim = async (
@@ -593,6 +620,7 @@ export function useSchedule() {
   return {
     poData, setPoData,
     loading,
+    fetchError,
     search, setSearch,
     updatingId, setUpdatingId,
     selectedDate, setSelectedDate,

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Swal from "sweetalert2";
 import { getDueDateZone, needsRemarks } from "@/lib/credit-limit";
+import { isInvoiceEmpty } from "@/lib/utils/invoice";
 
 export function useCreditLimitData({
   search,
@@ -54,13 +55,7 @@ export function useCreditLimitData({
           ? data.data
           : [];
 
-      // Filter: Hanya yang sudah dijadwalkan (tglkirim ada) dan belum memiliki nomor invoice
-      const isInvoiceEmpty = (inv: any) =>
-        !inv ||
-        String(inv).trim() === "" ||
-        String(inv).trim() === "-" ||
-        String(inv).trim().toLowerCase() === "unknown";
-
+      // Filter: Hanya yang sudah dijadwalkan (tglkirim ada) dan belum memiliki nomor invoice (menggunakan helper kanonisasi bersama)
       const eligible = list.filter(
         (po: any) => !!po.tglkirim && isInvoiceEmpty(po.noInvoice),
       );

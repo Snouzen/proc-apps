@@ -101,3 +101,18 @@ export async function getMe(force = false): Promise<Me> {
     });
   return mePromise;
 }
+
+// Only a nonce is broadcast; credentials/tokens never leave the HttpOnly cookie.
+const SESSION_CHANGE_KEY = "proc_session_change";
+export function announceSessionChange() {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(SESSION_CHANGE_KEY, crypto.randomUUID()); } catch {}
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== SESSION_CHANGE_KEY) return;
+    clearMeCache();
+    try { localStorage.removeItem("proc_role_permissions_v1"); } catch {}
+    window.location.reload();
+  });
+}

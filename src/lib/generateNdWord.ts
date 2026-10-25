@@ -1,7 +1,3 @@
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
-import { saveAs } from "file-saver";
-
 export interface PiutangRow {
   tgl_input: string;
   tbl_1_30: string;
@@ -77,6 +73,12 @@ function formatDateIndonesian(date: Date): string {
 }
 
 export async function generateNdWord(formData: NdFormData, pos?: any[]): Promise<void> {
+  const [{ default: Docxtemplater }, { default: PizZip }, { saveAs }] = await Promise.all([
+    import("docxtemplater"),
+    import("pizzip"),
+    import("file-saver"),
+  ]);
+
   // Fetch the template from public folder
   const response = await fetch("/template/Draft ND Pengajuan Credit Limit.docx");
   if (!response.ok) {

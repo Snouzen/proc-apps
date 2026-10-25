@@ -1,99 +1,61 @@
 "use client";
 
-const getXLSX = () => import("xlsx");
-import {
-  Archive,
-  Package,
-  Plus,
-  Search,
-  X,
-  Eye,
-  Pencil,
-  Trash2,
-  Copy,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import { DataTable } from "@/components/data-table";
-import { saveProduct } from "@/lib/api";
-import { StatefulButton } from "@/components/ui/stateful-button";
+import { Plus, Search } from "lucide-react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
-const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), { ssr: false });
-import { useAutoRefreshTick } from "@/components/auto-refresh";
+import { saveProduct } from "@/lib/api";
+import { Product } from "./types";
+import { useProdukData } from "./hooks/useProdukData";
+import ProdukTable from "./components/ProdukTable";
+import ProdukFormModal from "./components/ProdukFormModal";
+import ProdukDetailModal from "./components/ProdukDetailModal";
+import ProdukEditModal from "./components/ProdukEditModal";
+import ProdukBulkConfirmModal, {
+  BulkDialogState,
+} from "./components/ProdukBulkConfirmModal";
+
+const ExcelBulkModal = dynamic(() => import("@/components/excel-bulk-modal"), {
+  ssr: false,
+});
 
 export default function ProdukPage() {
-  const refreshTick = useAutoRefreshTick();
+  const {
+    products,
+    isLoading,
+    setIsLoading,
+    searchTerm,
+    setSearchTerm,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    saving,
+    setSaving,
+    toast,
+    showToast,
+    shortId,
+    handleCopyId,
+    loadData,
+    handleDelete,
+    filtered,
+    currentItems,
+  } = useProdukData();
+
+  // Local state for modals & forms
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProductName, setNewProductName] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [bulkDialog, setBulkDialog] = useState<{
-    rows: any[];
-    dupeCount: number;
-    productKey: string;
-    satuanKey: string | null;
-  } | null>(null);
+  const [newProductSatuanKg, setNewProductSatuanKg] = useState<string>("");
   const [openExcelBulk, setOpenExcelBulk] = useState(false);
 
-  const [products, setProducts] = useState<
-    { id: string; name: string; satuanKg?: number }[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-  const [newProductSatuanKg, setNewProductSatuanKg] = useState<string>("");
-  const [toast, setToast] = useState<{
-    type: "success" | "error" | "info";
-    message: string;
-  } | null>(null);
+  const [viewProduct, setViewProduct] = useState<Product | null>(null);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSatuan, setEditSatuan] = useState<string>("");
+
+  const [bulkDialog, setBulkDialog] = useState<BulkDialogState | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkTotal, setBulkTotal] = useState(0);
   const [bulkDone, setBulkDone] = useState(0);
   const [bulkErrors, setBulkErrors] = useState<string[]>([]);
-  const [viewProduct, setViewProduct] = useState<{
-    id: string;
-    name: string;
-    satuanKg?: number;
-  } | null>(null);
-  const [editProduct, setEditProduct] = useState<{
-    id: string;
-    name: string;
-    satuanKg?: number;
-  } | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editSatuan, setEditSatuan] = useState<string>("");
-  const [saving, setSaving] = useState(false);
-
-  const showToast = (type: "success" | "error" | "info", message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3500);
-  };
-
-  const shortId = (id: string) =>
-    id && id.length > 12 ? `${id.slice(0, 6)}…${id.slice(-6)}` : id;
-  const handleCopyId = async (id: string) => {
-    try {
-      await navigator.clipboard.writeText(id);
-      showToast("success", "ID disalin");
-    } catch {
-      showToast("error", "Gagal menyalin ID");
-    }
-  };
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading((v) => v || products.length === 0);
-      try {
-        const res = await fetch("/api/product");
-        const data = await res.json();
-        if (Array.isArray(data)) setProducts(data);
-        else if (Array.isArray(data?.data)) setProducts(data.data);
-        else setProducts([]);
-      } catch {
-        setProducts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
-  }, [refreshTick]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,11 +63,8 @@ export default function ProdukPage() {
     try {
       await saveProduct(newProductName.trim(), isFinite(satuan) ? satuan : 1);
       showToast("success", "Produk berhasil disimpan");
-      // reload list
       setIsLoading(true);
-      const res = await fetch("/api/product");
-      const data = await res.json();
-      setProducts(Array.isArray(data) ? data : data?.data || []);
+      await loadData();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan produk";
       showToast("error", msg);
@@ -139,9 +98,7 @@ export default function ProdukPage() {
       }
       showToast("success", "Produk diperbarui");
       setIsLoading(true);
-      const r = await fetch("/api/product");
-      const data = await r.json();
-      setProducts(Array.isArray(data) ? data : data?.data || []);
+      await loadData();
       setEditProduct(null);
     } catch (err) {
       const msg =
@@ -152,108 +109,6 @@ export default function ProdukPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Yakin hapus produk ini?")) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/product?id=${encodeURIComponent(id)}`, {
-        // REFACTOR: DELETE via query param
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d?.error || "Gagal menghapus produk");
-      }
-      showToast("success", "Produk dihapus");
-      setIsLoading(true);
-      const r = await fetch("/api/product");
-      const data = await r.json();
-      setProducts(Array.isArray(data) ? data : data?.data || []);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Gagal menghapus produk";
-      showToast("error", msg);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-  const showingFrom = filtered.length === 0 ? 0 : indexOfFirstItem + 1;
-  const showingTo = Math.min(indexOfLastItem, filtered.length);
-
-  const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const XLSX = await getXLSX();
-      const workbook = XLSX.read(event.target?.result, { type: "binary" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(sheet) as any[];
-      if (!rows.length) {
-        showToast("error", "File Excel kosong.");
-        e.target.value = "";
-        return;
-      }
-      const norm = (s: string) =>
-        (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-      const first = rows[0];
-      const candidates = [
-        "produk",
-        "product",
-        "nama produk",
-        "nama produk (sku)",
-      ];
-      const productKey =
-        Object.keys(first).find((k) => candidates.includes(norm(k))) ?? null;
-      const satuanCandidates = [
-        "satuan kg",
-        "satuan",
-        "kg/pcs",
-        "kg per pcs",
-        "kg",
-      ].map(norm);
-      const satuanKey =
-        Object.keys(first).find((k) => satuanCandidates.includes(norm(k))) ??
-        null;
-      if (!productKey) {
-        const existing = Object.keys(first).join(", ");
-        showToast(
-          "error",
-          `Kolom tidak dikenali. Gunakan header "Produk". Terbaca: ${existing}`,
-        );
-        e.target.value = "";
-        return;
-      }
-      const existingSet = new Set(
-        (products || []).map((p) => (p?.name || "").trim().toLowerCase()),
-      );
-      const uploadNames = rows
-        .map((r) =>
-          String(r[productKey] ?? "")
-            .trim()
-            .toLowerCase(),
-        )
-        .filter(Boolean);
-      const dupeCount = uploadNames.filter((n) => existingSet.has(n)).length;
-      setBulkDialog({
-        rows,
-        dupeCount,
-        productKey,
-        satuanKey,
-      });
-      e.target.value = "";
-    };
-    reader.readAsBinaryString(file);
-  };
   const executeProdukBulk = async (replaceDupes: boolean) => {
     if (!bulkDialog) return;
     const { rows, dupeCount, productKey, satuanKey } = bulkDialog;
@@ -295,11 +150,8 @@ export default function ProdukPage() {
         bulkErrors.length === 0 ? "success" : "info",
         `Bulk upload selesai. Berhasil: ${success}, Gagal: ${rows.length - success}. Duplikat: ${dupeCount}. Mode: ${replaceDupes ? "REPLACE" : "SKIP"}`,
       );
-      // reload list
       setIsLoading(true);
-      const res = await fetch("/api/product");
-      const data = await res.json();
-      setProducts(Array.isArray(data) ? data : data?.data || []);
+      await loadData();
     } catch (err) {
       console.error(err);
       showToast("error", "Gagal upload produk. Cek koneksi / server.");
@@ -325,15 +177,16 @@ export default function ProdukPage() {
           {toast.message}
         </div>
       )}
+
       {bulkRunning && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-[420px]">
-            <h3 className="font-bold text-slate-800 mb-2">Mengunggah Produk</h3>
-            <p className="text-sm text-slate-500 mb-4">
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-6 w-full max-w-[420px]">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Mengunggah Produk</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
               Memproses {bulkDone}/{bulkTotal}
             </p>
-            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-emerald-500 transition-all"
                 style={{
@@ -342,7 +195,7 @@ export default function ProdukPage() {
               />
             </div>
             {bulkErrors.length > 0 && (
-              <div className="mt-4 max-h-32 overflow-auto border border-rose-100 bg-rose-50 rounded-lg p-2 text-xs text-rose-700">
+              <div className="mt-4 max-h-32 overflow-auto border border-rose-100 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/40 rounded-lg p-2 text-xs text-rose-700 dark:text-rose-300">
                 {bulkErrors.slice(0, 5).map((er, idx) => (
                   <div key={idx}>• {er}</div>
                 ))}
@@ -354,13 +207,18 @@ export default function ProdukPage() {
           </div>
         </div>
       )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Master Produk</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Daftar SKU Produk</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+            Master Produk
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Daftar SKU Produk
+          </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <button
             suppressHydrationWarning
             onClick={() => setOpenExcelBulk(true)}
@@ -379,19 +237,12 @@ export default function ProdukPage() {
           </button>
         </div>
       </div>
+
       <ExcelBulkModal
         open={openExcelBulk}
         onClose={() => setOpenExcelBulk(false)}
         onSuccess={() => {
           setOpenExcelBulk(false);
-          const loadData = async () => {
-            try {
-              const res = await fetch("/api/product");
-              const result = await res.json();
-              const list = Array.isArray(result) ? result : result?.data || [];
-              setProducts(list);
-            } catch {}
-          };
           loadData();
         }}
         title="Bulk Upload Produk"
@@ -417,386 +268,54 @@ export default function ProdukPage() {
           />
         </div>
       </div>
-      {bulkDialog && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setBulkDialog(null)}
-          />
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-blue-50/50 dark:bg-indigo-500/10">
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                Konfirmasi Bulk Upload
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Total {bulkDialog.rows.length} baris. Duplikat terdeteksi:{" "}
-                {bulkDialog.dupeCount}.
-              </p>
-            </div>
-            <div className="p-6 space-y-3">
-              <div className="max-h-40 overflow-y-auto border border-slate-100 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-xs">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0">
-                    <tr>
-                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">Produk</th>
-                      <th className="p-2 font-medium text-slate-500 dark:text-slate-400">
-                        Satuan (Kg)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {bulkDialog.rows.slice(0, 5).map((row, i) => {
-                      const name = String(
-                        row[bulkDialog.productKey] ?? "",
-                      ).trim();
-                      const satuanRaw = bulkDialog.satuanKey
-                        ? Number(row[bulkDialog.satuanKey])
-                        : 1;
-                      const satuan =
-                        isFinite(satuanRaw) && satuanRaw > 0 ? satuanRaw : 1;
-                      return (
-                        <tr key={i}>
-                          <td className="p-2 text-slate-700 dark:text-slate-300">{name}</td>
-                          <td className="p-2 text-slate-700 dark:text-slate-300">{satuan}</td>
-                        </tr>
-                      );
-                    })}
-                    {bulkDialog.rows.length > 5 && (
-                      <tr>
-                        <td
-                          colSpan={2}
-                          className="p-2 text-center text-slate-400 dark:text-slate-500 italic"
-                        >
-                          ...dan {bulkDialog.rows.length - 5} data lain
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {bulkDialog.dupeCount > 0 ? (
-                  <>
-                    <button
-                      onClick={() => executeProdukBulk(true)}
-                      className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700"
-                    >
-                      Replace Duplikat
-                    </button>
-                    <button
-                      onClick={() => executeProdukBulk(false)}
-                      className="px-4 py-2 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700"
-                    >
-                      Skip Duplikat
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => executeProdukBulk(false)}
-                    className="col-span-2 px-4 py-2 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-700"
-                  >
-                    Submit
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => setBulkDialog(null)}
-                className="w-full px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      <DataTable
-        columns={[
-          {
-            key: "id",
-            label: "ID Produk",
-            width: "w-48",
-            render: (_v: any, product: any) => (
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-slate-400 dark:text-slate-500 tracking-tight" title={product.id}>
-                  {shortId(product.id)}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleCopyId(product.id); }}
-                  className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                  title="Salin ID"
-                >
-                  <Copy size={12} />
-                </button>
-              </div>
-            ),
-          },
-          {
-            key: "name",
-            label: "Nama Produk",
-            render: (_v: any, product: any) => (
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-all">
-                  <Package size={16} />
-                </div>
-                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{product.name}</span>
-              </div>
-            ),
-          },
-          {
-            key: "satuanKg",
-            label: "Satuan (Kg/pcs)",
-            align: "center",
-            render: (_v: any, product: any) => (
-              <span className="text-sm font-bold text-slate-800 dark:text-slate-200 tabular-nums">
-                {typeof product.satuanKg === "number" ? product.satuanKg : ""} Kg
-              </span>
-            ),
-          },
-          {
-            key: "actions",
-            label: "Aksi",
-            align: "center",
-            width: "w-40",
-            render: (_v: any, product: any) => (
-              <div className="inline-flex gap-2">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setViewProduct(product); }}
-                  className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                >
-                  <Eye size={16} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditProduct(product);
-                    setEditName(product.name);
-                    setEditSatuan(String(product.satuanKg ?? 1));
-                  }}
-                  className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
-                  className="px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ),
-          },
-        ]}
-        data={currentItems}
-        rowKey={(p: any) => p.id}
-        loading={isLoading}
-        total={filtered.length}
-        page={currentPage}
-        rowsPerPage={itemsPerPage}
-        onPageChange={setCurrentPage}
-        emptyMessage="Tidak ada data"
+      <ProdukTable
+        currentItems={currentItems}
+        isLoading={isLoading}
+        totalItems={filtered.length}
+        currentPage={currentPage}
+        itemsPerPage={itemsPerPage}
+        setCurrentPage={setCurrentPage}
+        shortId={shortId}
+        handleCopyId={handleCopyId}
+        setViewProduct={setViewProduct}
+        setEditProduct={setEditProduct}
+        setEditName={setEditName}
+        setEditSatuan={setEditSatuan}
+        handleDelete={handleDelete}
       />
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setIsModalOpen(false)}
-          ></div>
+      <ProdukFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        newProductName={newProductName}
+        setNewProductName={setNewProductName}
+        newProductSatuanKg={newProductSatuanKg}
+        setNewProductSatuanKg={setNewProductSatuanKg}
+        handleSubmit={handleSubmit}
+      />
 
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-900 dark:bg-indigo-500/20 text-white dark:text-indigo-400 rounded-xl">
-                  <Archive size={18} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                  Tambah Product
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-400 hover:text-red-500"
-              >
-                <X size={20} />
-              </button>
-            </div>
+      <ProdukDetailModal
+        viewProduct={viewProduct}
+        onClose={() => setViewProduct(null)}
+      />
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Nama Produk
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  placeholder="Contoh: PUNOKAWAN 5 KG"
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  className="w-full px-4 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm font-semibold shadow-sm dark:text-slate-200"
-                />
-                <p className="mt-2 text-[11px] text-gray-400 italic font-medium">
-                  * Gunakan nama SKU resmi (satu kolom &apos;Produk&apos; untuk
-                  bulk) *
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Satuan KG (Kg per pcs)
-                </label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  min="0"
-                  placeholder="Misal: 5"
-                  value={newProductSatuanKg}
-                  onChange={(e) => setNewProductSatuanKg(e.target.value)}
-                  className="w-full px-4 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm font-semibold shadow-sm dark:text-slate-200"
-                />
-              </div>
+      <ProdukEditModal
+        editProduct={editProduct}
+        onClose={() => setEditProduct(null)}
+        editName={editName}
+        setEditName={setEditName}
+        editSatuan={editSatuan}
+        setEditSatuan={setEditSatuan}
+        handleUpdate={handleUpdate}
+        saving={saving}
+      />
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-4 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 rounded-2xl font-bold hover:bg-gray-50 dark:hover:bg-slate-800 transition-all text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all shadow-lg shadow-slate-200 dark:shadow-none active:scale-95 text-sm"
-                >
-                  Save Product
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {viewProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setViewProduct(null)}
-          ></div>
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-900 dark:bg-indigo-500/20 text-white dark:text-indigo-400 rounded-xl">
-                  <Archive size={18} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                  Detail Produk
-                </h3>
-              </div>
-              <button
-                onClick={() => setViewProduct(null)}
-                className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-400 hover:text-red-500"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="text-xs text-slate-400 font-bold uppercase">
-                ID
-              </div>
-              <div className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                {viewProduct.id}
-              </div>
-              <div className="text-xs text-slate-400 font-bold uppercase">
-                Nama Produk
-              </div>
-              <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                {viewProduct.name}
-              </div>
-              <div className="text-xs text-slate-400 font-bold uppercase">
-                Satuan (Kg/pcs)
-              </div>
-              <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                {viewProduct.satuanKg ?? ""}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setEditProduct(null)}
-          ></div>
-          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-900 dark:bg-indigo-500/20 text-white dark:text-indigo-400 rounded-xl">
-                  <Archive size={18} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                  Edit Produk
-                </h3>
-              </div>
-              <button
-                onClick={() => setEditProduct(null)}
-                className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-400 hover:text-red-500"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleUpdate} className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Nama Produk
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-4 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm font-semibold shadow-sm dark:text-slate-200"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Satuan KG (Kg per pcs)
-                </label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  min="0"
-                  value={editSatuan}
-                  onChange={(e) => setEditSatuan(e.target.value)}
-                  className="w-full px-4 py-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 dark:focus:ring-indigo-500/20 dark:focus:border-indigo-500 transition-all text-sm font-semibold shadow-sm dark:text-slate-200"
-                />
-              </div>
-              <div className="flex gap-3">
-                <StatefulButton
-                  variant="cancel"
-                  onClick={() => {
-                    setEditProduct(null);
-                  }}
-                  className="flex-1"
-                >
-                  Batal
-                </StatefulButton>
-                <StatefulButton
-                  variant="submit"
-                  onClick={async () => {
-                    if (saving) return;
-                    await handleUpdate(new Event("submit") as any);
-                  }}
-                  className="flex-1"
-                >
-                  Simpan Perubahan
-                </StatefulButton>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ProdukBulkConfirmModal
+        bulkDialog={bulkDialog}
+        setBulkDialog={setBulkDialog}
+        executeProdukBulk={executeProdukBulk}
+      />
     </div>
   );
 }

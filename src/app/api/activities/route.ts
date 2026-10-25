@@ -11,49 +11,76 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Auto-cleanup: Hapus log yang umurnya lebih dari 7 hari (memasuki hari ke-8)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    // Fire and forget (or await if you want to ensure it finishes before query)
-    await prisma.auditLog.deleteMany({
-      where: {
-        createdAt: { lt: sevenDaysAgo }
-      }
-    });
-
-    // Ambil 15 aktivitas terbaru
+    // Ambil 15 aktivitas terbaru untuk entitas operasional bisnis
+    // (Mengecualikan log internal keamanan seperti RateLimit dan RevokedSession)
     const activities = await prisma.auditLog.findMany({
       where: {
         entity: {
-          in: ["PurchaseOrder", "Reconcile", "DataRetur", "CreditLimitBatch"]
+          in: ["PurchaseOrder", "Reconcile", "DataRetur", "CreditLimitBatch"],
         },
-        action: "CREATE"
+        action: "CREATE",
       },
       orderBy: {
-        createdAt: "desc"
+        createdAt: "desc",
       },
-      take: 15
+      take: 15,
     });
 
-    const enrichedActivities = await Promise.all(activities.map(async (act) => {
-      let refNumber = null;
+    if (activities.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
+
+    // Batch resolve reference numbers to eliminate N+1 queries
+    const poIds = activities
+      .filter((a) => a.entity === "PurchaseOrder")
+      .map((a) => a.entityId);
+    const rekonIds = activities
+      .filter((a) => a.entity === "Reconcile")
+      .map((a) => a.entityId);
+    const returIds = activities
+      .filter((a) => a.entity === "DataRetur" && !a.entityId.startsWith("batch-"))
+      .map((a) => a.entityId);
+
+    const [pos, rekons, returs] = await Promise.all([
+      poIds.length > 0
+        ? prisma.purchaseOrder.findMany({
+            where: { id: { in: poIds } },
+            select: { id: true, noPo: true },
+          })
+        : [],
+      rekonIds.length > 0
+        ? prisma.reconcile.findMany({
+            where: { id: { in: rekonIds } },
+            select: { id: true, noRekonsiliasi: true },
+          })
+        : [],
+      returIds.length > 0
+        ? prisma.dataRetur.findMany({
+            where: { id: { in: returIds } },
+            select: { id: true, rtvCn: true },
+          })
+        : [],
+    ]);
+
+    const poMap = new Map(pos.map((p) => [p.id, p.noPo]));
+    const rekonMap = new Map(rekons.map((r) => [r.id, r.noRekonsiliasi]));
+    const returMap = new Map(returs.map((r) => [r.id, r.rtvCn]));
+
+    const enrichedActivities = activities.map((act) => {
+      let refNumber: string | null = null;
       if (act.entity === "PurchaseOrder") {
-        const po = await prisma.purchaseOrder.findUnique({ where: { id: act.entityId }, select: { noPo: true } });
-        refNumber = po?.noPo;
+        refNumber = poMap.get(act.entityId) || (act.newData as any)?.noPo || null;
       } else if (act.entity === "Reconcile") {
-        const rekon = await prisma.reconcile.findUnique({ where: { id: act.entityId }, select: { noRekonsiliasi: true } });
-        refNumber = rekon?.noRekonsiliasi;
-      } else if (act.entity === "DataRetur" && !act.entityId.startsWith("batch-")) {
-        const retur = await prisma.dataRetur.findUnique({ where: { id: act.entityId }, select: { rtvCn: true } });
-        refNumber = retur?.rtvCn;
+        refNumber = rekonMap.get(act.entityId) || (act.newData as any)?.noRekonsiliasi || null;
+      } else if (act.entity === "DataRetur") {
+        refNumber = returMap.get(act.entityId) || (act.newData as any)?.rtvCn || null;
       }
-      
+
       return {
         ...act,
-        refNumber
+        refNumber,
       };
-    }));
+    });
 
     return NextResponse.json({ data: enrichedActivities });
   } catch (error: any) {

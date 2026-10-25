@@ -12,8 +12,8 @@ function RekonContent() {
   if (calc.isLoading) return <div className="p-24 text-center font-black text-slate-200 uppercase tracking-widest italic animate-pulse">Synchronizing Data...</div>;
 
   return (
-    <div className="max-w-[1850px] mx-auto p-4 sm:p-8 lg:p-12 bg-[#f8fafc] dark:bg-transparent min-h-screen font-sans w-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 sm:mb-16 gap-4 px-2 sm:px-4">
+    <div className="max-w-[1850px] mx-auto p-2 sm:p-4 lg:p-6 bg-[#f8fafc] dark:bg-transparent min-h-screen font-sans w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-10 gap-4 px-2 sm:px-4">
         <div className="flex items-center gap-4 w-full sm:w-auto">
            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#5c56f6] rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-indigo-200 dark:shadow-none shrink-0">
               <LayoutGrid size={28} className="sm:w-[32px] sm:h-[32px]" strokeWidth={2.5} />
@@ -27,7 +27,7 @@ function RekonContent() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-12 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
         <RekonForm calc={calc} />
         <RekonSummary calc={calc} />
       </div>

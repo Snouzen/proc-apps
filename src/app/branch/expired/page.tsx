@@ -42,6 +42,8 @@ export default function ExpiredCalendarPage() {
     inlineDateTo,
     setInlineDateTo,
     filteredDetailPOs,
+    fetchError,
+    fetchPOData,
   } = useExpiredCalendar();
 
   if (isLoading || role === null) {
@@ -56,7 +58,7 @@ export default function ExpiredCalendarPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6 animate-in fade-in duration-700">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -64,16 +66,31 @@ export default function ExpiredCalendarPage() {
             <div className="p-2.5 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl shadow-lg shadow-rose-500/20">
               <AlertTriangle size={22} className="text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
               Expired Calendar
             </h1>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 text-sm ml-[52px]">
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm ml-0 sm:ml-[52px]">
             Visualisasi tanggal kadaluarsa (expired) PO untuk monitoring limit
             waktu.
           </p>
         </div>
       </div>
+
+      {fetchError && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-2xl text-sm flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚠️</span>
+            <span>{fetchError}</span>
+          </div>
+          <button
+            onClick={() => fetchPOData()}
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shrink-0"
+          >
+            Muat Ulang
+          </button>
+        </div>
+      )}
 
       <ExpiredFilters
         role={role}

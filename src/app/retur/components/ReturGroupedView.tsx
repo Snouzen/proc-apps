@@ -1,3 +1,4 @@
+import PusatOnly from "@/components/PusatOnly";
 import { Building2, Trash2, ChevronRight } from "lucide-react";
 
 interface ReturGroupedViewProps {
@@ -53,7 +54,7 @@ export function ReturGroupedView({
               </div>
               <div className="flex items-center gap-2">
                 {role === "pusat" && (
-                  <button
+                  <PusatOnly><button
                     suppressHydrationWarning
                     onClick={(e) => {
                       e.stopPropagation();
@@ -63,7 +64,7 @@ export function ReturGroupedView({
                     title="Hapus Seluruh Data Peritel"
                   >
                     <Trash2 size={18} />
-                  </button>
+                  </button></PusatOnly>
                 )}
                 <div className="text-slate-300 dark:text-slate-600 group-hover:translate-x-1 group-hover:text-indigo-400 transition-all">
                   <ChevronRight size={20} />

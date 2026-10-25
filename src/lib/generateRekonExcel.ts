@@ -1,9 +1,11 @@
+import { prepareRekonExport } from "./rekonExportData";
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
 export const generateRekonExcel = (items: any[], filterInfo: any) => {
   try {
+    items = prepareRekonExport(items);
     const wb = XLSX.utils.book_new();
 
     const wsData: any[][] = [];
@@ -15,6 +17,7 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
     if (filterInfo?.startDate) filterParts.push(`Dari: ${format(new Date(filterInfo.startDate), "dd MMM yyyy", { locale: id })}`);
     if (filterInfo?.endDate) filterParts.push(`Sampai: ${format(new Date(filterInfo.endDate), "dd MMM yyyy", { locale: id })}`);
     if (filterInfo?.search) filterParts.push(`Pencarian: "${filterInfo.search}"`);
+    if (filterInfo?.status && filterInfo.status !== "all") filterParts.push(`Status: ${filterInfo.status}`);
     const filterText = filterParts.length > 0 ? filterParts.join(" | ") : "Semua Data";
     
     wsData.push([`Filter: ${filterText}`]);
@@ -146,7 +149,7 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
           const pcs = typeof rtv === "object" ? (rtv.qty || rtv.qtyReturn || 0) : 0;
           
           const relatedInv = (item.invoices || []).find((inv: any) => inv.noInvoice === refInv);
-          const unitProduksi = relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
+          const unitProduksi = rtv.pembebananRetur || relatedInv?.siteArea || relatedInv?.unitProduksi || "-";
           
           wsData.push([
             i + 1,
@@ -371,6 +374,246 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
     return true;
   } catch (error) {
     console.error("Generate Excel Error:", error);
+    throw error;
+  }
+};
+
+export const generateAllRekonExcel = (items: any[], _filterInfo?: any) => {
+  try {
+    const wb = XLSX.utils.book_new();
+
+    // =========================================================================
+    // SHEET 1: Seluruh Data Row Rekon
+    // =========================================================================
+    const ws1Data: any[][] = [
+      [
+        "No Rekon",
+        "Ritel",
+        "Bank Statement",
+        "Invoice",
+        "RTV",
+        "Promo",
+        "Admin Fee",
+        "Net Due",
+        "Remarks",
+        "Tgl Input",
+        "Tgl Pembayaran",
+      ],
+    ];
+
+    items.forEach((item) => {
+      ws1Data.push([
+        item.noRekonsiliasi || "DRAFT",
+        item.RitelModern?.namaPt || "-",
+        Number(item.bankStatement || 0),
+        Number(item.totalInvoices || 0),
+        Number(item.totalRtvs || 0),
+        item.totalPromo ? Number(item.totalPromo) : "",
+        item.biayaAdmin ? Number(item.biayaAdmin) : "",
+        Number(item.nominal || 0),
+        item.remarks || "",
+        item.createdAt ? format(new Date(item.createdAt), "yyyy-MM-dd") : "",
+        item.tglBayar ? format(new Date(item.tglBayar), "yyyy-MM-dd") : "",
+      ]);
+    });
+
+    const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
+    ws1["!cols"] = [
+      { wch: 18 }, // A - No Rekon
+      { wch: 30 }, // B - Ritel
+      { wch: 18 }, // C - Bank Statement
+      { wch: 18 }, // D - Invoice
+      { wch: 18 }, // E - RTV
+      { wch: 15 }, // F - Promo
+      { wch: 15 }, // G - Admin Fee
+      { wch: 18 }, // H - Net Due
+      { wch: 25 }, // I - Remarks
+      { wch: 15 }, // J - Tgl Input
+      { wch: 16 }, // K - Tgl Pembayaran
+    ];
+    XLSX.utils.book_append_sheet(wb, ws1, "Sheet1");
+
+    // =========================================================================
+    // SHEET 2: Detail Masing-Masing Rekon
+    // =========================================================================
+    const ws2Data: any[][] = [
+      [
+        "No",
+        "No Rekon",
+        "Detail Bank Statement",
+        "",
+        "Detail Invoice",
+        "",
+        "",
+        "",
+        "Detail RTV",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "promo",
+        "adminfee",
+        "netdue",
+      ],
+      [
+        "",
+        "",
+        "Keterangan",
+        "nominal",
+        "no invoice",
+        "unit produksi",
+        "produk",
+        "nominal",
+        "no rtv",
+        "pcs",
+        "ref invoice",
+        "unit produksi",
+        "lokasi barang",
+        "tujuan",
+        "produk",
+        "rp/kg",
+        "nominal",
+        "",
+        "",
+        "",
+      ],
+    ];
+
+    items.forEach((item, idx) => {
+      const bsList =
+        Array.isArray(item.bankStatements) && item.bankStatements.length > 0
+          ? item.bankStatements
+          : item.bankStatement
+            ? [{ desc: "-", nominal: item.bankStatement }]
+            : [];
+      const invList = item.detailedInvoices ?? item.invoices ?? [];
+      const rtvList = item.detailedRtvs ?? item.rtvs ?? [];
+      const maxRows = Math.max(1, bsList.length, invList.length, rtvList.length);
+
+      for (let i = 0; i < maxRows; i++) {
+        const bs = bsList[i];
+        const inv = invList[i];
+        const rtv = rtvList[i];
+
+        const bsDesc = bs ? bs.desc || "-" : "";
+        const bsNom = bs ? Number(bs.nominal || 0) : "";
+
+        const invNo = inv ? inv.noInvoice || "-" : "";
+        const invUnit = inv
+          ? inv.siteArea && inv.siteArea !== "-"
+            ? inv.siteArea
+            : inv.unitProduksi || "-"
+          : "";
+        const invProd = inv ? inv.produk || "-" : "";
+        const invNom = inv ? Number(inv.nominal ?? inv.total ?? 0) : "";
+
+        let rtvNo: any = "";
+        let rtvPcs: any = "";
+        let rtvRefInv: any = "";
+        let rtvUnit: any = "";
+        let rtvLokasi: any = "";
+        let rtvTujuan: any = "";
+        let rtvProd: any = "";
+        let rtvRpKg: any = "";
+        let rtvNom: any = "";
+
+        if (rtv) {
+          rtvNo = typeof rtv === "string" ? rtv : rtv.noRtv || "-";
+          rtvPcs =
+            typeof rtv === "object"
+              ? Number(rtv.qty ?? rtv.qtyReturn ?? 0)
+              : 0;
+          rtvRefInv = typeof rtv === "object" ? rtv.refInvoice || "-" : "-";
+          const relatedInv = invList.find(
+            (x: any) => x.noInvoice && x.noInvoice === rtvRefInv
+          );
+          rtvUnit =
+            typeof rtv === "object"
+              ? rtv.pembebananRetur && rtv.pembebananRetur !== "-"
+                ? rtv.pembebananRetur
+                : relatedInv?.siteArea && relatedInv.siteArea !== "-"
+                  ? relatedInv.siteArea
+                  : relatedInv?.unitProduksi || "-"
+              : "-";
+          rtvLokasi = typeof rtv === "object" ? rtv.lokasiBarang || "-" : "-";
+          rtvTujuan = typeof rtv === "object" ? rtv.tujuan || "-" : "-";
+          rtvProd = typeof rtv === "object" ? rtv.produk || "-" : "-";
+          rtvRpKg = typeof rtv === "object" ? Number(rtv.rpKg || 0) : 0;
+          rtvNom =
+            typeof rtv === "object"
+              ? Number(rtv.nominal ?? rtv.total ?? 0)
+              : 0;
+        }
+
+        ws2Data.push([
+          i === 0 ? idx + 1 : "",
+          i === 0 ? item.noRekonsiliasi || "DRAFT" : "",
+          bsDesc,
+          bsNom,
+          invNo,
+          invUnit,
+          invProd,
+          invNom,
+          rtvNo,
+          rtvPcs,
+          rtvRefInv,
+          rtvUnit,
+          rtvLokasi,
+          rtvTujuan,
+          rtvProd,
+          rtvRpKg,
+          rtvNom,
+          i === 0 ? (item.totalPromo ? Number(item.totalPromo) : "") : "",
+          i === 0 ? (item.biayaAdmin ? Number(item.biayaAdmin) : "") : "",
+          i === 0 ? Number(item.nominal || 0) : "",
+        ]);
+      }
+    });
+
+    const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
+    ws2["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },   // No
+      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },   // No Rekon
+      { s: { r: 0, c: 2 }, e: { r: 0, c: 3 } },   // Detail Bank Statement
+      { s: { r: 0, c: 4 }, e: { r: 0, c: 7 } },   // Detail Invoice
+      { s: { r: 0, c: 8 }, e: { r: 0, c: 16 } },  // Detail RTV
+      { s: { r: 0, c: 17 }, e: { r: 1, c: 17 } }, // promo
+      { s: { r: 0, c: 18 }, e: { r: 1, c: 18 } }, // adminfee
+      { s: { r: 0, c: 19 }, e: { r: 1, c: 19 } }, // netdue
+    ];
+    ws2["!cols"] = [
+      { wch: 6 },  // A - No
+      { wch: 18 }, // B - No Rekon
+      { wch: 22 }, // C - BS Keterangan
+      { wch: 16 }, // D - BS nominal
+      { wch: 25 }, // E - no invoice
+      { wch: 18 }, // F - unit produksi
+      { wch: 22 }, // G - produk
+      { wch: 16 }, // H - nominal invoice
+      { wch: 18 }, // I - no rtv
+      { wch: 8 },  // J - pcs
+      { wch: 22 }, // K - ref invoice
+      { wch: 18 }, // L - unit produksi rtv
+      { wch: 18 }, // M - lokasi barang
+      { wch: 32 }, // N - tujuan
+      { wch: 22 }, // O - produk rtv
+      { wch: 12 }, // P - rp/kg
+      { wch: 16 }, // Q - nominal rtv
+      { wch: 15 }, // R - promo
+      { wch: 15 }, // S - adminfee
+      { wch: 16 }, // T - netdue
+    ];
+    XLSX.utils.book_append_sheet(wb, ws2, "Sheet2");
+
+    const fileName = `Rekon_Export_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    return true;
+  } catch (error) {
+    console.error("Generate All Rekon Excel Error:", error);
     throw error;
   }
 };

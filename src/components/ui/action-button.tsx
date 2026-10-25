@@ -1,4 +1,6 @@
+"use client";
 import React from "react";
+import * as Tooltip from "@radix-ui/react-tooltip";
 
 export function StandardTooltip({ 
   children, 
@@ -9,13 +11,17 @@ export function StandardTooltip({
 }) {
   if (!content || content === "-") return <>{children}</>;
   return (
-    <div className="group/tooltip relative inline-block">
-      {children}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[9px] font-black uppercase tracking-widest rounded-lg opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 whitespace-nowrap pointer-events-none shadow-xl border border-slate-700">
-        {content}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800" />
-      </div>
-    </div>
+    <Tooltip.Provider delayDuration={150}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild><span className="inline-flex">{children}</span></Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content side="bottom" sideOffset={6} collisionPadding={12}
+            className="z-[300] max-w-[calc(100vw-24px)] rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-white shadow-xl pointer-events-none">
+            {content}<Tooltip.Arrow className="fill-slate-800" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 }
 

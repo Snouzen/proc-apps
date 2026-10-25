@@ -175,7 +175,8 @@ export default function DateInputHybrid({
             suppressHydrationWarning
             disabled={disabled}
             className={cn(
-              "w-full pl-3 pr-9 border rounded-lg outline-none transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400 font-bold",
+              "w-full pl-2.5 sm:pl-3 border rounded-lg outline-none transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400 font-bold",
+              inputValue ? "pr-14" : "pr-8",
               inputClassName || "py-2 text-sm",
               isError 
                 ? "border-rose-500 focus:ring-2 focus:ring-rose-500/20" 
@@ -207,9 +208,11 @@ export default function DateInputHybrid({
 
         <Popover.Portal>
           <Popover.Content
-            className="z-[9999] w-64 p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-600 rounded-xl shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
+            className="z-[9999] w-[calc(100vw-32px)] sm:w-64 max-w-[280px] p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-600 rounded-xl shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
             sideOffset={4}
             align="end"
+            collisionPadding={12}
+            avoidCollisions={true}
           >
             <div className="flex justify-between items-center mb-4">
               <button

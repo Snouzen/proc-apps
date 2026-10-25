@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 export interface Company {
   id: string;
   namaPt: string;
+  inisial?: string | null;
 }
 
 export interface Invoice {
@@ -78,6 +79,7 @@ export function useRekonCalc() {
   const [rincianBayarUrl, setRincianBayarUrl] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [selectedInisial, setSelectedInisial] = useState<string>("");
   const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([]);
   const [selectedRtvs, setSelectedRtvs] = useState<Rtv[]>([]);
   const [selectedPromos, setSelectedPromos] = useState<Promo[]>([]);
@@ -86,6 +88,7 @@ export function useRekonCalc() {
   const [remarks, setRemarks] = useState<string>("");
 
   const [companySearch, setCompanySearch] = useState("");
+  const [inisialSearch, setInisialSearch] = useState("");
   const [invSearch, setInvSearch] = useState("");
   const [rtvSearch, setRtvSearch] = useState("");
   const [promoSearch, setPromoSearch] = useState("");
@@ -94,6 +97,7 @@ export function useRekonCalc() {
   const [rekonNo, setRekonNo] = useState<string | null>(null);
 
   const [isCompanyOpen, setIsCompanyOpen] = useState(false);
+  const [isInisialOpen, setIsInisialOpen] = useState(false);
   const [isPromoOpen, setIsPromoOpen] = useState(false);
   const [isInvOpen, setIsInvOpen] = useState(false);
   const [isRtvOpen, setIsRtvOpen] = useState(false);
@@ -108,6 +112,33 @@ export function useRekonCalc() {
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const normalizeInisialLabel = (val?: string | null) => {
+    const raw = String(val || "").trim();
+    if (!raw || raw === "—" || raw === "-") return "-";
+    return raw;
+  };
+
+  const availableInisials = useMemo(() => {
+    if (!selectedCompany?.namaPt) return [];
+    const targetPt = selectedCompany.namaPt.trim().toLowerCase();
+    const matchingRows = masterCompanies.filter(
+      (c: any) => String(c.namaPt || "").trim().toLowerCase() === targetPt
+    );
+    const map = new Map<string, { inisial: string; ritelId: string; namaPt: string }>();
+    for (const row of matchingRows) {
+      const displayInisial = normalizeInisialLabel(row.inisial);
+      const key = displayInisial.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          inisial: displayInisial,
+          ritelId: row.id,
+          namaPt: row.namaPt,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [masterCompanies, selectedCompany?.namaPt]);
+
   useEffect(() => {
     if (editId) {
       const loadDraft = async () => {
@@ -118,8 +149,10 @@ export function useRekonCalc() {
           if (res.ok && json.data) {
             const d = json.data;
             if (d.RitelModern) {
+              const initInisial = normalizeInisialLabel(d.RitelModern.inisial);
               setSelectedCompany(d.RitelModern);
-              fetchCompanyData(d.RitelModern.namaPt, d.RitelModern.id);
+              setSelectedInisial(initInisial);
+              fetchCompanyData(d.RitelModern.namaPt, d.RitelModern.id, initInisial);
             }
             if (Array.isArray(d.bankStatements) && d.bankStatements.length > 0) {
               setBankStatementsList(d.bankStatements);
@@ -164,7 +197,7 @@ export function useRekonCalc() {
     fetchCompanies();
   }, []);
 
-  const fetchCompanyData = async (companyName: string, ritelId?: string) => {
+  const fetchCompanyData = async (companyName: string, ritelId?: string, inisial?: string) => {
     try {
       setIsDataLoading(true);
       setMasterInvoicesList([]);
@@ -173,6 +206,7 @@ export function useRekonCalc() {
       const lookupUrl = new URL(`/api/rekon/lookup`, window.location.origin);
       lookupUrl.searchParams.set("companyName", companyName);
       if (ritelId) lookupUrl.searchParams.set("ritelId", ritelId);
+      if (inisial) lookupUrl.searchParams.set("inisial", inisial);
       if (editId) lookupUrl.searchParams.set("editId", editId);
       
       const res = await fetch(lookupUrl.toString());
@@ -192,9 +226,66 @@ export function useRekonCalc() {
     }
   };
 
+  const handleSelectCompany = (c: any) => {
+    setCompanySearch("");
+    setInisialSearch("");
+    setIsCompanyOpen(false);
+    setSelectedInvoices([]);
+    setSelectedRtvs([]);
+    setSelectedPromos([]);
+    setMasterInvoicesList([]);
+    setMasterRtvsList([]);
+    setMasterPromos([]);
+
+    const targetPt = String(c.namaPt || "").trim().toLowerCase();
+    const matchingRows = masterCompanies.filter(
+      (row: any) => String(row.namaPt || "").trim().toLowerCase() === targetPt
+    );
+    const inisialMap = new Map<string, { inisial: string; ritelId: string; namaPt: string }>();
+    for (const row of matchingRows) {
+      const displayInisial = normalizeInisialLabel(row.inisial);
+      const key = displayInisial.toLowerCase();
+      if (!inisialMap.has(key)) {
+        inisialMap.set(key, {
+          inisial: displayInisial,
+          ritelId: row.id,
+          namaPt: row.namaPt,
+        });
+      }
+    }
+    const uniqueInisials = Array.from(inisialMap.values());
+
+    if (uniqueInisials.length === 1) {
+      const only = uniqueInisials[0];
+      setSelectedCompany({ id: only.ritelId, namaPt: only.namaPt, inisial: only.inisial });
+      setSelectedInisial(only.inisial);
+      fetchCompanyData(only.namaPt, only.ritelId, only.inisial);
+    } else {
+      setSelectedCompany({ id: c.id, namaPt: c.namaPt, inisial: "" });
+      setSelectedInisial("");
+    }
+  };
+
+  const handleSelectInisial = (opt: { inisial: string; ritelId: string; namaPt: string }) => {
+    setInisialSearch("");
+    setIsInisialOpen(false);
+    setSelectedInisial(opt.inisial);
+    setSelectedCompany({ id: opt.ritelId, namaPt: opt.namaPt, inisial: opt.inisial });
+    setSelectedInvoices([]);
+    setSelectedRtvs([]);
+    setSelectedPromos([]);
+    fetchCompanyData(opt.namaPt, opt.ritelId, opt.inisial);
+  };
+
   const handleSelectInvoice = async (invoiceNo: string) => {
     try {
-      const res = await fetch(`/api/rekon/lookup?invoiceNo=${encodeURIComponent(invoiceNo)}&companyName=${encodeURIComponent(selectedCompany?.namaPt || "")}&ritelId=${encodeURIComponent(selectedCompany?.id || "")}`);
+      const url = new URL(`/api/rekon/lookup`, window.location.origin);
+      url.searchParams.set("invoiceNo", invoiceNo);
+      url.searchParams.set("companyName", selectedCompany?.namaPt || "");
+      url.searchParams.set("ritelId", selectedCompany?.id || "");
+      if (selectedInisial) url.searchParams.set("inisial", selectedInisial);
+
+      const res = await fetch(url.toString());
       const json = await res.json();
       const pos = json.data || [];
       if (pos.length > 0) {
@@ -234,6 +325,7 @@ export function useRekonCalc() {
       if (rtvId) url.searchParams.set("rtvId", rtvId);
       url.searchParams.set("companyName", selectedCompany?.namaPt || "");
       url.searchParams.set("ritelId", selectedCompany?.id || "");
+      if (selectedInisial) url.searchParams.set("inisial", selectedInisial);
 
       const res = await fetch(url.toString());
       const json = await res.json();
@@ -333,6 +425,34 @@ export function useRekonCalc() {
       return;
     }
 
+    if (availableInisials.length > 0 && !selectedInisial) {
+      Swal.fire({ icon: "warning", title: "Oops!", text: "Pilih inisial ritel terlebih dahulu!", customClass: { popup: "rounded-[32px] font-sans" } });
+      return;
+    }
+
+    if (status === "final" && selectedRtvs.length > 0) {
+      const missingLokasiRtvs = selectedRtvs.filter(
+        (rtv) => !rtv.lokasiBarang || rtv.lokasiBarang.trim() === "" || rtv.lokasiBarang.trim() === "-"
+      );
+      if (missingLokasiRtvs.length > 0) {
+        const rtvListStr = Array.from(new Set(missingLokasiRtvs.map((r) => r.noRtv || r.id))).join(", ");
+        const { isConfirmed: saveAsDraftInstead } = await Swal.fire({
+          icon: "warning",
+          title: "Lokasi Barang RTV Belum Lengkap",
+          html: `Terdapat RTV yang belum memiliki data <b>Lokasi Barang</b>:<br/><br/><b style="color:#e11d48">${rtvListStr}</b><br/><br/>Rekonsiliasi belum dapat di-<b>Submit Final</b>. Silakan simpan sebagai <b>Draft</b> terlebih dahulu hingga lokasi barang dilengkapi.`,
+          showCancelButton: true,
+          confirmButtonText: "Simpan sebagai Draft",
+          cancelButtonText: "Tutup",
+          confirmButtonColor: "#10b981",
+          customClass: { popup: "rounded-[32px] font-sans", confirmButton: "rounded-xl px-6 py-3", cancelButton: "rounded-xl px-6 py-3" }
+        });
+        if (saveAsDraftInstead) {
+          return handleSaveRekon("draft");
+        }
+        return;
+      }
+    }
+
     const { isConfirmed } = await Swal.fire({
       title: status === "draft" ? "Simpan Draft?" : "Simpan Rekonsiliasi?",
       text: status === "draft" 
@@ -374,6 +494,8 @@ export function useRekonCalc() {
 
       const payload = {
         ritelId: selectedCompany.id,
+        companyName: selectedCompany.namaPt,
+        inisial: selectedInisial || undefined,
         bankStatement: bankStatement,
         bankStatements: bankStatementsList.filter(b => b.desc || b.nominal).map(b => ({ desc: b.desc, nominal: b.nominal })),
         biayaAdmin: adminFee,
@@ -432,18 +554,23 @@ export function useRekonCalc() {
     buktiBayarFile, setBuktiBayarFile,
     rincianBayarUrl, setRincianBayarUrl,
     selectedCompany, setSelectedCompany,
+    selectedInisial, setSelectedInisial,
+    availableInisials,
+    handleSelectCompany, handleSelectInisial,
     selectedInvoices, setSelectedInvoices,
     selectedRtvs, setSelectedRtvs,
     selectedPromos, setSelectedPromos,
     adminFee, setAdminFee,
     notesList, setNotesList,
     companySearch, setCompanySearch,
+    inisialSearch, setInisialSearch,
     invSearch, setInvSearch,
     rtvSearch, setRtvSearch,
     promoSearch, setPromoSearch,
     refInvoiceSearch, setRefInvoiceSearch,
     isLoading, rekonNo,
     isCompanyOpen, setIsCompanyOpen,
+    isInisialOpen, setIsInisialOpen,
     isPromoOpen, setIsPromoOpen,
     isInvOpen, setIsInvOpen,
     isRtvOpen, setIsRtvOpen,

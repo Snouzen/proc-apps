@@ -1,15 +1,35 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSessionWithRole } from "@/lib/auth";
+import { hasPermission } from "@/lib/accessControl";
 import { canonicalProductName, dedupeKey } from "@/lib/text";
 import { ProductCreateSchema, ProductUpdateSchema } from "@/lib/schemas/master-data";
 import { getErrorMessage } from "@/lib/utils/error";
 
-
-
 export async function GET(request: Request) {
   try {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const safeRole = auth.safeRole || auth.role;
+    const canView =
+      (await hasPermission(safeRole, "m_prod_view")) ||
+      (await hasPermission(safeRole, "po_create")) ||
+      (await hasPermission(safeRole, "po_edit")) ||
+      (await hasPermission(safeRole, "po_view")) ||
+      (await hasPermission(safeRole, "retur_create")) ||
+      (await hasPermission(safeRole, "retur_edit")) ||
+      (await hasPermission(safeRole, "retur_view"));
+
+    if (!canView) {
+      return NextResponse.json(
+        { error: "Forbidden: Akun Anda tidak memiliki izin melihat data produk." },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const limitRaw = searchParams.get("limit");
     const offsetRaw = searchParams.get("offset");
@@ -71,9 +91,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession(request);
-    if (!session) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const safeRole = auth.safeRole || auth.role;
+    const canCreate = await hasPermission(safeRole, "m_prod_add");
+    if (!canCreate) {
+      return NextResponse.json({ error: "Forbidden: Akun Anda tidak memiliki izin menambah produk (m_prod_add)." }, { status: 403 });
     }
     const body = await request.json();
     const parsed = ProductCreateSchema.safeParse(body);
@@ -138,26 +163,28 @@ export async function POST(request: Request) {
 }
 export async function PUT(request: Request) {
   try {
-    const session = await getSession(request);
-    if (!session) {
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const safeRole = auth.safeRole || auth.role;
+    const canEdit = await hasPermission(safeRole, "m_prod_edit");
+    if (!canEdit) {
+      return NextResponse.json({ error: "Forbidden: Akun Anda tidak memiliki izin mengubah produk (m_prod_edit)." }, { status: 403 });
+    }
+
     const body = await request.json();
-    const id: string | undefined = body?.id;
-    const nameRaw: string | undefined = body?.name;
-    const satuanKgRaw = body?.satuanKg;
-    const satuanKg =
-      satuanKgRaw === undefined || satuanKgRaw === null
-        ? undefined
-        : Number(satuanKgRaw);
-    const name =
-      nameRaw === undefined ? undefined : canonicalProductName(nameRaw);
-    if (!id && !name) {
+    const parsed = ProductUpdateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Wajib menyertakan id atau name" },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 },
       );
     }
+
+    const { id, name: nameRaw, satuanKg } = parsed.data;
+    const name = nameRaw ? canonicalProductName(nameRaw) : undefined;
+
     if (name && name.trim()) {
       const key = dedupeKey(name);
       const token = name.split(/\s+/).filter(Boolean)[0] || name;
@@ -183,7 +210,7 @@ export async function PUT(request: Request) {
       where,
       data: {
         ...(name ? { name } : {}),
-        ...(Number.isFinite(satuanKg as number)
+        ...(satuanKg !== undefined && Number.isFinite(satuanKg as number)
           ? { satuanKg: satuanKg as number }
           : {}),
         updatedAt: new Date(),
@@ -202,10 +229,20 @@ export async function PUT(request: Request) {
 // [REST] DELETE reads id from URL searchParams, not body
 export async function DELETE(request: Request) {
   try {
-    const session = await getSession(request);
-    if (!session) {
+    const deletionAuth = await getSessionWithRole(request);
+    if (!deletionAuth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if ((deletionAuth.safeRole || deletionAuth.role) !== "pusat") return NextResponse.json({ error: "Hanya Pusat yang boleh menghapus data" }, { status: 403 });
+
+    const auth = await getSessionWithRole(request);
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const safeRole = auth.safeRole || auth.role;
+    const canDelete = await hasPermission(safeRole, "m_prod_delete");
+    if (!canDelete) {
+      return NextResponse.json({ error: "Forbidden: Akun Anda tidak memiliki izin menghapus produk (m_prod_delete)." }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id") || undefined;
     if (!id) {

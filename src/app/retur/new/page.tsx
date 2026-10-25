@@ -69,25 +69,25 @@ function NewReturPageContent() {
     );
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
-      <div className="sticky top-0 z-[50] bg-white/70 dark:bg-transparent border-b border-slate-100 dark:border-transparent shadow-sm dark:shadow-none transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
+    <div className="min-h-screen">
+      <div className="sticky top-0 z-[50] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 sm:py-6">
+          <div className="flex items-center justify-between gap-3 sm:gap-6">
+            <div className="flex items-center gap-3 sm:gap-5">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm text-slate-500 dark:text-slate-400 cursor-pointer active:scale-95"
+                className="p-2 sm:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm text-slate-500 dark:text-slate-400 cursor-pointer active:scale-95 shrink-0"
               >
-                <ArrowLeft size={20} />
+                <ArrowLeft size={18} />
               </button>
-              <div className="flex items-center gap-4">
-                <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                <h1 className="text-base sm:text-xl md:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase">
                   Tambah Data Retur
                 </h1>
                 {retailerName && (
                   <div
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-2xl border transition-all animate-in slide-in-from-left duration-700 ${retailerName === "Ritel Tidak Terdeteksi" ? "bg-rose-50 border-rose-100 text-rose-600" : "bg-indigo-50 border-indigo-100 text-indigo-700"}`}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-2xl border transition-all animate-in slide-in-from-left duration-700 ${retailerName === "Ritel Tidak Terdeteksi" ? "bg-rose-50 border-rose-100 text-rose-600" : "bg-indigo-50 border-indigo-100 text-indigo-700"}`}
                   >
                     <Building2
                       size={14}
@@ -97,7 +97,7 @@ function NewReturPageContent() {
                           : "text-indigo-400"
                       }
                     />
-                    <span className="text-[11px] font-black uppercase tracking-widest">
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest">
                       {retailerName}
                     </span>
                   </div>
@@ -108,23 +108,23 @@ function NewReturPageContent() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 md:px-10 py-10 pb-32">
-        <form onSubmit={handleSubmit} className="space-y-10 overflow-visible">
-          <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
-            <div className="px-10 py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-4 rounded-t-[40px]">
-              <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-100">
-                <Package className="text-white" size={24} />
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-10 py-6 sm:py-10 pb-32">
+        <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-10 overflow-visible">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl sm:rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
+            <div className="px-4 sm:px-10 py-5 sm:py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-3 sm:gap-4 rounded-t-3xl sm:rounded-t-[40px]">
+              <div className="p-2.5 sm:p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-100 shrink-0">
+                <Package className="text-white" size={22} />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+                <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
                   Informasi Utama Produk
                 </h2>
-                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
+                <p className="text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
                   Detail barang dan nilai retur
                 </p>
               </div>
             </div>
-            <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 overflow-visible">
+            <div className="p-4 sm:p-10 grid grid-cols-1 md:grid-cols-2 gap-x-8 sm:gap-x-12 gap-y-6 sm:gap-y-8 overflow-visible">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">
                   RTV / CN Number
@@ -242,7 +242,7 @@ function NewReturPageContent() {
                   <button
                     type="button"
                     onClick={addItem}
-                    className="flex items-center gap-2 px-8 py-3 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95 shadow-sm shadow-indigo-100/50 border border-indigo-100"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95 shadow-sm shadow-indigo-100/50 border border-indigo-100 cursor-pointer"
                   >
                     Tambah ke Daftar
                     <ChevronRight size={14} />
@@ -253,17 +253,17 @@ function NewReturPageContent() {
           </div>
 
           {items.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-500">
-              <div className="px-10 py-6 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/20 dark:bg-slate-800/50 flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl sm:rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-500">
+              <div className="px-4 sm:px-10 py-4 sm:py-6 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/20 dark:bg-slate-800/50 flex items-center justify-between">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <div className="w-2 h-8 bg-indigo-500 rounded-full" />
-                  <h2 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
+                  <h2 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
                     Daftar Barang ({items.length})
                   </h2>
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full text-left min-w-[600px]">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-slate-800/50">
                       <th className="px-10 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">No</th>
@@ -304,17 +304,17 @@ function NewReturPageContent() {
             </div>
           )}
 
-          <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
-            <div className="px-10 py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-4 rounded-t-[40px]">
-              <div className="p-3 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-100">
-                <Truck className="text-white" size={24} />
+          <div className="bg-white dark:bg-slate-800 rounded-3xl sm:rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
+            <div className="px-4 sm:px-10 py-5 sm:py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-3 sm:gap-4 rounded-t-3xl sm:rounded-t-[40px]">
+              <div className="p-2.5 sm:p-3 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-100 shrink-0">
+                <Truck className="text-white" size={22} />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Logistik & Administrasi</h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Status pengiriman</p>
+                <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Logistik & Administrasi</h2>
+                <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Status pengiriman</p>
               </div>
             </div>
-            <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 overflow-visible">
+            <div className="p-4 sm:p-10 grid grid-cols-1 md:grid-cols-2 gap-x-8 sm:gap-x-12 gap-y-6 sm:gap-y-8 overflow-visible">
               <EliteSearchableInput
                 label="Lokasi Barang"
                 placeholder="Pilih Lokasi..."
@@ -433,17 +433,17 @@ function NewReturPageContent() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
-            <div className="px-10 py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-4 rounded-t-[40px]">
-              <div className="p-3 bg-amber-500 rounded-2xl shadow-lg shadow-amber-100">
-                <CreditCard className="text-white" size={24} />
+          <div className="bg-white dark:bg-slate-800 rounded-3xl sm:rounded-[40px] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-visible">
+            <div className="px-4 sm:px-10 py-5 sm:py-8 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-800/50 flex items-center gap-3 sm:gap-4 rounded-t-3xl sm:rounded-t-[40px]">
+              <div className="p-2.5 sm:p-3 bg-amber-500 rounded-2xl shadow-lg shadow-amber-100 shrink-0">
+                <CreditCard className="text-white" size={22} />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Pembayaran</h2>
-                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Catatan tambahan</p>
+                <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Pembayaran</h2>
+                <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Catatan tambahan</p>
               </div>
             </div>
-            <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 overflow-visible">
+            <div className="p-4 sm:p-10 grid grid-cols-1 md:grid-cols-2 gap-x-8 sm:gap-x-12 gap-y-6 sm:gap-y-8 overflow-visible">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 cursor-pointer">Referensi Pembayaran</label>
                 <input
@@ -486,24 +486,24 @@ function NewReturPageContent() {
                   rows={3}
                   value={formData.remarks}
                   onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-[28px] outline-none resize-none cursor-pointer text-slate-700 dark:text-slate-300"
+                  className="w-full px-5 py-4 text-xs font-bold bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-400 dark:focus:border-indigo-500 rounded-2xl sm:rounded-[28px] outline-none resize-none cursor-pointer text-slate-700 dark:text-slate-300"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-6 pt-12 pb-20">
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-4 sm:gap-6 pt-8 sm:pt-12 pb-20 w-full">
             <button
               type="button"
               onClick={() => router.back()}
-              className="text-xs font-black text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-all cursor-pointer"
+              className="w-full sm:w-auto py-3 sm:py-0 text-center text-xs font-black text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-all cursor-pointer"
             >
               {"Batal & Kembali"}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-3 px-12 py-4 bg-indigo-600 text-white rounded-[28px] text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 active:scale-95 disabled:opacity-50 group cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 sm:px-12 py-4 bg-indigo-600 text-white rounded-2xl sm:rounded-[28px] text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl sm:shadow-2xl shadow-indigo-200 active:scale-95 disabled:opacity-50 group cursor-pointer"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={20} />

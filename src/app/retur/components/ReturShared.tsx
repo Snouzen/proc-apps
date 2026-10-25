@@ -50,9 +50,10 @@ export function CustomInlineDatePicker({
       
       <Popover.Portal>
         <Popover.Content 
-          className="z-[150] w-72 bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 p-4 animate-in fade-in zoom-in-95 duration-200"
+          className="z-[150] w-[calc(100vw-32px)] sm:w-72 max-w-[288px] bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700 p-4 animate-in fade-in zoom-in-95 duration-200"
           align="start"
           sideOffset={5}
+          collisionPadding={12}
         >
           <div className="flex items-center justify-between mb-4 px-1">
             <button 

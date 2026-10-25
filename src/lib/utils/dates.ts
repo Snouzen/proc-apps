@@ -1,5 +1,4 @@
-// [ENV] Timezone offset from env instead of hardcoded magic number 7
-const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
+export const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS) || 7;
 
 export function parseYmdOrIsoToUtcNoon(v?: string | null) {
   if (!v) return null;
@@ -26,6 +25,56 @@ export function parseYmdOrIsoToUtcNoon(v?: string | null) {
       0,
       0,
       0,
+    ),
+  );
+}
+
+export function getBusinessNow(offsetHours = TZ_OFFSET_HOURS): Date {
+  const now = new Date();
+  return new Date(now.getTime() + offsetHours * 3600 * 1000);
+}
+
+export function getBusinessStartOfToday(offsetHours = TZ_OFFSET_HOURS): Date {
+  const shifted = getBusinessNow(offsetHours);
+  return new Date(
+    Date.UTC(
+      shifted.getUTCFullYear(),
+      shifted.getUTCMonth(),
+      shifted.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    ),
+  );
+}
+
+export function getBusinessStartOfMonth(offsetHours = TZ_OFFSET_HOURS): Date {
+  const shifted = getBusinessNow(offsetHours);
+  return new Date(
+    Date.UTC(
+      shifted.getUTCFullYear(),
+      shifted.getUTCMonth(),
+      1,
+      0,
+      0,
+      0,
+      0,
+    ),
+  );
+}
+
+export function getBusinessEndOfSoon(days = 14, offsetHours = TZ_OFFSET_HOURS): Date {
+  const shifted = getBusinessNow(offsetHours);
+  return new Date(
+    Date.UTC(
+      shifted.getUTCFullYear(),
+      shifted.getUTCMonth(),
+      shifted.getUTCDate() + days,
+      23,
+      59,
+      59,
+      999,
     ),
   );
 }

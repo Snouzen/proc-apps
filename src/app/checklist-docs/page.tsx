@@ -93,7 +93,7 @@ export default function ChecklistDocsPage() {
   const isSavingAll = Object.values(editingRows).some((r: any) => r.saving);
 
   return (
-    <main className="px-5 py-6">
+    <main className="space-y-6">
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>

@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+import Swal from "sweetalert2";
 import { RoleType } from "./useAuthData";
 
 interface UsePoDetailModalProps {
@@ -9,8 +10,10 @@ interface UsePoDetailModalProps {
 export function usePoDetailModal({ role, regional }: UsePoDetailModalProps = {}) {
   const [openDetail, setOpenDetail] = useState(false);
   const [detailData, setDetailData] = useState<any | null>(null);
+  const latestRequest = useRef(0);
 
   const openModal = useCallback(async (po: any) => {
+    const requestId = ++latestRequest.current;
     const nopo = String(po?.noPo || po?.nopo || po?.poNumber || "").trim();
     let fullPo: any = po;
     
@@ -28,6 +31,7 @@ export function usePoDetailModal({ role, regional }: UsePoDetailModalProps = {})
           cache: "no-store",
         });
         const json = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(json?.error || "Gagal memuat detail PO");
         
         const first = Array.isArray((json as any)?.data)
           ? (json as any).data[0]
@@ -35,9 +39,14 @@ export function usePoDetailModal({ role, regional }: UsePoDetailModalProps = {})
             ? (json as any)[0]
             : null;
             
-        if (first) fullPo = first;
-      } catch {}
+        if (!first) throw new Error("PO tidak ditemukan atau tidak lagi berada dalam akses akun Anda.");
+        fullPo = first;
+      } catch (error: any) {
+        if (requestId === latestRequest.current) void Swal.fire({ icon: "error", title: "Detail PO belum tersedia", text: error?.message || "Coba lagi." });
+        return;
+      }
     }
+    if (requestId !== latestRequest.current) return;
 
     const items: any[] = Array.isArray(fullPo?.Items) ? fullPo.Items : [];
     const mappedItems = items.map((it: any, idx: number) => ({

@@ -157,7 +157,12 @@ export function usePoTable({ role, regional, siteArea, initialGroup = "all" }: U
         fetchTable(controller.signal).then((out) => {
           if (!active || !out) return;
           if ((out as any).error) {
-            setPoLoadError((out as any).error as string);
+            const errStr = String((out as any).error);
+            if (!errStr.toLowerCase().includes("unauthorized")) {
+              setPoLoadError(errStr);
+            } else {
+              setPoLoadError(null);
+            }
           } else {
             setAllPoData(out.list || []);
             setServerTotal(out.total || 0);

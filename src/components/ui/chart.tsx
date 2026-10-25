@@ -94,7 +94,7 @@ export function ChartTooltip({
   cursor = false,
   content,
 }: {
-  cursor?: boolean;
+  cursor?: boolean | object;
   content: React.ReactNode;
 }) {
   // Wrap recharts Tooltip to use our content; payload will be handled by recharts

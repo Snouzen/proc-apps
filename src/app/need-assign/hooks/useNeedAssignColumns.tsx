@@ -393,7 +393,7 @@ export function useNeedAssignColumns({
             return;
           }
 
-          if (role === "rm" && !st.siteArea) {
+          if (role === "rm" && !currentSite) {
             tableState.setEdited((prev: any) => ({
               ...prev,
               [noPo]: { ...(prev[noPo] || {}), error: "Pilih site area" },
@@ -413,14 +413,18 @@ export function useNeedAssignColumns({
               body: JSON.stringify({
                 noPo,
                 regional: reg,
-                siteArea: st.siteArea === "Pilih..." || !st.siteArea ? null : st.siteArea
+                siteArea: currentSite || null
               }),
             });
             const json = await res.json().catch(() => null);
             if (!res.ok) throw new Error((json as any)?.error || res.statusText);
 
-            tableState.setRows((prev: any) => prev.filter((r: any) => r.noPo !== noPo));
-            tableState.setTotal((prev: number) => Math.max(0, prev - 1));
+            if (currentSite) {
+              tableState.setRows((prev: any) => prev.filter((r: any) => r.noPo !== noPo));
+              tableState.setTotal((prev: number) => Math.max(0, prev - 1));
+            } else {
+              tableState.setRows((prev: any) => prev.map((r: any) => r.noPo === noPo ? { ...r, regional: json?.po?.regional || reg, siteArea: "" } : r));
+            }
 
             tableState.setEdited((prev: any) => {
               const next = { ...prev };

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { loadRekonExportRows } from "@/lib/loadRekonExportRows";
 import Swal from "sweetalert2";
 
 // Lazy-load PDF generator (~100KB) — only when user clicks Export
@@ -23,6 +24,28 @@ export function useRekonData() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [exportLoading, setExportLoading] = useState(false);
+  const [allExportLoading, setAllExportLoading] = useState(false);
+  const [exportProgress, setExportProgress] = useState("");
+  const allExportController = useRef<AbortController | null>(null);
+  useEffect(() => () => allExportController.current?.abort(), []);
+  const handleExportAllExcel = async () => {
+    if (allExportController.current) return;
+    const controller = new AbortController();
+    allExportController.current = controller;
+    setAllExportLoading(true); setExportProgress("Mengambil data...");
+    const filters = { search, startDate, endDate, status: statusFilter };
+    try {
+      const rows = await loadRekonExportRows(filters, fetch, (loaded, count) => setExportProgress(`${loaded}/${count} rekonsiliasi`), controller.signal);
+      if (controller.signal.aborted) return;
+      if (!rows.length) { await Swal.fire({ icon: "info", title: "Tidak ada data", text: "Tidak ada rekonsiliasi sesuai filter dan akses akun." }); return; }
+      const { generateAllRekonExcel } = await import("@/lib/generateRekonExcel");
+      if (!controller.signal.aborted) generateAllRekonExcel(rows, filters);
+    } catch (error: any) {
+      if (!controller.signal.aborted) await Swal.fire({ icon: "error", title: "Export dibatalkan", text: error.message });
+    } finally {
+      allExportController.current = null; setAllExportLoading(false); setExportProgress("");
+    }
+  };
   const [buktiBayarPreviewUrl, setBuktiBayarPreviewUrl] = useState<string | null>(null);
 
   const toggleRow = (id: string) => {
@@ -102,12 +125,29 @@ export function useRekonData() {
     }
   };
 
+  const loadExportItem = async (item: any) => {
+    const res = await fetch('/api/rekon?id=' + encodeURIComponent(item.id), { cache: 'no-store' });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Gagal membaca detail rekonsiliasi');
+    return json.data;
+  };
+  const handleExcelExport = async (item: any) => {
+    setExportLoading(true);
+    try {
+      const fresh = await loadExportItem(item);
+      const { generateRekonExcel } = await import('@/lib/generateRekonExcel');
+      generateRekonExcel([fresh], {});
+    } catch (error: any) { Swal.fire({ icon: 'error', title: 'Export dibatalkan', text: error.message }); }
+    finally { setExportLoading(false); }
+  };
   const handleRowExport = async (item: any) => {
     setExportLoading(true);
     setPreviewItem(item);
     try {
+      const fresh = await loadExportItem(item);
+      setPreviewItem(fresh);
       const blobUrl = await lazyGenerateRekonPdf(
-        [item], // Kirim sebagai array dengan 1 item
+        [fresh], // Kirim sebagai array dengan 1 item
         { search: "", startDate: "", endDate: "" }, // Info filter dikosongkan karena spesifik 1 data
         "preview"
       );
@@ -115,12 +155,12 @@ export function useRekonData() {
       if (blobUrl) {
         setPdfPreviewUrl(blobUrl as string);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Export PDF Error:", err);
       Swal.fire({
         icon: "error",
         title: "Gagal Preview",
-        text: "Terjadi kesalahan saat memproses PDF.",
+        text: err.message || "Terjadi kesalahan saat memproses PDF.",
         customClass: { popup: "rounded-[32px] font-sans" },
       });
     } finally {
@@ -148,6 +188,8 @@ export function useRekonData() {
     fetchRekonData,
     formatRp,
     handleDelete,
-    handleRowExport
+    handleRowExport, handleExcelExport,
+    handleExportAllExcel, allExportLoading, exportProgress,
+    cancelAllExport: () => allExportController.current?.abort(),
   };
 }

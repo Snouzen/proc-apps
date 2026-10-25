@@ -14,25 +14,89 @@ export const StatusSchema = z
   .strip()
   .optional();
 
+function parseStrictFiniteNumber(val: unknown): number | null {
+  if (typeof val === "number") {
+    return Number.isFinite(val) ? val : null;
+  }
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (!trimmed) return null;
+    if (/^(?:infinity|-infinity|nan)$/i.test(trimmed)) return null;
+    const num = Number(trimmed);
+    return Number.isFinite(num) ? num : null;
+  }
+  return null;
+}
+
 export const ItemSchema = z
   .object({
-    namaProduk: z.string().min(1),
+    id: z.string().optional().nullable(),
+    namaProduk: z.string().min(1, "Nama produk wajib diisi"),
     pcs: z
       .union([z.number(), z.string()])
-      .transform((v) => (typeof v === "string" ? Number(v) || 0 : v)),
+      .refine((v) => parseStrictFiniteNumber(v) !== null, {
+        message: "Jumlah pcs harus berupa angka numerik yang valid",
+      })
+      .transform((v) => parseStrictFiniteNumber(v)!)
+      .refine((v) => Number.isInteger(v) && v > 0, {
+        message: "Jumlah pcs harus berupa bilangan bulat positif (> 0)",
+      }),
     pcsKirim: z
       .union([z.number(), z.string()])
-      .transform((v) => (typeof v === "string" ? Number(v) || 0 : v))
+      .refine((v) => parseStrictFiniteNumber(v) !== null, {
+        message: "Jumlah pcsKirim harus berupa angka numerik yang valid",
+      })
+      .transform((v) => parseStrictFiniteNumber(v)!)
+      .refine((v) => Number.isInteger(v) && v >= 0, {
+        message: "Jumlah pcsKirim harus berupa bilangan bulat non-negatif (>= 0)",
+      })
       .optional(),
     hargaPcs: z
       .union([z.number(), z.string()])
-      .transform((v) => (typeof v === "string" ? Number(v) || 0 : v)),
+      .refine((v) => parseStrictFiniteNumber(v) !== null, {
+        message: "Harga per pcs harus berupa angka numerik yang valid",
+      })
+      .transform((v) => parseStrictFiniteNumber(v)!)
+      .refine((v) => Number.isFinite(v) && v >= 0, {
+        message: "Harga per pcs tidak boleh negatif",
+      }),
     discount: z
       .union([z.number(), z.string()])
-      .transform((v) => (typeof v === "string" ? Number(v) || 0 : v))
+      .refine((v) => parseStrictFiniteNumber(v) !== null, {
+        message: "Diskon harus berupa angka numerik yang valid",
+      })
+      .transform((v) => parseStrictFiniteNumber(v)!)
+      .refine((v) => Number.isFinite(v) && v >= 0, {
+        message: "Diskon tidak boleh negatif",
+      })
       .optional(),
   })
-  .strip();
+  .strip()
+  .refine(
+    (data) => {
+      if (data.pcsKirim !== undefined && data.pcsKirim !== null) {
+        return data.pcsKirim <= data.pcs;
+      }
+      return true;
+    },
+    {
+      message: "pcsKirim tidak boleh melebihi jumlah pcs pesanan",
+      path: ["pcsKirim"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.discount !== undefined && data.discount !== null) {
+        const maxDiscount = data.hargaPcs * data.pcs;
+        return data.discount <= maxDiscount;
+      }
+      return true;
+    },
+    {
+      message: "Diskon tidak boleh melebihi total nilai item (hargaPcs * pcs)",
+      path: ["discount"],
+    }
+  );
 
 export const POBodySchema = z
   .object({
@@ -109,6 +173,26 @@ export const POBodySchema = z
       z.string().optional().nullable(),
     ),
     platNomor: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    updatedAt: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    id: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    expectedVersion: z.preprocess(
+      (v) =>
+        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+      z.string().optional().nullable(),
+    ),
+    lastUpdatedAt: z.preprocess(
       (v) =>
         v == null || String(v).trim() === "" ? undefined : String(v).trim(),
       z.string().optional().nullable(),

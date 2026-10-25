@@ -115,7 +115,12 @@ export function useNeedAssignTable({ role, regional }: UseNeedAssignTableProps) 
       setError(null);
     } catch (e: any) {
       if (e?.name === "AbortError") return;
-      setError(e instanceof Error ? e.message : "Gagal mengambil data PO");
+      const msg = e instanceof Error ? e.message : "Gagal mengambil data PO";
+      if (!msg.toLowerCase().includes("unauthorized")) {
+        setError(msg);
+      } else {
+        setError(null);
+      }
     } finally {
       clearTimeout(timer);
       setLoading(false);

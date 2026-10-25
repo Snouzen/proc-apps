@@ -1,12 +1,14 @@
 export type Role = "pusat" | "rm" | "sitearea" | "magang";
 
 export interface SessionPayload {
+  userId?: string;
   email: string;
   role: Role;
   regional?: string | null;
   siteArea?: string | null;
   exp: number;
   jti: string;
+  sessionVersion?: number;
 }
 
 // [SECURITY] Production MUST throw if AUTH_SECRET is absent
@@ -44,6 +46,18 @@ async function hmacSHA256(secret: string, data: string): Promise<string> {
   return toBase64UrlFromBytes(signature);
 }
 
+export const VALID_ROLES = ["pusat", "rm", "sitearea", "magang"] as const;
+
+export function canonicalizeRoleEdge(rawRole: unknown): Role | null {
+  if (!rawRole || typeof rawRole !== "string") return null;
+  const r = rawRole.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+  if (r === "pusat") return "pusat";
+  if (r === "rm") return "rm";
+  if (r === "sitearea" || r === "picsite" || r === "site" || r === "spbdki") return "sitearea";
+  if (r === "magang") return "magang";
+  return null; // Reject unrecognized roles, DO NOT fallback to magang
+}
+
 export async function verifySessionEdge(
   token: string | undefined,
 ): Promise<SessionPayload | null> {
@@ -77,6 +91,16 @@ export async function verifySessionEdge(
     );
     const payload: SessionPayload = JSON.parse(json);
     if (payload.exp < Date.now()) return null;
+
+    const validRole = canonicalizeRoleEdge(payload.role);
+    if (!validRole) return null; // Reject unrecognized role
+    payload.role = validRole;
+
+    // Strict JTI contract: must be a non-empty string
+    if (!payload.jti || typeof payload.jti !== "string" || !payload.jti.trim()) {
+      return null;
+    }
+
     return payload;
   } catch {
     return null;

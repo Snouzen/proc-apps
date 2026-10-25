@@ -1,9 +1,53 @@
 import { z } from "zod";
 
-/** Helper: accept number or numeric string, coerce to number */
-const coerceNumber = z
+/** Helper: accept valid finite non-negative number or numeric string, reject negatives, NaN, Infinity */
+export const strictNumeric = z
   .union([z.number(), z.string()])
-  .transform((v) => (typeof v === "string" ? Number(v) || 0 : v));
+  .refine(
+    (v) => {
+      let num: number;
+      if (typeof v === "number") {
+        num = v;
+      } else if (typeof v === "string") {
+        const trimmed = v.trim();
+        if (trimmed === "") return false;
+        num = Number(trimmed);
+      } else {
+        return false;
+      }
+      return !isNaN(num) && Number.isFinite(num) && num >= 0 && num <= 1e14;
+    },
+    { message: "Nilai harus berupa angka non-negatif yang valid (maksimal 100 triliun)" }
+  )
+  .transform((v) => (typeof v === "string" ? Number(v.trim()) : v));
+
+export const optionalStrictNumeric = z
+  .union([z.number(), z.string(), z.null(), z.undefined()])
+  .refine(
+    (v) => {
+      if (v === null || v === undefined) return true;
+      let num: number;
+      if (typeof v === "number") {
+        num = v;
+      } else if (typeof v === "string") {
+        const trimmed = v.trim();
+        if (trimmed === "") return true;
+        num = Number(trimmed);
+      } else {
+        return false;
+      }
+      return !isNaN(num) && Number.isFinite(num) && num >= 0 && num <= 1e14;
+    },
+    { message: "Nilai harus berupa angka non-negatif yang valid (maksimal 100 triliun)" }
+  )
+  .transform((v) => {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === "string") {
+      const trimmed = v.trim();
+      return trimmed === "" ? 0 : Number(trimmed);
+    }
+    return v;
+  });
 
 // ── Ritel Modern Schemas ──
 
@@ -50,9 +94,9 @@ const PromoBaseSchema = z.object({
   kegiatan: z.string().min(1, "Kegiatan wajib diisi"),
   periode: z.string().min(1, "Periode wajib diisi"),
   tanggal: z.string().or(z.date()),
-  dpp: coerceNumber,
-  ppn: coerceNumber,
-  pph: coerceNumber.optional().default(0),
+  dpp: strictNumeric,
+  ppn: strictNumeric,
+  pph: optionalStrictNumeric.optional().default(0),
   linkFP: z.string().nullable().optional(),
   remarks: z.string().nullable().optional(),
   ritelId: z.string().nullable().optional(),
@@ -71,9 +115,9 @@ export const PromoBatchSchema = z.array(
     kegiatan: z.string().default("Lain-Lain"),
     periode: z.string().default("Januari"),
     tanggal: z.string().or(z.date()).optional(),
-    dpp: coerceNumber.optional().default(0),
-    ppn: coerceNumber.optional().default(0),
-    pph: coerceNumber.optional().default(0),
+    dpp: optionalStrictNumeric.optional().default(0),
+    ppn: optionalStrictNumeric.optional().default(0),
+    pph: optionalStrictNumeric.optional().default(0),
     linkFP: z.string().nullable().optional(),
     remarks: z.string().nullable().optional(),
     ritelId: z.string().nullable().optional(),

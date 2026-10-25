@@ -1,6 +1,8 @@
+import PusatOnly from "@/components/PusatOnly";
 import React from "react";
-import { Zap, Building2, Eye, Edit2, Trash2 } from "lucide-react";
+import { Zap, Eye, Edit2, Trash2 } from "lucide-react";
 import { GlobalPagination } from "@/components/global-pagination";
+import RitelLogo from "./RitelLogo";
 
 const highlightText = (text: string, query: string) => {
   if (!query) return text;
@@ -63,7 +65,7 @@ export default function RitelTable({
 }: RitelTableProps) {
   return (
     <>
-      {loadError && (
+      {loadError && !loadError.toLowerCase().includes("unauthorized") && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <strong>Gagal load data:</strong> {loadError}
         </div>
@@ -120,34 +122,32 @@ export default function RitelTable({
             {loadError ? "—" : "Belum ada data di database."}
           </div>
         ) : (
-          <div className="p-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+          <div
+            className="p-4 sm:p-6 lg:p-8 grid gap-5 sm:gap-6 lg:gap-8"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 240px), 1fr))" }}
+          >
             {currentItems.map((group) => (
               <div
                 key={group.displayId}
                 className="group relative bg-white dark:bg-slate-800 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.08)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] hover:shadow-[0_45px_100px_-25px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_45px_100px_-25px_rgba(0,0,0,0.6)] hover:-translate-y-1.5 transition-all duration-500 overflow-hidden"
               >
-                {/* Logo Area - Large & Clear */}
-                <div className="relative h-[130px] w-full bg-white dark:bg-slate-900 border-b border-slate-50 dark:border-slate-700/50 flex items-center justify-center p-6 overflow-hidden">
+                {/* Logo Area: baris badge khusus + area gambar berukuran tetap */}
+                <div className="relative w-full bg-white dark:bg-slate-900 border-b border-slate-50 dark:border-slate-700/50">
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
-                  
-                  {group.logoPt ? (
-                    <img
-                      src={group.logoPt}
-                      alt={group.namaPt}
-                      className="max-h-full max-w-full object-contain drop-shadow-xl group-hover:scale-110 transition-transform duration-700"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 opacity-20">
-                      <Building2 size={40} className="text-slate-400" />
-                    </div>
-                  )}
 
-                  {/* Badge Inisial - Top Right */}
-                  <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-full border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4 duration-500">
-                    <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 tabular-nums">
-                      {Object.keys(group.inisials).length}
-                    </span>
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Inisial</span>
+                  {/* Badge dan logo berbagi area setinggi 130px tanpa saling menimpa. */}
+                  <div className="relative h-9 px-4 pt-2 flex items-center justify-end">
+                    <div className="px-3 py-1 bg-white/90 dark:bg-slate-800/90 rounded-full border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-1.5">
+                      <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 tabular-nums">
+                        {Object.keys(group.inisials).length}
+                      </span>
+                      <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Inisial</span>
+                    </div>
+                  </div>
+
+                  {/* Area logo */}
+                  <div className="relative">
+                    <RitelLogo src={group.logoPt} alt={group.namaPt} variant="card" />
                   </div>
                 </div>
 
@@ -193,13 +193,13 @@ export default function RitelTable({
                       )}
 
                       {!isRm && (
-                        <button
+                        <PusatOnly><button
                           onClick={() => setDeleteCompany(group.namaPt)}
                           className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-900/30 text-rose-400 hover:bg-rose-500 hover:text-white transition-all duration-300 group/del"
                           title="Hapus Ritel"
                         >
                           <Trash2 size={15} strokeWidth={2.5} className="group-hover/del:scale-110 transition-transform" />
-                        </button>
+                        </button></PusatOnly>
                       )}
                     </div>
                   </div>

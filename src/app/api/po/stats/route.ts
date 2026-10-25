@@ -1,78 +1,70 @@
+import { buildPOQueryParams } from "../services/poQueryBuilder";
+import { resolvePoScope } from "@/lib/resolvePoScope";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
+import { parseYmdOrIsoToUtcNoon, getBusinessStartOfToday, getBusinessStartOfMonth, getBusinessEndOfSoon } from "@/lib/utils/dates";
 import { getRegionalSynonyms } from "@/lib/utils/regional";
 import { cacheGet, cacheSet, singleFlight } from "@/lib/ttl-cache";
 import { unstable_cache } from "next/cache";
-import { cookies } from "next/headers";
-import { verifySession } from "@/lib/auth";
+import { getSessionWithRole } from "@/lib/auth";
 
 // [ENV] Timezone offset from env, not hardcoded
 
 
 export async function GET(request: Request) {
-  const bag = await cookies();
-  let token = bag.get("session")?.value;
-  if (!token) {
-    const hdr = request.headers.get("cookie") || "";
-    const m = hdr.match(/(?:^|;\s*)session=([^;]+)/);
-    if (m && m[1]) token = decodeURIComponent(m[1]);
-  }
-  const sessionObj = await Promise.resolve(verifySession(token));
-  if (!sessionObj) {
+  const auth = await getSessionWithRole(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 1. Ekstrak Email Sekuat Tenaga (Anti-Undefined & Lowercase)
-  const emailRaw = sessionObj?.email || (sessionObj as any)?.user?.email || (sessionObj as any)?.payload?.email || "";
-  const email = String(emailRaw).toLowerCase().trim();
+  const { session: sessionObj, dbUser, safeRole } = auth;
+  const resolvedPoScope = await resolvePoScope(auth);
 
-  // 2. Cari di DB (Abaikan Huruf Besar/Kecil dengan findFirst)
-  let dbUser = null;
-  if (email) {
-    dbUser = await prisma.user.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } }
-    });
-  }
-
-  // 3. Ekstrak Role & Hard-Fallback
-  let rawRole = dbUser?.role || (sessionObj as any)?.user_metadata?.role || sessionObj?.role || "";
-
-  // 🔥 GEMBOK PAKSA DARURAT JIKA DB GAGAL 🔥
-  if (email.includes("spbdki") && !dbUser) {
-    rawRole = "picsite"; 
-  }
-
-  const safeRole = String(rawRole).toLowerCase().trim().replace(/[^a-z0-9]/g, "");
-
-
-
-
-// 5. Tentukan Wilayah (Dengan Fallback ke Token Metadata jika ada)
-  let overrideRegional: string | null = null;
-  let overrideSiteArea: string | null = null;
-  if (safeRole === 'sitearea') {
-    overrideRegional = dbUser?.regional || (sessionObj as any)?.user_metadata?.regional || null;
-    overrideSiteArea = dbUser?.siteArea || (sessionObj as any)?.user_metadata?.siteArea || null;
-  } else if (safeRole === 'rm') {
-    overrideRegional = dbUser?.regional || (sessionObj as any)?.regional || null;
-  }
+  const emptyResponse = {
+    cAll: 0,
+    cActive: 0,
+    cAssign: 0,
+    cAlmost: 0,
+    cExpired: 0,
+    cCompleted: 0,
+    cProgress: 0,
+    topSiteAreas: [],
+    topSiteAreasMtd: [],
+  };
 
   const { searchParams } = new URL(request.url);
   const includeUnknown =
     (searchParams.get("includeUnknown") || "true") === "true";
-  
-  // Use overrides if present, otherwise search parameters
-  const regionalParam = overrideRegional ?? (searchParams.get("regional") || undefined);
-  const siteAreaParam = overrideSiteArea ?? (searchParams.get("siteArea") || undefined);
-
   const tglFrom = parseYmdOrIsoToUtcNoon(searchParams.get("tglFrom"));
   const tglTo = parseYmdOrIsoToUtcNoon(searchParams.get("tglTo"));
 
-  const safeSa = overrideSiteArea || searchParams.get("siteArea") || "";
-  const hasSiteArea = safeSa.length > 0;
+  let regionalParam: string | undefined = undefined;
+  let siteAreaParam: string | undefined = undefined;
+
+  // Strict Authoritative User Scope (Fail-closed, no client parameter override for non-pusat)
+  if (safeRole === "pusat") {
+    regionalParam = searchParams.get("regional")?.trim() || undefined;
+    siteAreaParam = searchParams.get("siteArea")?.trim() || undefined;
+  } else if (safeRole === "rm") {
+    const userRegional = (dbUser?.regional || sessionObj?.regional || "").trim();
+    if (!userRegional) {
+      return NextResponse.json(emptyResponse);
+    }
+    regionalParam = userRegional;
+  } else if (safeRole === "sitearea" || (safeRole as string) === "picsite" || (safeRole as string) === "spbdki") {
+    const userSiteArea = (dbUser?.siteArea || sessionObj?.siteArea || "").trim();
+    if (!userSiteArea) {
+      return NextResponse.json(emptyResponse);
+    }
+    siteAreaParam = userSiteArea;
+    const userRegional = (dbUser?.regional || sessionObj?.regional || "").trim();
+    if (userRegional) regionalParam = userRegional;
+  } else {
+    return NextResponse.json(emptyResponse);
+  }
 
   const keyParams = new URLSearchParams();
+  keyParams.set("scope", JSON.stringify(resolvedPoScope));
   keyParams.set("includeUnknown", includeUnknown ? "true" : "false");
   if (regionalParam && regionalParam.trim())
     keyParams.set("regional", regionalParam.trim());
@@ -83,40 +75,9 @@ export async function GET(request: Request) {
   const cached = cacheGet<any>(cacheKey);
   try {
     const emptyInvoiceValues = ["", "-", "Unknown"];
-    const now = new Date();
-    const startOfToday = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate(),
-        0,
-        0,
-        0,
-        0,
-      ),
-    );
-    const startOfMonth = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        1,
-        0,
-        0,
-        0,
-        0,
-      ),
-    );
-    const endOfSoon = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate() + 14,
-        23,
-        59,
-        59,
-        999,
-      ),
-    );
+    const startOfToday = getBusinessStartOfToday();
+    const startOfMonth = getBusinessStartOfMonth();
+    const endOfSoon = getBusinessEndOfSoon(14);
 
     const syn = getRegionalSynonyms(String(regionalParam || ""));
     const emptyText = ["", "-", "Unknown", "UNKNOWN"];
@@ -139,7 +100,7 @@ export async function GET(request: Request) {
           NOT: {
             OR: [
               { unitProduksiId: "UNKNOWN" },
-              { unitProduksiId: null },
+              { unitProduksiId: "" },
               { tujuanDetail: { in: emptyText } },
               { tujuanDetail: null },
               { regional: { in: emptyText } },
@@ -149,21 +110,37 @@ export async function GET(request: Request) {
         });
       }
 
-      // Filter Regional (Fuzzy Search)
-      if (syn.length > 0) {
+      // Filter Regional (Exact match on synonyms with UnitProduksi authoritative precedence)
+      if (regionalParam && syn.length > 0) {
         andFilters.push({
-          OR: syn.flatMap(s => [
-            { regional: { contains: s, mode: "insensitive" } },
-            { UnitProduksi: { namaRegional: { contains: s, mode: "insensitive" } } }
-          ])
+          OR: [
+            {
+              unitProduksiId: { notIn: ["UNKNOWN", ""] },
+              UnitProduksi: {
+                OR: [
+                  ...syn.map((s) => ({ namaRegional: { equals: s, mode: "insensitive" as const } })),
+                  ...syn.map((s) => ({ kodeRegional: { equals: s, mode: "insensitive" as const } })),
+                ],
+              },
+            },
+            {
+              unitProduksiId: { in: ["UNKNOWN", ""] },
+              OR: syn.map((s) => ({ regional: { equals: s, mode: "insensitive" as const } })),
+            },
+          ],
         });
       }
 
-      // Filter Site Area
-      if (hasSiteArea) {
-        andFilters.push({
-          UnitProduksi: { siteArea: { contains: safeSa.trim(), mode: "insensitive" } }
-        });
+      // Filter Site Area (Exact match on siteArea list)
+      if (siteAreaParam) {
+        const saList = siteAreaParam.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+        if (saList.length > 0) {
+          andFilters.push({
+            UnitProduksi: {
+              siteArea: { in: saList, mode: "insensitive" as const },
+            },
+          });
+        }
       }
 
       if (andFilters.length > 0) {
@@ -179,64 +156,22 @@ export async function GET(request: Request) {
         NOT: { OR: [{ noInvoice: null }, { noInvoice: { in: emptyInvoiceValues } }] }
       };
 
-      // 3. Eksekusi 8 Hitungan secara Paralel (Ngebut & Bersih!)
+      const groupWhere = (group: string) => {
+        const params = new URLSearchParams(searchParams);
+        params.set("group", group);
+        return buildPOQueryParams(params, { ...auth, resolvedPoScope }).where;
+      };
       const [cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, topUnits, topUnitsMtd] = await Promise.all([
-        // cAll
-        prisma.purchaseOrder.count({ where: baseWhere }),
-        
-        // cActive
-        prisma.purchaseOrder.count({
-          where: {
-            ...baseWhere,
-            ...noInvoiceCond,
-            OR: [{ expiredTgl: null }, { expiredTgl: { gte: startOfToday } }]
-          }
-        }),
-
-        // cAssign (Active + Regional Kosong/Unknown)
-        prisma.purchaseOrder.count({
-          where: {
-            ...baseWhere,
-            ...noInvoiceCond,
-            OR: [{ expiredTgl: null }, { expiredTgl: { gte: startOfToday } }],
-            AND: [
-              ...(baseWhere.AND || []),
-              { OR: [{ regional: null }, { regional: { in: emptyText } }, { unitProduksiId: "UNKNOWN" }] }
-            ]
-          }
-        }),
-
-        // cAlmost
-        prisma.purchaseOrder.count({
-          where: {
-            ...baseWhere,
-            ...noInvoiceCond,
-            expiredTgl: { not: null, gte: startOfToday, lte: endOfSoon }
-          }
-        }),
-
-        // cExpired
-        prisma.purchaseOrder.count({
-          where: {
-            ...baseWhere,
-            ...noInvoiceCond,
-            expiredTgl: { not: null, lt: startOfToday }
-          }
-        }),
-
-        // cCompleted
-        prisma.purchaseOrder.count({
-          where: {
-            ...baseWhere,
-            ...hasInvoiceCond
-          }
-        }),
-
-        // topUnits
+        prisma.purchaseOrder.count({ where: groupWhere("all") }),
+        prisma.purchaseOrder.count({ where: groupWhere("active") }),
+        prisma.purchaseOrder.count({ where: groupWhere("assign") }),
+        prisma.purchaseOrder.count({ where: groupWhere("almost_expired") }),
+        prisma.purchaseOrder.count({ where: groupWhere("expired") }),
+        prisma.purchaseOrder.count({ where: groupWhere("completed") }),
         prisma.purchaseOrder.groupBy({
           by: ['unitProduksiId'],
           _count: true,
-          where: baseWhere,
+          where: groupWhere("all"),
           orderBy: { _count: { unitProduksiId: 'desc' } },
           take: 6
         }),
@@ -246,7 +181,7 @@ export async function GET(request: Request) {
           by: ['unitProduksiId'],
           _count: true,
           where: {
-            ...baseWhere,
+            ...groupWhere("all"),
             tglPo: { gte: startOfMonth }
           },
           orderBy: { _count: { unitProduksiId: 'desc' } },
@@ -281,7 +216,7 @@ export async function GET(request: Request) {
         return {
           cAll, cActive, cAssign, cAlmost, cExpired, cCompleted, cProgress: 0, topSiteAreas, topSiteAreasMtd
         };
-    }, [cacheKey], { revalidate: 120, tags: [cacheKey] })();
+    }, [cacheKey], { revalidate: 120, tags: [cacheKey, "po_stats"] })();
     cacheSet(cacheKey, payload, 30000);
     cacheSet(
       `po_stats_group:${safeRole}:${keyParams.toString()}:all`,

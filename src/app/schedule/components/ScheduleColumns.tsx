@@ -1,3 +1,4 @@
+import { SchedulePcsEditor } from "./SchedulePcsEditor";
 import React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { format } from "date-fns";
@@ -30,6 +31,10 @@ function cleanSiteArea(val?: string | null): string {
 }
 
 export const getScheduleColumns = (formatDate: (d: any) => string) => [
+  helper.accessor((row: any) => row.RitelModern?.namaPt || "-", {
+    id: "company", header: "Nama Company", size: 200,
+    cell: (info) => <span className="text-xs font-semibold break-words">{info.getValue()}</span>,
+  }),
   helper.accessor("noPo", {
     header: "Purchase Order",
     size: 260,
@@ -172,41 +177,7 @@ export const getScheduleColumns = (formatDate: (d: any) => string) => [
               </button>
             </div>
           ) : (
-            <div className="relative inline-block group/input">
-              <input
-                type="number"
-                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                min="0"
-                max={po.pcsTotal || 0}
-                value={po.pcsKirimTotal ?? 0}
-                onFocus={(e) => e.target.select()}
-                onBlur={(e) => {
-                  const val = parseInt(e.target.value.toString()) || 0;
-                  handleUpdatePcsKirim?.(po.id, val.toString());
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                }}
-                disabled={savingPcsId === po.id}
-                className={`w-24 h-9 px-2 text-xs font-black text-center bg-slate-50 dark:bg-slate-800 border rounded-xl outline-none transition-all tabular-nums shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                  Number(po.pcsKirimTotal) > Number(po.pcsTotal)
-                    ? "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-900/20 shadow-[0_0_8px_rgba(225,29,72,0.2)]"
-                    : savingPcsId === po.id
-                    ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 animate-pulse"
-                    : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/10 focus:bg-white dark:focus:bg-slate-900 text-slate-700 dark:text-slate-200 font-black"
-                }`}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const numVal = Number(val);
-                  const max = Number(po.pcsTotal || 0);
-                  const finalVal = numVal > max ? max.toString() : val === "" ? "" : numVal.toString();
-                  setPoData?.((prev: any) => prev.map((p: any) => p.id === po.id ? { ...p, pcsKirimTotal: finalVal } : p));
-                }}
-              />
-              {savingPcsId !== po.id && Number(po.pcsKirimTotal) > 0 && (
-                <div className="absolute -right-1 -top-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" title="Tersimpan" />
-              )}
-            </div>
+            <SchedulePcsEditor key={po.id} value={Number(po.pcsKirimTotal || 0)} max={Number(po.pcsTotal || 0)} saving={savingPcsId === po.id} onSave={value => handleUpdatePcsKirim(po.id, value)} />
           )}
         </div>
       );

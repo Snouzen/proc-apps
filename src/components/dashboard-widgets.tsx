@@ -1,5 +1,6 @@
 "use client";
 
+import { openDashboardPOs } from "@/lib/dashboardDrilldown";
 import React from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +51,7 @@ export function PoStatusDonut({ stats }: { stats: any }) {
                 paddingAngle={3}
                 dataKey="value"
                 stroke="none"
+                onClick={(entry: any) => openDashboardPOs({ group: ({ Active: "active", "Need Assign": "assign", "Almost Expired": "almost_expired", Expired: "expired", Completed: "completed" } as Record<string,string>)[entry.name] || "all" }, entry.name)}
               >
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || "#000"} />
@@ -77,35 +79,121 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
   const [tglFrom, setTglFrom] = useState("");
   const [tglTo, setTglTo] = useState("");
   const [localStats, setLocalStats] = useState<any>(null);
+  const [lastSuccessRange, setLastSuccessRange] = useState<{ from: string; to: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+  const latestReqIdRef = React.useRef<number>(0);
+
+  const formatDateDisplay = (val: string) => {
+    if (!val) return "";
+    const parts = val.split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return val;
+  };
+
+  const formatRange = (range: { from: string; to: string }) => {
+    const fromDisplay = formatDateDisplay(range.from);
+    const toDisplay = formatDateDisplay(range.to);
+    if (fromDisplay && toDisplay) return `${fromDisplay} s.d. ${toDisplay}`;
+    if (fromDisplay) return `dari ${fromDisplay}`;
+    if (toDisplay) return `s.d. ${toDisplay}`;
+    return "";
+  };
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 640px)");
+    const update = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
+    update(mql);
+    if (mql.addEventListener) {
+      mql.addEventListener("change", update);
+      return () => mql.removeEventListener("change", update);
+    } else {
+      mql.addListener(update);
+      return () => mql.removeListener(update);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Abort any ongoing request immediately
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    const reqId = ++latestReqIdRef.current;
+
     if (!tglFrom && !tglTo) {
       setLocalStats(null);
+      setLastSuccessRange(null);
+      setLoading(false);
+      setError(null);
       return;
     }
-    const fetchFiltered = async () => {
-      setLoading(true);
+
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams();
         if (tglFrom) params.set("tglFrom", tglFrom);
         if (tglTo) params.set("tglTo", tglTo);
-        // Fallback to safe defaults if session/role isn't fully propagated in this isolated fetch
-        const res = await fetch(`/api/po/stats?${params.toString()}`);
-        if (!res.ok) throw new Error("Failed to fetch");
+
+        const res = await fetch(`/api/po/stats?${params.toString()}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) throw new Error("Gagal mengambil data filter");
         const data = await res.json();
-        setLocalStats(data);
-      } catch (err) {
-        console.error(err);
+
+        if (latestReqIdRef.current === reqId && !controller.signal.aborted) {
+          setLocalStats(data);
+          setLastSuccessRange({ from: tglFrom, to: tglTo });
+          setError(null);
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError" || controller.signal.aborted) {
+          return;
+        }
+        if (latestReqIdRef.current === reqId) {
+          setError("Gagal memuat data filter.");
+        }
       } finally {
-        setLoading(false);
+        if (latestReqIdRef.current === reqId && !controller.signal.aborted) {
+          setLoading(false);
+        }
       }
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
     };
-    
-    // Simple debounce
-    const t = setTimeout(fetchFiltered, 500);
-    return () => clearTimeout(t);
-  }, [tglFrom, tglTo]);
+  }, [tglFrom, tglTo, retryCount]);
+
+  const handleResetAll = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    latestReqIdRef.current++;
+    setTglFrom("");
+    setTglTo("");
+    setLocalStats(null);
+    setLastSuccessRange(null);
+    setLoading(false);
+    setError(null);
+  };
 
   const activeStats = localStats || stats;
   const sourceData = activeStats?.topSiteAreas;
@@ -117,25 +205,73 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
 
   return (
     <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full relative">
-      <CardHeader className="pb-2 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3">
-        <CardTitle className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider shrink-0">
-          Distribusi PO (Top 5)
-        </CardTitle>
-        <div className="flex gap-2 w-full xl:w-auto items-center justify-end">
+      <CardHeader className="pb-2 flex flex-col gap-2.5">
+        <div className="flex items-center justify-between gap-2 w-full">
+          <CardTitle className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider shrink-0">
+            Distribusi PO (Top 5)
+          </CardTitle>
+          {loading && (
+            <span className="text-[10px] text-indigo-500 dark:text-indigo-400 animate-pulse font-semibold">
+              Memuat...
+            </span>
+          )}
+        </div>
+
+        {error && (
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-2.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-lg text-xs text-rose-700 dark:text-rose-300 w-full justify-between animate-in fade-in">
+            <span className="text-[10px] font-medium leading-tight">
+              {error} {lastSuccessRange && localStats
+                ? `(Menampilkan data terakhir berhasil dimuat: ${formatRange(lastSuccessRange)})`
+                : "(Menampilkan data awal)"}
+            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setRetryCount((c) => c + 1)}
+                className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded font-bold text-[9px] uppercase tracking-wider cursor-pointer"
+              >
+                Coba Lagi
+              </button>
+              {localStats && (
+                <button
+                  type="button"
+                  onClick={handleResetAll}
+                  className="px-2 py-0.5 bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-800/60 text-rose-700 dark:text-rose-300 rounded font-bold text-[9px] uppercase tracking-wider cursor-pointer"
+                >
+                  Ke Data Awal
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full">
           <button
-            onClick={() => {
-              setTglFrom("");
-              setTglTo("");
-            }}
-            className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider shrink-0 ${(!tglFrom && !tglTo) ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600'}`}
+            type="button"
+            onClick={handleResetAll}
+            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all uppercase tracking-wider shrink-0 cursor-pointer ${(!tglFrom && !tglTo) ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
           >
             All
           </button>
-          <div className="flex-1 min-w-0 xl:w-[115px]">
-            <DateInputHybrid value={tglFrom} onChange={setTglFrom} placeholder="Dari..." maxDate={tglTo} />
-          </div>
-          <div className="flex-1 min-w-0 xl:w-[115px]">
-            <DateInputHybrid value={tglTo} onChange={setTglTo} placeholder="Sampai..." minDate={tglFrom} />
+          <div className="flex flex-1 flex-wrap gap-1.5 sm:gap-2 min-w-0 basis-[280px]">
+            <div className="flex-1 min-w-[135px]">
+              <DateInputHybrid
+                value={tglFrom}
+                onChange={setTglFrom}
+                placeholder="Dari..."
+                maxDate={tglTo}
+                inputClassName="py-1.5 pl-2.5 text-xs font-semibold"
+              />
+            </div>
+            <div className="flex-1 min-w-[135px]">
+              <DateInputHybrid
+                value={tglTo}
+                onChange={setTglTo}
+                placeholder="Sampai..."
+                minDate={tglFrom}
+                inputClassName="py-1.5 pl-2.5 text-xs font-semibold"
+              />
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -146,15 +282,32 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
           </div>
         )}
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ top: 5, right: isMobile ? 15 : 30, left: 0, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
             <XAxis type="number" hide />
-            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} width={120} />
+            <YAxis
+              dataKey="name"
+              type="category"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#64748b', fontSize: isMobile ? 9 : 10 }}
+              width={isMobile ? 75 : 120}
+              tickFormatter={(val: string) => {
+                if (isMobile && typeof val === "string" && val.length > 11) {
+                  return val.slice(0, 10) + "…";
+                }
+                return val;
+              }}
+            />
             <Tooltip 
                cursor={{fill: '#f1f5f9'}}
                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
             />
-            <Bar dataKey="po" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={24}>
+            <Bar onClick={(entry: any) => openDashboardPOs({ siteArea: entry.name || entry.payload?.name, tglFrom: lastSuccessRange?.from || "", tglTo: lastSuccessRange?.to || "" }, "PO per Site Area")} dataKey="po" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={isMobile ? 18 : 24}>
               {data.map((entry: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
@@ -217,7 +370,7 @@ export function ExpiringPoMiniTable({ role, regional, siteArea, totalAlmostExpir
             </span>
           )}
         </div>
-        <Link href="/purchase-order" className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-md">
+        <Link onClick={e => { e.preventDefault(); openDashboardPOs({ group: "almost_expired" }, "PO Almost Expired"); }} href="/purchase-order" className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-md">
           VIEW ALL <ArrowRight size={12} />
         </Link>
       </CardHeader>
@@ -232,12 +385,12 @@ export function ExpiringPoMiniTable({ role, regional, siteArea, totalAlmostExpir
             Tidak ada PO Almost Expired
           </div>
         ) : (
-          <div className="w-full flex-1 overflow-auto">
-            <table className="w-full text-left text-xs whitespace-nowrap">
+          <div className="w-full flex-1 overflow-auto custom-scrollbar">
+            <table className="w-full min-w-[380px] text-left text-xs whitespace-nowrap">
               <thead className="sticky top-0 z-10 bg-white dark:bg-slate-900 shadow-sm">
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-500">
-                  <th className="font-semibold text-slate-600 dark:text-slate-400 py-3 pr-2 w-[30%]">No PO</th>
-                  <th className="font-semibold text-slate-600 dark:text-slate-400 py-3 px-2 w-[30%]">Nama Ritel</th>
+                  <th className="font-semibold text-slate-600 dark:text-slate-400 py-3 pr-2 w-[28%]">No PO</th>
+                  <th className="font-semibold text-slate-600 dark:text-slate-400 py-3 px-2 w-[32%]">Nama Ritel</th>
                   <th className="font-semibold text-slate-600 dark:text-slate-400 py-3 px-2 w-[20%]">Site Area</th>
                   <th className="font-semibold text-slate-600 dark:text-slate-400 py-3 px-2 w-[20%] text-right">Tgl Expired</th>
                 </tr>
@@ -251,7 +404,7 @@ export function ExpiringPoMiniTable({ role, regional, siteArea, totalAlmostExpir
                     : "-";
                   return (
                     <tr 
-                      key={i} 
+                      key={i} onClick={() => openDashboardPOs({ noPo: po.noPo }, "Detail " + po.noPo)}
                       className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors last:border-0"
                     >
                       <td className="py-3 pr-2 font-semibold text-indigo-600 dark:text-indigo-400 truncate">
@@ -305,6 +458,7 @@ export function PoReadinessRadialChart({ stats }: { stats: any }) {
               cy="50%"
               innerRadius={60}
               outerRadius={80}
+              onClick={(entry: any) => openDashboardPOs({ group: entry.name === "Unassigned" ? "assign" : "assigned" }, entry.name)}
               paddingAngle={5}
               dataKey="value"
             >
@@ -328,14 +482,21 @@ export function PoReadinessRadialChart({ stats }: { stats: any }) {
 }
 
 export function MonthlyTrendAreaChart() {
-  const data = [
-    { name: "Jan", total: 120 },
-    { name: "Feb", total: 210 },
-    { name: "Mar", total: 180 },
-    { name: "Apr", total: 290 },
-    { name: "May", total: 250 },
-    { name: "Jun", total: 340 },
-  ];
+  const [data, setData] = useState<any[]>([]);
+  const [trendError, setTrendError] = useState("");
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const now = new Date();
+    void Promise.all(Array.from({ length: 6 }, async (_, i) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      const year = date.getFullYear(), month = date.getMonth() + 1;
+      const res = await fetch('/api/po?summary=true&limit=1&offset=0&filterBy=tglPo&month=' + month + '&year=' + year, { signal: ctrl.signal, cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memuat tren');
+      return { name: date.toLocaleDateString('id-ID', { month: 'short' }), month, year, total: json.total };
+    })).then(rows => { if (!ctrl.signal.aborted) setData(rows); }).catch(e => { if (!ctrl.signal.aborted) setTrendError(e.message); });
+    return () => ctrl.abort();
+  }, []);
 
   return (
     <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full">
@@ -345,8 +506,9 @@ export function MonthlyTrendAreaChart() {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 min-h-[200px] pt-4">
+        {trendError && <p role="alert">{trendError}</p>}
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+          <AreaChart onClick={(state: any) => { const item = data.find(d => d.name === state.activeLabel); if (item) openDashboardPOs({ filterBy: "tglPo", month: String(item.month), year: String(item.year) }, "PO " + item.name); }} data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
@@ -436,7 +598,7 @@ export function RecentActivityWidget() {
     }
     
     return (
-      <Link href={link} key={act.id} className="flex gap-3 items-start hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 -mx-2 rounded-lg transition-colors">
+      <Link onClick={e => { if (act.entity === "PurchaseOrder") { e.preventDefault(); openDashboardPOs({ q: act.refNumber || act.newData?.noPo || "" }, "PO dari aktivitas"); } }} href={link} key={act.id} className="flex gap-3 items-start hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 -mx-2 rounded-lg transition-colors">
         <div className="mt-0.5 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700">
           {icon}
         </div>
