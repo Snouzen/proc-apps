@@ -1,3 +1,4 @@
+import { sumRekonInvoiceItems } from "@/lib/rekonInvoiceAmount";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionWithRole } from "@/lib/auth";
@@ -220,16 +221,7 @@ export async function GET(request: Request) {
       });
 
       const dataWithTotals = pos.map((po) => {
-        const totalTagihan = po.Items.reduce(
-          (s, it) =>
-            s +
-            (Number(it.rpTagih) ||
-              Number(it.hargaPcs || 0) * Number(it.pcsKirim || 0) ||
-              Number(it.nominal) ||
-              Math.max(0, Number(it.hargaPcs || 0) * Number(it.pcs || 0) - Number(it.discount || 0)) ||
-              0),
-          0
-        );
+        const totalTagihan = sumRekonInvoiceItems(po.Items);
         const totalNominal = po.Items.reduce(
           (s, it) =>
             s +

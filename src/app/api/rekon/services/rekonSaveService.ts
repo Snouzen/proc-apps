@@ -1,3 +1,4 @@
+import { sumRekonInvoiceItems } from "@/lib/rekonInvoiceAmount";
 import { normalizeRincianBayarLink } from "@/lib/rekonPaymentLink";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -285,16 +286,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
       calculatedTotalInvoices = invoiceList.reduce((sum, invNo) => {
         const p = poList.find((x) => x.noInvoice === invNo);
         if (!p) return sum;
-        const poTotal =
-          p.Items?.reduce((itemSum: number, item: any) => {
-            const lineVal =
-              Number(item.rpTagih) ||
-              Number(item.hargaPcs || 0) * Number(item.pcsKirim || 0) ||
-              Number(item.nominal) ||
-              Math.max(0, Number(item.hargaPcs || 0) * Number(item.pcs || 0) - Number(item.discount || 0)) ||
-              0;
-            return itemSum + (Number.isFinite(lineVal) ? lineVal : 0);
-          }, 0) || 0;
+        const poTotal = sumRekonInvoiceItems(p.Items);
         return sum + poTotal;
       }, 0);
     }

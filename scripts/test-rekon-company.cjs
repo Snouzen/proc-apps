@@ -92,4 +92,43 @@ test('A new record cannot claim a legacy proof by forging request metadata',asyn
  finally{if(original===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=original;}
 });
 test('Initial selector and mandatory initial guard removed from form',()=>{for(const f of ['src/app/rekon/calc/components/RekonForm.tsx','src/app/rekon/calc/hooks/useRekonCalc.ts']){const s=fs.readFileSync(fs.existsSync(path.join(root,f))?path.join(root,f):path.join(repo,f),'utf8');assert(!s.includes('selectedInisial'));assert(!s.includes('PILIH INISIAL'));}});
+
+const actualAmounts=loader({})('src/lib/rekonInvoiceAmount.ts');
+const shipmentItem=(pcsKirim,extra={})=>({pcs:100,pcsKirim,hargaPcs:183750,discount:0,nominal:18375000,rpTagih:183750*pcsKirim,Product:{name:'Rice'},...extra});
+test('Helper preserves a valid zero instead of falling back to order nominal',()=>assert.equal(actualAmounts.getRekonItemAmount(shipmentItem(0)),0));
+test('Helper preserves zero after full discount even with positive shipment',()=>assert.equal(actualAmounts.getRekonItemAmount(shipmentItem(50,{rpTagih:0,discount:18375000})),0));
+test('Missing rpTagih fallback uses actual quantity and proportional discount only',()=>assert.equal(actualAmounts.getRekonItemAmount(shipmentItem(50,{rpTagih:null,discount:1000})),9187000));
+test('Missing rpTagih plus zero shipped quantity remains zero',()=>assert.equal(actualAmounts.getRekonItemAmount(shipmentItem(0,{rpTagih:null})),0));
+test('Lookup client selection preserves totalTagihan zero despite full totalNominal',()=>assert.equal(actualAmounts.getRekonLookupInvoiceTotal({totalTagihan:0,totalNominal:999999,Items:[shipmentItem(0)]}),0));
+for(const invalid of [NaN,Infinity,-1,'abc'])test('Invalid actual shipment amount rejected: '+String(invalid),()=>assert.throws(()=>actualAmounts.getRekonItemAmount(shipmentItem(0,{rpTagih:invalid})),/tidak valid/));
+for(const [name,items,expected] of [
+ ['one product shipped and one not shipped',[shipmentItem(100),shipmentItem(0)],18375000],
+ ['partial second product',[shipmentItem(100),shipmentItem(50)],27562500],
+ ['all products unshipped',[shipmentItem(0),shipmentItem(0)],0],
+ ['all products fully shipped',[shipmentItem(100),shipmentItem(100)],36750000],
+ ['partial with proportional discount',[shipmentItem(50,{discount:1000,rpTagih:9187000}),shipmentItem(0)],9187000],
+])test('Lookup/save/list/single/export agree for '+name,async()=>{
+ const old=pos[0].Items;pos[0].Items=items;
+ try{
+  const f=fixture(),GET=f.load('src/app/api/rekon/lookup/route.ts').GET;
+  const lookup=await(await GET(new Request('http://localhost/api/rekon/lookup?ritelId=A1&invoiceNo=I1'))).json();assert.equal(lookup.data[0].totalTagihan,expected);
+  const saved=await f.load('src/app/api/rekon/services/rekonSaveService.ts').saveRekon({...body,invoices:['I1'],rtvs:[]},auth);assert.equal(saved.totalInvoices,expected);saved.RitelModern=ritels[0];
+  const detail=await f.load('src/app/api/rekon/services/rekonSingleService.ts').fetchSingleRekon(saved.id,auth);assert.equal(detail.detailedInvoices[0].nominal,expected);
+  const list=await f.load('src/app/api/rekon/services/rekonListService.ts').fetchRekonList(new URLSearchParams(),auth);assert.equal(list.data[0].invoices[0].nominal,expected);
+  const prepare=f.load('src/lib/rekonExportData.ts').prepareRekonExport;assert.equal(prepare([detail])[0].invoices[0].nominal,expected);assert.equal(prepare(list.data)[0].invoices[0].nominal,expected);
+ }finally{pos[0].Items=old;}
+});
+test('A valid zero on a historical single invoice never falls back to saved total',async()=>{
+ const old=pos[0].Items;pos[0].Items=[shipmentItem(0)];
+ try{const f=fixture(),saved=await f.load('src/app/api/rekon/services/rekonSaveService.ts').saveRekon({...body,invoices:['I1'],rtvs:[]},auth);saved.totalInvoices=18375000;saved.RitelModern=ritels[0];const detail=await f.load('src/app/api/rekon/services/rekonSingleService.ts').fetchSingleRekon(saved.id,auth);assert.equal(detail.detailedInvoices[0].nominal,0);const list=await f.load('src/app/api/rekon/services/rekonListService.ts').fetchRekonList(new URLSearchParams(),auth);assert.equal(list.data[0].invoices[0].nominal,0);assert.throws(()=>f.load('src/lib/rekonExportData.ts').prepareRekonExport([detail]),/total detail invoice/);}finally{pos[0].Items=old;}
+});
+test('R-386-shaped amounts total 417625000 and Excel summary agrees with details',()=>{
+ const rows=[5180000,3330000,163800000,226200000,740000,18375000];
+ const record={noRekonsiliasi:'R-386-REGRESSION',totalInvoices:417625000,totalRtvs:0,detailedRtvs:[],detailedInvoices:rows.map((nominal,i)=>({noInvoice:'INV-'+i,nominal}))};
+ let output;const generated=loader({xlsx:{utils:{book_new:()=>({}),aoa_to_sheet:rows=>{output=rows;return {};},book_append_sheet:()=>{}},writeFile:()=>{}}});
+ generated('src/lib/generateRekonExcel.ts').generateRekonExcel([record],{});
+ assert.equal(output.find(row=>row[1]==='TOTAL INVOICE')[4],417625000);assert.equal(output.find(row=>row[1]==='TOTAL KESELURUHAN')[3],417625000);
+ record.detailedInvoices[5].nominal=36750000;
+ for(const generator of ['generateRekonExcel','generateAllRekonExcel'])assert.throws(()=>generated('src/lib/generateRekonExcel.ts')[generator]([record],{}),/total detail invoice/);
+});
 (async()=>{let pass=0;for(const[n,f]of tests){try{await f();pass++;console.log('PASS',n);}catch(e){console.error('FAIL',n,e.stack);process.exitCode=1;}}console.log(pass+'/'+tests.length+' passed; in-memory DB only');})();

@@ -1,3 +1,4 @@
+import { sumRekonInvoiceItems } from "@/lib/rekonInvoiceAmount";
 import prisma from "@/lib/prisma";
 import { checkReconcileAccess, normalizeRitelKey } from "./rekonAccessHelper";
 export class ValidationError extends Error {
@@ -564,16 +565,7 @@ export async function fetchRekonList(searchParams: URLSearchParams, auth?: any) 
   const poByInvoiceAndRitelMap = new Map<string, any>();
   const poListByInvoiceMap = new Map<string, any[]>();
   posData.forEach((p: any) => {
-    const total =
-      p.Items?.reduce((sum: number, item: any) => {
-        const lineTotal =
-          Number(item.rpTagih) ||
-          Number(item.hargaPcs || 0) * Number(item.pcsKirim || 0) ||
-          Number(item.nominal) ||
-          Math.max(0, Number(item.hargaPcs || 0) * Number(item.pcs || 0) - Number(item.discount || 0)) ||
-          0;
-        return sum + lineTotal;
-      }, 0) || 0;
+    const total = sumRekonInvoiceItems(p.Items);
     const produkNames = (p.Items || [])
       .map((item: any) => item.Product?.name)
       .filter(Boolean)
@@ -651,14 +643,7 @@ export async function fetchRekonList(searchParams: URLSearchParams, auth?: any) 
         poCandidates.find((p: any) => p.ritelId && companyRitelSet.has(p.ritelId)) ||
         undefined;
 
-      let calculatedNominal = po ? Number(po.calculatedTotal || 0) : null;
-      if (
-        (calculatedNominal === null || calculatedNominal === 0) &&
-        (rekon.invoices || []).length === 1 &&
-        Number(rekon.totalInvoices || 0) > 0
-      ) {
-        calculatedNominal = Number(rekon.totalInvoices);
-      }
+      const calculatedNominal = po ? Number(po.calculatedTotal) : null;
 
       return {
         noInvoice: invNo,

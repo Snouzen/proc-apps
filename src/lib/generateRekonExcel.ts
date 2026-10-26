@@ -380,6 +380,7 @@ export const generateRekonExcel = (items: any[], filterInfo: any) => {
 
 export const generateAllRekonExcel = (items: any[], _filterInfo?: any) => {
   try {
+    items = prepareRekonExport(items);
     const wb = XLSX.utils.book_new();
 
     // =========================================================================

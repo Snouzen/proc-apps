@@ -34,6 +34,11 @@ export function prepareRekonExport(items: any[]) {
       if (!Number.isFinite(nominal)) throw new Error(`Nominal invoice ${i.noInvoice} tidak valid`);
       return { ...i, nominal };
     });
+    const invoiceTotal = invoiceRows.reduce((sum: number, invoice: any) => sum + invoice.nominal, 0);
+    const storedInvoiceTotal = Number(item.totalInvoices ?? 0);
+    if (!Number.isFinite(storedInvoiceTotal) || !Number.isFinite(invoiceTotal) || Math.abs(invoiceTotal - storedInvoiceTotal) > 0.01) {
+      throw new Error(`Rekon ${item.noRekonsiliasi}: total detail invoice (${invoiceTotal}) berbeda dari total tersimpan (${storedInvoiceTotal}). Periksa tagihan aktual dan data rekon sebelum export.`);
+    }
     return { ...item, invoices: invoiceRows, rtvs: normalized, promos: item.detailedPromos ?? item.promos ?? [] };
   });
 }

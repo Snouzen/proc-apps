@@ -1,3 +1,4 @@
+import { getRekonLookupInvoiceTotal } from "@/lib/rekonInvoiceAmount";
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
@@ -224,7 +225,7 @@ export function useRekonCalc() {
           noInvoice: po.noInvoice,
           noPo: po.noPo,
           companyId: po.ritelId || selectedCompany?.id || "",
-          total: po.totalTagihan || po.totalNominal || po.Items?.reduce((s: number, i: any) => s + (i.rpTagih || (i.hargaPcs * i.pcsKirim) || 0), 0) || 0,
+          total: getRekonLookupInvoiceTotal(po),
           unitProduksi: po.UnitProduksi?.siteArea || "-",
           siteArea: po.UnitProduksi?.siteArea || "-",
           produk: produkNames || "-",

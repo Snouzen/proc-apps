@@ -1,3 +1,4 @@
+import { sumRekonInvoiceItems } from "@/lib/rekonInvoiceAmount";
 import prisma from "@/lib/prisma";
 import { checkReconcileAccess, resolveRitelGroup } from "./rekonAccessHelper";
 
@@ -111,20 +112,7 @@ export async function fetchSingleRekon(idParam: string, auth?: any) {
       candidates.find((x) => x.ritelId && companyRitelSet.has(x.ritelId)) ||
       undefined;
 
-    let total =
-      p?.Items?.reduce((sum: number, item: any) => {
-        const lineTotal =
-          Number(item.rpTagih) ||
-          Number(item.hargaPcs || 0) * Number(item.pcsKirim || 0) ||
-          Number(item.nominal) ||
-          Math.max(0, Number(item.hargaPcs || 0) * Number(item.pcs || 0) - Number(item.discount || 0)) ||
-          0;
-        return sum + lineTotal;
-      }, 0) || 0;
-
-    if (total === 0 && (rekon.invoices || []).length === 1 && Number(rekon.totalInvoices || 0) > 0) {
-      total = Number(rekon.totalInvoices);
-    }
+    const total = sumRekonInvoiceItems(p?.Items);
 
     const produkNames = (p?.Items || [])
       .map((item: any) => item.Product?.name)
