@@ -350,29 +350,6 @@ export function useRekonCalc() {
       return;
     }
 
-    if (status === "final" && selectedRtvs.length > 0) {
-      const missingLokasiRtvs = selectedRtvs.filter(
-        (rtv) => !rtv.lokasiBarang || rtv.lokasiBarang.trim() === "" || rtv.lokasiBarang.trim() === "-"
-      );
-      if (missingLokasiRtvs.length > 0) {
-        const rtvListStr = Array.from(new Set(missingLokasiRtvs.map((r) => r.noRtv || r.id))).join(", ");
-        const { isConfirmed: saveAsDraftInstead } = await Swal.fire({
-          icon: "warning",
-          title: "Lokasi Barang RTV Belum Lengkap",
-          html: `Terdapat RTV yang belum memiliki data <b>Lokasi Barang</b>:<br/><br/><b style="color:#e11d48">${rtvListStr}</b><br/><br/>Rekonsiliasi belum dapat di-<b>Submit Final</b>. Silakan simpan sebagai <b>Draft</b> terlebih dahulu hingga lokasi barang dilengkapi.`,
-          showCancelButton: true,
-          confirmButtonText: "Simpan sebagai Draft",
-          cancelButtonText: "Tutup",
-          confirmButtonColor: "#10b981",
-          customClass: { popup: "rounded-[32px] font-sans", confirmButton: "rounded-xl px-6 py-3", cancelButton: "rounded-xl px-6 py-3" }
-        });
-        if (saveAsDraftInstead) {
-          return handleSaveRekon("draft");
-        }
-        return;
-      }
-    }
-
     const { isConfirmed } = await Swal.fire({
       title: status === "draft" ? "Simpan Draft?" : "Simpan Rekonsiliasi?",
       text: status === "draft" 

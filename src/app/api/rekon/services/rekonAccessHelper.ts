@@ -163,7 +163,6 @@ export async function checkReconcileAccess(
   }
   const allowedRitelIds = Array.from(new Set([...siblingRitelIds, ...companyRitelIds]));
   const allowedRitelSet = new Set<string>(allowedRitelIds);
-  const isDraftRekon = String(rekon?.status || "").toLowerCase() === "draft";
 
   const isReturWithoutUnit = (ret: any) =>
     !ret?.LokasiBarang && !ret?.PembebananReturn && !ret?.lokasiBarangId && !ret?.pembebananReturnId;
@@ -286,7 +285,7 @@ export async function checkReconcileAccess(
           reason: `Data retur RTV dengan ID "${rId}" bukan milik ritel rekonsiliasi ini.`,
         };
       }
-      if (isDraftRekon && isReturWithoutUnit(ret)) {
+      if (isReturWithoutUnit(ret)) {
         continue;
       }
       const chk = checkReturOwnership(ret, safeRole, userRegional, userSiteArea);
@@ -314,7 +313,7 @@ export async function checkReconcileAccess(
         };
       }
       for (const match of matches) {
-        if (isDraftRekon && isReturWithoutUnit(match)) {
+        if (isReturWithoutUnit(match)) {
           continue;
         }
         const chk = checkReturOwnership(match, safeRole, userRegional, userSiteArea);
@@ -348,7 +347,7 @@ export async function checkReconcileAccess(
       }
 
       for (const ret of idRecords) {
-        if (isDraftRekon && isReturWithoutUnit(ret)) {
+        if (isReturWithoutUnit(ret)) {
           continue;
         }
         const chk = checkReturOwnership(ret, safeRole, userRegional, userSiteArea);
@@ -380,7 +379,7 @@ export async function checkReconcileAccess(
           };
         }
         for (const match of matches) {
-          if (isDraftRekon && isReturWithoutUnit(match)) {
+          if (isReturWithoutUnit(match)) {
             continue;
           }
           const chk = checkReturOwnership(match, safeRole, userRegional, userSiteArea);

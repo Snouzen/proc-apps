@@ -144,8 +144,9 @@ const exportItem = () => ({ noRekonsiliasi: 'REC1', totalRtvs: 50, detailedRtvs:
 test('Export retains valid zero quantity and location', () => { const out = prepareRekonExport([exportItem()])[0]; assert.equal(out.rtvs[0].qty, 0); assert.equal(out.rtvs[0].lokasiBarang, 'SITE A'); });
 test('Export reports RTV ritel mismatch explicitly', () => { const item = exportItem(); item.detailedRtvs[0].sourceRitelMismatch = true; assert.throws(() => prepareRekonExport([item]), /company-nya berbeda/); });
 test('Export never substitutes missing invoice with zero', () => { const item = exportItem(); item.detailedInvoices = [{ noInvoice: 'INV-OTHER', sourceRitelMismatch: true, nominal: null }]; assert.throws(() => prepareRekonExport([item]), /invoice INV-OTHER tidak tersedia/); });
+for (const location of [null, undefined, "", "   ", "-"]) test('Export accepts optional RTV location '+String(location), () => { const item=exportItem();item.detailedRtvs[0].lokasiBarang=location;assert.equal(prepareRekonExport([item])[0].rtvs[0].lokasiBarang,'-'); });
 test('Export preserves valid invoice zero', () => { const item = exportItem(); item.detailedInvoices = [{ noInvoice: 'INV-ZERO', nominal: 0 }]; assert.equal(prepareRekonExport([item])[0].invoices[0].nominal, 0); });
-for (const change of [{ sourceMissing: true }, { lokasiBarang: null }, { qty: null }, { nominal: 60 }]) test(`Export blocks incomplete/mismatched RTV ${JSON.stringify(change)}`, () => { const item = exportItem(); Object.assign(item.detailedRtvs[0], change); assert.throws(() => prepareRekonExport([item])); });
+for (const change of [{ sourceMissing: true }, { qty: null }, { nominal: 60 }]) test(`Export blocks incomplete/mismatched RTV ${JSON.stringify(change)}`, () => { const item = exportItem(); Object.assign(item.detailedRtvs[0], change); assert.throws(() => prepareRekonExport([item])); });
 const { poScopeFromUnits } = load('src/lib/utils/poScope.ts');
 const { loadRekonExportRows } = load('src/lib/loadRekonExportRows.ts');
 test('RM scope resolves legacy regional label using ownership semantics', () => {

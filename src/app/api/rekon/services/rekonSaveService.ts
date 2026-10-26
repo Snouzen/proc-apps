@@ -383,14 +383,17 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
           })
         : [];
 
-      const rekonTargetStatus = status || "final";
 
       if (safeRole !== "pusat") {
         const userRegional = dbUser?.regional || session?.regional || null;
         const userSiteArea = dbUser?.siteArea || session?.siteArea || null;
         for (const ret of returRecords) {
           const hasNoUnitYet = !ret.LokasiBarang && !ret.PembebananReturn && !ret.lokasiBarangId && !ret.pembebananReturnId;
-          if (rekonTargetStatus === "draft" && hasNoUnitYet) {
+          // Unitless RTVs are valid for both draft and final; company/binding checks still apply.
+          if (hasNoUnitYet) {
+            if ((safeRole === "rm" && !userRegional?.trim()) || (safeRole === "sitearea" && !userSiteArea?.trim())) {
+              throw new ValidationError("Forbidden: Konfigurasi wilayah akun wajib tersedia untuk memilih RTV tanpa alokasi unit.");
+            }
             continue;
           }
           const check = checkReturOwnership(ret, safeRole, userRegional, userSiteArea);
@@ -440,21 +443,6 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
           refInvoice,
           nominal: itemNominal
         });
-      }
-
-      // Validasi Lokasi Barang RTV: Bebas jika Draft, Wajib jika Submit Final
-      if (rekonTargetStatus === "final" && normalizedRtvs.length > 0) {
-        const missingLokasiRtvs = normalizedRtvs.filter((item) => {
-          const rec = returRecords.find((r: any) => r.id === item.id);
-          const lok = rec?.LokasiBarang?.siteArea?.trim();
-          return !lok || lok === "-";
-        });
-        if (missingLokasiRtvs.length > 0) {
-          const missingLabels = Array.from(new Set(missingLokasiRtvs.map((r) => r.noRtv || r.id))).join(", ");
-          throw new ValidationError(
-            `RTV berikut belum memiliki Lokasi Barang: ${missingLabels}. Silakan simpan sebagai Draft terlebih dahulu.`
-          );
-        }
       }
 
       // Periksa binding HANYA pada record yang BENAR-BENAR TERPILIH (bukan seluruh kandidat hasil query)

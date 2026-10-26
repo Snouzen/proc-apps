@@ -10,16 +10,14 @@ export function prepareRekonExport(items: any[]) {
       if (!rtv || typeof rtv !== "object" || rtv.sourceMissing || rtv.sourceAmbiguous) {
         throw new Error(`Rekon ${item.noRekonsiliasi}: RTV ${rtv?.noRtv || rtv || "-"} tidak ditemukan atau ambigu. Periksa ID retur sebelum export.`);
       }
-      if (rtv.lokasiBarang == null || rtv.lokasiBarang === "") {
-        throw new Error(`Rekon ${item.noRekonsiliasi}: lokasi barang RTV ${rtv.noRtv} belum tersedia.`);
-      }
       const rawNominal = rtv.nominal ?? rtv.total;
       const rawQty = rtv.qty ?? rtv.qtyReturn;
       if (rawNominal == null || rawQty == null || rawNominal === "" || rawQty === "") throw new Error(`Nilai RTV ${rtv.noRtv} belum tersedia`);
       const nominal = Number(rawNominal);
       const qty = Number(rawQty);
       if (!Number.isFinite(nominal) || !Number.isFinite(qty)) throw new Error(`Nilai RTV ${rtv.noRtv} tidak valid`);
-      return { ...rtv, nominal, qty };
+      const lokasiBarang = typeof rtv.lokasiBarang === "string" ? rtv.lokasiBarang.trim() || "-" : "-";
+      return { ...rtv, nominal, qty, lokasiBarang };
     });
     const total = normalized.reduce((sum: number, r: any) => sum + r.nominal, 0);
     const expectedTotal = Number(item.totalRtvs ?? 0);
