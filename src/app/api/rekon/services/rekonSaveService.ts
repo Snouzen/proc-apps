@@ -1,3 +1,4 @@
+import { normalizeRincianBayarLink } from "@/lib/rekonPaymentLink";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getProfileName } from "@/lib/auth";
@@ -5,7 +6,7 @@ import crypto from "crypto";
 import { auditActivity } from "@/lib/audit";
 import { withTransactionRetry } from "@/lib/generatePoInvoiceNumber";
 import { supabaseAdmin } from "@/lib/supabase";
-import { validateProofFile, safelyFinalizeProofFile, rollbackFinalizedFiles } from "./rekonFileUtils";
+import { extractStoragePathFromUrl, validateProofFile, safelyFinalizeProofFile, rollbackFinalizedFiles } from "./rekonFileUtils";
 import { checkPOOwnership, checkReturOwnership } from "@/lib/utils/regional";
 import { checkReconcileAccess, resolveRitelGroup } from "./rekonAccessHelper";
 
@@ -48,6 +49,11 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
     id, // Cek apakah ini edit/update dari draft
     remarks
   } = body;
+
+  // Keep legacy managed Storage attachments on their existing lifecycle. External
+  // spreadsheet links use URL validation and never enter the Storage move flow.
+  const rincianStoragePath = typeof rincianBayarUrl === "string" ? extractStoragePathFromUrl(rincianBayarUrl) : null;
+  const rincianLink = rincianStoragePath ? null : normalizeRincianBayarLink(rincianBayarUrl);
 
   // Compute backward-compat fields from notes array
   const notesArray: Array<{type?: 'invoice' | 'rtv', desc: string, nominal: number}> = Array.isArray(notes) ? notes : [];
@@ -112,7 +118,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
       if (ritelId && existingRekon.ritelId && ritelId !== existingRekon.ritelId) {
         const existingGroup = await resolveRitelGroup(tx, existingRekon.ritelId);
         if (!existingGroup.siblingRitelIds.includes(ritelId)) {
-          throw new ValidationError("Ritel/Inisial tidak dapat diubah pada rekonsiliasi yang sudah tersimpan.");
+          throw new ValidationError("Company tidak dapat diubah pada rekonsiliasi yang sudah tersimpan.");
         }
       }
 
@@ -164,7 +170,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
       GeneratedNoRekon = `R-${String(maxRekonSeq + 1).padStart(3, '0')}/${datePattern}`;
     }
 
-    // 2. Server-side Recalculation of Totals with Strict Ritel & Inisial Matching (ignoring tujuan)
+    // 2. Server-side Recalculation of Totals with Company Matching across initials (ignoring tujuan)
     // Kunci seluruh baris PurchaseOrder lama dan baru dalam urutan eksplisit ORDER BY id ASC FOR UPDATE
     const allTargetInvoices = Array.from(
       new Set([...invoiceList, ...(existingRekon?.invoices || [])])
@@ -185,7 +191,8 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
     if (invoiceList.length > 0) {
       const poList = await tx.purchaseOrder.findMany({
         where: { 
-          noInvoice: { in: invoiceList }
+          noInvoice: { in: invoiceList },
+          ...(effectiveRitelId ? { ritelId: { in: ritelGroup.companyRitelIds } } : {}),
         },
         include: { Items: true, UnitProduksi: true }
       });
@@ -232,26 +239,37 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
           : effectiveRitelId
           ? [effectiveRitelId]
           : [];
-      const siblingRitelSetForPo = new Set(siblingRitelIdsForPo);
+      const companyRitelIdsForPo =
+        ritelGroup.companyRitelIds.length > 0
+          ? ritelGroup.companyRitelIds
+          : siblingRitelIdsForPo;
+      const allowedRitelSetForPo = new Set([
+        ...siblingRitelIdsForPo,
+        ...companyRitelIdsForPo,
+      ]);
 
-      // Check cross-ritel/inisial POs (allow different tujuan rows within the same namaPt + inisial)
-      const outsidePos = poList.filter((p) => !p.ritelId || !siblingRitelSetForPo.has(p.ritelId));
+      // Check cross-ritel POs (allow rows within the same company/namaPt)
+      const outsidePos = poList.filter((p) => !p.ritelId || !allowedRitelSetForPo.has(p.ritelId));
       if (outsidePos.length > 0) {
         const firstPoRitelId = poList[0]?.ritelId;
         const firstPoGroup = firstPoRitelId ? await resolveRitelGroup(tx, firstPoRitelId) : null;
-        const firstPoSet = new Set(firstPoGroup?.siblingRitelIds || (firstPoRitelId ? [firstPoRitelId] : []));
-        const hasCrossInisial = poList.some((p) => !p.ritelId || !firstPoSet.has(p.ritelId));
-        if (hasCrossInisial) {
-          throw new ValidationError("Seluruh invoice dalam satu rekonsiliasi harus berasal dari ritel dan inisial yang sama.");
+        const firstPoSet = new Set(
+          firstPoGroup?.companyRitelIds ||
+            firstPoGroup?.siblingRitelIds ||
+            (firstPoRitelId ? [firstPoRitelId] : [])
+        );
+        const hasCrossCompany = poList.some((p) => !p.ritelId || !firstPoSet.has(p.ritelId));
+        if (hasCrossCompany) {
+          throw new ValidationError("Seluruh invoice dalam satu rekonsiliasi harus berasal dari company yang sama.");
         }
-        throw new ValidationError("Invoice tidak sesuai dengan ritel/inisial yang dipilih (terdaftar pada ritel/inisial lain).");
+        throw new ValidationError("Invoice tidak sesuai dengan company yang dipilih.");
       }
 
-      // Cek apakah invoice sudah terdaftar di rekonsiliasi final lain di tabel Reconcile (scoped by siblingRitelIds)
+      // Cek apakah invoice sudah terdaftar di rekonsiliasi final lain di tabel Reconcile (scoped by companyRitelIdsForPo)
       const conflictingRekon = await tx.reconcile.findFirst({
         where: {
           id: id ? { not: id } : undefined,
-          ...(siblingRitelIdsForPo.length > 0 ? { ritelId: { in: siblingRitelIdsForPo } } : {}),
+          ...(companyRitelIdsForPo.length > 0 ? { ritelId: { in: companyRitelIdsForPo } } : {}),
           status: "final",
           invoices: { hasSome: invoiceList },
         },
@@ -265,16 +283,18 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
       }
 
       calculatedTotalInvoices = invoiceList.reduce((sum, invNo) => {
-        const p = poList.find(x => x.noInvoice === invNo);
+        const p = poList.find((x) => x.noInvoice === invNo);
         if (!p) return sum;
-        const poTotal = p.Items?.reduce((itemSum: number, item: any) => {
-          // Preserve valid rpTagih === 0, do not replace with hargaPcs * pcsKirim
-          const hasRpTagih = item.rpTagih !== null && item.rpTagih !== undefined && !Number.isNaN(Number(item.rpTagih));
-          const lineVal = hasRpTagih
-            ? Number(item.rpTagih)
-            : (Number(item.hargaPcs || 0) * Number(item.pcsKirim || 0));
-          return itemSum + (Number.isFinite(lineVal) ? lineVal : 0);
-        }, 0) || 0;
+        const poTotal =
+          p.Items?.reduce((itemSum: number, item: any) => {
+            const lineVal =
+              Number(item.rpTagih) ||
+              Number(item.hargaPcs || 0) * Number(item.pcsKirim || 0) ||
+              Number(item.nominal) ||
+              Math.max(0, Number(item.hargaPcs || 0) * Number(item.pcs || 0) - Number(item.discount || 0)) ||
+              0;
+            return itemSum + (Number.isFinite(lineVal) ? lineVal : 0);
+          }, 0) || 0;
         return sum + poTotal;
       }, 0);
     }
@@ -298,6 +318,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
       ritelGroup.siblingRitelIds.length > 0 ? ritelGroup.siblingRitelIds : [effectiveRitelId];
     const companyRitelIds =
       ritelGroup.companyRitelIds.length > 0 ? ritelGroup.companyRitelIds : siblingRitelIds;
+    const siblingRitelSet = new Set(siblingRitelIds);
 
     let calculatedTotalRtvs = 0;
     const explicitRtvIds = rtvList.map((r: any) => typeof r === 'object' ? r.id : null).filter(Boolean);
@@ -327,11 +348,11 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
         orConds.push({ referensiPembayaran: existingRekon.noRekonsiliasi });
       }
 
-      // Kunci seluruh record kandidat data_retur dalam urutan eksplisit ORDER BY id ASC FOR UPDATE
+      // Kunci seluruh record kandidat data_retur dalam urutan eksplisit ORDER BY id ASC FOR UPDATE (scoped to companyRitelIds)
       const candidateRtvs = await tx.dataRetur.findMany({
         where: { 
           OR: orConds,
-          ritelId: { in: siblingRitelIds }
+          ritelId: { in: companyRitelIds }
         },
         select: { id: true }
       });
@@ -354,11 +375,12 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
         ? await tx.dataRetur.findMany({
             where: { 
               id: { in: candidateIds },
-              ritelId: { in: siblingRitelIds }
+              ritelId: { in: companyRitelIds }
             },
             select: {
               id: true,
               rtvCn: true,
+              ritelId: true,
               nominal: true,
               referensiPembayaran: true,
               lokasiBarangId: true,
@@ -386,29 +408,29 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
         }
       }
 
-      // Normalize references to database record IDs and validate against ambiguity and double-counting
+      // Normalize references to database record IDs and validate against double-counting
       const resolvedDbIds = new Set<string>();
       for (const r of rtvList) {
         const rId = typeof r === 'object' ? r.id : null;
         const noRtv = typeof r === 'string' ? r : r.noRtv;
         const refInvoice = (typeof r === 'object' ? r.refInvoice : "") || "";
+        const hintNominal = typeof r === 'object' && r.nominal !== undefined ? Number(r.nominal) : null;
 
         let matchedRec: any = null;
         if (rId) {
           matchedRec = returRecords.find((rec: any) => rec.id === rId);
           if (!matchedRec) {
-            throw new ValidationError(`Data retur RTV ID ${rId} tidak ditemukan atau bukan milik ritel/inisial ini.`);
+            throw new ValidationError(`Data retur RTV ID ${rId} tidak ditemukan atau bukan milik ritel ini.`);
           }
         } else if (noRtv) {
-          // If only RTV number provided without ID, check for ambiguity across multi-product records
-          const matchingForCn = returRecords.filter((rec: any) => rec.rtvCn === noRtv);
-          if (matchingForCn.length === 0) {
-            throw new ValidationError(`Data retur RTV ${noRtv} tidak ditemukan atau bukan milik ritel/inisial ini.`);
+          const allMatchingForCn = returRecords.filter((rec: any) => rec.rtvCn === noRtv);
+          if (allMatchingForCn.length === 0) {
+            throw new ValidationError(`Data retur RTV ${noRtv} tidak ditemukan atau bukan milik ritel ini.`);
           }
-          if (matchingForCn.length > 1) {
-            throw new ValidationError(`Nomor RTV "${noRtv}" memiliki beberapa produk retur berbeda di sistem. Harap sertakan ID retur spesifik untuk setiap item produk.`);
-          }
-          matchedRec = matchingForCn[0];
+          const unusedForCn = allMatchingForCn.filter((rec: any) => !resolvedDbIds.has(rec.id));
+          const pool = unusedForCn.length > 0 ? unusedForCn : allMatchingForCn;
+          if (pool.length !== 1) throw new ValidationError(`Nomor RTV ${noRtv} memiliki beberapa record dalam company ini. Pilih ID retur secara spesifik.`);
+          matchedRec = pool[0];
         } else {
           throw new ValidationError("Item RTV tidak memiliki ID ataupun nomor RTV yang valid.");
         }
@@ -578,7 +600,9 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
     const userRole = safeRole || session?.user?.role || dbUser?.role || "cabang";
 
     const validBukti = await validateProofFile(buktiBayarUrl, finalId, currentUserId, userRole, tx);
-    const validRincian = await validateProofFile(rincianBayarUrl, finalId, currentUserId, userRole, tx);
+    const validRincian = rincianStoragePath
+      ? await validateProofFile(rincianBayarUrl, finalId, currentUserId, userRole, tx, "rincian bayar")
+      : null;
 
     let finalBuktiBayarUrl: string | undefined = undefined;
     if (validBukti) {
@@ -592,7 +616,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
       finalBuktiBayarUrl = buktiBayarUrl;
     }
 
-    let finalRincianBayarUrl: string | undefined = undefined;
+    let finalRincianBayarUrl: string | null = rincianLink;
     if (validRincian) {
       finalRincianBayarUrl = await safelyFinalizeProofFile(
         validRincian.storagePath,
@@ -600,8 +624,6 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
         finalId,
         movedTracker
       );
-    } else if (rincianBayarUrl) {
-      finalRincianBayarUrl = rincianBayarUrl;
     }
 
     // 4. Simpan / Upsert Record Reconcile
@@ -624,7 +646,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
         notesNominal: computedNotesNominal,
         noPromo: noPromo || null,
         buktiBayarUrl: finalBuktiBayarUrl || undefined,
-        rincianBayarUrl: finalRincianBayarUrl || undefined,
+        rincianBayarUrl: rincianBayarUrl === undefined ? undefined : finalRincianBayarUrl,
         tglBayar: tglBayar ? new Date(tglBayar) : undefined,
         status: status || "final",
         remarks: remarks || null,
@@ -670,7 +692,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
           await tx.purchaseOrder.updateMany({
             where: {
               noInvoice: { in: oldInvoices },
-              ritelId: { in: siblingRitelIds },
+              ritelId: { in: companyRitelIds },
               buktiBayar: existingRekon.noRekonsiliasi,
             },
             data: {
@@ -682,7 +704,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
         await tx.dataRetur.updateMany({
           where: {
             referensiPembayaran: existingRekon.noRekonsiliasi,
-            ritelId: { in: siblingRitelIds },
+            ritelId: { in: companyRitelIds },
           },
           data: {
             referensiPembayaran: null,
@@ -697,7 +719,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
           await tx.purchaseOrder.updateMany({
             where: {
               noInvoice: { in: removedInvoices },
-              ritelId: { in: siblingRitelIds },
+              ritelId: { in: companyRitelIds },
               buktiBayar: existingRekon.noRekonsiliasi,
             },
             data: {
@@ -718,7 +740,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
             where: {
               id: { in: removedRtvIds },
               referensiPembayaran: existingRekon.noRekonsiliasi,
-              ritelId: { in: siblingRitelIds },
+              ritelId: { in: companyRitelIds },
             },
             data: {
               referensiPembayaran: null,
@@ -734,7 +756,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
             where: {
               rtvCn: { in: removedRtvs },
               referensiPembayaran: existingRekon.noRekonsiliasi,
-              ritelId: { in: siblingRitelIds },
+              ritelId: { in: companyRitelIds },
             },
             data: {
               referensiPembayaran: null,
@@ -752,10 +774,16 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
       const allRefInvoiceNos = [...new Set(validRtvs.map((r) => r.refInvoice).filter(Boolean))];
       const invoicePOs = allRefInvoiceNos.length > 0 
         ? await tx.purchaseOrder.findMany({
-            where: { noInvoice: { in: allRefInvoiceNos } },
+            where: { noInvoice: { in: allRefInvoiceNos }, ritelId: { in: companyRitelIds } },
             include: { UnitProduksi: true }
           })
         : [];
+      const missingRefs = allRefInvoiceNos.filter((ref) => !invoicePOs.some((po) => po.noInvoice === ref));
+      if (missingRefs.length) throw new ValidationError("Referensi invoice RTV harus berasal dari company yang dipilih.");
+      for (const po of invoicePOs) {
+        const access = checkPOOwnership(po, safeRole, dbUser?.regional || session?.regional, dbUser?.siteArea || session?.siteArea);
+        if (!access.allowed) throw new ValidationError("Forbidden: Referensi invoice RTV berada di luar wewenang Anda.");
+      }
       const invoiceUnitMap = new Map<string, string>();
       invoicePOs.forEach((po: any) => {
         if (po.noInvoice && po.UnitProduksi?.idRegional) {
@@ -786,7 +814,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
         await tx.dataRetur.updateMany({
           where: { 
             id: { in: ids },
-            ritelId: { in: siblingRitelIds }
+            ritelId: { in: companyRitelIds }
           },
           data: updatePayload
         });
@@ -798,7 +826,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
       await tx.purchaseOrder.updateMany({
         where: {
           noInvoice: { in: invoiceList },
-          ritelId: { in: siblingRitelIds },
+          ritelId: { in: companyRitelIds },
         },
         data: {
           buktiBayar: rekonNo,

@@ -17,7 +17,7 @@ interface PurchaseOrderHeaderProps {
 }
 
 export function PurchaseOrderHeader({
-  globalSearch,
+  globalSearch: { globalSearchRef, globalQuery, globalLoading, globalResults, handleGlobalSearch, closeGlobalSearch },
   poTable,
   detailModal,
   setIsBulkOpen,
@@ -40,18 +40,18 @@ export function PurchaseOrderHeader({
       
       <div className="flex items-center gap-2 flex-wrap">
         {/* Global Search Bar */}
-        <div ref={globalSearch.globalSearchRef} className="relative w-full md:w-72">
+        <div ref={globalSearchRef} className="relative w-full md:w-72">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
           <input
-            value={globalSearch.globalQuery}
-            onChange={(e) => globalSearch.handleGlobalSearch(e.target.value)}
+            value={globalQuery}
+            onChange={(e) => handleGlobalSearch(e.target.value)}
             placeholder="Cari No PO / Invoice..."
             className="w-full pl-10 pr-9 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 h-11"
           />
-          {globalSearch.globalQuery && (
+          {globalQuery && (
             <button
               type="button"
-              onClick={globalSearch.closeGlobalSearch}
+              onClick={closeGlobalSearch}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
             >
               <X size={14} />
@@ -59,24 +59,24 @@ export function PurchaseOrderHeader({
           )}
 
           {/* Floating Results Dropdown */}
-          {(globalSearch.globalResults !== null || globalSearch.globalLoading) && globalSearch.globalQuery.trim().length >= 2 && (
+          {(globalResults !== null || globalLoading) && globalQuery.trim().length >= 2 && (
             <div className="absolute left-0 top-full mt-2 w-[calc(100vw-48px)] sm:w-[380px] max-w-[380px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-[9999] max-h-[420px] overflow-auto animate-in fade-in slide-in-from-top-2 duration-200">
-              {globalSearch.globalLoading ? (
+              {globalLoading ? (
                 <div className="flex items-center justify-center gap-2 py-8 text-slate-500">
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span className="text-sm font-medium">Mencari...</span>
                 </div>
-              ) : globalSearch.globalResults && globalSearch.globalResults.length > 0 ? (
+              ) : globalResults && globalResults.length > 0 ? (
                 <div className="divide-y divide-slate-100">
                   <div className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 rounded-t-2xl sticky top-0 border-b border-slate-100">
-                    {globalSearch.globalResults.length} hasil ditemukan
+                    {globalResults.length} hasil ditemukan
                   </div>
-                  {globalSearch.globalResults.map((po: any) => (
+                  {globalResults.map((po: any) => (
                     <button
                       key={po.id}
                       type="button"
                       onClick={async () => {
-                        globalSearch.closeGlobalSearch();
+                        closeGlobalSearch();
                         poTable.setLoadingData(true);
                         try {
                           const res = await fetch(`/api/po?noPo=${encodeURIComponent(po.noPo)}&includeItems=true`, { cache: "no-store" });
@@ -130,7 +130,7 @@ export function PurchaseOrderHeader({
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <Search size={36} className="text-slate-200 mb-3" />
-                  <p className="text-sm font-semibold text-slate-500">Tidak ada hasil untuk &ldquo;{globalSearch.globalQuery}&rdquo;</p>
+                  <p className="text-sm font-semibold text-slate-500">Tidak ada hasil untuk &ldquo;{globalQuery}&rdquo;</p>
                   <p className="text-xs text-slate-400 mt-1">Coba kata kunci lain</p>
                 </div>
               )}

@@ -79,7 +79,7 @@ export default function POFormDetailSection({
               setCurrentItem(() => ({
                 namaProduk: v,
                 pcs: "",
-                pcsKirim: "",
+                pcsKirim: "0",
                 hargaPcs: "",
                 discount: "",
               }))
@@ -139,7 +139,11 @@ export default function POFormDetailSection({
             type="number"
             onWheel={(e) => (e.target as HTMLInputElement).blur()}
             value={currentItem.pcsKirim}
-            placeholder="Input Pcs Kirim"
+            min={0}
+            step={1}
+            max={Number(currentItem.pcs) > 0 ? Number(currentItem.pcs) : undefined}
+            onBlur={() => setCurrentItem((prev: any) => ({ ...prev, pcsKirim: prev.pcsKirim === "" ? 0 : prev.pcsKirim }))}
+            placeholder="0"
             className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-sm font-bold dark:text-slate-100 ${numberNoSpinner}`}
             onChange={(e) =>
               setCurrentItem((prev: any) => ({

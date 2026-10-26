@@ -16,6 +16,95 @@ interface PromoFormModalProps {
   saving: boolean;
 }
 
+function PromoDatePickerContent({ value, onSelect }: { value: string; onSelect: (date: string) => void }) {
+    const [viewDate, setViewDate] = useState(
+      new Date(value || new Date())
+    );
+    const daysInMonth = (month: number, year: number) =>
+      new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(
+      viewDate.getFullYear(),
+      viewDate.getMonth(),
+      1
+    ).getDay();
+    const days = Array.from(
+      { length: daysInMonth(viewDate.getMonth(), viewDate.getFullYear()) },
+      (_, i) => i + 1
+    );
+    const monthName = viewDate.toLocaleString("id-ID", {
+      month: "long",
+      year: "numeric",
+    });
+
+    return (
+      <div className="p-3 sm:p-4 w-full">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            type="button"
+            onClick={() =>
+              setViewDate(
+                new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1)
+              )
+            }
+            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
+            {monthName}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setViewDate(
+                new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1)
+              )
+            }
+            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+          {["S", "S", "R", "K", "J", "S", "M"].map((d, i) => (
+            <span key={i} className="text-[10px] font-black text-slate-300 dark:text-slate-600">
+              {d}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {Array(firstDay)
+            .fill(null)
+            .map((_, i) => (
+              <div key={`empty-${i}`} />
+            ))}
+          {days.map((d) => {
+            const dateStr = `${viewDate.getFullYear()}-${String(
+              viewDate.getMonth() + 1
+            ).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const isSelected = value === dateStr;
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => {
+                  onSelect(dateStr);
+                }}
+                className={`w-full aspect-square max-w-[34px] mx-auto flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  isSelected
+                    ? "bg-slate-900 text-white shadow-lg dark:bg-indigo-600"
+                    : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                {d}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
 export default function PromoFormModal({
   isOpen,
   onClose,
@@ -125,95 +214,6 @@ export default function PromoFormModal({
     }
   };
 
-  const DatePickerContent = () => {
-    const [viewDate, setViewDate] = useState(
-      new Date(formData.tanggal || new Date())
-    );
-    const daysInMonth = (month: number, year: number) =>
-      new Date(year, month + 1, 0).getDate();
-    const firstDay = new Date(
-      viewDate.getFullYear(),
-      viewDate.getMonth(),
-      1
-    ).getDay();
-    const days = Array.from(
-      { length: daysInMonth(viewDate.getMonth(), viewDate.getFullYear()) },
-      (_, i) => i + 1
-    );
-    const monthName = viewDate.toLocaleString("id-ID", {
-      month: "long",
-      year: "numeric",
-    });
-
-    return (
-      <div className="p-3 sm:p-4 w-full">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            type="button"
-            onClick={() =>
-              setViewDate(
-                new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1)
-              )
-            }
-            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
-            {monthName}
-          </span>
-          <button
-            type="button"
-            onClick={() =>
-              setViewDate(
-                new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1)
-              )
-            }
-            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-        <div className="grid grid-cols-7 gap-1 text-center mb-2">
-          {["S", "S", "R", "K", "J", "S", "M"].map((d, i) => (
-            <span key={i} className="text-[10px] font-black text-slate-300 dark:text-slate-600">
-              {d}
-            </span>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {Array(firstDay)
-            .fill(null)
-            .map((_, i) => (
-              <div key={`empty-${i}`} />
-            ))}
-          {days.map((d) => {
-            const dateStr = `${viewDate.getFullYear()}-${String(
-              viewDate.getMonth() + 1
-            ).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-            const isSelected = formData.tanggal === dateStr;
-            return (
-              <button
-                key={d}
-                type="button"
-                onClick={() => {
-                  setFormData({ ...formData, tanggal: dateStr });
-                  setIsDateOpen(false);
-                }}
-                className={`w-full aspect-square max-w-[34px] mx-auto flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-slate-900 text-white shadow-lg dark:bg-indigo-600"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                }`}
-              >
-                {d}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
 
   if (!isOpen) return null;
 
@@ -442,7 +442,7 @@ export default function PromoFormModal({
                       className="z-[110] w-[calc(100vw-48px)] sm:w-[280px] max-w-[280px] bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-2xl outline-none animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
                       align="start"
                     >
-                      <DatePickerContent />
+                      <PromoDatePickerContent value={formData.tanggal} onSelect={(tanggal) => { setFormData((prev) => ({ ...prev, tanggal })); setIsDateOpen(false); }} />
                     </Popover.Content>
                   </Popover.Portal>
                 </Popover.Root>

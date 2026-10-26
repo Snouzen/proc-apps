@@ -69,6 +69,16 @@ const SENSITIVE_KEYS = new Set([
  */
 export function sanitizeAuditData(data: any, whitelist?: Set<string>): any {
   if (data === null || data === undefined) return null;
+  if (typeof data === "function" || typeof data === "symbol") return undefined;
+  if (data instanceof Date) return data.toISOString();
+  if (typeof data === "object") {
+    if (typeof (data as any).toNumber === "function") {
+      return (data as any).toNumber();
+    }
+    if (typeof (data as any).toJSON === "function") {
+      return (data as any).toJSON();
+    }
+  }
   if (typeof data !== "object") return data;
 
   if (Array.isArray(data)) {
@@ -77,6 +87,9 @@ export function sanitizeAuditData(data: any, whitelist?: Set<string>): any {
 
   const result: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
+    if (typeof value === "function" || typeof value === "symbol" || value === undefined) {
+      continue;
+    }
     const lowerKey = key.toLowerCase();
     if (SENSITIVE_KEYS.has(lowerKey)) continue;
 
@@ -87,7 +100,13 @@ export function sanitizeAuditData(data: any, whitelist?: Set<string>): any {
     if (value instanceof Date) {
       result[key] = value.toISOString();
     } else if (typeof value === "object" && value !== null) {
-      result[key] = sanitizeAuditData(value);
+      if (typeof (value as any).toNumber === "function") {
+        result[key] = (value as any).toNumber();
+      } else if (typeof (value as any).toJSON === "function") {
+        result[key] = (value as any).toJSON();
+      } else {
+        result[key] = sanitizeAuditData(value);
+      }
     } else {
       result[key] = value;
     }

@@ -25,7 +25,17 @@ export function getStoredPermissions(): RolePermissionsMap {
     const raw = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
     if (!raw) return DEFAULT_ROLE_CONFIGS;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_ROLE_CONFIGS, ...parsed };
+    const merged: RolePermissionsMap = { ...DEFAULT_ROLE_CONFIGS, ...parsed };
+    if (merged.sitearea) {
+      const menus = Array.isArray(merged.sitearea.enabledMenus) ? [...merged.sitearea.enabledMenus] : [];
+      if (!menus.includes("retur")) menus.push("retur");
+      const actions = Array.isArray(merged.sitearea.enabledActions) ? [...merged.sitearea.enabledActions] : [];
+      for (const act of ["retur_view", "retur_create", "retur_edit", "retur_export"]) {
+        if (!actions.includes(act)) actions.push(act);
+      }
+      merged.sitearea = { enabledMenus: menus, enabledActions: actions };
+    }
+    return merged;
   } catch {
     return DEFAULT_ROLE_CONFIGS;
   }

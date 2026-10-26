@@ -90,7 +90,8 @@ export async function validateProofFile(
   targetRekonId: string,
   currentUserId: string,
   userRole: string,
-  tx: any
+  tx: any,
+  fieldLabel = "bukti bayar"
 ): Promise<{ storagePath: string; fileName: string; isTemp: boolean } | null> {
   if (!urlOrPath || typeof urlOrPath !== "string" || !urlOrPath.trim()) {
     return null;
@@ -98,11 +99,11 @@ export async function validateProofFile(
 
   const storagePath = extractStoragePathFromUrl(urlOrPath);
   if (!storagePath) {
-    throw new ValidationError(`URL berkas bukti bayar tidak valid atau bukan berasal dari penyimpanan resmi: ${urlOrPath}`);
+    throw new ValidationError(`URL berkas ${fieldLabel} tidak valid atau bukan berasal dari penyimpanan resmi: ${urlOrPath}`);
   }
 
   if (storagePath.includes("..") || storagePath.includes("//")) {
-    throw new ValidationError("Path berkas bukti bayar tidak aman.");
+    throw new ValidationError(`Path berkas ${fieldLabel} tidak aman.`);
   }
 
   const fileName = storagePath.split("/").pop() || "";

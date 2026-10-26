@@ -199,7 +199,7 @@ function ReturContent() {
             </button>
           )}
 
-          {role === "pusat" && (
+          {(role === "pusat" || role === "sitearea" || role === "magang") && (
               <button 
                 suppressHydrationWarning
                 onClick={() => {

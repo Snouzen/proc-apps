@@ -3,8 +3,10 @@ import { checkPOOwnership, checkReturOwnership } from "@/lib/utils/regional";
 
 export interface ReconcileAccessTarget {
   id?: string;
+  noRekonsiliasi?: string | null;
   ritelId?: string | null;
   siblingRitelIds?: string[];
+  companyRitelIds?: string[];
   status?: string | null;
   invoices?: string[] | null;
   rtvs?: string[] | null;
@@ -25,97 +27,28 @@ export function normalizeRitelKey(val?: string | null): string {
   return s.toLowerCase();
 }
 
-/**
- * Resolves all RitelModern IDs that share the same (namaPt, inisial) regardless of tujuan.
- */
-export async function resolveRitelGroup(
-  db: any,
-  ritelId?: string | null,
-  companyName?: string | null,
-  inisial?: string | null
-): Promise<{
-  primaryRitelId: string | null;
-  namaPt: string | null;
-  inisial: string | null;
-  siblingRitelIds: string[];
-  companyRitelIds: string[];
+/** Resolve the selected company from the database, across every inisial/tujuan. */
+export async function resolveRitelGroup(db: any, ritelId?: string | null, companyName?: string | null, _inisial?: string | null): Promise<{
+  primaryRitelId: string | null; namaPt: string | null; inisial: string | null;
+  siblingRitelIds: string[]; companyRitelIds: string[];
 }> {
   const client = db || prisma;
-  try {
-    let targetRitel: { id: string; namaPt: string; inisial: string | null } | null = null;
-    if (ritelId && client?.ritelModern?.findUnique) {
-      targetRitel = await client.ritelModern.findUnique({
-        where: { id: ritelId },
-        select: { id: true, namaPt: true, inisial: true },
-      });
-    }
-
-    const effectiveNamaPt = (targetRitel?.namaPt || companyName || "").trim();
-    const hasExplicitInisial = inisial !== undefined && inisial !== null && String(inisial).trim() !== "";
-    const effectiveInisial = hasExplicitInisial ? String(inisial).trim() : (targetRitel?.inisial ?? null);
-
-    if (effectiveNamaPt && client?.ritelModern?.findMany) {
-      const allCompanyRows: Array<{ id: string; namaPt: string; inisial: string | null }> =
-        await client.ritelModern.findMany({
-          where: {
-            namaPt: { equals: effectiveNamaPt, mode: "insensitive" },
-          },
-          select: { id: true, namaPt: true, inisial: true },
-        });
-
-      if (allCompanyRows.length > 0) {
-        const companyRitelIds = Array.from(
-          new Set([...(targetRitel?.id ? [targetRitel.id] : []), ...allCompanyRows.map((r) => r.id)])
-        );
-
-        const shouldFilterInisial = hasExplicitInisial || Boolean(targetRitel);
-        if (shouldFilterInisial) {
-          const normInisial = normalizeRitelKey(effectiveInisial);
-          const matchingRows = allCompanyRows.filter(
-            (r) => normalizeRitelKey(r.inisial) === normInisial
-          );
-          const siblingRitelIds =
-            matchingRows.length > 0
-              ? Array.from(new Set(matchingRows.map((r) => r.id)))
-              : targetRitel?.id
-              ? [targetRitel.id]
-              : companyRitelIds;
-          const primaryRitelId =
-            (ritelId && siblingRitelIds.includes(ritelId) ? ritelId : null) ||
-            siblingRitelIds[0] ||
-            targetRitel?.id ||
-            ritelId ||
-            null;
-
-          return {
-            primaryRitelId,
-            namaPt: effectiveNamaPt,
-            inisial: effectiveInisial,
-            siblingRitelIds,
-            companyRitelIds,
-          };
-        }
-
-        return {
-          primaryRitelId: ritelId || allCompanyRows[0]?.id || null,
-          namaPt: effectiveNamaPt,
-          inisial: effectiveInisial,
-          siblingRitelIds: companyRitelIds,
-          companyRitelIds,
-        };
-      }
-    }
-  } catch {
-    // Fallback gracefully if ritelModern table is unavailable in unit test mocks
+  const invalid = (message: string) => Object.assign(new Error(message), { name: "ValidationError", statusCode: 400 });
+  const target = ritelId ? await client.ritelModern.findUnique({ where: { id: ritelId }, select: { id: true, namaPt: true, inisial: true } }) : null;
+  if (ritelId && !target) throw invalid("Company ritel tidak ditemukan.");
+  if (target && companyName && normalizeRitelKey(target.namaPt) !== normalizeRitelKey(companyName)) {
+    throw invalid("Company yang dikirim tidak sesuai dengan ritel yang dipilih.");
   }
-
-  return {
-    primaryRitelId: ritelId || null,
-    namaPt: companyName || null,
-    inisial: inisial || null,
-    siblingRitelIds: ritelId ? [ritelId] : [],
-    companyRitelIds: ritelId ? [ritelId] : [],
-  };
+  const namaPt = (target?.namaPt || companyName || "").trim();
+  if (!namaPt) return { primaryRitelId: null, namaPt: null, inisial: null, siblingRitelIds: [], companyRitelIds: [] };
+  const rows: Array<{id: string}> = await client.ritelModern.findMany({
+    where: { namaPt: { equals: namaPt, mode: "insensitive" } },
+    select: { id: true }, orderBy: { id: "asc" },
+  });
+  const ids = Array.from(new Set<string>([...(target ? [target.id] : []), ...rows.map(r => r.id)]));
+  if (!ids.length) throw invalid("Company ritel tidak ditemukan.");
+  // siblingRitelIds remains a compatibility alias for existing service callers.
+  return { primaryRitelId: target?.id || ids[0], namaPt, inisial: null, siblingRitelIds: ids, companyRitelIds: ids };
 }
 
 export interface ReconcileAuthContext {
@@ -214,15 +147,22 @@ export async function checkReconcileAccess(
     .filter((r) => !rtvDetails.some((d: any) => d?.id && d?.noRtv === r));
   const fallbackRtvCns = Array.from(new Set([...detailCnsWithoutId, ...rootRtvsWithoutId]));
 
-  // Resolve sibling RitelModern IDs (same namaPt + inisial, ignoring tujuan)
+  // Resolve sibling & company RitelModern IDs
   let siblingRitelIds: string[] = [];
+  let companyRitelIds: string[] = [];
   if (Array.isArray(rekon?.siblingRitelIds) && rekon.siblingRitelIds.length > 0) {
     siblingRitelIds = rekon.siblingRitelIds;
+    companyRitelIds =
+      Array.isArray(rekon?.companyRitelIds) && rekon.companyRitelIds.length > 0
+        ? rekon.companyRitelIds
+        : siblingRitelIds;
   } else if (rekon?.ritelId) {
     const group = await resolveRitelGroup(db, rekon.ritelId);
     siblingRitelIds = group.siblingRitelIds.length > 0 ? group.siblingRitelIds : [rekon.ritelId];
+    companyRitelIds = group.companyRitelIds.length > 0 ? group.companyRitelIds : siblingRitelIds;
   }
-  const siblingRitelSet = new Set<string>(siblingRitelIds);
+  const allowedRitelIds = Array.from(new Set([...siblingRitelIds, ...companyRitelIds]));
+  const allowedRitelSet = new Set<string>(allowedRitelIds);
   const isDraftRekon = String(rekon?.status || "").toLowerCase() === "draft";
 
   const isReturWithoutUnit = (ret: any) =>
@@ -248,8 +188,12 @@ export async function checkReconcileAccess(
 
     for (const inv of invoices) {
       let pos = preloadedMap.get(inv) || [];
-      if (siblingRitelSet.size > 0) {
-        pos = pos.filter((p) => p.ritelId && siblingRitelSet.has(p.ritelId));
+      if (allowedRitelSet.size > 0) {
+        const ritelFiltered = pos.filter(
+          (p) =>
+            (p.ritelId && allowedRitelSet.has(p.ritelId))
+        );
+        pos = ritelFiltered;
       }
       if (pos.length === 0) {
         return {
@@ -272,7 +216,7 @@ export async function checkReconcileAccess(
     const pos = await db.purchaseOrder.findMany({
       where: {
         noInvoice: { in: invoices },
-        ...(siblingRitelIds.length > 0 ? { ritelId: { in: siblingRitelIds } } : {}),
+        ...(allowedRitelIds.length > 0 ? { ritelId: { in: allowedRitelIds } } : {}),
       },
       include: { UnitProduksi: true },
     });
@@ -298,7 +242,7 @@ export async function checkReconcileAccess(
     checkedPoCount = invoices.length;
   }
 
-  // 5. Validate Retur / RTV ownership (scoped by siblingRitelIds, ID-only resolution for items with ID)
+  // 5. Validate Retur / RTV ownership (scoped by allowedRitelIds)
   if (
     rekon.preloadedIdReturMap !== undefined ||
     rekon.preloadedCnReturMap !== undefined ||
@@ -324,7 +268,7 @@ export async function checkReconcileAccess(
       }
     }
 
-    // 5a. Explicit IDs: match ONLY by ID
+    // 5a. Explicit IDs: match by ID
     for (const rId of explicitRtvIds) {
       const ret = preloadedIdMap.get(rId);
       if (!ret) {
@@ -333,7 +277,10 @@ export async function checkReconcileAccess(
           reason: `Data retur RTV dengan ID "${rId}" tidak ditemukan atau belum dimuat.`,
         };
       }
-      if (siblingRitelSet.size > 0 && (!ret.ritelId || !siblingRitelSet.has(ret.ritelId))) {
+      const isRitelMatch =
+        allowedRitelSet.size === 0 ||
+        (ret.ritelId && allowedRitelSet.has(ret.ritelId));
+      if (!isRitelMatch) {
         return {
           allowed: false,
           reason: `Data retur RTV dengan ID "${rId}" bukan milik ritel rekonsiliasi ini.`,
@@ -351,11 +298,14 @@ export async function checkReconcileAccess(
       }
     }
 
-    // 5b. Fallback CNs: items WITHOUT an ID
+    // 5b. Fallback CNs: items WITHOUT an ID (scoped to allowedRitelSet)
     for (const cn of fallbackRtvCns) {
       let matches = preloadedCnMap.get(cn) || [];
-      if (siblingRitelSet.size > 0) {
-        matches = matches.filter((r) => r.ritelId && siblingRitelSet.has(r.ritelId));
+      if (allowedRitelSet.size > 0) {
+        matches = matches.filter(
+          (r) =>
+            (r.ritelId && allowedRitelSet.has(r.ritelId))
+        );
       }
       if (matches.length === 0) {
         return {
@@ -363,32 +313,27 @@ export async function checkReconcileAccess(
           reason: `Data retur RTV "${cn}" tidak ditemukan di sistem atau bukan milik ritel rekonsiliasi ini.`,
         };
       }
-      const uniqueMatchIds = new Set(matches.map((r: any) => String(r.id || "")));
-      if (uniqueMatchIds.size > 1) {
-        return {
-          allowed: false,
-          reason: `Nomor RTV "${cn}" memiliki beberapa produk retur berbeda di sistem. Harap sertakan ID retur spesifik.`,
-        };
-      }
-      if (isDraftRekon && isReturWithoutUnit(matches[0])) {
-        continue;
-      }
-      const chk = checkReturOwnership(matches[0], safeRole, userRegional, userSiteArea);
-      if (!chk.allowed) {
-        return {
-          allowed: false,
-          reason: chk.reason || `Retur RTV #${cn} di luar wewenang Anda.`,
-        };
+      for (const match of matches) {
+        if (isDraftRekon && isReturWithoutUnit(match)) {
+          continue;
+        }
+        const chk = checkReturOwnership(match, safeRole, userRegional, userSiteArea);
+        if (!chk.allowed) {
+          return {
+            allowed: false,
+            reason: chk.reason || `Retur RTV #${cn} di luar wewenang Anda.`,
+          };
+        }
       }
     }
     checkedReturCount = explicitRtvIds.length + fallbackRtvCns.length;
   } else if (explicitRtvIds.length > 0 || fallbackRtvCns.length > 0) {
-    // 5a. Explicit IDs: query strictly by ID (scoped by siblingRitelIds)
+    // 5a. Explicit IDs: query strictly by ID (scoped by allowedRitelIds)
     if (explicitRtvIds.length > 0) {
       const idRecords = await db.dataRetur.findMany({
         where: {
           id: { in: explicitRtvIds },
-          ...(siblingRitelIds.length > 0 ? { ritelId: { in: siblingRitelIds } } : {}),
+          ...(allowedRitelIds.length > 0 ? { ritelId: { in: allowedRitelIds } } : {}),
         },
         include: { LokasiBarang: true, PembebananReturn: true },
       });
@@ -416,12 +361,12 @@ export async function checkReconcileAccess(
       }
     }
 
-    // 5b. Fallback CNs: query strictly items without ID (scoped by siblingRitelIds)
+    // 5b. Fallback CNs: query items without ID (scoped by allowedRitelIds)
     if (fallbackRtvCns.length > 0) {
       const cnRecords = await db.dataRetur.findMany({
         where: {
           rtvCn: { in: fallbackRtvCns },
-          ...(siblingRitelIds.length > 0 ? { ritelId: { in: siblingRitelIds } } : {}),
+          ...(allowedRitelIds.length > 0 ? { ritelId: { in: allowedRitelIds } } : {}),
         },
         include: { LokasiBarang: true, PembebananReturn: true },
       });
@@ -434,22 +379,17 @@ export async function checkReconcileAccess(
             reason: `Data retur RTV "${cn}" tidak ditemukan di sistem atau bukan milik ritel ini.`,
           };
         }
-        const uniqueMatchIds = new Set(matches.map((r: any) => String(r.id || "")));
-        if (uniqueMatchIds.size > 1) {
-          return {
-            allowed: false,
-            reason: `Nomor RTV "${cn}" memiliki beberapa produk retur berbeda di sistem. Harap sertakan ID retur spesifik.`,
-          };
-        }
-        if (isDraftRekon && isReturWithoutUnit(matches[0])) {
-          continue;
-        }
-        const chk = checkReturOwnership(matches[0], safeRole, userRegional, userSiteArea);
-        if (!chk.allowed) {
-          return {
-            allowed: false,
-            reason: chk.reason || `Retur RTV #${cn} di luar wewenang Anda.`,
-          };
+        for (const match of matches) {
+          if (isDraftRekon && isReturWithoutUnit(match)) {
+            continue;
+          }
+          const chk = checkReturOwnership(match, safeRole, userRegional, userSiteArea);
+          if (!chk.allowed) {
+            return {
+              allowed: false,
+              reason: chk.reason || `Retur RTV #${cn} di luar wewenang Anda.`,
+            };
+          }
         }
       }
     }

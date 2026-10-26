@@ -550,8 +550,8 @@ export const generateAllRekonExcel = (items: any[], _filterInfo?: any) => {
         }
 
         ws2Data.push([
-          i === 0 ? idx + 1 : "",
-          i === 0 ? item.noRekonsiliasi || "DRAFT" : "",
+          idx + 1,
+          item.noRekonsiliasi || "DRAFT",
           bsDesc,
           bsNom,
           invNo,

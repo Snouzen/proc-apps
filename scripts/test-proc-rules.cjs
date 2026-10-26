@@ -30,15 +30,15 @@ const modules = new Map();
 function load(file) {
   file = path.resolve(root, file);
   if (modules.has(file)) return modules.get(file).exports;
-  const module = { exports: {} }; modules.set(file, module);
+  const loadedModule = { exports: {} }; modules.set(file, loadedModule);
   const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   new Function('require', 'module', 'exports', compiled)(id => {
     if (id in mocks) return mocks[id];
     if (id.startsWith('@/')) return load('src/' + id.slice(2) + '.ts');
     if (id.startsWith('.')) return load(path.resolve(path.dirname(file), id + '.ts'));
     return require(id);
-  }, module, module.exports);
-  return module.exports;
+  }, loadedModule, loadedModule.exports);
+  return loadedModule.exports;
 }
 function reset(role = 'pusat') {
   auth = { role, session: { userId: 'test' }, dbUser: { id: 'test', regional: 'Regional 1', siteArea: 'U1' } };
@@ -106,7 +106,7 @@ test('Partial PCS shipment is saved', async () => { reset(); assert.equal((await
 for (const value of [11, -1, 1.5, 'abc']) test(`Invalid PCS ${value} rejected`, async () => { reset(); assert.equal((await pcs(request({ id: po.id, pcsKirim: value }))).status, 400); assert.equal(writes.length, 0); });
 const exportItem = () => ({ noRekonsiliasi: 'REC1', totalRtvs: 50, detailedRtvs: [{ id: 'R1', noRtv: 'CN1', lokasiBarang: 'SITE A', qty: 0, nominal: 50 }] });
 test('Export retains valid zero quantity and location', () => { const out = prepareRekonExport([exportItem()])[0]; assert.equal(out.rtvs[0].qty, 0); assert.equal(out.rtvs[0].lokasiBarang, 'SITE A'); });
-test('Export reports RTV ritel mismatch explicitly', () => { const item = exportItem(); item.detailedRtvs[0].sourceRitelMismatch = true; assert.throws(() => prepareRekonExport([item]), /ritel\/inisialnya berbeda/); });
+test('Export reports RTV ritel mismatch explicitly', () => { const item = exportItem(); item.detailedRtvs[0].sourceRitelMismatch = true; assert.throws(() => prepareRekonExport([item]), /company-nya berbeda/); });
 test('Export never substitutes missing invoice with zero', () => { const item = exportItem(); item.detailedInvoices = [{ noInvoice: 'INV-OTHER', sourceRitelMismatch: true, nominal: null }]; assert.throws(() => prepareRekonExport([item]), /invoice INV-OTHER tidak tersedia/); });
 test('Export preserves valid invoice zero', () => { const item = exportItem(); item.detailedInvoices = [{ noInvoice: 'INV-ZERO', nominal: 0 }]; assert.equal(prepareRekonExport([item])[0].invoices[0].nominal, 0); });
 for (const change of [{ sourceMissing: true }, { lokasiBarang: null }, { qty: null }, { nominal: 60 }]) test(`Export blocks incomplete/mismatched RTV ${JSON.stringify(change)}`, () => { const item = exportItem(); Object.assign(item.detailedRtvs[0], change); assert.throws(() => prepareRekonExport([item])); });

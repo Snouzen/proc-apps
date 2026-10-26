@@ -153,9 +153,21 @@ export async function readPermissionsConfigWithVersion(): Promise<{
     const dbVersion = ((latestAudit.newData as any)?.version as number) || 0;
     if (validatePermissionsStructure(dbConfig)) {
       if (dbConfig.rm && Array.isArray(dbConfig.rm.enabledActions)) {
-        for (const act of ["po_create", "po_edit"]) {
+        for (const act of ["po_create", "po_edit", "retur_view", "retur_edit", "retur_export"]) {
           if (!dbConfig.rm.enabledActions.includes(act)) {
             dbConfig.rm.enabledActions.push(act);
+          }
+        }
+      }
+      if (dbConfig.sitearea) {
+        if (Array.isArray(dbConfig.sitearea.enabledMenus) && !dbConfig.sitearea.enabledMenus.includes("retur")) {
+          dbConfig.sitearea.enabledMenus.push("retur");
+        }
+        if (Array.isArray(dbConfig.sitearea.enabledActions)) {
+          for (const act of ["retur_view", "retur_create", "retur_edit", "retur_export"]) {
+            if (!dbConfig.sitearea.enabledActions.includes(act)) {
+              dbConfig.sitearea.enabledActions.push(act);
+            }
           }
         }
       }

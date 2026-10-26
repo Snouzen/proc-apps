@@ -5,12 +5,12 @@ export function prepareRekonExport(items: any[]) {
     const rtvs = item.detailedRtvs ?? item.rtvs ?? [];
     const normalized = rtvs.map((rtv: any) => {
       if (rtv?.sourceRitelMismatch) {
-        throw new Error(`Rekon ${item.noRekonsiliasi}: RTV ${rtv.noRtv} ditemukan, tetapi ritel/inisialnya berbeda dari rekonsiliasi. Periksa keterikatan data sebelum export.`);
+        throw new Error(`Rekon ${item.noRekonsiliasi}: RTV ${rtv.noRtv} ditemukan, tetapi company-nya berbeda dari rekonsiliasi. Periksa keterikatan data sebelum export.`);
       }
       if (!rtv || typeof rtv !== "object" || rtv.sourceMissing || rtv.sourceAmbiguous) {
         throw new Error(`Rekon ${item.noRekonsiliasi}: RTV ${rtv?.noRtv || rtv || "-"} tidak ditemukan atau ambigu. Periksa ID retur sebelum export.`);
       }
-      if (!rtv.lokasiBarang || rtv.lokasiBarang === "-") {
+      if (rtv.lokasiBarang == null || rtv.lokasiBarang === "") {
         throw new Error(`Rekon ${item.noRekonsiliasi}: lokasi barang RTV ${rtv.noRtv} belum tersedia.`);
       }
       const rawNominal = rtv.nominal ?? rtv.total;
@@ -28,7 +28,7 @@ export function prepareRekonExport(items: any[]) {
     }
     const invoiceRows = invoices.map((i: any) => {
       if (!i || typeof i !== "object" || i.sourceMissing || i.sourceRitelMismatch || (i.nominal == null && i.total == null)) {
-        throw new Error(`Rekon ${item.noRekonsiliasi}: invoice ${i?.noInvoice || i || "-"} tidak tersedia untuk ritel/inisial ini. Periksa keterikatan data sebelum export.`);
+        throw new Error(`Rekon ${item.noRekonsiliasi}: invoice ${i?.noInvoice || i || "-"} tidak tersedia untuk company ini. Periksa keterikatan data sebelum export.`);
       }
       const nominal = Number(i.nominal ?? i.total);
       if (!Number.isFinite(nominal)) throw new Error(`Nominal invoice ${i.noInvoice} tidak valid`);

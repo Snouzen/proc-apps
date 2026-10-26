@@ -12,7 +12,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 const Sidebar = dynamic(() => import("@/components/sidebar"), { ssr: false });
 const Modal = dynamic(() => import("@/components/modal"), { ssr: false });
 const Breadcrumbs = dynamic(() => import("@/components/breadcrumbs"), { ssr: false });
-const IdleTimeoutDetector = dynamic(() => import("@/components/IdleTimeoutDetector"), { ssr: false });
+const SessionSync = dynamic(() => import("@/components/SessionSync"), { ssr: false });
 
 export default function ClientLayout({
   children,
@@ -161,7 +161,11 @@ export default function ClientLayout({
   useEffect(() => {
     const update = (event: Event) => {
       const data = (event as CustomEvent).detail;
-      if (!data?.authenticated) return;
+      if (!data?.authenticated) {
+        setProfileRole(null); setProfileEmail(null);
+        setProfileRegional(null); setProfileSiteArea(null);
+        return;
+      }
       setProfileRole(data.role); setProfileEmail(data.email);
       setProfileRegional(data.regional || null); setProfileSiteArea(data.siteArea || null);
     };
@@ -193,8 +197,8 @@ export default function ClientLayout({
 
   return (
     <AutoRefreshProvider intervalMs={60000}>
-      <IdleTimeoutDetector />
-      <div id="session-workspace" className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 flex transition-colors duration-300">
+      <SessionSync />
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 flex transition-colors duration-300">
         {/* 1. SIDEBAR */}
         <Sidebar
           isOpen={sidebarOpen}

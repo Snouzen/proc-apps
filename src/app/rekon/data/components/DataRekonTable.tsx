@@ -376,7 +376,7 @@ export default function DataRekonTable({ hook }: { hook: any }) {
                                       <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight">{inv.noInvoice}</span>
                                     </td>
                                     <td className="px-5 py-2.5 text-right tabular-nums text-[10px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                      {inv.sourceRitelMismatch ? "Ritel/inisial berbeda" : inv.sourceMissing || inv.nominal == null ? "Data tidak tersedia" : formatRp(inv.nominal)}
+                                      {inv.sourceRitelMismatch ? "Company berbeda" : inv.sourceMissing || inv.nominal == null ? "Data tidak tersedia" : formatRp(inv.nominal)}
                                     </td>
                                   </tr>
                                 )) : (

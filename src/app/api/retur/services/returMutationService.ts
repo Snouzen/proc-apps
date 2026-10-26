@@ -4,6 +4,30 @@ import { getProfileName } from "@/lib/auth";
 import { auditActivity } from "@/lib/audit";
 import { checkReturOwnership } from "@/lib/utils/regional";
 
+function parseSafeDate(val: any): Date | null {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function parseSafeInt(val: any, fallback: number | null = null): number | null {
+  if (val === null || val === undefined || String(val).trim() === "") return fallback;
+  const cleaned = String(val).replace(/[^0-9-]/g, "");
+  if (!cleaned || cleaned === "-") return fallback;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n > 2147483647 || n < -2147483648) return fallback;
+  return Math.round(n);
+}
+
+function parseSafeDecimal(val: any, fallback: Prisma.Decimal | null = null): Prisma.Decimal | null {
+  if (val === null || val === undefined || String(val).trim() === "") return fallback;
+  try {
+    return new Prisma.Decimal(val);
+  } catch {
+    return fallback;
+  }
+}
+
 export async function bulkInsertRetur(
   body: any[], 
   replaceDuplicates: boolean, 
@@ -71,41 +95,7 @@ export async function bulkInsertRetur(
     return { ...item, rtv, prod, ritelId };
   });
 
-  const userRegional = auth?.dbUser?.regional || auth?.session?.regional || null;
-  const userSiteArea = auth?.dbUser?.siteArea || auth?.session?.siteArea || null;
-
-  // Validasi kepemilikan target unit untuk seluruh baris pada pengguna non-pusat (termasuk jika kedua unit kosong)
-  if (safeRole !== "pusat") {
-    for (let i = 0; i < processedBatch.length; i++) {
-      const item = processedBatch[i];
-      const stringLokasi = item.lokasiBarangId || getFuzzyValue(item, ['lokasi', 'lokasi barang', 'dc']);
-      const stringPembebanan = item.pembebananReturnId || getFuzzyValue(item, ['pembebanan', 'beban', 'pembebanan retur']);
-      const targetLokId = findUnitId(stringLokasi);
-      const targetPembId = findUnitId(stringPembebanan);
-
-      const lokUnit = masterUnits.find(u => u.idRegional === targetLokId) || null;
-      const pembUnit = masterUnits.find(u => u.idRegional === targetPembId) || null;
-      const targetCheck = checkReturOwnership(
-        {
-          lokasiBarangId: targetLokId,
-          pembebananReturnId: targetPembId,
-          LokasiBarang: lokUnit,
-          PembebananReturn: pembUnit,
-        },
-        safeRole,
-        userRegional,
-        userSiteArea
-      );
-      if (!targetCheck.allowed) {
-        return {
-          error: `Baris ${i + 1}: ${targetCheck.reason || "Forbidden: Unit tujuan di luar wewenang Anda."}`,
-          status: 403,
-        };
-      }
-    }
-  }
-
-  // Transaksi Atomik: validasi ownership record lama (di dalam tx), deleteMany berdasarkan ID terverifikasi, createMany, dan auditActivity
+  // Transaksi Atomik: deleteMany berdasarkan ID terverifikasi jika replaceDuplicates, createMany, dan auditActivity
   try {
     const result = await prisma.$transaction(async (tx) => {
       if (replaceDuplicates) {
@@ -130,32 +120,10 @@ export async function bulkInsertRetur(
               Prisma.sql`SELECT id FROM "data_retur" WHERE "id" IN (${Prisma.join(candidateIds)}) FOR UPDATE`
             );
 
-            // Baca record terkini yang sudah terkunci beserta relasinya
-            const existingToReplace = await tx.dataRetur.findMany({
-              where: { id: { in: candidateIds } },
-              include: {
-                LokasiBarang: true,
-                PembebananReturn: true,
-              }
-            });
-
-            // Validasi ownership record existing di bawah proteksi row lock
-            if (safeRole !== "pusat") {
-              for (const rec of existingToReplace) {
-                const check = checkReturOwnership(rec, safeRole, userRegional, userSiteArea);
-                if (!check.allowed) {
-                  const err: any = new Error(`Forbidden: Tidak dapat mengganti data retur RTV "${rec.rtvCn}" (${rec.produk}) karena berada di luar wewenang Anda (${check.reason || "Di luar wilayah"}).`);
-                  err.statusCode = 403;
-                  throw err;
-                }
-              }
-            }
-
-            // Hapus HANYA ID-ID spesifik yang telah terkunci dan diperiksa wewenangnya
-            const idsToDelete = existingToReplace.map(r => r.id);
+            // Hapus ID-ID spesifik yang telah terkunci
             const chunkSize = 500;
-            for (let i = 0; i < idsToDelete.length; i += chunkSize) {
-              const chunk = idsToDelete.slice(i, i + chunkSize);
+            for (let i = 0; i < candidateIds.length; i += chunkSize) {
+              const chunk = candidateIds.slice(i, i + chunkSize);
               await tx.dataRetur.deleteMany({
                 where: {
                   id: { in: chunk }
@@ -201,25 +169,25 @@ export async function bulkInsertRetur(
 
       return {
         rtvCn: item.rtv,
-        tanggalRtv: item.tanggalRtv ? new Date(item.tanggalRtv) : null,
-        maxPickup: item.maxPickup ? new Date(item.maxPickup) : null,
-        kodeToko: item.kodeToko ? Number(item.kodeToko) : null,
+        tanggalRtv: parseSafeDate(item.tanggalRtv),
+        maxPickup: parseSafeDate(item.maxPickup),
+        kodeToko: parseSafeInt(item.kodeToko, null),
         namaCompany: item.namaCompany || null,
         inisial: item.inisial || null,
         ritelId: item.ritelId || null,
         link: item.link || null,
         produk: item.prod,
         productId: item.productId || null,
-        qtyReturn: item.qtyReturn ? Number(item.qtyReturn) : null,
-        nominal: item.nominal ? new Prisma.Decimal(item.nominal) : null,
-        rpKg: item.rpKg ? new Prisma.Decimal(item.rpKg) : null,
+        qtyReturn: parseSafeInt(item.qtyReturn, null),
+        nominal: parseSafeDecimal(item.nominal, null),
+        rpKg: parseSafeDecimal(item.rpKg, null),
         statusBarang: item.statusBarang || "Belum Diambil",
         refKetStatus: item.refKetStatus || null,
         lokasiBarangId: findUnitId(stringLokasi),
         pembebananReturnId: findUnitId(stringPembebanan),
         invoiceRekon: item.invoiceRekon ? String(item.invoiceRekon) : null,
         referensiPembayaran: item.referensiPembayaran || null,
-        tanggalPembayaran: item.tanggalPembayaran ? new Date(item.tanggalPembayaran) : null,
+        tanggalPembayaran: parseSafeDate(item.tanggalPembayaran),
         remarks: item.remarks || null,
         sdiReturn: item.sdiReturn || null,
       };
@@ -262,35 +230,6 @@ export async function singleInsertRetur(
     return { error: "Data produk dan QTY tidak valid", status: 400 };
   }
 
-  const userRegional = auth?.dbUser?.regional || auth?.session?.regional || null;
-  const userSiteArea = auth?.dbUser?.siteArea || auth?.session?.siteArea || null;
-  // Validasi seluruh baris baru untuk pengguna non-pusat (termasuk jika kedua unit kosong)
-  if (safeRole !== "pusat") {
-    const unitIds = [body.lokasiBarangId, body.pembebananReturnId].filter(Boolean) as string[];
-    const resolvedUnits = unitIds.length > 0 ? await prisma.unitProduksi.findMany({
-      where: { idRegional: { in: unitIds } },
-      select: { idRegional: true, siteArea: true, namaRegional: true, kodeRegional: true }
-    }) : [];
-
-    const lokUnit = resolvedUnits.find(u => u.idRegional === body.lokasiBarangId) || null;
-    const pembUnit = resolvedUnits.find(u => u.idRegional === body.pembebananReturnId) || null;
-
-    const scopeCheck = checkReturOwnership(
-      {
-        lokasiBarangId: body.lokasiBarangId || null,
-        pembebananReturnId: body.pembebananReturnId || null,
-        LokasiBarang: lokUnit,
-        PembebananReturn: pembUnit,
-      },
-      safeRole,
-      userRegional,
-      userSiteArea
-    );
-    if (!scopeCheck.allowed) {
-      return { error: scopeCheck.reason || "Forbidden: Unit tujuan di luar wewenang Anda.", status: 403 };
-    }
-  }
-
   const rtv = body.rtvCn ? String(body.rtvCn).trim() : null;
   const prod = body.produk ? String(body.produk).trim() : null;
 
@@ -314,17 +253,17 @@ export async function singleInsertRetur(
   const newData = await prisma.dataRetur.create({
     data: {
       rtvCn: rtv || undefined,
-      tanggalRtv: body.tanggalRtv ? new Date(body.tanggalRtv) : null,
-      maxPickup: body.maxPickup ? new Date(body.maxPickup) : null,
+      tanggalRtv: parseSafeDate(body.tanggalRtv),
+      maxPickup: parseSafeDate(body.maxPickup),
       namaCompany: body.namaCompany || null,
       inisial: body.inisial || null,
       ritelId: body.ritelId || null,
-      kodeToko: body.kodeToko ? Number(body.kodeToko) : null,
+      kodeToko: parseSafeInt(body.kodeToko, null),
       produk: prod,
       productId: body.productId || null,
-      qtyReturn: body.qtyReturn ? Number(body.qtyReturn) : 0,
-      nominal: body.nominal ? new Prisma.Decimal(body.nominal) : 0,
-      rpKg: body.rpKg ? new Prisma.Decimal(body.rpKg) : 0,
+      qtyReturn: parseSafeInt(body.qtyReturn, 0) ?? 0,
+      nominal: parseSafeDecimal(body.nominal, new Prisma.Decimal(0)) ?? 0,
+      rpKg: parseSafeDecimal(body.rpKg, new Prisma.Decimal(0)) ?? 0,
       statusBarang: body.statusBarang || "Belum Diambil",
       lokasiBarangId: body.lokasiBarangId || null,
       pembebananReturnId: body.pembebananReturnId || null,
@@ -333,7 +272,7 @@ export async function singleInsertRetur(
       refKetStatus: body.refKetStatus || null,
       invoiceRekon: body.invoiceRekon || null,
       referensiPembayaran: body.referensiPembayaran || null,
-      tanggalPembayaran: body.tanggalPembayaran ? new Date(body.tanggalPembayaran) : null,
+      tanggalPembayaran: parseSafeDate(body.tanggalPembayaran),
       sdiReturn: body.sdiReturn || null,
     },
   });
@@ -357,37 +296,35 @@ export async function updateRetur(body: any, auth?: any) {
   const safeRole = auth?.safeRole || auth?.role;
   const session = auth?.session;
   const dbUser = auth?.dbUser;
-  const userRegional = dbUser?.regional || session?.regional || null;
-  const userSiteArea = dbUser?.siteArea || session?.siteArea || null;
 
   // Whitelist eksplisit seluruh field skalar yang diizinkan untuk update demi keamanan
   const sanitizedData: any = {};
   if (updateData.rtvCn !== undefined) sanitizedData.rtvCn = updateData.rtvCn ? String(updateData.rtvCn).trim() : null;
-  if (updateData.tanggalRtv !== undefined) sanitizedData.tanggalRtv = updateData.tanggalRtv ? new Date(updateData.tanggalRtv) : null;
-  if (updateData.maxPickup !== undefined) sanitizedData.maxPickup = updateData.maxPickup ? new Date(updateData.maxPickup) : null;
-  if (updateData.kodeToko !== undefined) sanitizedData.kodeToko = updateData.kodeToko ? Number(updateData.kodeToko) : null;
+  if (updateData.tanggalRtv !== undefined) sanitizedData.tanggalRtv = parseSafeDate(updateData.tanggalRtv);
+  if (updateData.maxPickup !== undefined) sanitizedData.maxPickup = parseSafeDate(updateData.maxPickup);
+  if (updateData.kodeToko !== undefined) sanitizedData.kodeToko = parseSafeInt(updateData.kodeToko, null);
   if (updateData.namaCompany !== undefined) sanitizedData.namaCompany = updateData.namaCompany || null;
   if (updateData.inisial !== undefined) sanitizedData.inisial = updateData.inisial || null;
   if (updateData.ritelId !== undefined) sanitizedData.ritelId = updateData.ritelId || null;
   if (updateData.link !== undefined) sanitizedData.link = updateData.link || null;
-  if (updateData.produk !== undefined) sanitizedData.produk = String(updateData.produk).trim();
+  if (updateData.produk !== undefined) sanitizedData.produk = updateData.produk ? String(updateData.produk).trim() : null;
   if (updateData.productId !== undefined) sanitizedData.productId = updateData.productId || null;
-  if (updateData.qtyReturn !== undefined) sanitizedData.qtyReturn = Number(updateData.qtyReturn) || 0;
-  if (updateData.nominal !== undefined) sanitizedData.nominal = new Prisma.Decimal(updateData.nominal || 0);
-  if (updateData.rpKg !== undefined) sanitizedData.rpKg = new Prisma.Decimal(updateData.rpKg || 0);
+  if (updateData.qtyReturn !== undefined) sanitizedData.qtyReturn = parseSafeInt(updateData.qtyReturn, 0) ?? 0;
+  if (updateData.nominal !== undefined) sanitizedData.nominal = parseSafeDecimal(updateData.nominal, new Prisma.Decimal(0));
+  if (updateData.rpKg !== undefined) sanitizedData.rpKg = parseSafeDecimal(updateData.rpKg, new Prisma.Decimal(0));
   if (updateData.statusBarang !== undefined) sanitizedData.statusBarang = updateData.statusBarang || "Belum Diambil";
   if (updateData.refKetStatus !== undefined) sanitizedData.refKetStatus = updateData.refKetStatus || null;
   if (updateData.lokasiBarangId !== undefined) sanitizedData.lokasiBarangId = updateData.lokasiBarangId || null;
   if (updateData.pembebananReturnId !== undefined) sanitizedData.pembebananReturnId = updateData.pembebananReturnId || null;
   if (updateData.invoiceRekon !== undefined) sanitizedData.invoiceRekon = updateData.invoiceRekon ? String(updateData.invoiceRekon) : null;
   if (updateData.referensiPembayaran !== undefined) sanitizedData.referensiPembayaran = updateData.referensiPembayaran || null;
-  if (updateData.tanggalPembayaran !== undefined) sanitizedData.tanggalPembayaran = updateData.tanggalPembayaran ? new Date(updateData.tanggalPembayaran) : null;
+  if (updateData.tanggalPembayaran !== undefined) sanitizedData.tanggalPembayaran = parseSafeDate(updateData.tanggalPembayaran);
   if (updateData.remarks !== undefined) sanitizedData.remarks = updateData.remarks || null;
   if (updateData.sdiReturn !== undefined) sanitizedData.sdiReturn = updateData.sdiReturn || null;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Kunci baris dengan FOR UPDATE di dalam transaksi sebelum membaca ownership
+      // 1. Kunci baris dengan FOR UPDATE di dalam transaksi
       await tx.$queryRaw(
         Prisma.sql`SELECT id FROM "data_retur" WHERE "id" = ${id} FOR UPDATE`
       );
@@ -402,45 +339,6 @@ export async function updateRetur(body: any, auth?: any) {
         throw err;
       }
 
-      const ownershipCheck = checkReturOwnership(existing, safeRole, userRegional, userSiteArea);
-      if (!ownershipCheck.allowed) {
-        const err: any = new Error(ownershipCheck.reason || "Forbidden: Anda tidak berwenang mengubah data retur ini.");
-        err.statusCode = 403;
-        throw err;
-      }
-
-      // Validasi scope unit tujuan akhir untuk pengguna non-pusat (termasuk jika kedua unit dikosongkan/null)
-      const finalLokasiId = updateData.lokasiBarangId !== undefined ? (updateData.lokasiBarangId || null) : existing.lokasiBarangId;
-      const finalPembebananId = updateData.pembebananReturnId !== undefined ? (updateData.pembebananReturnId || null) : existing.pembebananReturnId;
-
-      if (safeRole !== "pusat") {
-        const targetUnitIds = [finalLokasiId, finalPembebananId].filter(Boolean) as string[];
-        const targetUnits = targetUnitIds.length > 0 ? await tx.unitProduksi.findMany({
-          where: { idRegional: { in: targetUnitIds } },
-          select: { idRegional: true, siteArea: true, namaRegional: true, kodeRegional: true }
-        }) : [];
-
-        const lokUnit = targetUnits.find(u => u.idRegional === finalLokasiId) || null;
-        const pembUnit = targetUnits.find(u => u.idRegional === finalPembebananId) || null;
-
-        const targetCheck = checkReturOwnership(
-          {
-            lokasiBarangId: finalLokasiId,
-            pembebananReturnId: finalPembebananId,
-            LokasiBarang: lokUnit,
-            PembebananReturn: pembUnit,
-          },
-          safeRole,
-          userRegional,
-          userSiteArea
-        );
-        if (!targetCheck.allowed) {
-          const err: any = new Error(targetCheck.reason || "Forbidden: Unit tujuan di luar wewenang Anda.");
-          err.statusCode = 403;
-          throw err;
-        }
-      }
-
       const updated = await tx.dataRetur.update({
         where: { id },
         data: sanitizedData,
@@ -452,8 +350,16 @@ export async function updateRetur(body: any, auth?: any) {
           name: getProfileName(session, dbUser),
           role: safeRole,
         }, {
-          oldData: { rtvCn: existing.rtvCn, qtyReturn: existing.qtyReturn, nominal: existing.nominal },
-          newData: { rtvCn: updated.rtvCn, qtyReturn: updated.qtyReturn, nominal: updated.nominal },
+          oldData: {
+            rtvCn: existing.rtvCn,
+            qtyReturn: existing.qtyReturn,
+            nominal: existing.nominal !== null && existing.nominal !== undefined ? Number(existing.nominal) : null,
+          },
+          newData: {
+            rtvCn: updated.rtvCn,
+            qtyReturn: updated.qtyReturn,
+            nominal: updated.nominal !== null && updated.nominal !== undefined ? Number(updated.nominal) : null,
+          },
         });
       }
 

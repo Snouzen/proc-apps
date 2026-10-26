@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 
-import { SESSION_GATE_EVENT } from "@/lib/session-policy";
 
 const AutoRefreshContext = createContext<number>(0);
 
@@ -21,19 +20,13 @@ export function AutoRefreshProvider({
   intervalMs?: number;
 }) {
   const [tick, setTick] = useState(0);
-  const pausedRef = useRef(false);
-  useEffect(() => {
-    const listener = (event: Event) => { pausedRef.current = Boolean((event as CustomEvent).detail?.locked); };
-    window.addEventListener(SESSION_GATE_EVENT, listener);
-    return () => window.removeEventListener(SESSION_GATE_EVENT, listener);
-  }, []);
   const lastTickAtRef = useRef<number>(0);
   const safeIntervalMs = Math.max(30000, Number(intervalMs) || 0);
 
   useEffect(() => {
     if (!safeIntervalMs || safeIntervalMs <= 0) return;
     const id = window.setInterval(() => {
-      if (document.hidden || pausedRef.current) return;
+      if (document.hidden) return;
       const now = Date.now();
       if (now - lastTickAtRef.current < 30000) return;
       lastTickAtRef.current = now;
@@ -45,7 +38,7 @@ export function AutoRefreshProvider({
 
   useEffect(() => {
     const trigger = () => {
-      if (pausedRef.current || document.hidden || document.visibilityState !== "visible") return;
+      if (document.hidden || document.visibilityState !== "visible") return;
       const now = Date.now();
       if (now - lastTickAtRef.current < 30000) return;
       lastTickAtRef.current = now;

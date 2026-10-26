@@ -243,13 +243,13 @@ export async function fetchRekonList(searchParams: URLSearchParams, auth?: any) 
       prisma.reconcile.findMany({
         where: findManyWhere,
         include: { RitelModern: true },
-        orderBy: { updatedAt: "desc" },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         skip,
         take: limit
       })
     ]);
 
-    total = t;
+    total = statusParam === "draft" ? tDraft : statusParam === "final" ? tCompleted : t;
     totalDraft = tDraft;
     totalCompleted = tCompleted;
     nominalDraft = draftAgg._sum.bankStatement || 0;
@@ -412,55 +412,119 @@ export async function fetchRekonList(searchParams: URLSearchParams, auth?: any) 
   }
 
   // Bulk lookup details for performance
-  const allInvNos = [...new Set(reconciles.flatMap(r => r.invoices || []))];
-  const allRtvIds = [...new Set(reconciles.flatMap(r => {
-    const details = Array.isArray(r.rtvDetails) ? r.rtvDetails : [];
-    return details.map((d: any) => d?.id).filter(Boolean);
-  }))];
-  const allRtvNos = [...new Set(reconciles.flatMap(r => {
-    const details = Array.isArray(r.rtvDetails) ? r.rtvDetails : [];
-    const detailCns = details.filter((d: any) => !d?.id).map((d: any) => d?.noRtv).filter(Boolean);
-    return [...(r.rtvs || []), ...detailCns];
-  }))];
-  const allPromoNos = [...new Set(reconciles.flatMap(r => (r.noPromo || "").split(",").map((p: string) => p.trim()).filter(Boolean)))];
+  const allRekonNos = [
+    ...new Set(
+      reconciles.map((r) => (r.noRekonsiliasi ? String(r.noRekonsiliasi).trim() : null)).filter(Boolean)
+    ),
+  ] as string[];
+  const allInvNos = [
+    ...new Set(
+      reconciles.flatMap((r) =>
+        (r.invoices || []).flatMap((inv: string) => {
+          const raw = String(inv || "");
+          const trimmed = raw.trim();
+          return [raw, trimmed].filter(Boolean);
+        })
+      )
+    ),
+  ];
+  const allRtvIds = [
+    ...new Set(
+      reconciles.flatMap((r) => {
+        const details = Array.isArray(r.rtvDetails) ? r.rtvDetails : [];
+        return details.map((d: any) => (d?.id ? String(d.id).trim() : null)).filter(Boolean);
+      })
+    ),
+  ];
+  const allRtvNos = [
+    ...new Set(
+      reconciles.flatMap((r) => {
+        const details = Array.isArray(r.rtvDetails) ? r.rtvDetails : [];
+        const detailCns = details.flatMap((d: any) => {
+          const raw = d?.noRtv ? String(d.noRtv) : "";
+          return [raw, raw.trim()].filter(Boolean);
+        });
+        const rootCns = (r.rtvs || []).flatMap((cn: string) => {
+          const raw = String(cn || "");
+          return [raw, raw.trim()].filter(Boolean);
+        });
+        return [...rootCns, ...detailCns];
+      })
+    ),
+  ];
+  const allPromoNos = [
+    ...new Set(
+      reconciles.flatMap((r) =>
+        (r.noPromo || "")
+          .split(",")
+          .map((p: string) => p.trim())
+          .filter(Boolean)
+      )
+    ),
+  ];
 
-  const [posData, detailedIdReturs, detailedCnReturs, promosData] = await Promise.all([
-    allInvNos.length > 0
-      ? fetchInLimitedChunks(allInvNos, queryLimiter, CHUNK_SIZE, (chunk) =>
-          prisma.purchaseOrder.findMany({
-            where: { noInvoice: { in: chunk } },
-            include: { UnitProduksi: true, Items: { include: { Product: true } } },
-          })
-        )
-      : [],
-    allRtvIds.length > 0
-      ? fetchInLimitedChunks(allRtvIds, queryLimiter, CHUNK_SIZE, (chunk) =>
-          prisma.dataRetur.findMany({
-            where: { id: { in: chunk } },
-            include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true },
-          })
-        )
-      : [],
-    allRtvNos.length > 0
-      ? fetchInLimitedChunks(allRtvNos, queryLimiter, CHUNK_SIZE, (chunk) =>
-          prisma.dataRetur.findMany({
-            where: { rtvCn: { in: chunk } },
-            include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true },
-          })
-        )
-      : [],
-    allPromoNos.length > 0
-      ? fetchInLimitedChunks(allPromoNos, queryLimiter, CHUNK_SIZE, (chunk) =>
-          prisma.promo.findMany({
-            where: { nomor: { in: chunk } },
-          })
-        )
-      : [],
-  ]);
+  const [posByInvData, posByRekonData, detailedIdReturs, detailedCnReturs, detailedBoundReturs, promosData] =
+    await Promise.all([
+      allInvNos.length > 0
+        ? fetchInLimitedChunks(allInvNos, queryLimiter, CHUNK_SIZE, (chunk) =>
+            prisma.purchaseOrder.findMany({
+              where: { noInvoice: { in: chunk } },
+              include: { UnitProduksi: true, Items: { include: { Product: true } } },
+            })
+          )
+        : [],
+      allRekonNos.length > 0
+        ? fetchInLimitedChunks(allRekonNos, queryLimiter, CHUNK_SIZE, (chunk) =>
+            prisma.purchaseOrder.findMany({
+              where: { buktiBayar: { in: chunk } },
+              include: { UnitProduksi: true, Items: { include: { Product: true } } },
+            })
+          )
+        : [],
+      allRtvIds.length > 0
+        ? fetchInLimitedChunks(allRtvIds, queryLimiter, CHUNK_SIZE, (chunk) =>
+            prisma.dataRetur.findMany({
+              where: { id: { in: chunk } },
+              include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true },
+            })
+          )
+        : [],
+      allRtvNos.length > 0
+        ? fetchInLimitedChunks(allRtvNos, queryLimiter, CHUNK_SIZE, (chunk) =>
+            prisma.dataRetur.findMany({
+              where: { rtvCn: { in: chunk } },
+              include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true },
+            })
+          )
+        : [],
+      allRekonNos.length > 0
+        ? fetchInLimitedChunks(allRekonNos, queryLimiter, CHUNK_SIZE, (chunk) =>
+            prisma.dataRetur.findMany({
+              where: { referensiPembayaran: { in: chunk } },
+              include: { Product: true, LokasiBarang: true, PembebananReturn: true, RitelModern: true },
+            })
+          )
+        : [],
+      allPromoNos.length > 0
+        ? fetchInLimitedChunks(allPromoNos, queryLimiter, CHUNK_SIZE, (chunk) =>
+            prisma.promo.findMany({
+              where: { nomor: { in: chunk } },
+            })
+          )
+        : [],
+    ]);
 
-  const retursData = [...detailedIdReturs, ...detailedCnReturs];
+  const seenPoIds = new Set<string>();
+  const posData: any[] = [];
+  for (const p of [...posByInvData, ...posByRekonData]) {
+    if (p?.id && seenPoIds.has(String(p.id))) continue;
+    if (p?.id) seenPoIds.add(String(p.id));
+    posData.push(p);
+  }
 
-  // Fetch all RitelModern rows for the distinct namaPt values on this page to group by (namaPt, inisial)
+  const retursData = [...detailedIdReturs, ...detailedCnReturs, ...detailedBoundReturs];
+
+  // Fetch all RitelModern rows for the distinct namaPt values on this page to group by (namaPt, inisial) and (namaPt)
   const distinctNamaPts = Array.from(
     new Set(
       reconciles
@@ -481,10 +545,16 @@ export async function fetchRekonList(searchParams: URLSearchParams, auth?: any) 
       : [];
 
   const ritelGroupByKey = new Map<string, Set<string>>();
+  const companyGroupByPt = new Map<string, Set<string>>();
   for (const rm of allCompanyRitels) {
-    const key = `${normalizeRitelKey(rm.namaPt)}__${normalizeRitelKey(rm.inisial)}`;
+    const ptKey = normalizeRitelKey(rm.namaPt);
+    const key = `${ptKey}__${normalizeRitelKey(rm.inisial)}`;
     if (!ritelGroupByKey.has(key)) ritelGroupByKey.set(key, new Set<string>());
     ritelGroupByKey.get(key)!.add(rm.id);
+    if (ptKey) {
+      if (!companyGroupByPt.has(ptKey)) companyGroupByPt.set(ptKey, new Set<string>());
+      companyGroupByPt.get(ptKey)!.add(rm.id);
+    }
   }
 
   // Create lookup maps for O(1) speed
@@ -494,22 +564,37 @@ export async function fetchRekonList(searchParams: URLSearchParams, auth?: any) 
   const poByInvoiceAndRitelMap = new Map<string, any>();
   const poListByInvoiceMap = new Map<string, any[]>();
   posData.forEach((p: any) => {
-    const total = p.Items?.reduce((sum: number, item: any) => {
-      return sum + Number(item.rpTagih ?? (Number(item.hargaPcs) * Number(item.pcsKirim)));
-    }, 0) || 0;
-    const produkNames = (p.Items || []).map((item: any) => item.Product?.name).filter(Boolean).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(", ");
+    const total =
+      p.Items?.reduce((sum: number, item: any) => {
+        const lineTotal =
+          Number(item.rpTagih) ||
+          Number(item.hargaPcs || 0) * Number(item.pcsKirim || 0) ||
+          Number(item.nominal) ||
+          Math.max(0, Number(item.hargaPcs || 0) * Number(item.pcs || 0) - Number(item.discount || 0)) ||
+          0;
+        return sum + lineTotal;
+      }, 0) || 0;
+    const produkNames = (p.Items || [])
+      .map((item: any) => item.Product?.name)
+      .filter(Boolean)
+      .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
+      .join(", ");
     const enriched = { ...p, calculatedTotal: total, produkNames };
     if (p.noInvoice) {
-      if (p.ritelId) {
-        poByInvoiceAndRitelMap.set(`${p.noInvoice}__${p.ritelId}`, enriched);
+      const rawInv = String(p.noInvoice);
+      const normInv = rawInv.trim().toUpperCase();
+      for (const invKey of new Set([rawInv, normInv])) {
+        if (p.ritelId) {
+          poByInvoiceAndRitelMap.set(`${invKey}__${p.ritelId}`, enriched);
+        }
+        if (!poByInvoiceAndRitelMap.has(invKey)) {
+          poByInvoiceAndRitelMap.set(invKey, enriched);
+        }
+        if (!poListByInvoiceMap.has(invKey)) {
+          poListByInvoiceMap.set(invKey, []);
+        }
+        poListByInvoiceMap.get(invKey)!.push(enriched);
       }
-      if (!poByInvoiceAndRitelMap.has(p.noInvoice)) {
-        poByInvoiceAndRitelMap.set(p.noInvoice, enriched);
-      }
-      if (!poListByInvoiceMap.has(p.noInvoice)) {
-        poListByInvoiceMap.set(p.noInvoice, []);
-      }
-      poListByInvoiceMap.get(p.noInvoice)!.push(enriched);
     }
   });
 
@@ -522,112 +607,224 @@ export async function fetchRekonList(searchParams: URLSearchParams, auth?: any) 
       returByIdMap.set(String(r.id), r);
     }
     if (r.rtvCn) {
-      if (!returByCnMap.has(r.rtvCn)) returByCnMap.set(r.rtvCn, []);
-      returByCnMap.get(r.rtvCn)!.push(r);
+      const rawCn = String(r.rtvCn);
+      const normCn = rawCn.trim().toUpperCase();
+      for (const cnKey of new Set([rawCn, normCn])) {
+        if (!returByCnMap.has(cnKey)) returByCnMap.set(cnKey, []);
+        returByCnMap.get(cnKey)!.push(r);
+      }
     }
   });
 
   // Combine Data
   const data = reconciles.map((rekon) => {
     const siblingRitelSet = new Set<string>();
-    if (rekon.ritelId) siblingRitelSet.add(rekon.ritelId);
+    const companyRitelSet = new Set<string>();
+    if (rekon.ritelId) {
+      siblingRitelSet.add(rekon.ritelId);
+      companyRitelSet.add(rekon.ritelId);
+    }
     if (rekon.RitelModern?.namaPt) {
-      const groupKey = `${normalizeRitelKey(rekon.RitelModern.namaPt)}__${normalizeRitelKey(rekon.RitelModern.inisial)}`;
+      const ptKey = normalizeRitelKey(rekon.RitelModern.namaPt);
+      const groupKey = `${ptKey}__${normalizeRitelKey(rekon.RitelModern.inisial)}`;
       const groupIds = ritelGroupByKey.get(groupKey);
       if (groupIds) {
-        groupIds.forEach((id) => siblingRitelSet.add(id));
+        groupIds.forEach((id) => {
+          siblingRitelSet.add(id);
+          companyRitelSet.add(id);
+        });
+      }
+      const companyIds = companyGroupByPt.get(ptKey);
+      if (companyIds) {
+        companyIds.forEach((id) => companyRitelSet.add(id));
       }
     }
 
     const invoicesWithData = (rekon.invoices || []).map((invNo: string) => {
-      const poCandidates = poListByInvoiceMap.get(invNo) || [];
+      const normInv = String(invNo || "").trim().toUpperCase();
+      const poCandidates = poListByInvoiceMap.get(invNo) || poListByInvoiceMap.get(normInv) || [];
       const po =
-        (rekon.ritelId && poByInvoiceAndRitelMap.get(`${invNo}__${rekon.ritelId}`)) ||
+        (rekon.ritelId &&
+          (poByInvoiceAndRitelMap.get(`${invNo}__${rekon.ritelId}`) ||
+            poByInvoiceAndRitelMap.get(`${normInv}__${rekon.ritelId}`))) ||
         poCandidates.find((p: any) => p.ritelId && siblingRitelSet.has(p.ritelId)) ||
-        poByInvoiceAndRitelMap.get(invNo);
-      const isMatchingRitel =
-        !rekon.ritelId || Boolean(po?.ritelId && siblingRitelSet.has(po.ritelId));
-      const validPo = isMatchingRitel ? po : null;
+        poCandidates.find((p: any) => p.ritelId && companyRitelSet.has(p.ritelId)) ||
+        undefined;
+
+      let calculatedNominal = po ? Number(po.calculatedTotal || 0) : null;
+      if (
+        (calculatedNominal === null || calculatedNominal === 0) &&
+        (rekon.invoices || []).length === 1 &&
+        Number(rekon.totalInvoices || 0) > 0
+      ) {
+        calculatedNominal = Number(rekon.totalInvoices);
+      }
+
       return {
         noInvoice: invNo,
         sourceMissing: !po,
-        sourceRitelMismatch: Boolean(po && !isMatchingRitel),
-        nominal: validPo ? validPo.calculatedTotal : null,
-        unitProduksi: validPo?.UnitProduksi?.namaRegional || "-",
-        siteArea: validPo?.UnitProduksi?.siteArea || "-",
-        produk: validPo?.produkNames || "-",
+        sourceRitelMismatch: false,
+        nominal: calculatedNominal ?? 0,
+        unitProduksi: po?.UnitProduksi?.namaRegional || "-",
+        siteArea: po?.UnitProduksi?.siteArea || "-",
+        produk: po?.produkNames || "-",
       };
     });
 
-    const savedRtvDetails: Array<{id?: string, noRtv?: string, refInvoice?: string}> = Array.isArray(rekon.rtvDetails) ? rekon.rtvDetails as any : [];
-    let rtvsWithData: any[] = [];
-    
-    if (savedRtvDetails.length > 0) {
-      rtvsWithData = savedRtvDetails.map(detail => {
-        let retur: any = null;
-        let sourceRitelMismatch = false;
-        if (detail.id) {
-          // Explicit ID: match ONLY by ID, scoped to siblingRitelSet (same namaPt + inisial). NEVER fall back to CN!
-          const candidate = returByIdMap.get(String(detail.id));
-          const isMatch = !rekon.ritelId || Boolean(candidate?.ritelId && siblingRitelSet.has(candidate.ritelId));
-          sourceRitelMismatch = Boolean(candidate && !isMatch);
-          if (candidate && isMatch) {
-            retur = candidate;
-          }
-        } else if (detail.noRtv) {
-          // Fallback CN items: match strictly by CN scoped to siblingRitelSet. NEVER fall back to other ritels!
-          const cnMatches = returByCnMap.get(detail.noRtv) || [];
-          const ritelMatches = rekon.ritelId
-            ? cnMatches.filter(r => r.ritelId && siblingRitelSet.has(r.ritelId))
-            : cnMatches;
-          retur = ritelMatches.length === 1 ? ritelMatches[0] : null;
-        }
+    const isSameRitelRetur = (r: any) => {
+      if (!r) return false;
+      if (!rekon.ritelId || companyRitelSet.size === 0) return true;
+      if (r.ritelId && companyRitelSet.has(r.ritelId)) return true;
+      
+      return false;
+    };
 
-        return {
-          sourceRitelMismatch,
-          sourceMissing: !retur,
-          id: retur?.id || detail.id,
-          noRtv: detail.noRtv || retur?.rtvCn || "-",
-          refInvoice: detail.refInvoice || retur?.invoiceRekon || retur?.referensiPembayaran || "-",
-          nominal: Number(retur?.nominal || 0),
-          pembebananRetur: retur?.PembebananReturn?.siteArea || "-",
-          unitProduksi: retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
-          lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
-          produk: retur?.Product?.name || retur?.produk || "-",
-          tujuan: retur?.namaCompany || retur?.RitelModern?.tujuan || "-",
-          rpKg: Number(retur?.rpKg || 0),
-          qty: retur?.qtyReturn ?? (retur as any)?.qty ?? (retur as any)?.pcs ?? null,
-          tanggalRtv: retur?.tanggalRtv || null,
-        };
+    const savedRtvDetails: Array<{ id?: string; noRtv?: string; refInvoice?: string; nominal?: number }> =
+      Array.isArray(rekon.rtvDetails) ? (rekon.rtvDetails as any) : [];
+    const totalExpectedRtvCount =
+      savedRtvDetails.length > 0 ? savedRtvDetails.length : (rekon.rtvs || []).length;
+    const usedReturIds = new Set<string>();
+
+    const resolveReturItem = (detail: {
+      id?: string;
+      noRtv?: string;
+      refInvoice?: string;
+      nominal?: number;
+    }) => {
+      let retur: any = null;
+      if (detail.id) {
+        const byId = returByIdMap.get(String(detail.id));
+        if (byId && isSameRitelRetur(byId)) {
+          retur = byId;
+        }
+      }
+      if (!detail.id && detail.noRtv) {
+        const normCn = String(detail.noRtv).trim().toUpperCase();
+        const cnMatches = (returByCnMap.get(detail.noRtv) || returByCnMap.get(normCn) || []).filter(
+          isSameRitelRetur
+        );
+        const unusedMatches = cnMatches.filter((r) => !usedReturIds.has(String(r.id)));
+        const pool = unusedMatches.length > 0 ? unusedMatches : cnMatches;
+
+        const expectedSingleNominal =
+          detail.nominal !== undefined
+            ? Number(detail.nominal)
+            : totalExpectedRtvCount === 1 && Number(rekon.totalRtvs || 0) > 0
+            ? Number(rekon.totalRtvs)
+            : null;
+
+      const bound = pool.filter((r: any) => rekon.noRekonsiliasi && r.referensiPembayaran === rekon.noRekonsiliasi);
+      const exact = bound.length ? bound : pool;
+      retur = exact.length === 1 ? exact[0] : null;
+      }
+
+      if (retur?.id) {
+        usedReturIds.add(String(retur.id));
+      }
+
+      return retur;
+    };
+
+    const formatRtvRow = (
+      retur: any,
+      fallbackNoRtv?: string,
+      fallbackId?: string,
+      fallbackRefInvoice?: string,
+      fallbackNominal?: number
+    ) => {
+      const resolvedNominal = Number(
+        retur?.nominal ??
+          fallbackNominal ??
+          (totalExpectedRtvCount === 1 ? rekon.totalRtvs : 0) ??
+          0
+      );
+      const resolvedQty = Number(
+        retur?.qtyReturn ?? (retur as any)?.qty ?? (retur as any)?.pcs ?? 0
+      );
+
+      return {
+        sourceRitelMismatch: false,
+        sourceMissing: !retur,
+        id: retur?.id || fallbackId || fallbackNoRtv,
+        noRtv: fallbackNoRtv || retur?.rtvCn || "-",
+        refInvoice:
+          fallbackRefInvoice || retur?.invoiceRekon || retur?.referensiPembayaran || "-",
+        nominal: resolvedNominal,
+        pembebananRetur: retur?.PembebananReturn?.siteArea || "-",
+        unitProduksi:
+          retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
+        lokasiBarang:
+          retur?.LokasiBarang?.siteArea || retur?.PembebananReturn?.siteArea || "-",
+        produk: retur?.Product?.name || retur?.produk || "-",
+        tujuan: retur?.namaCompany || retur?.RitelModern?.tujuan || "-",
+        rpKg: Number(retur?.rpKg || 0),
+        qty: Number.isFinite(resolvedQty) ? resolvedQty : 0,
+        tanggalRtv: retur?.tanggalRtv || null,
+      };
+    };
+
+    let rtvsWithData: any[] = [];
+    if (savedRtvDetails.length > 0) {
+      rtvsWithData = savedRtvDetails.map((detail) => {
+        const retur = resolveReturItem(detail);
+        return formatRtvRow(
+          retur,
+          detail.noRtv,
+          detail.id,
+          detail.refInvoice,
+          detail.nominal
+        );
       });
     } else {
-      const rtvCounts: Record<string, number> = {};
       rtvsWithData = (rekon.rtvs || []).map((rtvNo: string) => {
-        const cnMatches = returByCnMap.get(rtvNo) || [];
-        const ritelMatches = rekon.ritelId
-          ? cnMatches.filter(r => r.ritelId && siblingRitelSet.has(r.ritelId))
-          : cnMatches;
-        // Strictly scoped to ritelMatches - NEVER fall back to allMatches across other ritels!
-        const count = rtvCounts[rtvNo] || 0;
-        const retur = ritelMatches.length === 1 && count === 0 ? ritelMatches[0] : null;
-        rtvCounts[rtvNo] = count + 1;
-        
-        return {
-          sourceMissing: !retur,
-          id: retur?.id,
-          noRtv: rtvNo,
-          refInvoice: retur?.invoiceRekon || retur?.referensiPembayaran || "-",
-          nominal: Number(retur?.nominal || 0),
-          pembebananRetur: retur?.PembebananReturn?.siteArea || "-",
-          unitProduksi: retur?.LokasiBarang?.namaRegional || retur?.PembebananReturn?.namaRegional || "-",
-          lokasiBarang: retur?.LokasiBarang?.siteArea || "-",
-          produk: retur?.Product?.name || retur?.produk || "-",
-          tujuan: retur?.namaCompany || retur?.RitelModern?.tujuan || "-",
-          rpKg: Number(retur?.rpKg || 0),
-          qty: retur?.qtyReturn ?? (retur as any)?.qty ?? (retur as any)?.pcs ?? null,
-          tanggalRtv: retur?.tanggalRtv || null,
-        };
+        const retur = resolveReturItem({ noRtv: rtvNo });
+        return formatRtvRow(retur, rtvNo);
       });
+    }
+
+    // If a legacy rekon stored deduplicated CNs while multiple same-ritel RTV items make up totalRtvs, include the remaining items
+    const expectedTotalRtvs = Number(rekon.totalRtvs || 0);
+    let currentRtvSum = rtvsWithData.reduce((s, r) => s + Number(r.nominal || 0), 0);
+    if (expectedTotalRtvs > 0 && Math.abs(currentRtvSum - expectedTotalRtvs) > 0.01) {
+      const rekonCnList = Array.from(
+        new Set([
+          ...savedRtvDetails.map((d) => String(d.noRtv || "").trim()).filter(Boolean),
+          ...(rekon.rtvs || []).map((cn: string) => String(cn).trim()).filter(Boolean),
+        ])
+      );
+      const unusedSameRitelReturs: any[] = [];
+      for (const cn of rekonCnList) {
+        const normCn = cn.toUpperCase();
+        const matches = (returByCnMap.get(cn) || returByCnMap.get(normCn) || []).filter(
+          (r) => r?.id && !usedReturIds.has(String(r.id)) && isSameRitelRetur(r)
+        );
+        for (const m of matches) {
+          if (!unusedSameRitelReturs.some((x) => x.id === m.id)) {
+            unusedSameRitelReturs.push(m);
+          }
+        }
+      }
+      const boundUnused = unusedSameRitelReturs.filter(
+        (r) => rekon.noRekonsiliasi && r.referensiPembayaran === rekon.noRekonsiliasi
+      );
+      const candidateExtras = boundUnused.length > 0 ? boundUnused : unusedSameRitelReturs;
+      const extraSum = candidateExtras.reduce((s, r) => s + Number(r.nominal || 0), 0);
+      if (
+        candidateExtras.length > 0 &&
+        Math.abs(currentRtvSum + extraSum - expectedTotalRtvs) <= 0.01
+      ) {
+        for (const extra of candidateExtras) {
+          usedReturIds.add(String(extra.id));
+          const parentRef =
+            rtvsWithData.find(
+              (x) =>
+                String(x.noRtv || "").trim().toUpperCase() ===
+                String(extra.rtvCn || "").trim().toUpperCase()
+            )?.refInvoice || "-";
+          rtvsWithData.push(formatRtvRow(extra, extra.rtvCn, extra.id, parentRef));
+        }
+        currentRtvSum = rtvsWithData.reduce((s, r) => s + Number(r.nominal || 0), 0);
+      }
     }
 
     let normalizedNotes: any[] = [];
@@ -638,9 +835,23 @@ export async function fetchRekonList(searchParams: URLSearchParams, auth?: any) 
     }
 
     const promoNumbers = (rekon.noPromo || "").split(",").map((p: string) => p.trim()).filter(Boolean);
-    const detailedPromos = promoNumbers.map((nomor: string) => promoMap.get(nomor)).filter(Boolean);
+    const detailedPromos = promoNumbers.map((nomor: string) => promoMap.get(nomor)).filter((promo: any) => promo?.ritelId && companyRitelSet.has(promo.ritelId));
 
-    return { ...rekon, notes: normalizedNotes, invoices: invoicesWithData, rtvs: rtvsWithData, promos: detailedPromos };
+    const effectiveTotalRtvs =
+      rtvsWithData.length > 0 &&
+      currentRtvSum > 0 &&
+      Math.abs(currentRtvSum - expectedTotalRtvs) > 0.01
+        ? currentRtvSum
+        : rekon.totalRtvs;
+
+    return {
+      ...rekon,
+      totalRtvs: effectiveTotalRtvs,
+      notes: normalizedNotes,
+      invoices: invoicesWithData,
+      rtvs: rtvsWithData,
+      promos: detailedPromos,
+    };
   });
 
   return {

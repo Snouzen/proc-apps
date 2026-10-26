@@ -5,13 +5,13 @@ const fs = require('fs');
 const ts = require('typescript');
 const path = require('path');
 function load(file) {
-  const module = { exports: {} };
+  const loadedModule = { exports: {} };
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   new Function('require', 'exports', 'module', code)(id => {
     if (id === '@/lib/ttl-cache') return { cacheGet: () => undefined };
     return load(id.startsWith('@/') ? path.resolve(__dirname, '../src', id.slice(2) + '.ts') : path.resolve(path.dirname(file), id + '.ts'));
-  }, module.exports, module);
-  return module.exports;
+  }, loadedModule.exports, loadedModule);
+  return loadedModule.exports;
 }
 const { poScopeFromUnits } = load(path.resolve(__dirname, '../src/lib/utils/poScope.ts'));
 const { checkPOOwnership } = load(path.resolve(__dirname, '../src/lib/utils/regional.ts'));

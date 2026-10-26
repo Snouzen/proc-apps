@@ -322,8 +322,15 @@ function NewReturPageContent() {
                 value={units.find((u) => u.idRegional === formData.lokasiBarangId)?.siteArea || ""}
                 onSearch={setLokasiFilter}
                 onCommit={(val: string) => {
-                  const u = units.find((x) => x.siteArea === val);
-                  setFormData((p: any) => ({ ...p, lokasiBarangId: u?.idRegional || "" }));
+                  const trimmed = (val || "").trim();
+                  if (!trimmed) {
+                    setFormData((p: any) => ({ ...p, lokasiBarangId: "" }));
+                    return;
+                  }
+                  const u = units.find((x) => (x.siteArea || "").trim().toLowerCase() === trimmed.toLowerCase());
+                  if (u) {
+                    setFormData((p: any) => ({ ...p, lokasiBarangId: u.idRegional }));
+                  }
                 }}
                 items={filteredLokasi.map((u) => u.siteArea)}
                 open={isLokasiOpen}
@@ -336,8 +343,15 @@ function NewReturPageContent() {
                 value={units.find((u) => u.idRegional === formData.pembebananReturnId)?.siteArea || ""}
                 onSearch={setPembebananFilter}
                 onCommit={(val: string) => {
-                  const u = units.find((x) => x.siteArea === val);
-                  setFormData((p: any) => ({ ...p, pembebananReturnId: u?.idRegional || "" }));
+                  const trimmed = (val || "").trim();
+                  if (!trimmed) {
+                    setFormData((p: any) => ({ ...p, pembebananReturnId: "" }));
+                    return;
+                  }
+                  const u = units.find((x) => (x.siteArea || "").trim().toLowerCase() === trimmed.toLowerCase());
+                  if (u) {
+                    setFormData((p: any) => ({ ...p, pembebananReturnId: u.idRegional }));
+                  }
                 }}
                 items={filteredPembebanan.map((u) => u.siteArea)}
                 open={isPembebananOpen}

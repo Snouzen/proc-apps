@@ -24,22 +24,18 @@ export default function RekonForm({ calc }: { calc: any }) {
     buktiBayarFile, setBuktiBayarFile,
     rincianBayarUrl, setRincianBayarUrl,
     selectedCompany, setSelectedCompany,
-    selectedInisial,
-    availableInisials,
-    handleSelectCompany, handleSelectInisial,
+    handleSelectCompany,
     selectedInvoices, setSelectedInvoices,
     selectedRtvs, setSelectedRtvs,
     selectedPromos, setSelectedPromos,
     adminFee, setAdminFee,
     notesList, setNotesList,
     companySearch, setCompanySearch,
-    inisialSearch, setInisialSearch,
     invSearch, setInvSearch,
     rtvSearch, setRtvSearch,
     promoSearch, setPromoSearch,
     refInvoiceSearch, setRefInvoiceSearch,
     isCompanyOpen, setIsCompanyOpen,
-    isInisialOpen, setIsInisialOpen,
     isPromoOpen, setIsPromoOpen,
     isInvOpen, setIsInvOpen,
     isRtvOpen, setIsRtvOpen,
@@ -274,57 +270,9 @@ export default function RekonForm({ calc }: { calc: any }) {
             </Popover.Root>
         </div>
 
-        {selectedCompany && (
-          <div className="w-full relative group animate-in fade-in duration-300">
-            <Popover.Root open={isInisialOpen} onOpenChange={setIsInisialOpen} modal={false}>
-              <Popover.Anchor asChild>
-                <div className={`relative w-full h-16 rounded-[28px] border transition-all flex items-center justify-between overflow-hidden cursor-pointer ${selectedInisial && !isInisialOpen ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20 shadow-xl shadow-indigo-100/30 dark:shadow-none' : 'bg-[#f8fafc] dark:bg-slate-900/50 border-slate-50 dark:border-slate-700 focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:ring-4 focus-within:ring-indigo-50/50 dark:focus-within:ring-indigo-500/20'}`}>
-                  <div className="flex items-center gap-3 sm:gap-5 w-full pl-4 sm:pl-10 pr-10 sm:pr-12">
-                    <FileText size={22} className={`shrink-0 ${selectedInisial && !isInisialOpen ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-300 dark:text-slate-500 group-focus-within:text-indigo-500 transition-colors'}`} />
-                    <input
-                      type="text"
-                      placeholder={selectedInisial ? `INISIAL: ${selectedInisial}` : "PILIH INISIAL RITEL..."}
-                      className={`w-full bg-transparent border-none outline-none font-black uppercase tracking-widest sm:tracking-[0.2em] text-[9px] sm:text-[10px] truncate ${selectedInisial && !isInisialOpen ? 'text-indigo-600 dark:text-indigo-300 italic cursor-pointer' : 'text-slate-600 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:italic'}`}
-                      value={inisialSearch}
-                      onChange={e => { setInisialSearch(e.target.value); setIsInisialOpen(true); }}
-                      onFocus={() => setIsInisialOpen(true)}
-                      onBlur={() => setTimeout(() => setIsInisialOpen(false), 300)}
-                    />
-                  </div>
-                  <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <ChevronDown size={18} className={selectedInisial && !isInisialOpen ? 'text-indigo-400' : 'text-slate-200 dark:text-slate-600'} />
-                  </div>
-                </div>
-              </Popover.Anchor>
-              <Popover.Portal>
-                <Popover.Content className="z-[110] w-[var(--radix-popover-trigger-width)] bg-white dark:bg-slate-800 rounded-[40px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-50 dark:border-slate-700 p-4 sm:p-6 animate-in fade-in zoom-in-95 mt-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-                  <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
-                    {(availableInisials || [])
-                      .filter((opt: any) => opt.inisial.toLowerCase().includes((inisialSearch || "").toLowerCase()))
-                      .map((opt: any) => (
-                        <button
-                          key={opt.inisial}
-                          onClick={() => handleSelectInisial(opt)}
-                          className={`w-full text-left p-4 sm:p-5 rounded-[22px] transition-all font-black text-[10px] sm:text-[11px] uppercase flex items-center justify-between ${selectedInisial?.toLowerCase() === opt.inisial.toLowerCase() ? 'bg-[#5c56f6] text-white shadow-2xl dark:shadow-none' : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'}`}
-                        >
-                          <span className="truncate pr-2">{highlightMatch(opt.inisial, inisialSearch)}</span>
-                          <ChevronRight size={14} className={`shrink-0 ${selectedInisial?.toLowerCase() === opt.inisial.toLowerCase() ? 'opacity-100' : 'opacity-0'}`} />
-                        </button>
-                      ))}
-                    {(availableInisials || [])
-                      .filter((opt: any) => opt.inisial.toLowerCase().includes((inisialSearch || "").toLowerCase())).length === 0 && (
-                      <div className="p-8 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">
-                        Tidak ada Inisial ditemukan
-                      </div>
-                    )}
-                  </div>
-                </Popover.Content>
-              </Popover.Portal>
-            </Popover.Root>
-          </div>
-        )}
+        <p className="text-xs text-slate-500">Invoice dan RTV dari seluruh inisial dalam company yang dipilih dapat digabungkan.</p>
 
-          {selectedCompany && selectedInisial ? (
+          {selectedCompany ? (
             <div className="space-y-8 animate-in fade-in duration-500 pt-4 w-full min-w-0">
                 <div className="flex flex-col gap-12 w-full min-w-0">
               
@@ -852,11 +800,7 @@ export default function RekonForm({ calc }: { calc: any }) {
                   <CircleDollarSign size={32} />
                 </div>
                 <p className="text-[10px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest italic leading-relaxed">
-                  {selectedCompany ? (
-                    <>Pilih inisial ritel terlebih dahulu <br/> untuk membuka database Invoice & RTV</>
-                  ) : (
-                    <>Pilih rujukan company terlebih dahulu <br/> untuk membuka database Invoice & RTV</>
-                  )}
+                  <>Pilih company terlebih dahulu <br/> untuk membuka database Invoice & RTV</>
                 </p>
             </div>
           )}

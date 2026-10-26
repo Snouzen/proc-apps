@@ -147,7 +147,7 @@ export async function proxy(req: NextRequest) {
   }
 
   // ── Page route protection ──
-  if (pathname === "/login" && session && req.nextUrl.searchParams.get("reauth") !== "1") {
+  if (pathname === "/login" && session) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 

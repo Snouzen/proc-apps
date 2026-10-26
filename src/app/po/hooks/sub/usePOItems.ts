@@ -18,7 +18,7 @@ export function usePOItems({
   const [currentItem, setCurrentItem] = useState({
     namaProduk: "",
     pcs: "" as number | string,
-    pcsKirim: "" as number | string,
+    pcsKirim: 0 as number | string,
     hargaPcs: "" as number | string,
     discount: "" as number | string,
   });
@@ -26,7 +26,7 @@ export function usePOItems({
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editItem, setEditItem] = useState({
     pcs: "",
-    pcsKirim: "",
+    pcsKirim: "0",
     hargaPcs: "",
     discount: "",
   });
@@ -145,7 +145,7 @@ export function usePOItems({
     setPreviewItemId(item.id);
     setEditItem({
       pcs: String(item.pcs ?? ""),
-      pcsKirim: String(item.pcsKirim ?? ""),
+      pcsKirim: String(item.pcsKirim ?? 0),
       hargaPcs: String(item.hargaPcs ?? ""),
       discount: String(
         item.discount ? item.discount.toLocaleString("id-ID", { maximumFractionDigits: 2 }) : "",
@@ -155,7 +155,7 @@ export function usePOItems({
 
   const handleCancelEditItem = () => {
     setEditingItemId(null);
-    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
+    setEditItem({ pcs: "", pcsKirim: "0", hargaPcs: "", discount: "" });
   };
 
   const handleSaveEditItem = (item: ItemPO) => {
@@ -200,7 +200,7 @@ export function usePOItems({
     });
 
     setEditingItemId(null);
-    setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
+    setEditItem({ pcs: "", pcsKirim: "0", hargaPcs: "", discount: "" });
     showToast("success", "Item berhasil diupdate");
   };
 
@@ -218,7 +218,7 @@ export function usePOItems({
       id: crypto.randomUUID(),
       namaProduk: currentItem.namaProduk,
       pcs: currentItem.pcs,
-      pcsKirim: currentItem.pcsKirim,
+      pcsKirim: currentItem.pcsKirim === "" ? 0 : currentItem.pcsKirim,
       hargaPcs: currentItem.hargaPcs,
       discount: currentDiscountNum,
       kg: currentKg,
@@ -237,7 +237,7 @@ export function usePOItems({
     setCurrentItem({
       namaProduk: "",
       pcs: "",
-      pcsKirim: "",
+      pcsKirim: "0",
       hargaPcs: "",
       discount: "",
     });

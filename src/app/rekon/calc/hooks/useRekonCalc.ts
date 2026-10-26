@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 
@@ -79,7 +79,6 @@ export function useRekonCalc() {
   const [rincianBayarUrl, setRincianBayarUrl] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [selectedInisial, setSelectedInisial] = useState<string>("");
   const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([]);
   const [selectedRtvs, setSelectedRtvs] = useState<Rtv[]>([]);
   const [selectedPromos, setSelectedPromos] = useState<Promo[]>([]);
@@ -88,7 +87,6 @@ export function useRekonCalc() {
   const [remarks, setRemarks] = useState<string>("");
 
   const [companySearch, setCompanySearch] = useState("");
-  const [inisialSearch, setInisialSearch] = useState("");
   const [invSearch, setInvSearch] = useState("");
   const [rtvSearch, setRtvSearch] = useState("");
   const [promoSearch, setPromoSearch] = useState("");
@@ -97,7 +95,6 @@ export function useRekonCalc() {
   const [rekonNo, setRekonNo] = useState<string | null>(null);
 
   const [isCompanyOpen, setIsCompanyOpen] = useState(false);
-  const [isInisialOpen, setIsInisialOpen] = useState(false);
   const [isPromoOpen, setIsPromoOpen] = useState(false);
   const [isInvOpen, setIsInvOpen] = useState(false);
   const [isRtvOpen, setIsRtvOpen] = useState(false);
@@ -112,32 +109,30 @@ export function useRekonCalc() {
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const normalizeInisialLabel = (val?: string | null) => {
-    const raw = String(val || "").trim();
-    if (!raw || raw === "—" || raw === "-") return "-";
-    return raw;
-  };
+  const lookupEpochRef = useRef(0);
+  useEffect(() => () => { lookupEpochRef.current++; }, []);
 
-  const availableInisials = useMemo(() => {
-    if (!selectedCompany?.namaPt) return [];
-    const targetPt = selectedCompany.namaPt.trim().toLowerCase();
-    const matchingRows = masterCompanies.filter(
-      (c: any) => String(c.namaPt || "").trim().toLowerCase() === targetPt
-    );
-    const map = new Map<string, { inisial: string; ritelId: string; namaPt: string }>();
-    for (const row of matchingRows) {
-      const displayInisial = normalizeInisialLabel(row.inisial);
-      const key = displayInisial.toLowerCase();
-      if (!map.has(key)) {
-        map.set(key, {
-          inisial: displayInisial,
-          ritelId: row.id,
-          namaPt: row.namaPt,
-        });
-      }
+  const fetchCompanyData = useCallback(async (companyName: string, ritelId?: string) => {
+    const epoch = ++lookupEpochRef.current;
+    setIsDataLoading(true);
+    setMasterInvoicesList([]); setMasterRtvsList([]); setMasterPromos([]);
+    try {
+      const url = new URL("/api/rekon/lookup", window.location.origin);
+      url.searchParams.set("companyName", companyName);
+      if (ritelId) url.searchParams.set("ritelId", ritelId);
+      if (editId) url.searchParams.set("editId", editId);
+      const res = await fetch(url.toString(), { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal memuat invoice dan RTV company");
+      if (epoch !== lookupEpochRef.current) return;
+      setMasterInvoicesList(json.invoices || []); setMasterRtvsList(json.rtvs || []);
+      setMasterPromos(json.promos || []);
+    } catch (error: any) {
+      if (epoch === lookupEpochRef.current) Swal.fire({ icon: "error", title: "Lookup gagal", text: error.message });
+    } finally {
+      if (epoch === lookupEpochRef.current) setIsDataLoading(false);
     }
-    return Array.from(map.values());
-  }, [masterCompanies, selectedCompany?.namaPt]);
+  }, [editId]);
 
   useEffect(() => {
     if (editId) {
@@ -149,10 +144,8 @@ export function useRekonCalc() {
           if (res.ok && json.data) {
             const d = json.data;
             if (d.RitelModern) {
-              const initInisial = normalizeInisialLabel(d.RitelModern.inisial);
               setSelectedCompany(d.RitelModern);
-              setSelectedInisial(initInisial);
-              fetchCompanyData(d.RitelModern.namaPt, d.RitelModern.id, initInisial);
+              fetchCompanyData(d.RitelModern.namaPt, d.RitelModern.id);
             }
             if (Array.isArray(d.bankStatements) && d.bankStatements.length > 0) {
               setBankStatementsList(d.bankStatements);
@@ -180,7 +173,7 @@ export function useRekonCalc() {
       };
       loadDraft();
     }
-  }, [editId]);
+  }, [editId, fetchCompanyData]);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -197,96 +190,27 @@ export function useRekonCalc() {
     fetchCompanies();
   }, []);
 
-  const fetchCompanyData = async (companyName: string, ritelId?: string, inisial?: string) => {
-    try {
-      setIsDataLoading(true);
-      setMasterInvoicesList([]);
-      setMasterRtvsList([]);
-      
-      const lookupUrl = new URL(`/api/rekon/lookup`, window.location.origin);
-      lookupUrl.searchParams.set("companyName", companyName);
-      if (ritelId) lookupUrl.searchParams.set("ritelId", ritelId);
-      if (inisial) lookupUrl.searchParams.set("inisial", inisial);
-      if (editId) lookupUrl.searchParams.set("editId", editId);
-      
-      const res = await fetch(lookupUrl.toString());
-      const json = await res.json();
-      
-      setMasterInvoicesList(json.invoices || []);
-      setMasterRtvsList(json.rtvs || []);
-
-      const promoUrl = ritelId ? `/api/promo?ritelId=${ritelId}&mode=list` : "/api/promo?mode=list";
-      const promoRes = await fetch(promoUrl);
-      const promoJson = await promoRes.json();
-      setMasterPromos(Array.isArray(promoJson) ? promoJson : (promoJson.data || []));
-    } catch (err) {
-      console.error("Fetch Suggestions Error:", err);
-    } finally {
-      setIsDataLoading(false);
-    }
-  };
-
-  const handleSelectCompany = (c: any) => {
-    setCompanySearch("");
-    setInisialSearch("");
-    setIsCompanyOpen(false);
-    setSelectedInvoices([]);
-    setSelectedRtvs([]);
-    setSelectedPromos([]);
-    setMasterInvoicesList([]);
-    setMasterRtvsList([]);
-    setMasterPromos([]);
-
-    const targetPt = String(c.namaPt || "").trim().toLowerCase();
-    const matchingRows = masterCompanies.filter(
-      (row: any) => String(row.namaPt || "").trim().toLowerCase() === targetPt
-    );
-    const inisialMap = new Map<string, { inisial: string; ritelId: string; namaPt: string }>();
-    for (const row of matchingRows) {
-      const displayInisial = normalizeInisialLabel(row.inisial);
-      const key = displayInisial.toLowerCase();
-      if (!inisialMap.has(key)) {
-        inisialMap.set(key, {
-          inisial: displayInisial,
-          ritelId: row.id,
-          namaPt: row.namaPt,
-        });
-      }
-    }
-    const uniqueInisials = Array.from(inisialMap.values());
-
-    if (uniqueInisials.length === 1) {
-      const only = uniqueInisials[0];
-      setSelectedCompany({ id: only.ritelId, namaPt: only.namaPt, inisial: only.inisial });
-      setSelectedInisial(only.inisial);
-      fetchCompanyData(only.namaPt, only.ritelId, only.inisial);
-    } else {
-      setSelectedCompany({ id: c.id, namaPt: c.namaPt, inisial: "" });
-      setSelectedInisial("");
-    }
-  };
-
-  const handleSelectInisial = (opt: { inisial: string; ritelId: string; namaPt: string }) => {
-    setInisialSearch("");
-    setIsInisialOpen(false);
-    setSelectedInisial(opt.inisial);
-    setSelectedCompany({ id: opt.ritelId, namaPt: opt.namaPt, inisial: opt.inisial });
-    setSelectedInvoices([]);
-    setSelectedRtvs([]);
-    setSelectedPromos([]);
-    fetchCompanyData(opt.namaPt, opt.ritelId, opt.inisial);
+  const handleSelectCompany = (c: Company) => {
+    setCompanySearch(""); setIsCompanyOpen(false);
+    setSelectedInvoices([]); setSelectedRtvs([]); setSelectedPromos([]);
+    setMasterInvoicesList([]); setMasterRtvsList([]); setMasterPromos([]);
+    setInvSearch(""); setRtvSearch(""); setPromoSearch("");
+    setSelectedCompany({ id: c.id, namaPt: c.namaPt });
+    void fetchCompanyData(c.namaPt, c.id);
   };
 
   const handleSelectInvoice = async (invoiceNo: string) => {
+    const epoch = lookupEpochRef.current;
     try {
       const url = new URL(`/api/rekon/lookup`, window.location.origin);
       url.searchParams.set("invoiceNo", invoiceNo);
       url.searchParams.set("companyName", selectedCompany?.namaPt || "");
       url.searchParams.set("ritelId", selectedCompany?.id || "");
-      if (selectedInisial) url.searchParams.set("inisial", selectedInisial);
 
       const res = await fetch(url.toString());
       const json = await res.json();
+      if (epoch !== lookupEpochRef.current) return;
+      if (!res.ok) throw new Error(json.error || "Gagal memuat invoice");
       const pos = json.data || [];
       if (pos.length > 0) {
         const po = pos[0];
@@ -305,9 +229,7 @@ export function useRekonCalc() {
           siteArea: po.UnitProduksi?.siteArea || "-",
           produk: produkNames || "-",
         };
-        if (!selectedInvoices.find(x => x.id === newInv.id)) {
-           setSelectedInvoices([...selectedInvoices, newInv]);
-        }
+        setSelectedInvoices(prev => prev.some(x => x.id === newInv.id) ? prev : [...prev, newInv]);
       }
       setInvSearch("");
       setIsInvOpen(false);
@@ -317,6 +239,7 @@ export function useRekonCalc() {
   };
 
   const handleSelectRtv = async (rtvItem: any) => {
+    const epoch = lookupEpochRef.current;
     try {
       const rtvNo = typeof rtvItem === 'string' ? rtvItem : (rtvItem.noRtv || rtvItem.rtvCn);
       const rtvId = typeof rtvItem === 'object' ? rtvItem.id : null;
@@ -325,10 +248,11 @@ export function useRekonCalc() {
       if (rtvId) url.searchParams.set("rtvId", rtvId);
       url.searchParams.set("companyName", selectedCompany?.namaPt || "");
       url.searchParams.set("ritelId", selectedCompany?.id || "");
-      if (selectedInisial) url.searchParams.set("inisial", selectedInisial);
 
       const res = await fetch(url.toString());
       const json = await res.json();
+      if (epoch !== lookupEpochRef.current) return;
+      if (!res.ok) throw new Error(json.error || "Gagal memuat RTV");
       const returs = json.data || [];
       
       if (returs.length > 0) {
@@ -425,11 +349,6 @@ export function useRekonCalc() {
       return;
     }
 
-    if (availableInisials.length > 0 && !selectedInisial) {
-      Swal.fire({ icon: "warning", title: "Oops!", text: "Pilih inisial ritel terlebih dahulu!", customClass: { popup: "rounded-[32px] font-sans" } });
-      return;
-    }
-
     if (status === "final" && selectedRtvs.length > 0) {
       const missingLokasiRtvs = selectedRtvs.filter(
         (rtv) => !rtv.lokasiBarang || rtv.lokasiBarang.trim() === "" || rtv.lokasiBarang.trim() === "-"
@@ -495,7 +414,6 @@ export function useRekonCalc() {
       const payload = {
         ritelId: selectedCompany.id,
         companyName: selectedCompany.namaPt,
-        inisial: selectedInisial || undefined,
         bankStatement: bankStatement,
         bankStatements: bankStatementsList.filter(b => b.desc || b.nominal).map(b => ({ desc: b.desc, nominal: b.nominal })),
         biayaAdmin: adminFee,
@@ -554,23 +472,22 @@ export function useRekonCalc() {
     buktiBayarFile, setBuktiBayarFile,
     rincianBayarUrl, setRincianBayarUrl,
     selectedCompany, setSelectedCompany,
-    selectedInisial, setSelectedInisial,
-    availableInisials,
-    handleSelectCompany, handleSelectInisial,
+
+    handleSelectCompany,
     selectedInvoices, setSelectedInvoices,
     selectedRtvs, setSelectedRtvs,
     selectedPromos, setSelectedPromos,
     adminFee, setAdminFee,
     notesList, setNotesList,
     companySearch, setCompanySearch,
-    inisialSearch, setInisialSearch,
+
     invSearch, setInvSearch,
     rtvSearch, setRtvSearch,
     promoSearch, setPromoSearch,
     refInvoiceSearch, setRefInvoiceSearch,
     isLoading, rekonNo,
     isCompanyOpen, setIsCompanyOpen,
-    isInisialOpen, setIsInisialOpen,
+
     isPromoOpen, setIsPromoOpen,
     isInvOpen, setIsInvOpen,
     isRtvOpen, setIsRtvOpen,

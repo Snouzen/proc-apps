@@ -71,7 +71,7 @@ export function usePOEditData(
   }>({
     namaProduk: "",
     pcs: "",
-    pcsKirim: "",
+    pcsKirim: "0",
     hargaPcs: "",
     discount: "",
   });
@@ -378,7 +378,7 @@ export function usePOEditData(
         setCurrentItem({
           namaProduk: "",
           pcs: "",
-          pcsKirim: "",
+          pcsKirim: "0",
           hargaPcs: "",
           discount: "",
         });
@@ -455,7 +455,7 @@ export function usePOEditData(
       id: crypto.randomUUID(),
       namaProduk: nama,
       pcs: currentItem.pcs,
-      pcsKirim: currentItem.pcsKirim,
+      pcsKirim: currentItem.pcsKirim === "" ? 0 : currentItem.pcsKirim,
       hargaPcs: currentItem.hargaPcs,
       discount: parseRupiah(currentItem.discount),
     };
@@ -463,7 +463,7 @@ export function usePOEditData(
     setCurrentItem({
       namaProduk: "",
       pcs: "",
-      pcsKirim: "",
+      pcsKirim: "0",
       hargaPcs: "",
       discount: "",
     });

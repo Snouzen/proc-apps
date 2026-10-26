@@ -108,29 +108,51 @@ export function useReturMutations({
     }
   };
 
+  const safeIsoDate = (val: any): string | null => {
+    if (!val) return null;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
+
+  const buildCleanedPayload = (id: string, itemData: any) => {
+    const { RitelModern, LokasiBarang, Product, PembebananReturn, createdAt, updatedAt, _count, ...pureData } = itemData;
+    const kodeTokoStr = pureData.kodeToko !== null && pureData.kodeToko !== undefined
+      ? String(pureData.kodeToko).replace(/[^0-9]/g, "")
+      : "";
+    return {
+      ...pureData,
+      id,
+      rtvCn: pureData.rtvCn ? String(pureData.rtvCn).trim() : null,
+      kodeToko: kodeTokoStr ? Number(kodeTokoStr) : null,
+      qtyReturn: Number(pureData.qtyReturn) || 0,
+      nominal: Number(pureData.nominal) || 0,
+      rpKg: Number(pureData.rpKg) || 0,
+      tanggalRtv: safeIsoDate(pureData.tanggalRtv),
+      maxPickup: safeIsoDate(pureData.maxPickup),
+      tanggalPembayaran: safeIsoDate(pureData.tanggalPembayaran),
+      invoiceRekon: pureData.invoiceRekon || "",
+      inisial: pureData.inisial || "",
+    };
+  };
+
   const handleSaveMassEdit = async () => {
     try {
       setIsSavingMass(true);
       const ids = Object.keys(massEditForms);
-      
-      const promises = ids.map(async (id) => {
-        const itemData = massEditForms[id];
-        const { RitelModern, LokasiBarang, Product, PembebananReturn, createdAt, updatedAt, _count, ...pureData } = itemData;
+      const originalById = new Map(data.map((item: any) => [item.id, item]));
 
-        const cleanedPayload = {
-          ...pureData,
-          id,
-          rtvCn: pureData.rtvCn ? String(pureData.rtvCn).trim() : null,
-          kodeToko: pureData.kodeToko ? Number(pureData.kodeToko.toString().replace(/[^0-9]/g, '')) : null,
-          qtyReturn: Number(pureData.qtyReturn) || 0,
-          nominal: Number(pureData.nominal) || 0,
-          rpKg: Number(pureData.rpKg) || 0,
-          tanggalRtv: pureData.tanggalRtv ? new Date(pureData.tanggalRtv).toISOString() : null,
-          maxPickup: pureData.maxPickup ? new Date(pureData.maxPickup).toISOString() : null,
-          tanggalPembayaran: pureData.tanggalPembayaran ? new Date(pureData.tanggalPembayaran).toISOString() : null,
-          invoiceRekon: pureData.invoiceRekon || "",
-          inisial: pureData.inisial || ""
-        };
+      const changedIds = ids.filter((id) => {
+        const orig = originalById.get(id);
+        if (!orig) return true;
+        const nextPayload = buildCleanedPayload(id, massEditForms[id]);
+        const origPayload = buildCleanedPayload(id, orig);
+        return JSON.stringify(nextPayload) !== JSON.stringify(origPayload);
+      });
+
+      const targetIds = changedIds.length > 0 ? changedIds : ids;
+
+      for (const id of targetIds) {
+        const cleanedPayload = buildCleanedPayload(id, massEditForms[id]);
 
         const res = await fetch(`/api/retur`, {
           method: "PUT",
@@ -138,10 +160,15 @@ export function useReturMutations({
           body: JSON.stringify(cleanedPayload),
         });
 
-        if (!res.ok) throw new Error("Gagal menyimpan beberapa data");
-      });
-
-      await Promise.all(promises);
+        if (!res.ok) {
+          let errMsg = "Gagal menyimpan beberapa data";
+          try {
+            const errJson = await res.json();
+            if (errJson?.error) errMsg = errJson.error;
+          } catch {}
+          throw new Error(errMsg);
+        }
+      }
 
       Swal.fire({ icon: 'success', title: 'Semua data diperbarui', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
       
@@ -162,32 +189,8 @@ export function useReturMutations({
   const handleSaveInline = async (id: string) => {
     try {
       setIsFetchingPage(true);
-      
-      const { 
-        RitelModern, 
-        LokasiBarang, 
-        Product, 
-        PembebananReturn, 
-        createdAt, 
-        updatedAt,
-        _count,
-        ...pureData 
-      } = editForm;
 
-      const cleanedPayload = {
-        ...pureData,
-        id, 
-        rtvCn: pureData.rtvCn ? String(pureData.rtvCn).trim() : null,
-        kodeToko: pureData.kodeToko ? Number(pureData.kodeToko.toString().replace(/[^0-9]/g, '')) : null,
-        qtyReturn: Number(pureData.qtyReturn) || 0,
-        nominal: Number(pureData.nominal) || 0,
-        rpKg: Number(pureData.rpKg) || 0,
-        tanggalRtv: pureData.tanggalRtv ? new Date(pureData.tanggalRtv).toISOString() : null,
-        maxPickup: pureData.maxPickup ? new Date(pureData.maxPickup).toISOString() : null,
-        tanggalPembayaran: pureData.tanggalPembayaran ? new Date(pureData.tanggalPembayaran).toISOString() : null,
-        invoiceRekon: pureData.invoiceRekon || "",
-        inisial: pureData.inisial || ""
-      };
+      const cleanedPayload = buildCleanedPayload(id, editForm);
 
       const res = await fetch(`/api/retur`, {
         method: "PUT",
@@ -196,7 +199,7 @@ export function useReturMutations({
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Gagal menyimpan data");
       }
 

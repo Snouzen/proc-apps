@@ -156,13 +156,13 @@ export function usePOForm() {
       poItems.setCurrentItem({
         namaProduk: "",
         pcs: "",
-        pcsKirim: "",
+        pcsKirim: "0",
         hargaPcs: "",
         discount: "",
       });
       poItems.setPreviewItemId(null);
       poItems.setEditingItemId(null);
-      poItems.setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
+      poItems.setEditItem({ pcs: "", pcsKirim: "0", hargaPcs: "", discount: "" });
       return;
     }
 
@@ -174,13 +174,13 @@ export function usePOForm() {
         poItems.setCurrentItem({
           namaProduk: "",
           pcs: "",
-          pcsKirim: "",
+          pcsKirim: "0",
           hargaPcs: "",
           discount: "",
         });
         poItems.setPreviewItemId(null);
         poItems.setEditingItemId(null);
-        poItems.setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
+        poItems.setEditItem({ pcs: "", pcsKirim: "0", hargaPcs: "", discount: "" });
         const res = await fetch(
           `/api/po?includeUnknown=true&noPo=${encodeURIComponent(noPo)}`,
           {
