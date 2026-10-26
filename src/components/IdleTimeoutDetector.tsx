@@ -15,7 +15,7 @@ export default function IdleTimeoutDetector() {
   useEffect(() => {
     if (isLogin) return;
     const recovery = new SessionRecovery(getMeSync());
-    let alive = true, verification = 0, lastWrite = 0;
+    let alive = true, verification = 0, lastWrite = 0, lastVerifyAt = 0;
     let lastActivity = Date.now();
     let controller: AbortController | null = null;
     const nativeFetch = window.fetch.bind(window);
@@ -27,15 +27,16 @@ export default function IdleTimeoutDetector() {
       } catch { return lastActivity; }
     };
     lastActivity = readActivity();
+    const isBlockingReason = (r: GateReason) => r === "expired" || r === "idle" || r === "logout";
     const publish = () => {
       if (!alive) return;
-      const locked = recovery.reason !== "active";
+      const locked = isBlockingReason(recovery.reason);
       if (app) app.inert = locked;
       setReason(recovery.reason);
       window.dispatchEvent(new CustomEvent(SESSION_GATE_EVENT, { detail: { locked } }));
     };
     const recordActivity = () => {
-      if (recovery.reason !== "active") return;
+      if (isBlockingReason(recovery.reason)) return;
       lastActivity = Date.now();
       // Separate last interaction from last storage write: frequent typing still syncs.
       if (lastActivity - lastWrite >= 10000) {
@@ -45,6 +46,7 @@ export default function IdleTimeoutDetector() {
     };
     const verify = async () => {
       const request = ++verification;
+      lastVerifyAt = Date.now();
       controller?.abort();
       controller = new AbortController();
       const requestController = controller;
@@ -52,10 +54,10 @@ export default function IdleTimeoutDetector() {
       setChecking(true);
       try {
         const response = await nativeFetch("/api/auth/me", { cache: "no-store", credentials: "same-origin", signal: controller.signal });
-        if (!response.ok && response.status !== 401) throw new Error("verification unavailable");
+        if (!response.ok && response.status !== 401) return;
         const next: Me = response.status === 401 ? { authenticated: false } : await response.json();
         if (!alive || request !== verification) return;
-        const wasLocked = recovery.reason !== "active";
+        const wasLocked = isBlockingReason(recovery.reason);
         const oldRevision = recovery.baseline?.sessionRevision;
         if (recovery.observe(next)) {
           setMeCache(next);
@@ -67,8 +69,7 @@ export default function IdleTimeoutDetector() {
         } else clearMeCache();
         publish();
       } catch {
-        if (!alive || request !== verification) return;
-        recovery.lock("unavailable"); publish();
+        // Ignore transient network/abort errors during multi-tab usage so active tabs are never interrupted
       } finally {
         window.clearTimeout(timeout);
         if (alive && request === verification) setChecking(false);
@@ -77,17 +78,24 @@ export default function IdleTimeoutDetector() {
     verifyRef.current = () => { void verify(); };
     const onChange = (event: Event) => {
       const kind = (event as CustomEvent).detail?.kind;
-      recovery.lock(kind === "logout" ? "logout" : "checking");
-      publish(); void verify();
+      if (kind === "logout") {
+        recovery.lock("logout");
+        publish();
+      }
+      void verify();
     };
     const onStorage = (event: StorageEvent) => {
       if (event.key === ACTIVITY_KEY) lastActivity = readActivity();
     };
     const onFocus = () => {
       if (document.hidden) return;
-      if (Date.now() - Math.max(lastActivity, readActivity()) >= SESSION_TTL_MS) recovery.lock("idle");
-      else if (recovery.reason === "active") recovery.lock("checking");
-      publish(); void verify();
+      if (Date.now() - Math.max(lastActivity, readActivity()) >= SESSION_TTL_MS) {
+        recovery.lock("idle");
+        publish();
+      }
+      if (isBlockingReason(recovery.reason) || Date.now() - lastVerifyAt >= 30000) {
+        void verify();
+      }
     };
     const wrappedFetch: typeof fetch = async (input, init) => {
       let url: URL | null = null;
@@ -95,8 +103,8 @@ export default function IdleTimeoutDetector() {
       const api = url?.origin === window.location.origin && url.pathname.startsWith("/api/");
       const auth = api && url!.pathname.startsWith("/api/auth/");
       const method = (init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
-      if (api && !auth && recovery.reason !== "active" && !["GET", "HEAD", "OPTIONS"].includes(method)) {
-        return Response.json({ error: "Sesi belum terverifikasi. Login kembali, lalu simpan ulang setelah sesi aktif." }, { status: 401 });
+      if (api && !auth && isBlockingReason(recovery.reason) && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+        return Response.json({ error: "Sesi telah berakhir. Login kembali, lalu simpan ulang setelah sesi aktif." }, { status: 401 });
       }
       const epoch = recovery.epoch;
       const response = await nativeFetch(input, init);
@@ -115,14 +123,12 @@ export default function IdleTimeoutDetector() {
     document.addEventListener("visibilitychange", onFocus);
     const timer = window.setInterval(() => {
       if (document.hidden) return;
-      if (recovery.reason === "active" && Date.now() - Math.max(lastActivity, readActivity()) >= SESSION_TTL_MS) {
+      if (!isBlockingReason(recovery.reason) && Date.now() - Math.max(lastActivity, readActivity()) >= SESSION_TTL_MS) {
         recovery.lock("idle"); publish();
       }
       void verify();
-    }, 30000);
+    }, 60000);
     if (Date.now() - lastActivity >= SESSION_TTL_MS) recovery.lock("idle");
-    // No form unmount or refresh while initial verification is pending.
-    else recovery.lock("checking");
     publish(); void verify();
     return () => {
       alive = false; verification++; controller?.abort(); window.clearInterval(timer);
@@ -137,7 +143,7 @@ export default function IdleTimeoutDetector() {
     };
   }, [isLogin]);
 
-  const locked = !isLogin && reason !== "active";
+  const locked = !isLogin && (reason === "expired" || reason === "idle" || reason === "logout");
   useEffect(() => {
     if (!locked) return;
     const previousFocus = document.activeElement as HTMLElement | null;
@@ -170,14 +176,11 @@ export default function IdleTimeoutDetector() {
   };
   return <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4">
     <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="session-title" aria-describedby="session-description" className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl space-y-4">
-      <h2 id="session-title" className="text-lg font-bold">{reason === "checking" ? "Memeriksa sesi" : "Pekerjaan dijeda"}</h2>
+      <h2 id="session-title" className="text-lg font-bold">Pekerjaan dijeda</h2>
       <p id="session-description" className="text-sm text-slate-600 dark:text-slate-300">{descriptions[reason]}</p>
       <p className="text-xs text-slate-500">Jangan refresh atau tutup tab ini agar isian belum tersimpan tetap ada. Setelah sesi aktif, klik Simpan sendiri.</p>
       <a ref={loginRef} href="/login?reauth=1" target="_blank" rel="noopener noreferrer" className="block rounded-xl bg-blue-700 text-white p-3 text-center font-semibold">Login di tab baru</a>
       <button type="button" disabled={checking} onClick={() => verifyRef.current()} className="w-full rounded-xl border p-3 disabled:opacity-50">{checking ? "Memeriksa..." : "Saya sudah login — Periksa sesi"}</button>
-      {reason === "changed" && <button type="button" onClick={() => {
-        if (window.confirm("Muat ulang akan menghapus isian yang belum tersimpan. Lanjutkan?")) window.location.reload();
-      }} className="w-full text-sm text-red-600">Muat ulang untuk akun/akses sekarang</button>}
     </div>
   </div>;
 }

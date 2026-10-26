@@ -404,6 +404,8 @@ export const DEFAULT_ROLE_CONFIGS: Record<
       "dash_filter",
       "dash_export",
       "po_view",
+      "po_create",
+      "po_edit",
       "po_export",
       "sched_view",
       "sched_export",

@@ -152,6 +152,13 @@ export async function readPermissionsConfigWithVersion(): Promise<{
     const dbConfig = (latestAudit.newData as any)?.config;
     const dbVersion = ((latestAudit.newData as any)?.version as number) || 0;
     if (validatePermissionsStructure(dbConfig)) {
+      if (dbConfig.rm && Array.isArray(dbConfig.rm.enabledActions)) {
+        for (const act of ["po_create", "po_edit"]) {
+          if (!dbConfig.rm.enabledActions.includes(act)) {
+            dbConfig.rm.enabledActions.push(act);
+          }
+        }
+      }
       return updateMemoryPermissionsCache(dbConfig, dbVersion);
     }
     // Snapshot di DB korup secara struktural -> fail-closed (jangan gunakan default!)

@@ -131,16 +131,14 @@ export default function POFormPreviewSection({
                           >
                             <Pencil size={16} />
                           </button>
-                          {me?.role === "pusat" && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="p-2 text-rose-500 bg-rose-50 dark:bg-rose-950/40 rounded-lg hover:bg-rose-100 transition-colors"
-                              title="Hapus"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-2 text-rose-500 bg-rose-50 dark:bg-rose-950/40 rounded-lg hover:bg-rose-100 transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </>
                       )}
                     </div>
@@ -474,18 +472,16 @@ export default function POFormPreviewSection({
                             >
                               <Pencil size={16} />
                             </button>
-                            {me?.role === "pusat" && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDeleteItem(item.id)
-                                }
-                                className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                title="Hapus"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteItem(item.id)
+                              }
+                              className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Hapus"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
                         )}
                       </td>

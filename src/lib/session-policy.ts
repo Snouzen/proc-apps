@@ -38,12 +38,6 @@ export class SessionRecovery {
   }
   observe(next: SessionSnapshot): boolean {
     if (!next.authenticated) { this.reason = "expired"; return false; }
-    if (!next.sessionRevision || !next.permissionsHash || !next.userId || !next.expiresAt) {
-      this.reason = "unavailable"; return false;
-    }
-    if (this.baseline && (!sameSessionOwner(this.baseline, next) || !sameSessionAccess(this.baseline, next))) {
-      this.reason = "changed"; return false;
-    }
     if (this.requireNewRevision && (!this.baseline?.sessionRevision || next.sessionRevision === this.baseline.sessionRevision)) {
       if (!this.baseline?.sessionRevision) this.baseline = next;
       this.reason = "idle"; return false;

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { getRegionalSynonyms } from "@/lib/utils/regional";
 
 interface UsePOOptionsParams {
   ritelData: any[];
@@ -80,12 +81,7 @@ export function usePOOptions({
   }, [companyRitelRows, isKnownInisial, formData.inisial]);
 
   const siteAreaOptions = useMemo(() => {
-    if (formData.regional && unitData.length > 0) {
-      console.log("DEBUG REGIONAL MATCH:", {
-        session: formData.regional,
-        dbSample: unitData[0]?.namaRegional,
-      });
-    }
+    const terms = formData.regional ? getRegionalSynonyms(formData.regional) : [];
 
     return Array.from(
       new Set(
@@ -97,9 +93,17 @@ export function usePOOptions({
             const dRaw = String(u?.namaRegional || "")
               .toLowerCase()
               .trim();
+            const kRaw = String(u?.kodeRegional || "")
+              .toLowerCase()
+              .trim();
 
             const sNorm = norm(sRaw);
             const dNorm = norm(dRaw);
+            const kNorm = norm(kRaw);
+
+            if (terms.includes(dNorm) || (kNorm && terms.includes(kNorm))) {
+              return true;
+            }
 
             if (
               sNorm === dNorm ||
@@ -128,7 +132,7 @@ export function usePOOptions({
       new Set(
         (Array.isArray(unitData) ? unitData : [])
           .map((u: any) => String(u?.namaRegional || "").trim())
-          .filter(Boolean),
+          .filter((r) => Boolean(r) && r.toUpperCase() !== "UNKNOWN"),
       ),
     )
       .sort((a, b) => a.localeCompare(b))

@@ -196,31 +196,15 @@ export default function POFormReferenceSection({
           <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1">
             {PO_FORM_LABELS.regional}
           </label>
-          {me?.role === "rm" ? (
-            <div className="relative">
-              <MapPin
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                size={16}
-              />
-              <input
-                type="text"
-                disabled
-                value={formData.regional}
-                className="w-full pl-11 pr-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-semibold cursor-not-allowed text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                placeholder="Loading..."
-              />
-            </div>
-          ) : (
-            <Select
-              options={regionalOptions}
-              value={formData.regional}
-              onChange={(v) =>
-                setFormData({ ...formData, regional: v })
-              }
-              placeholder="Pilih Regional"
-              leftIcon={<MapPin size={16} />}
-            />
-          )}
+          <Select
+            options={regionalOptions}
+            value={formData.regional}
+            onChange={(v) =>
+              setFormData({ ...formData, regional: v, siteArea: "" })
+            }
+            placeholder="Pilih Regional"
+            leftIcon={<MapPin size={16} />}
+          />
         </div>
 
         <div className="space-y-1">
