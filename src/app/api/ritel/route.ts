@@ -112,20 +112,32 @@ export async function POST(request: Request) {
     const { namaPt, inisial, tujuan, provinsi, logoPt, logoInisial } = parsed.data;
     const cleanNamaPt = namaPt.trim();
     const normInisial = normalizeInisial(inisial);
+    const isStoreCreate = body.action === "addStore";
+    const cleanTujuan = tujuan?.trim() || null;
+    if (isStoreCreate && !cleanTujuan) {
+      return NextResponse.json({ error: "Nama toko/DC wajib diisi." }, { status: 400 });
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       // Advisory lock pada database level untuk mencegah race condition concurrent POST
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('ritel:' || lower(trim(${cleanNamaPt}))))`;
 
-      const existing = await tx.ritelModern.findFirst({
-        where: {
-          namaPt: { equals: cleanNamaPt, mode: "insensitive" },
-          inisial: normInisial
-            ? { equals: normInisial, mode: "insensitive" }
-            : null,
-        },
-      });
-      if (existing) {
+      const groupWhere = {
+        namaPt: { equals: cleanNamaPt, mode: "insensitive" as const },
+        inisial: normInisial ? { equals: normInisial, mode: "insensitive" as const } : null,
+      };
+      const existing = await tx.ritelModern.findFirst({ where: groupWhere });
+      if (isStoreCreate) {
+        if (!existing) {
+          throw new Error("NOT_FOUND: Company/inisial tujuan tidak ditemukan. Muat ulang daftar sebelum menambah DC.");
+        }
+        const duplicateStore = await tx.ritelModern.findFirst({
+          where: { ...groupWhere, tujuan: { equals: cleanTujuan!, mode: "insensitive" } },
+        });
+        if (duplicateStore) {
+          throw new Error(`DUPLICATE: Toko/DC "${cleanTujuan}" sudah terdaftar pada inisial "${normInisial || "-"}" di "${cleanNamaPt}".`);
+        }
+      } else if (existing) {
         throw new Error(`DUPLICATE: Ritel Modern dengan PT "${cleanNamaPt}" dan inisial "${normInisial || "-"}" sudah ada`);
       }
 
@@ -134,10 +146,10 @@ export async function POST(request: Request) {
           id: randomUUID(),
           namaPt: cleanNamaPt,
           inisial: normInisial,
-          tujuan: tujuan ?? null,
-          provinsi: provinsi ?? null,
-          logoPt: logoPt ?? null,
-          logoInisial: logoInisial ?? null,
+          tujuan: isStoreCreate ? cleanTujuan : tujuan ?? null,
+          provinsi: isStoreCreate ? existing!.provinsi : provinsi ?? null,
+          logoPt: isStoreCreate ? existing!.logoPt : logoPt ?? null,
+          logoInisial: isStoreCreate ? existing!.logoInisial : logoInisial ?? null,
           updatedAt: new Date(),
         },
       });
@@ -149,9 +161,9 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("POST /api/ritel error:", error);
     const message = getErrorMessage(error);
-    const status = message.includes("DUPLICATE:") ? 409 : 500;
+    const status = message.includes("DUPLICATE:") ? 409 : message.includes("NOT_FOUND:") ? 404 : 500;
     return NextResponse.json(
-      { error: message.replace(/^DUPLICATE:\s*/, "") },
+      { error: message.replace(/^(DUPLICATE|NOT_FOUND):\s*/, "") },
       { status }
     );
   }

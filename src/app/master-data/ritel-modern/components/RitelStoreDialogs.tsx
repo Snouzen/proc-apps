@@ -68,6 +68,11 @@ export default function RitelStoreDialogs({
   viewCompany,
   setViewCompany,
 }: RitelStoreDialogsProps) {
+  const [addStoreError, setAddStoreError] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    setAddStoreError(null);
+  }, [addStoreFor?.namaPt, addStoreFor?.inisial]);
+
   return (
     <>
       {/* ── 1. Ubah Nama Store ────────────────────────────────────────── */}
@@ -194,9 +199,10 @@ export default function RitelStoreDialogs({
                 type="text"
                 placeholder="Nama Toko/DC"
                 value={newStoreForName}
-                onChange={(e) => setNewStoreForName(e.target.value)}
+                onChange={(e) => { setNewStoreForName(e.target.value); setAddStoreError(null); }}
                 className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm dark:text-slate-200"
               />
+              {addStoreError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{addStoreError}</p>}
               <div className="flex gap-2 justify-end">
                 <StatefulButton
                   variant="cancel"
@@ -208,23 +214,28 @@ export default function RitelStoreDialogs({
                 </StatefulButton>
                 <StatefulButton
                   variant="submit"
+                  disabled={!newStoreForName.trim()}
                   onClick={async () => {
+                    setAddStoreError(null);
                     try {
+                      if (!newStoreForName.trim()) throw new Error("Nama toko/DC wajib diisi.");
                       const existingGroup = (dataRitel || []).find(
                         (r) =>
                           r.namaPt === addStoreFor.namaPt &&
                           (r.inisial || null) === (addStoreFor.inisial || null)
                       );
                       const payload = {
+                        action: "addStore",
                         namaPt: addStoreFor.namaPt,
                         inisial: addStoreFor.inisial || null,
-                        tujuan: newStoreForName,
+                        tujuan: newStoreForName.trim(),
                         provinsi: existingGroup?.provinsi || null,
                         logoPt: existingGroup?.logoPt || null,
                         logoInisial: existingGroup?.logoInisial || null,
                       };
                       const result = await saveRitel(payload);
-                      setDataRitel((prev) => [result, ...prev]);
+                      if (!result?.id || !result?.tujuan) throw new Error("Respons simpan DC tidak valid. Muat ulang daftar untuk memeriksa hasilnya.");
+                      setDataRitel((prev) => [result, ...prev.filter(r => r.id !== result.id)]);
 
                       // Sync with viewCompany if active
                       if (
@@ -244,7 +255,10 @@ export default function RitelStoreDialogs({
 
                       setAddStoreFor(null);
                       setNewStoreForName("");
-                    } catch {}
+                    } catch (error) {
+                      setAddStoreError(error instanceof Error ? error.message : "Gagal menyimpan toko/DC.");
+                      throw error;
+                    }
                   }}
                 >
                   Simpan
