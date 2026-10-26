@@ -29,6 +29,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
+    if (["approve", "approveDireksi", "reject", "approveAll", "approveDireksiAll", "closeBatch", "uncloseBatch"].includes(action) && safeRole !== "pusat") {
+      return NextResponse.json({ error: "Approval Credit Limit hanya dapat diakses Pusat." }, { status: 403 });
+    }
+
+    if (["request", "reRequest"].includes(action) && !(await hasPermission(safeRole, "cl_data_view"))) {
+      return NextResponse.json({ error: "Akses Data Credit Limit ditolak." }, { status: 403 });
+    }
+
     if (["approve", "approveDireksi", "reject", "approveAll", "approveDireksiAll"].includes(action)) {
       const allowed = await hasPermission(safeRole, "cl_appr_approve");
       if (!allowed) {

@@ -1,3 +1,4 @@
+import { applyCreditLimitAccessRules } from "@/lib/roleAccessPolicy";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionWithRole, getProfileName } from "@/lib/auth";
@@ -208,6 +209,7 @@ export async function POST(req: Request) {
           throw err;
         }
 
+        nextConfig = applyCreditLimitAccessRules(nextConfig);
         const newVersion = dbVersion + 1;
 
         await tx.auditLog.create({
@@ -274,11 +276,12 @@ export async function POST(req: Request) {
       }).catch(() => {});
 
       return NextResponse.json({
-        ok: false,
-        error: `Konfigurasi tersimpan di database (versi ${nextVersion}), namun penulisan file sistem gagal: ${fileErr?.message || "File error"}.`,
+        ok: true,
+        message: successMessage,
+        warning: "Konfigurasi sudah tersimpan di database. Salinan file lokal belum tersinkron.",
         version: nextVersion,
         data: nextConfig,
-      }, { status: 500 });
+      });
     }
 
     return NextResponse.json({

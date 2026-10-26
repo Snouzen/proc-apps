@@ -1,5 +1,6 @@
 "use client";
 
+import { applyCreditLimitAccessRules } from "@/lib/roleAccessPolicy";
 import { useState, useEffect } from "react";
 import { DEFAULT_ROLE_CONFIGS } from "@/app/access-control/constants/accessControlData";
 
@@ -19,11 +20,11 @@ export const PERMISSIONS_UPDATED_EVENT = "proc-permissions-updated";
  */
 export function getStoredPermissions(): RolePermissionsMap {
   if (typeof window === "undefined") {
-    return DEFAULT_ROLE_CONFIGS;
+    return applyCreditLimitAccessRules(DEFAULT_ROLE_CONFIGS);
   }
   try {
     const raw = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
-    if (!raw) return DEFAULT_ROLE_CONFIGS;
+    if (!raw) return applyCreditLimitAccessRules(DEFAULT_ROLE_CONFIGS);
     const parsed = JSON.parse(raw);
     const merged: RolePermissionsMap = { ...DEFAULT_ROLE_CONFIGS, ...parsed };
     if (merged.sitearea) {
@@ -35,9 +36,9 @@ export function getStoredPermissions(): RolePermissionsMap {
       }
       merged.sitearea = { enabledMenus: menus, enabledActions: actions };
     }
-    return merged;
+    return applyCreditLimitAccessRules(merged);
   } catch {
-    return DEFAULT_ROLE_CONFIGS;
+    return applyCreditLimitAccessRules(DEFAULT_ROLE_CONFIGS);
   }
 }
 
@@ -185,7 +186,8 @@ export function isMenuAllowedForRole(
 ): boolean {
   if (!role) return false;
   const normalizedRole = role === "spb_dki" ? "sitearea" : role;
-  const map = customMap || getStoredPermissions();
+  if (menuId === "credit_limit_approval" && normalizedRole !== "pusat") return false;
+  const map = applyCreditLimitAccessRules(customMap || getStoredPermissions());
   const roleConfig = map[normalizedRole] || DEFAULT_ROLE_CONFIGS[normalizedRole] || DEFAULT_ROLE_CONFIGS.pusat;
   return roleConfig?.enabledMenus?.includes(menuId) ?? true;
 }
@@ -224,15 +226,18 @@ export function usePermissions(currentRole?: string | null) {
   }, []);
 
   const normalizedRole = currentRole === "spb_dki" ? "sitearea" : currentRole || "pusat";
-  const roleConfig = permissions[normalizedRole] || DEFAULT_ROLE_CONFIGS[normalizedRole] || DEFAULT_ROLE_CONFIGS.pusat;
+  const effectivePermissions = applyCreditLimitAccessRules(permissions);
+  const roleConfig = effectivePermissions[normalizedRole] || DEFAULT_ROLE_CONFIGS[normalizedRole] || DEFAULT_ROLE_CONFIGS.pusat;
 
   const isMenuAllowed = (menuId: string): boolean => {
     if (!currentRole) return false;
+    if (menuId === "credit_limit_approval" && normalizedRole !== "pusat") return false;
     return roleConfig?.enabledMenus?.includes(menuId) ?? false;
   };
 
   const isActionAllowed = (actionId: string): boolean => {
     if (!currentRole) return false;
+    if (/^cl_(appr_|batch_)/.test(actionId) && normalizedRole !== "pusat") return false;
     if (/(^|_)delete($|_)/.test(actionId) && normalizedRole !== "pusat") return false;
     return roleConfig?.enabledActions?.includes(actionId) ?? false;
   };

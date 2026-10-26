@@ -15,7 +15,7 @@ import {
   Check,
 } from "lucide-react";
 import Link from "next/link";
-import { getMe, getMeSync } from "@/lib/me";
+import { getMe } from "@/lib/me";
 import {
   SYSTEM_MENUS,
   EXISTING_ROLES,
@@ -35,6 +35,7 @@ import {
 
 export default function AccessControlPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string>("");
+  const [identityError, setIdentityError] = useState<string | null>(null);
   const [selectedRoleCode, setSelectedRoleCode] = useState<string>("");
   const [previewAsUser, setPreviewAsUser] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -83,17 +84,14 @@ export default function AccessControlPage() {
 
     // 2. Determine current user role
     void getMe(true).then(me => {
-      setCurrentUserRole(me.authenticated ? me.role || "" : "");
-      setSelectedRoleCode(me.role || "");
-    });
-    const me = getMeSync();
-    if (me?.role) {
-      setCurrentUserRole(me.role);
-      // If user is not pusat, lock their selected role directly to their own role
-      if (me.role !== "pusat") {
-        setSelectedRoleCode(me.role);
+      if (!me.authenticated || !me.role) {
+        setIdentityError("Sesi tidak tersedia. Silakan login kembali.");
+        return;
       }
-    }
+      const role = me.role === "spb_dki" ? "sitearea" : me.role;
+      setCurrentUserRole(role);
+      setSelectedRoleCode(role);
+    }).catch(() => setIdentityError("Gagal memuat identitas akun. Silakan coba lagi."));
 
     // 3. Fetch latest permissions and version from server and sync
     fetchPermissionsWithVersionFromServer().then(({ map, version }) => {
@@ -330,6 +328,7 @@ export default function AccessControlPage() {
   const totalEnabledActions = currentRolePerms.actions.size;
   const totalPossibleActions = SYSTEM_MENUS.reduce((acc, m) => acc + m.actions.length, 0);
 
+  if (identityError) return <div className="p-6 space-y-3" role="alert"><p>{identityError}</p><button type="button" className="rounded-lg bg-slate-900 text-white px-4 py-2" onClick={() => window.location.reload()}>Coba Lagi</button></div>;
   if (!currentUserRole) return <div className="p-6">Memuat identitas dan hak akses...</div>;
 
   return (

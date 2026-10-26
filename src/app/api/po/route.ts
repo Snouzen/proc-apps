@@ -194,6 +194,12 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
+    if (searchParams.get("group") === "credit_approval" && (auth.safeRole || auth.role) !== "pusat") {
+      return NextResponse.json({ error: "Approval Credit Limit hanya dapat diakses Pusat." }, { status: 403 });
+    }
+    if (searchParams.get("group") === "credit_data" && !(await hasPermission(auth.safeRole || auth.role, "cl_data_view"))) {
+      return NextResponse.json({ error: "Akses Data Credit Limit ditolak." }, { status: 403 });
+    }
     const {
       where,
       orderBy,

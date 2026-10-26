@@ -430,6 +430,7 @@ export const DEFAULT_ROLE_CONFIGS: Record<
   },
   sitearea: {
     enabledMenus: [
+      "credit_limit_data",
       "dashboard",
       "po",
       "action_plan_schedule",
@@ -440,6 +441,8 @@ export const DEFAULT_ROLE_CONFIGS: Record<
       "report_realisasi",
     ],
     enabledActions: [
+      "cl_data_view",
+      "cl_data_filter",
       "dash_view",
       "dash_filter",
       "po_view",

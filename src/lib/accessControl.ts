@@ -1,3 +1,4 @@
+import { applyCreditLimitAccessRules } from "@/lib/roleAccessPolicy";
 import fs from "fs/promises";
 import path from "path";
 import { canonicalizeRole } from "@/lib/auth";
@@ -58,7 +59,7 @@ export async function getValidatedBootstrapConfig(): Promise<Record<string, { en
     // Hanya fallback ke default jika file benar-benar tidak ada (ENOENT)
     if (err && err.code === "ENOENT") {
       if (validatePermissionsStructure(DEFAULT_ROLE_CONFIGS)) {
-        return JSON.parse(JSON.stringify(DEFAULT_ROLE_CONFIGS));
+        return applyCreditLimitAccessRules(JSON.parse(JSON.stringify(DEFAULT_ROLE_CONFIGS)));
       }
       return null;
     }
@@ -71,7 +72,7 @@ export async function getValidatedBootstrapConfig(): Promise<Record<string, { en
   try {
     const parsed = JSON.parse(content);
     if (validatePermissionsStructure(parsed)) {
-      return parsed;
+      return applyCreditLimitAccessRules(parsed);
     }
     console.error("[AccessControl] Bootstrap file failed structural validation (fail-closed)");
     return null;
@@ -96,7 +97,7 @@ export function updateMemoryPermissionsCache(
   if (config && version <= cachedVersion && memoryCachedConfig !== null) {
     return { config: memoryCachedConfig, version: cachedVersion };
   }
-  memoryCachedConfig = config;
+  memoryCachedConfig = config ? applyCreditLimitAccessRules(config) : null;
   cachedVersion = version;
   lastCacheTime = Date.now();
   return { config: memoryCachedConfig, version: cachedVersion };
@@ -227,6 +228,9 @@ export async function writePermissionsConfig(data: Record<string, any>, version?
     throw new Error("[AccessControl] Konfigurasi permission tidak valid secara struktural (fail-closed)");
   }
 
+  // Serverless deployments persist permissions in the DB; their application files are read-only.
+  if (process.env.VERCEL) return;
+
   return new Promise<void>((resolve, reject) => {
     fileWritePromiseChain = fileWritePromiseChain
       .then(async () => {
@@ -258,6 +262,7 @@ export async function writePermissionsConfig(data: Record<string, any>, version?
 export async function hasPermission(role: string, actionId: string): Promise<boolean> {
   const canonicalRole = canonicalizeRole(role);
   if (!canonicalRole) return false;
+  if (/^cl_(appr_|batch_)/.test(actionId) && canonicalRole !== "pusat") return false;
   // Deletion is a non-delegable Pusat capability across all CRUD modules.
   if (/(^|_)delete($|_)/.test(actionId) && canonicalRole !== "pusat") return false;
 

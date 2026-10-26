@@ -87,6 +87,7 @@ export function useNeedAssignTable({ role, regional }: UseNeedAssignTableProps) 
       params.set("summary", "true");
       params.set("includeItems", "false");
       params.set("group", "assign");
+      params.set("sort", "createdAt_desc");
       params.set("limit", String(rowsPerPage));
       params.set("offset", String(Math.max(0, (page - 1) * rowsPerPage)));
       
