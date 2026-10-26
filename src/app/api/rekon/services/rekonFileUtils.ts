@@ -31,14 +31,14 @@ function getOfficialSupabaseOrigins(): Set<string> {
  * Extracts normalized storage path (temp/... or bukti-bayar/<rekonId>/...) from URL or relative path.
  * Rejects external or untrusted domains by validating origin using new URL() and matching official bucket prefix.
  */
-export function extractStoragePathFromUrl(urlOrPath: string): string | null {
+function extractBucketPath(urlOrPath: string): string | null {
   if (!urlOrPath || typeof urlOrPath !== "string") return null;
   const trimmed = urlOrPath.trim();
   if (!trimmed) return null;
 
   let internalPath = "";
 
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+  if (/^https?:\/\//i.test(trimmed)) {
     // 1. Absolute URL validation
     let parsedUrl: URL;
     try {
@@ -48,12 +48,16 @@ export function extractStoragePathFromUrl(urlOrPath: string): string | null {
     }
 
     const officialOrigins = getOfficialSupabaseOrigins();
-    if (officialOrigins.size === 0 || !officialOrigins.has(parsedUrl.origin.toLowerCase())) {
+    if (parsedUrl.username || parsedUrl.password || officialOrigins.size === 0 || !officialOrigins.has(parsedUrl.origin.toLowerCase())) {
       // Rejects foreign domain / origin (e.g. foreign.invalid) or when official origin is not configured
       return null;
     }
 
-    const pathname = decodeURIComponent(parsedUrl.pathname);
+    let pathname: string;
+    try {
+      // Inspect the original path before URL() can normalize dot segments away.
+      pathname = decodeURIComponent(trimmed.match(/^https?:\/\/[^/?#]+([^?#]*)/i)?.[1] || parsedUrl.pathname);
+    } catch { return null; }
     const STORAGE_PREFIXES = [
       "/storage/v1/object/public/bukti_bayar_rekon/",
       "/storage/v1/object/sign/bukti_bayar_rekon/",
@@ -77,9 +81,23 @@ export function extractStoragePathFromUrl(urlOrPath: string): string | null {
     return null;
   }
 
-  // Must match either temp/<filename> or bukti-bayar/<rekonId>/<filename>
+  return internalPath;
+}
+
+export function extractStoragePathFromUrl(urlOrPath: string): string | null {
+  const internalPath = extractBucketPath(urlOrPath);
+  if (!internalPath) return null;
+  // New uploads keep their strict modern path contract.
   const match = internalPath.match(/^(temp\/[^/]+|bukti-bayar\/[^/]+\/[^/]+)$/);
   return match ? match[1] : null;
+}
+
+/** Only recognize ownerless permanent legacy files; never accept them as a new upload. */
+function extractLegacyProofPath(urlOrPath: string): string | null {
+  if (!/^https:\/\//i.test(urlOrPath.trim())) return null;
+  const path = extractBucketPath(urlOrPath);
+  if (!path || extractFileOwnerFromPath(path)) return null;
+  return /^bukti-bayar\/(?:[a-zA-Z0-9_-]+\/)?[a-zA-Z0-9_-]+\.(?:pdf|png|jpe?g|webp)$/i.test(path) ? path : null;
 }
 
 /**
@@ -91,13 +109,19 @@ export async function validateProofFile(
   currentUserId: string,
   userRole: string,
   tx: any,
-  fieldLabel = "bukti bayar"
-): Promise<{ storagePath: string; fileName: string; isTemp: boolean } | null> {
+  fieldLabel = "bukti bayar",
+  retained?: { previousUrl?: string | null }
+): Promise<{ storagePath: string; fileName: string; isTemp: boolean; retainedUrl?: string } | null> {
   if (!urlOrPath || typeof urlOrPath !== "string" || !urlOrPath.trim()) {
     return null;
   }
 
-  const storagePath = extractStoragePathFromUrl(urlOrPath);
+  // previousUrl must come from the locked database record AFTER access validation,
+  // never from a request field. Only preserve the same attachment in the same field.
+  const retainedLegacyPath = retained?.previousUrl?.trim() === urlOrPath.trim()
+    ? extractLegacyProofPath(urlOrPath)
+    : null;
+  const storagePath = retainedLegacyPath || extractStoragePathFromUrl(urlOrPath);
   if (!storagePath) {
     throw new ValidationError(`URL berkas ${fieldLabel} tidak valid atau bukan berasal dari penyimpanan resmi: ${urlOrPath}`);
   }
@@ -110,7 +134,7 @@ export async function validateProofFile(
   const isTemp = storagePath.startsWith("temp/");
 
   // 1. Verify ownership for non-pusat users
-  if (userRole !== "pusat") {
+  if (userRole !== "pusat" && !retainedLegacyPath) {
     const fileOwnerId = extractFileOwnerFromPath(fileName);
     if (!fileOwnerId) {
       throw new ValidationError(`Berkas "${fileName}" tidak memiliki identitas pengunggah yang valid.`);
@@ -136,7 +160,7 @@ export async function validateProofFile(
     throw new ValidationError(`Berkas "${fileName}" sudah terikat pada rekonsiliasi ${boundRekon.noRekonsiliasi || boundRekon.id}.`);
   }
 
-  return { storagePath, fileName, isTemp };
+  return { storagePath, fileName, isTemp, ...(retainedLegacyPath ? { retainedUrl: urlOrPath.trim() } : {}) };
 }
 
 /**

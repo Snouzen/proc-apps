@@ -110,7 +110,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
 
       existingRekon = await tx.reconcile.findUnique({
         where: { id },
-        select: { invoices: true, rtvs: true, rtvDetails: true, noRekonsiliasi: true, ritelId: true, nominal: true, status: true }
+        select: { invoices: true, rtvs: true, rtvDetails: true, noRekonsiliasi: true, ritelId: true, nominal: true, status: true, buktiBayarUrl: true, rincianBayarUrl: true }
       });
       if (!existingRekon) {
         throw new ValidationError("Data rekonsiliasi tidak ditemukan.");
@@ -599,14 +599,14 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
     const currentUserId = String(dbUser?.id || session?.user?.id || session?.email || "").replace(/[^a-zA-Z0-9_-]/g, "");
     const userRole = safeRole || session?.user?.role || dbUser?.role || "cabang";
 
-    const validBukti = await validateProofFile(buktiBayarUrl, finalId, currentUserId, userRole, tx);
+    const validBukti = await validateProofFile(buktiBayarUrl, finalId, currentUserId, userRole, tx, "bukti bayar", { previousUrl: existingRekon?.buktiBayarUrl });
     const validRincian = rincianStoragePath
-      ? await validateProofFile(rincianBayarUrl, finalId, currentUserId, userRole, tx, "rincian bayar")
+      ? await validateProofFile(rincianBayarUrl, finalId, currentUserId, userRole, tx, "rincian bayar", { previousUrl: existingRekon?.rincianBayarUrl })
       : null;
 
     let finalBuktiBayarUrl: string | undefined = undefined;
     if (validBukti) {
-      finalBuktiBayarUrl = await safelyFinalizeProofFile(
+      finalBuktiBayarUrl = validBukti.retainedUrl ?? await safelyFinalizeProofFile(
         validBukti.storagePath,
         validBukti.fileName,
         finalId,
@@ -618,7 +618,7 @@ export async function saveRekon(body: any, ctx: SaveRekonContext) {
 
     let finalRincianBayarUrl: string | null = rincianLink;
     if (validRincian) {
-      finalRincianBayarUrl = await safelyFinalizeProofFile(
+      finalRincianBayarUrl = validRincian.retainedUrl ?? await safelyFinalizeProofFile(
         validRincian.storagePath,
         validRincian.fileName,
         finalId,

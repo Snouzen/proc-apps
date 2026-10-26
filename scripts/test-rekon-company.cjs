@@ -21,9 +21,10 @@ function match(row,where={}){return Object.entries(where).every(([k,v])=>{
  if('equals'in v&&(v.mode==='insensitive'?String(x).toLowerCase()!==String(v.equals).toLowerCase():x!==v.equals))return false;
  if('hasSome'in v&&!v.hasSome.some(a=>(x||[]).includes(a)))return false;
  if('endsWith'in v&&!String(x||'').endsWith(v.endsWith))return false;
+ if('contains'in v&&!String(x||'').includes(v.contains))return false;
  return true;
  });}
-function fixture(){
+function fixture({ realFiles = false } = {}){
  let saved=null;const records=[],proofCalls=[],moves=[];
  const table=rows=>({findMany:async({where}={})=>rows.filter(r=>match(r,where)),findUnique:async({where})=>rows.find(r=>match(r,where))||null,findFirst:async({where}={})=>rows.find(r=>match(r,where))||null,updateMany:async()=>({count:1}),count:async()=>records.length,aggregate:async()=>({_sum:{bankStatement:0}})});
  const db={ritelModern:table(ritels),purchaseOrder:table(pos),dataRetur:table(returs),promo:table([]),auditLog:table([]),reconcile:table(records),$executeRaw:async()=>0,$queryRaw:async()=>[]};
@@ -41,7 +42,7 @@ function fixture(){
   '@/app/api/rekon/services/rekonFileUtils':{},
  };
  const files={extractStoragePathFromUrl:()=>null,validateProofFile:async url=>{proofCalls.push(url);return null;},safelyFinalizeProofFile:async(...args)=>{moves.push(args);return null;},rollbackFinalizedFiles:async()=>({success:true,failed:[]})};
- mocks['./rekonFileUtils']=files;
+ if (!realFiles) mocks['./rekonFileUtils']=files;
  const load=loader(mocks);
  return {db,records,load,proofCalls,moves,getSaved:()=>saved};
 }
@@ -77,5 +78,18 @@ test('Foreign reference invoice cannot determine return allocation',async()=>{co
 test('Drive rincian link saves without entering Storage validation or move',async()=>{const f=fixture();const link='https://drive.google.com/file/d/EXAMPLE/view?usp=sharing';const result=await f.load('src/app/api/rekon/services/rekonSaveService.ts').saveRekon({...body,rincianBayarUrl:link},auth);assert.equal(result.rincianBayarUrl,link);assert(!f.proofCalls.includes(link));assert.equal(f.moves.length,0);});
 test('Sheets link accepted and malformed link rejected before any save',async()=>{const f=fixture(),save=f.load('src/app/api/rekon/services/rekonSaveService.ts').saveRekon;const link='https://docs.google.com/spreadsheets/d/EXAMPLE/edit#gid=0';const result=await save({...body,rincianBayarUrl:link},auth);assert.equal(result.rincianBayarUrl,link);await assert.rejects(()=>save({...body,rincianBayarUrl:'javascript:alert(1)'},auth),/Link rincian bayar tidak valid/);});
 test('Editing and clearing rincian link persists null',async()=>{const f=fixture(),save=f.load('src/app/api/rekon/services/rekonSaveService.ts').saveRekon;const a=await save({...body,rincianBayarUrl:'https://drive.google.com/file/d/EXAMPLE/view'},auth);const b=await save({...body,id:a.id,rincianBayarUrl:''},auth);assert.equal(b.rincianBayarUrl,null);});
+test('Legacy draft proof survives edit plus Sheets link and final submit without Storage writes',async()=>{
+  const original=process.env.SUPABASE_URL;process.env.SUPABASE_URL='https://legacy-test.supabase.co';
+  try{const f=fixture({realFiles:true}),save=f.load('src/app/api/rekon/services/rekonSaveService.ts').saveRekon;
+    const draft=await save(body,auth);const url='https://legacy-test.supabase.co/storage/v1/object/public/bukti_bayar_rekon/bukti-bayar/new_1792571224973.jpeg';
+    f.records[0].buktiBayarUrl=url;
+    for(const status of ['draft','final']){const result=await save({...body,id:draft.id,status,buktiBayarUrl:url,rincianBayarUrl:'https://docs.google.com/spreadsheets/d/EXAMPLE/edit'},auth);assert.equal(result.buktiBayarUrl,url);assert.equal(result.status,status);}
+  }finally{if(original===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=original;}
+});
+test('A new record cannot claim a legacy proof by forging request metadata',async()=>{
+ const original=process.env.SUPABASE_URL;process.env.SUPABASE_URL='https://legacy-test.supabase.co';
+ try{const f=fixture({realFiles:true});await assert.rejects(()=>f.load('src/app/api/rekon/services/rekonSaveService.ts').saveRekon({...body,buktiBayarUrl:'https://legacy-test.supabase.co/storage/v1/object/public/bukti_bayar_rekon/bukti-bayar/new_1792571224973.jpeg',previousUrl:'forged',retained:{previousUrl:'forged'}},auth),/penyimpanan resmi/);assert.equal(f.getSaved(),null);}
+ finally{if(original===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=original;}
+});
 test('Initial selector and mandatory initial guard removed from form',()=>{for(const f of ['src/app/rekon/calc/components/RekonForm.tsx','src/app/rekon/calc/hooks/useRekonCalc.ts']){const s=fs.readFileSync(fs.existsSync(path.join(root,f))?path.join(root,f):path.join(repo,f),'utf8');assert(!s.includes('selectedInisial'));assert(!s.includes('PILIH INISIAL'));}});
 (async()=>{let pass=0;for(const[n,f]of tests){try{await f();pass++;console.log('PASS',n);}catch(e){console.error('FAIL',n,e.stack);process.exitCode=1;}}console.log(pass+'/'+tests.length+' passed; in-memory DB only');})();
