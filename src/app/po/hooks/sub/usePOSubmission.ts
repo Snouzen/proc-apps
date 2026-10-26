@@ -160,6 +160,7 @@ export function usePOSubmission({
           buktiFp: formData.buktiFp || null,
           status: formData.status,
           tglKirim: formData.tglKirim || undefined,
+          updatedAt: isEditMode && formData.updatedAt ? formData.updatedAt : undefined,
         };
         await savePurchaseOrder(payload);
       })
@@ -171,11 +172,6 @@ export function usePOSubmission({
         setPoDrafts([]);
         setItems([]);
         setFormData({ ...INITIAL_FORM });
-        try {
-          localStorage.removeItem("po.current.form");
-          localStorage.removeItem("po.current.items");
-          localStorage.removeItem("po.drafts");
-        } catch {}
         router.push(`/purchase-order`);
       })
       .catch((err) => {

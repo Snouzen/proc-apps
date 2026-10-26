@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMe } from "@/lib/me";
+import { getRegionalSynonyms } from "@/lib/utils/regional";
 
 import { ItemPO, StatusDoc, INITIAL_STATUS, INITIAL_FORM } from "./sub/types";
 import { usePOItems } from "./sub/usePOItems";
@@ -75,8 +76,18 @@ export function usePOForm() {
 
         getMe().then((usr) => {
           setMe(usr);
-          if (usr.role === "rm" && usr.regional) {
-            setFormData((prev) => ({ ...prev, regional: usr.regional as string }));
+          if (usr.role === "rm" && usr.regional && !searchParams?.get("noPo")) {
+            const terms = getRegionalSynonyms(usr.regional);
+            const matchedUnit = units.find((u: any) => {
+              const nr = String(u?.namaRegional || "").trim().toLowerCase();
+              const kr = String(u?.kodeRegional || "").trim().toLowerCase();
+              return nr !== "unknown" && (terms.includes(nr) || (kr && terms.includes(kr)));
+            });
+            const resolvedRegional = matchedUnit?.namaRegional || (usr.regional as string);
+            setFormData((prev) => ({
+              ...prev,
+              regional: prev.regional || resolvedRegional,
+            }));
           }
         });
       } catch {
@@ -136,7 +147,10 @@ export function usePOForm() {
   useEffect(() => {
     const noPo = searchParams?.get("noPo");
     if (!noPo) {
-      setFormData({ ...INITIAL_FORM });
+      setFormData((prev) => ({
+        ...INITIAL_FORM,
+        regional: me?.role === "rm" ? prev.regional || me?.regional || "" : "",
+      }));
       poItems.setItems([]);
       setPoDrafts([]);
       poItems.setCurrentItem({
@@ -149,11 +163,6 @@ export function usePOForm() {
       poItems.setPreviewItemId(null);
       poItems.setEditingItemId(null);
       poItems.setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
-      try {
-        localStorage.removeItem("po.current.form");
-        localStorage.removeItem("po.current.items");
-        localStorage.removeItem("po.drafts");
-      } catch {}
       return;
     }
 
@@ -172,11 +181,6 @@ export function usePOForm() {
         poItems.setPreviewItemId(null);
         poItems.setEditingItemId(null);
         poItems.setEditItem({ pcs: "", pcsKirim: "", hargaPcs: "", discount: "" });
-        try {
-          localStorage.removeItem("po.current.form");
-          localStorage.removeItem("po.current.items");
-          localStorage.removeItem("po.drafts");
-        } catch {}
         const res = await fetch(
           `/api/po?includeUnknown=true&noPo=${encodeURIComponent(noPo)}`,
           {
@@ -225,6 +229,7 @@ export function usePOForm() {
           buktiKirim: po.buktiKirim || "",
           buktiFp: po.buktiFp || "",
           tglKirim: toYMD(po.tglkirim || null),
+          updatedAt: po.updatedAt || "",
         });
         const mappedItems: ItemPO[] = (po.Items || []).map((it: any) => {
           const satuan = Number(it?.Product?.satuanKg || 0) || 0;

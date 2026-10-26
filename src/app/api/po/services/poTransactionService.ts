@@ -77,7 +77,7 @@ export async function createOrUpdatePurchaseOrder(
   } = body;
 
   let effectiveRegional = regional;
-  if (safeRole === "rm" && (dbUser?.regional || (session as any).regional)) {
+  if (safeRole === "rm" && !effectiveRegional && (dbUser?.regional || (session as any).regional)) {
     effectiveRegional = dbUser?.regional || (session as any).regional;
   }
 
@@ -302,7 +302,9 @@ export async function createOrUpdatePurchaseOrder(
   const poTujuanDetail = tujuanUpper || null;
   const poRegional = sanitizeToNull(effectiveRegional)
     ? upperCleanOrNull(sanitizeToNull(effectiveRegional)!) || null
-    : null;
+    : unit?.namaRegional && unit.namaRegional.toUpperCase() !== "UNKNOWN"
+      ? unit.namaRegional
+      : null;
   const poStatusKirim = !!status?.kirim;
   const poStatusSdif = !!status?.sdif;
   const poStatusPo = !!status?.po;
@@ -381,7 +383,7 @@ export async function createOrUpdatePurchaseOrder(
         }
       }
 
-      if (safeRole !== "pusat") {
+      if (safeRole !== "pusat" && !(safeRole === "rm" && !isEdit)) {
         const userRegional = dbUser?.regional || (session as any)?.regional || null;
         const userSiteArea = dbUser?.siteArea || (session as any)?.siteArea || null;
         const targetCheck = checkPOOwnership({

@@ -198,11 +198,17 @@ export async function processBulkPO({
           ? unitMap.get(siteArea.toLowerCase().trim()) || undefined
           : undefined;
         const unitToUse = unit ?? fallbackUnit;
+        const effectiveBulkRegional =
+          unit?.namaRegional && unit.namaRegional.toUpperCase() !== "UNKNOWN"
+            ? unit.namaRegional
+            : safeRole === "rm" && userRegional
+              ? userRegional
+              : null;
 
-        // Validasi wewenang regional / cabang untuk target unit (baik PO baru maupun replace untuk non-pusat)
-        if (auth && safeRole !== "pusat") {
+        // Validasi wewenang cabang untuk target unit (role rm dilepaskan agar bisa input PO)
+        if (auth && safeRole !== "pusat" && safeRole !== "rm") {
           const checkTarget = checkPOOwnership(
-            { UnitProduksi: unitToUse, regional: unitToUse?.namaRegional, unitProduksiId: unitToUse?.idRegional },
+            { UnitProduksi: unitToUse, regional: effectiveBulkRegional ?? unitToUse?.namaRegional, unitProduksiId: unitToUse?.idRegional },
             safeRole,
             userRegional,
             userSiteArea
@@ -256,7 +262,7 @@ export async function processBulkPO({
           linkPo,
           noInvoice: canonicalInvoiceNumber(noInvoice),
           tujuanDetail: tujuan,
-          regional: unitToUse?.namaRegional ?? null,
+          regional: effectiveBulkRegional,
           statusKirim,
           statusSdif,
           statusPo,

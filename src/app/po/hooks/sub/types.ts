@@ -52,4 +52,5 @@ export const INITIAL_FORM = {
   buktiBayar: "",
   buktiKirim: "",
   buktiFp: "",
+  updatedAt: "",
 };
