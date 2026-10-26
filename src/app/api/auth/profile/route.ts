@@ -1,3 +1,4 @@
+import { SESSION_TTL_SECONDS, SESSION_TTL_MS } from "@/lib/session-policy";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { randomBytes, timingSafeEqual } from "crypto";
@@ -168,7 +169,7 @@ export async function PATCH(req: Request) {
       ...session,
       userId: updatedUser.id,
       email: updatedUser.email,
-      exp: Date.now() + 60 * 60 * 1000,
+      exp: Date.now() + SESSION_TTL_MS,
       jti: randomBytes(8).toString("hex"),
       sessionVersion: updatedUser.updatedAt.getTime(),
     };
@@ -191,7 +192,7 @@ export async function PATCH(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 1 * 60 * 60,
+      maxAge: SESSION_TTL_SECONDS,
       path: "/",
     });
 

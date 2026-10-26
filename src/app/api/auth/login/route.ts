@@ -1,3 +1,4 @@
+import { SESSION_TTL_SECONDS } from "@/lib/session-policy";
 import { NextResponse } from "next/server";
 import { authenticate, signSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 1 * 60 * 60, // 1 hour
+      maxAge: SESSION_TTL_SECONDS,
       path: "/",
     });
     return res;

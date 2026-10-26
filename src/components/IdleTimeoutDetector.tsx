@@ -1,180 +1,183 @@
 "use client";
-
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { ClockAlert, LogOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { clearMeCache, announceSessionChange } from "@/lib/me";
-
-// Idle duration: 1 hour (60 minutes = 3,600,000 ms)
-const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
-const CHECK_INTERVAL_MS = 10 * 1000; // Check every 10 seconds
-const STORAGE_KEY = "proc_last_activity_time";
+import { clearMeCache, getMeSync, setMeCache, type Me } from "@/lib/me";
+import { ACTIVITY_KEY, SESSION_TTL_MS, SESSION_CHANGE_EVENT, SESSION_GATE_EVENT, SESSION_VERIFIED_EVENT, SessionRecovery, type GateReason } from "@/lib/session-policy";
 
 export default function IdleTimeoutDetector() {
-  const pathname = usePathname();
-  const [isIdleModalOpen, setIsIdleModalOpen] = useState(false);
-  const [modalReason, setModalReason] = useState<"idle" | "unauthorized">("idle");
-  const lastActivityRef = useRef<number>(Date.now());
-  const isLoggingOutRef = useRef<boolean>(false);
-
-  // Mark user activity (throttled to avoid performance hits)
-  const recordActivity = useCallback(() => {
-    if (isIdleModalOpen) return;
-    const now = Date.now();
-    // Only write to localStorage at most once every 10 seconds
-    if (now - lastActivityRef.current > 10000) {
-      lastActivityRef.current = now;
-      try {
-        localStorage.setItem(STORAGE_KEY, now.toString());
-      } catch {}
-    } else {
-      lastActivityRef.current = now;
-    }
-  }, [isIdleModalOpen]);
-
-  // Handle re-login button click
-  const handleReLogin = async () => {
-    if (isLoggingOutRef.current) return;
-    isLoggingOutRef.current = true;
-
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {}
-
-    clearMeCache();
-                      announceSessionChange();
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {}
-
-    // Redirect to login with current path saved for seamless return
-    const currentTarget =
-      typeof window !== "undefined"
-        ? window.location.pathname + window.location.search
-        : pathname || "/";
-    const loginUrl =
-      currentTarget && currentTarget !== "/" && currentTarget !== "/login"
-        ? `/login?next=${encodeURIComponent(currentTarget)}`
-        : "/login";
-
-    window.location.href = loginUrl;
-  };
+  const isLogin = usePathname() === "/login";
+  const [reason, setReason] = useState<GateReason>("active");
+  const [checking, setChecking] = useState(false);
+  const verifyRef = useRef<() => void>(() => {});
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const loginRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
-    if (pathname === "/login") return;
-
-    // Initialize last activity time from storage or now
-    const stored = Number(localStorage.getItem(STORAGE_KEY));
-    if (stored && !isNaN(stored) && Date.now() - stored < IDLE_TIMEOUT_MS) {
-      lastActivityRef.current = stored;
-    } else {
-      lastActivityRef.current = Date.now();
-      try {
-        localStorage.setItem(STORAGE_KEY, Date.now().toString());
-      } catch {}
-    }
-
-    // 1. Activity event listeners
-    const events = ["mousedown", "keydown", "touchstart", "scroll"];
-    const handleEvent = () => recordActivity();
-
-    // Throttled mousemove
-    let mouseMoveThrottle = 0;
-    const handleMouseMove = () => {
-      const now = Date.now();
-      if (now - mouseMoveThrottle > 5000) {
-        mouseMoveThrottle = now;
-        recordActivity();
+    if (isLogin) return;
+    const recovery = new SessionRecovery(getMeSync());
+    let alive = true, verification = 0, lastWrite = 0;
+    let lastActivity = Date.now();
+    let controller: AbortController | null = null;
+    const nativeFetch = window.fetch.bind(window);
+    const previousFetch = window.fetch;
+    const app = document.getElementById("session-workspace");
+    const readActivity = () => {
+      try { const value = Number(localStorage.getItem(ACTIVITY_KEY));
+        return value > 0 && value <= Date.now() ? value : lastActivity;
+      } catch { return lastActivity; }
+    };
+    lastActivity = readActivity();
+    const publish = () => {
+      if (!alive) return;
+      const locked = recovery.reason !== "active";
+      if (app) app.inert = locked;
+      setReason(recovery.reason);
+      window.dispatchEvent(new CustomEvent(SESSION_GATE_EVENT, { detail: { locked } }));
+    };
+    const recordActivity = () => {
+      if (recovery.reason !== "active") return;
+      lastActivity = Date.now();
+      // Separate last interaction from last storage write: frequent typing still syncs.
+      if (lastActivity - lastWrite >= 10000) {
+        lastWrite = lastActivity;
+        try { localStorage.setItem(ACTIVITY_KEY, String(lastActivity)); } catch {}
       }
     };
-
-    events.forEach((ev) => window.addEventListener(ev, handleEvent, { passive: true }));
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-
-    // 2. Multi-tab synchronization
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
-        const val = Number(e.newValue);
-        if (val) lastActivityRef.current = val;
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-
-    // 3. Periodic timer to check for AFK / inactivity
-    const interval = setInterval(() => {
-      if (isIdleModalOpen) return;
-      const now = Date.now();
-      const last = Number(localStorage.getItem(STORAGE_KEY)) || lastActivityRef.current;
-
-      if (now - last >= IDLE_TIMEOUT_MS) {
-        setModalReason("idle");
-        setIsIdleModalOpen(true);
-      }
-    }, CHECK_INTERVAL_MS);
-
-    // 4. Intercept 401 Unauthorized globally from any API call
-    const origFetch = window.fetch;
-    window.fetch = async (...args) => {
+    const verify = async () => {
+      const request = ++verification;
+      controller?.abort();
+      controller = new AbortController();
+      const requestController = controller;
+      const timeout = window.setTimeout(() => requestController.abort(), 15000);
+      setChecking(true);
       try {
-        const res = await origFetch(...args);
-        if (res.status === 401) {
-          const url =
-            typeof args[0] === "string"
-              ? args[0]
-              : (args[0] as Request)?.url || "";
-
-          // Do not trigger on login/logout calls
-          if (!url.includes("/api/auth/login") && !url.includes("/api/auth/logout")) {
-            setModalReason("unauthorized");
-            setIsIdleModalOpen(true);
+        const response = await nativeFetch("/api/auth/me", { cache: "no-store", credentials: "same-origin", signal: controller.signal });
+        if (!response.ok && response.status !== 401) throw new Error("verification unavailable");
+        const next: Me = response.status === 401 ? { authenticated: false } : await response.json();
+        if (!alive || request !== verification) return;
+        const wasLocked = recovery.reason !== "active";
+        const oldRevision = recovery.baseline?.sessionRevision;
+        if (recovery.observe(next)) {
+          setMeCache(next);
+          if (wasLocked || oldRevision !== next.sessionRevision) {
+            lastActivity = Date.now(); lastWrite = lastActivity;
+            try { localStorage.setItem(ACTIVITY_KEY, String(lastActivity)); } catch {}
           }
-        }
-        return res;
-      } catch (err) {
-        throw err;
+          window.dispatchEvent(new CustomEvent(SESSION_VERIFIED_EVENT, { detail: next }));
+        } else clearMeCache();
+        publish();
+      } catch {
+        if (!alive || request !== verification) return;
+        recovery.lock("unavailable"); publish();
+      } finally {
+        window.clearTimeout(timeout);
+        if (alive && request === verification) setChecking(false);
       }
     };
-
-    return () => {
-      events.forEach((ev) => window.removeEventListener(ev, handleEvent));
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("storage", handleStorage);
-      clearInterval(interval);
-      window.fetch = origFetch;
+    verifyRef.current = () => { void verify(); };
+    const onChange = (event: Event) => {
+      const kind = (event as CustomEvent).detail?.kind;
+      recovery.lock(kind === "logout" ? "logout" : "checking");
+      publish(); void verify();
     };
-  }, [pathname, recordActivity, isIdleModalOpen]);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === ACTIVITY_KEY) lastActivity = readActivity();
+    };
+    const onFocus = () => {
+      if (document.hidden) return;
+      if (Date.now() - Math.max(lastActivity, readActivity()) >= SESSION_TTL_MS) recovery.lock("idle");
+      else if (recovery.reason === "active") recovery.lock("checking");
+      publish(); void verify();
+    };
+    const wrappedFetch: typeof fetch = async (input, init) => {
+      let url: URL | null = null;
+      try { url = new URL(input instanceof Request ? input.url : String(input), window.location.origin); } catch {}
+      const api = url?.origin === window.location.origin && url.pathname.startsWith("/api/");
+      const auth = api && url!.pathname.startsWith("/api/auth/");
+      const method = (init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
+      if (api && !auth && recovery.reason !== "active" && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+        return Response.json({ error: "Sesi belum terverifikasi. Login kembali, lalu simpan ulang setelah sesi aktif." }, { status: 401 });
+      }
+      const epoch = recovery.epoch;
+      const response = await nativeFetch(input, init);
+      if (api && !auth && response.status === 401 && alive && epoch === recovery.epoch) {
+        recovery.lock("expired"); publish(); void verify();
+      }
+      // Never retry a mutation: callers retain responsibility for explicit Save.
+      return response;
+    };
+    window.fetch = wrappedFetch;
+    const events = ["pointerdown", "keydown", "scroll", "touchstart", "mousemove"];
+    events.forEach(name => window.addEventListener(name, recordActivity, { passive: true }));
+    window.addEventListener(SESSION_CHANGE_EVENT, onChange);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    const timer = window.setInterval(() => {
+      if (document.hidden) return;
+      if (recovery.reason === "active" && Date.now() - Math.max(lastActivity, readActivity()) >= SESSION_TTL_MS) {
+        recovery.lock("idle"); publish();
+      }
+      void verify();
+    }, 30000);
+    if (Date.now() - lastActivity >= SESSION_TTL_MS) recovery.lock("idle");
+    // No form unmount or refresh while initial verification is pending.
+    else recovery.lock("checking");
+    publish(); void verify();
+    return () => {
+      alive = false; verification++; controller?.abort(); window.clearInterval(timer);
+      if (window.fetch === wrappedFetch) window.fetch = previousFetch;
+      events.forEach(name => window.removeEventListener(name, recordActivity));
+      window.removeEventListener(SESSION_CHANGE_EVENT, onChange);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      if (app) app.inert = false;
+      window.dispatchEvent(new CustomEvent(SESSION_GATE_EVENT, { detail: { locked: false } }));
+    };
+  }, [isLogin]);
 
-  if (!isIdleModalOpen || pathname === "/login") return null;
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 sm:p-8 text-center animate-in zoom-in-95 duration-200">
-        {/* Icon Header */}
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-5 shadow-xs">
-          <ClockAlert size={34} className="stroke-[2.2]" />
-        </div>
-
-        {/* Title & Simple Message */}
-        <h3 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 mb-2 tracking-tight">
-          {modalReason === "idle" ? "Sesi Berakhir (AFK)" : "Sesi Telah Berakhir"}
-        </h3>
-
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-          {modalReason === "idle"
-            ? "Anda telah tidak aktif selama lebih dari 1 jam. Demi keamanan, silakan login kembali untuk melanjutkan aktivitas."
-            : "Sesi login Anda telah berakhir. Silakan login kembali untuk melanjutkan."}
-        </p>
-
-        {/* Action Button */}
-        <button
-          type="button"
-          onClick={handleReLogin}
-          className="w-full flex items-center justify-center gap-2.5 py-3 px-5 rounded-2xl bg-[#004a87] hover:bg-[#003d70] dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
-        >
-          <LogOut size={16} />
-          <span>Login Kembali</span>
-        </button>
-      </div>
+  const locked = !isLogin && reason !== "active";
+  useEffect(() => {
+    if (!locked) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    loginRef.current?.focus();
+    const onFocus = (event: FocusEvent) => {
+      if (!dialogRef.current?.contains(event.target as Node)) loginRef.current?.focus();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const nodes = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled])') || []);
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("focusin", onFocus);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("focusin", onFocus); document.removeEventListener("keydown", onKey, true);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [locked]);
+  if (!locked) return null;
+  const descriptions: Record<GateReason, string> = {
+    active: "", checking: "Memverifikasi sesi Anda...",
+    expired: "Sesi berakhir. Login dengan akun yang sama di tab lain; halaman ini akan terbuka kembali tanpa menghapus isian.",
+    idle: "Tidak ada aktivitas selama 4 jam. Login kembali dengan akun yang sama untuk melanjutkan.",
+    logout: "Akun telah logout. Login kembali dengan akun yang sama untuk melanjutkan pekerjaan ini.",
+    changed: "Akun atau hak akses berubah. Isian tetap dipertahankan dan belum dikirim. Login kembali dengan akun semula, atau muat ulang setelah memastikan isian sudah diamankan.",
+    unavailable: "Sesi belum dapat diverifikasi karena jaringan atau layanan bermasalah. Isian tetap tersimpan di tab ini. Coba periksa sesi kembali.",
+  };
+  return <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="session-title" aria-describedby="session-description" className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl space-y-4">
+      <h2 id="session-title" className="text-lg font-bold">{reason === "checking" ? "Memeriksa sesi" : "Pekerjaan dijeda"}</h2>
+      <p id="session-description" className="text-sm text-slate-600 dark:text-slate-300">{descriptions[reason]}</p>
+      <p className="text-xs text-slate-500">Jangan refresh atau tutup tab ini agar isian belum tersimpan tetap ada. Setelah sesi aktif, klik Simpan sendiri.</p>
+      <a ref={loginRef} href="/login?reauth=1" target="_blank" rel="noopener noreferrer" className="block rounded-xl bg-blue-700 text-white p-3 text-center font-semibold">Login di tab baru</a>
+      <button type="button" disabled={checking} onClick={() => verifyRef.current()} className="w-full rounded-xl border p-3 disabled:opacity-50">{checking ? "Memeriksa..." : "Saya sudah login — Periksa sesi"}</button>
+      {reason === "changed" && <button type="button" onClick={() => {
+        if (window.confirm("Muat ulang akan menghapus isian yang belum tersimpan. Lanjutkan?")) window.location.reload();
+      }} className="w-full text-sm text-red-600">Muat ulang untuk akun/akses sekarang</button>}
     </div>
-  );
+  </div>;
 }

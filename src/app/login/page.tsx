@@ -1,5 +1,6 @@
 "use client";
-import { setMeCache, announceSessionChange } from "@/lib/me";
+import { ACTIVITY_KEY } from "@/lib/session-policy";
+import { getMe, setMeCache, announceSessionChange } from "@/lib/me";
 import React, { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, LogIn } from "lucide-react";
@@ -8,6 +9,7 @@ import { sanitizeInternalRedirect } from "@/lib/utils/redirect";
 function LoginPageInner() {
   const router = useRouter();
   const params = useSearchParams();
+  const [reauthComplete, setReauthComplete] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +50,11 @@ function LoginPageInner() {
       }
 
       setMeCache(meData);
-      announceSessionChange();
+      const verified = await getMe(true);
+      if (!verified.authenticated) throw new Error("Sesi belum aktif. Silakan coba login kembali.");
+      try { localStorage.setItem(ACTIVITY_KEY, String(Date.now())); } catch {}
+      announceSessionChange("login");
+      if (params.get("reauth") === "1") { setPassword(""); setReauthComplete(true); return; }
       const next = sanitizeInternalRedirect(params.get("next"));
       router.replace(next);
       // Force reload to ensure layout picks up the new role
@@ -61,6 +67,8 @@ function LoginPageInner() {
       setLoading(false);
     }
   };
+
+  if (reauthComplete) return <main className="min-h-screen flex items-center justify-center p-6"><div role="status" className="max-w-md rounded-2xl border p-6 space-y-4"><h1 className="text-xl font-bold">Login berhasil</h1><p>Kembali ke tab pekerjaan sebelumnya. Tab tersebut akan memverifikasi sesi dan membuka isian Anda kembali jika akun dan hak akses sesuai.</p><button className="rounded-lg border p-3" onClick={() => window.close()}>Tutup tab login</button></div></main>;
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex items-center justify-center p-4">

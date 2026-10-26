@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { SESSION_TTL_MS } from "@/lib/session-policy";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 
@@ -49,9 +50,7 @@ function getExpectedCredentials(): { email?: string; password?: string } {
   };
 }
 
-// [SECURITY] Session TTL from env, default 1 hour
-const SESSION_TTL_MS =
-  Number(process.env.SESSION_TTL_MS) || 1 * 60 * 60 * 1000;
+// Session lifetime is centralized in session-policy.ts.
 
 
 
