@@ -1,4 +1,5 @@
 "use client";
+import { SESSION_VERIFIED_EVENT } from "@/lib/session-policy";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Menu, LogOut, Sun, Moon, ChevronDown, Settings, ShieldCheck } from "lucide-react";
@@ -157,6 +158,17 @@ export default function ClientLayout({
     };
   }, []);
 
+  useEffect(() => {
+    const update = (event: Event) => {
+      const data = (event as CustomEvent).detail;
+      if (!data?.authenticated) return;
+      setProfileRole(data.role); setProfileEmail(data.email);
+      setProfileRegional(data.regional || null); setProfileSiteArea(data.siteArea || null);
+    };
+    window.addEventListener(SESSION_VERIFIED_EVENT, update);
+    return () => window.removeEventListener(SESSION_VERIFIED_EVENT, update);
+  }, []);
+
   // SECURITY: Redirect logic moved to page-level if needed.
   // Whitelist roles have been expanded in sidebar and shared layouts.
   useEffect(() => {
@@ -182,7 +194,7 @@ export default function ClientLayout({
   return (
     <AutoRefreshProvider intervalMs={60000}>
       <IdleTimeoutDetector />
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 flex transition-colors duration-300">
+      <div id="session-workspace" className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 flex transition-colors duration-300">
         {/* 1. SIDEBAR */}
         <Sidebar
           isOpen={sidebarOpen}
@@ -441,15 +453,15 @@ export default function ClientLayout({
                 className="flex-1 rounded-lg bg-red-600 text-white text-sm px-3 py-2 hover:bg-red-700"
                 onClick={() => {
                   fetch("/api/auth/logout", { method: "POST" })
-                    .catch(() => {})
-                    .finally(() => {
+                    .then(async response => {
+                      if (!response.ok) throw new Error("Logout gagal. Coba lagi setelah koneksi pulih.");
                       clearMeCache();
-                      announceSessionChange();
+                      announceSessionChange("logout");
                       setProfileRole(null);
                       setProfileRegional(null);
                       setLogoutOpen(false);
                       router.push("/login");
-                    });
+                    }).catch(error => window.alert(error.message));
                 }}
               >
                 Logout

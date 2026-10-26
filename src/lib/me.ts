@@ -1,118 +1,75 @@
 "use client";
-
-type Me = {
+import { SESSION_CHANGE_EVENT, SESSION_CHANGE_KEY } from "@/lib/session-policy";
+export type Me = {
   authenticated: boolean;
   email?: string;
   role?: "pusat" | "rm" | "sitearea" | "magang" | "spb_dki";
-  regional?: string | null;
-  siteArea?: string | null;
+  userId?: string; regional?: string | null; siteArea?: string | null;
+  expiresAt?: number; sessionRevision?: string; permissionsHash?: string;
 };
-
 let meCache: Me | null = null;
-let mePromise: Promise<Me> | null = null;
-
+let generation = 0;
+let pending: { generation: number; promise: Promise<Me> } | null = null;
 export function setMeCache(data: Me) {
+  generation++;
   meCache = data;
-  try {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("__me__", JSON.stringify(data));
-      (window as any).__me__ = data;
-    }
-  } catch {}
+  try { if (typeof window !== "undefined") {
+    sessionStorage.setItem("__me__", JSON.stringify(data));
+    (window as any).__me__ = data;
+  } } catch {}
 }
-
 export function clearMeCache() {
+  generation++;
   meCache = null;
-  try {
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem("__me__");
-      delete (window as any).__me__;
-    }
-  } catch {}
+  try { if (typeof window !== "undefined") {
+    sessionStorage.removeItem("__me__"); delete (window as any).__me__;
+  } } catch {}
 }
-
 export function getMeSync(): Me | null {
   if (meCache) return meCache;
-  try {
-    if (typeof window !== "undefined") {
-      const w = (window as any).__me__;
-      if (w) {
-        meCache = w as Me;
-        return meCache;
-      }
-      const raw = sessionStorage.getItem("__me__");
-      if (raw) {
-        meCache = JSON.parse(raw) as Me;
-        (window as any).__me__ = meCache;
-        return meCache;
-      }
-    }
-  } catch {}
-  return null;
+  try { if (typeof window !== "undefined") {
+    const raw = sessionStorage.getItem("__me__");
+    const value = (window as any).__me__ || (raw ? JSON.parse(raw) : null);
+    if (value) meCache = value;
+  } } catch {}
+  return meCache;
 }
-
 export async function getMe(force = false): Promise<Me> {
-  if (force) {
-    meCache = null;
-  }
-  const sync = getMeSync();
-  if (sync && !force) return sync;
-
-  if (mePromise) return mePromise;
-  console.log("Fetching user profile...");
-  mePromise = fetch("/api/auth/me", {
-    cache: "no-store",
-    credentials: "same-origin",
-    headers: { Accept: "application/json" },
-  })
-    .then(async (r) => {
-      let d: any = null;
-      try {
-        d = await r.json();
-      } catch {
-        d = null;
-      }
-      if (r.status === 401 || d?.authenticated === false) {
-        clearMeCache();
-        const data: Me = { authenticated: false };
-        setMeCache(data);
-        return data;
-      }
-      const data: Me = d?.authenticated
-        ? {
-            authenticated: true,
-            email: d.email,
-            role: d.role,
-            regional: d.regional ?? null,
-            siteArea: d.siteArea ?? null,
-          }
-        : { authenticated: false };
-      setMeCache(data);
-      return data;
-    })
-    .catch(() => {
-      clearMeCache();
-      const data: Me = { authenticated: false };
-      setMeCache(data);
-      return data;
-    })
-    .finally(() => {
-      mePromise = null;
-    });
-  return mePromise;
+  if (force) clearMeCache();
+  const cached = getMeSync();
+  if (cached && !force) return cached;
+  if (pending?.generation === generation) return pending.promise;
+  const requestGeneration = generation;
+  const promise: Promise<Me> = fetch("/api/auth/me", {
+    cache: "no-store", credentials: "same-origin", headers: { Accept: "application/json" },
+  }).then(async response => {
+    if (!response.ok && response.status !== 401) throw new Error("Verifikasi sesi belum tersedia");
+    const json = await response.json();
+    const value: Me = response.status === 401 ? { authenticated: false } : json;
+    if (typeof value.authenticated !== "boolean") throw new Error("Respons sesi tidak valid");
+    // An old /me response must never overwrite a newer login or logout.
+    if (requestGeneration !== generation) return getMe();
+    setMeCache(value);
+    return value;
+  }).finally(() => { if (pending?.promise === promise) pending = null; });
+  pending = { generation: requestGeneration, promise };
+  return promise;
 }
-
-// Only a nonce is broadcast; credentials/tokens never leave the HttpOnly cookie.
-const SESSION_CHANGE_KEY = "proc_session_change";
-export function announceSessionChange() {
+export type SessionChangeKind = "login" | "logout" | "changed";
+export function announceSessionChange(kind: SessionChangeKind = "changed") {
   if (typeof window === "undefined") return;
-  try { localStorage.setItem(SESSION_CHANGE_KEY, crypto.randomUUID()); } catch {}
+  const message = { kind, nonce: crypto.randomUUID() };
+  try { localStorage.setItem(SESSION_CHANGE_KEY, JSON.stringify(message)); } catch {}
+  window.dispatchEvent(new CustomEvent(SESSION_CHANGE_EVENT, { detail: message }));
 }
 if (typeof window !== "undefined") {
-  window.addEventListener("storage", (event) => {
+  window.addEventListener("storage", event => {
     if (event.key !== SESSION_CHANGE_KEY) return;
+    let kind: SessionChangeKind = "changed";
+    try { const parsed = JSON.parse(event.newValue || "null");
+      if (["login", "logout", "changed"].includes(parsed?.kind)) kind = parsed.kind;
+    } catch {}
     clearMeCache();
-    try { localStorage.removeItem("proc_role_permissions_v1"); } catch {}
-    window.location.reload();
+    window.dispatchEvent(new CustomEvent(SESSION_CHANGE_EVENT, { detail: { kind } }));
   });
 }
