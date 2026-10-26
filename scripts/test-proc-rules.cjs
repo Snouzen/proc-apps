@@ -4,12 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
-let auth, po, writes, events;
+const repo = 'D:/Projects/proc-apps';
+let auth, po, writes, events, regionalUnits;
 const unit = { idRegional: 'U1', siteArea: 'SITE A', namaRegional: 'Regional 1', kodeRegional: 'REG 1' };
 const tx = {
   $executeRaw: async () => { events.push('lock'); },
   purchaseOrder: { findUnique: async () => { events.push('read'); return po; } },
-  unitProduksi: { findFirst: async ({ where }) => where.siteArea
+  unitProduksi: { findMany: async () => regionalUnits, findFirst: async ({ where }) => where.siteArea
     ? (where.siteArea.equals === unit.siteArea ? unit : null)
     : (where.namaRegional.in.includes('regional 1') ? unit : null) },
   purchaseOrderItem: { update: async ({ data }) => { writes.push(data); return data; } },
@@ -29,6 +30,7 @@ const mocks = {
 const modules = new Map();
 function load(file) {
   file = path.resolve(root, file);
+  if (!fs.existsSync(file)) file = path.resolve(repo, path.relative(root, file));
   if (modules.has(file)) return modules.get(file).exports;
   const loadedModule = { exports: {} }; modules.set(file, loadedModule);
   const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
@@ -44,7 +46,7 @@ function reset(role = 'pusat') {
   auth = { role, session: { userId: 'test' }, dbUser: { id: 'test', regional: 'Regional 1', siteArea: 'U1' } };
   po = { id: 'PO1', noPo: 'PO-1', regional: 'Regional 1', unitProduksiId: 'U1', UnitProduksi: unit, noInvoice: null, statusBayar: false,
     Items: [{ id: 'I1', pcs: 10, pcsKirim: 0, hargaPcs: 100, discount: 0 }] };
-  writes = []; events = [];
+  writes = []; events = []; regionalUnits = [unit];
 }
 const request = body => new Request('http://localhost/api', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
 const assign = load('src/app/api/po/assign/route.ts').POST;
@@ -60,6 +62,40 @@ test('Pusat delegates regional only; lock precedes validation and audited write'
   reset(); const res = await assign(request({ noPo: po.noPo, regional: 'Regional 1' }));
   assert.equal(res.status, 200); assert.equal(writes[0].unitProduksiId, 'UNKNOWN'); assert.equal(writes[0].regional, 'Regional 1');
   assert.deepEqual(events, ['begin', 'lock', 'read', 'write-audit', 'commit']);
+});
+for (const label of ['REGIONAL 1 BANDUNG', 'REGIONAL 2 SURABAYA', 'REGIONAL 3 MAKASSAR', 'KANTOR WILAYAH BULOG']) test('Pusat delegates full master label without sitearea: '+label, async()=>{
+  reset(); regionalUnits=[{...unit,namaRegional:label}];
+  const res=await assign(request({noPo:po.noPo,regional:label,siteArea:null}));
+  assert.equal(res.status,200);assert.equal(writes[0].regional,label);assert.equal(writes[0].unitProduksiId,'UNKNOWN');
+});
+test('Pusat delegation supports short aliases against long master names',async()=>{
+  reset();regionalUnits=[{...unit,namaRegional:'REGIONAL 2 SURABAYA'}];
+  assert.equal((await assign(request({noPo:po.noPo,regional:'Regional II'}))).status,200);
+  assert.equal(writes[0].regional,'REGIONAL 2 SURABAYA');
+});
+test('Regional 10 does not accidentally match Regional 1',async()=>{
+  reset();regionalUnits=[{...unit,namaRegional:'REGIONAL 10'}];
+  assert.equal((await assign(request({noPo:po.noPo,regional:'Regional 1'}))).status,400);assert.equal(writes.length,0);
+});
+test('Delegation preserves a blank sitearea and RM can complete the next step',async()=>{
+  reset();regionalUnits=[{...unit,namaRegional:'REGIONAL 1 BANDUNG'}];
+  assert.equal((await assign(request({noPo:po.noPo,regional:'REGIONAL 1 BANDUNG',siteArea:''}))).status,200);
+  Object.assign(po,writes[0]);po.UnitProduksi={namaRegional:'UNKNOWN',siteArea:'UNKNOWN',idRegional:'UNKNOWN'};
+  auth={role:'rm',session:{userId:'RM1'},dbUser:{id:'RM1',regional:'REGIONAL 1 BANDUNG',siteArea:null}};
+  assert.equal(checkPOOwnership(po,'rm',auth.dbUser.regional).allowed,true);
+  const {poScopeFromUnits}=load('src/lib/utils/poScope.ts');
+  const scope=poScopeFromUnits('rm',auth.dbUser.regional,null,regionalUnits);
+  const delegated=scope.OR.find(clause=>clause.unitProduksiId?.in?.includes('UNKNOWN'));
+  assert(delegated.OR.some(clause=>clause.regional.equals==='REGIONAL 1 BANDUNG'));
+  const res=await assign(request({noPo:po.noPo,regional:'REGIONAL 1 BANDUNG',siteArea:'SITE A'}));
+  assert.equal(res.status,200);assert.equal(writes.at(-1).unitProduksiId,'U1');
+});
+test('Pusat cannot delegate a PO with an active invoice',async()=>{
+  reset();po.noInvoice='INV-ACTIVE';assert.equal((await assign(request({noPo:po.noPo,regional:'Regional 1'}))).status,400);assert.equal(writes.length,0);
+});
+test('RM cannot finish delegation to a foreign regional unit',async()=>{
+  reset('rm');auth.dbUser.regional='REGIONAL 2 SURABAYA';po.regional='REGIONAL 2 SURABAYA';po.unitProduksiId='UNKNOWN';po.UnitProduksi=null;
+  assert.equal((await assign(request({noPo:po.noPo,siteArea:'SITE A'}))).status,403);assert.equal(writes.length,0);
 });
 test('Unknown regional rejected without mutation', async () => { reset(); assert.equal((await assign(request({ noPo: po.noPo, regional: 'INVALID' }))).status, 400); assert.equal(writes.length, 0); });
 test('RM cannot assign regional without unit', async () => { reset('rm'); assert.equal((await assign(request({ noPo: po.noPo, regional: 'Regional 1' }))).status, 400); });

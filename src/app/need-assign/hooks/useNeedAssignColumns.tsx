@@ -157,6 +157,7 @@ export function useNeedAssignColumns({
                     [noPo]: {
                       ...(prev[noPo] || {}),
                       regional: val,
+                      siteArea: "",
                       error: null,
                       ok: false,
                     },
@@ -423,7 +424,7 @@ export function useNeedAssignColumns({
               tableState.setRows((prev: any) => prev.filter((r: any) => r.noPo !== noPo));
               tableState.setTotal((prev: number) => Math.max(0, prev - 1));
             } else {
-              tableState.setRows((prev: any) => prev.map((r: any) => r.noPo === noPo ? { ...r, regional: json?.po?.regional || reg, siteArea: "" } : r));
+              tableState.setRows((prev: any) => prev.map((r: any) => r.noPo === noPo ? { ...r, regional: json?.po?.regional || reg, siteArea: "", unitProduksiId: "UNKNOWN", UnitProduksi: null } : r));
             }
 
             tableState.setEdited((prev: any) => {

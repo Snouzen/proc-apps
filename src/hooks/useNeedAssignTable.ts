@@ -69,7 +69,6 @@ export function useNeedAssignTable({ role, regional }: UseNeedAssignTableProps) 
 
   const fetchData = useCallback(async () => {
     if (!role) return;
-    if (typeof document !== "undefined" && !document.hasFocus()) return;
     
     setLoading(true);
     setIsTransitioning(true);

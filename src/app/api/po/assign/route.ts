@@ -114,9 +114,18 @@ export async function POST(request: Request) {
 
       // Pusat may delegate to a regional before a production unit is selected.
       if (!siteArea && safeRole === "pusat" && regionalPayload) {
-        const regionalUnit = await tx.unitProduksi.findFirst({
-          where: { namaRegional: { in: getRegionalSynonyms(regionalPayload), mode: "insensitive" }, NOT: { idRegional: "UNKNOWN" } },
+        const regionalUnits = await tx.unitProduksi.findMany({
+          where: { NOT: { idRegional: "UNKNOWN" } },
+          select: { idRegional: true, namaRegional: true },
+          orderBy: [{ namaRegional: "asc" }, { idRegional: "asc" }],
         });
+        const normalized = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
+        const candidates = regionalUnits.filter(unit => unit.idRegional !== "UNKNOWN" && !["", "-", "unknown"].includes(normalized(unit.namaRegional)));
+        const requested = new Set(getRegionalSynonyms(regionalPayload).map(normalized));
+        // Compare the full master label first, then canonical synonyms on BOTH
+        // sides. Short aliases alone do not equal "REGIONAL 2 SURABAYA" in SQL.
+        const regionalUnit = candidates.find(unit => normalized(unit.namaRegional) === normalized(regionalPayload))
+          || candidates.find(unit => getRegionalSynonyms(unit.namaRegional).some(name => requested.has(normalized(name))));
         if (!regionalUnit) throw Object.assign(new Error("Regional tujuan tidak terdaftar"), { statusCode: 400 });
         return auditUpdatePO(tx as any, { noPo }, {
           regional: regionalUnit.namaRegional, unitProduksiId: "UNKNOWN",
