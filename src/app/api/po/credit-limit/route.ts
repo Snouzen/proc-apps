@@ -2,10 +2,21 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { getSessionWithRole, getProfileName } from "@/lib/auth";
-import { auditActivity } from "@/lib/audit";
+import { auditActivity, sanitizeAuditData } from "@/lib/audit";
 import { hasPermission } from "@/lib/accessControl";
 import { checkPOOwnership } from "@/lib/utils/regional";
 import { isInvoiceEmpty } from "@/app/api/po/services/poQueryBuilder";
+
+const APPROVAL_TRANSACTION_OPTIONS = { timeout: 15000 };
+
+function approvalTimeoutResponse(error: any) {
+  if (error?.code !== "P2028" && !/expired transaction|transaction.*(?:expired|timed out)/i.test(error?.message || "")) return null;
+  console.error("Credit Limit transaction expired:", error);
+  return NextResponse.json({
+    error: "Proses Credit Limit melewati batas waktu transaksi. Muat ulang untuk memeriksa status terbaru, lalu coba kembali jika belum disetujui.",
+    code: "CREDIT_LIMIT_TRANSACTION_TIMEOUT",
+  }, { status: 503 });
+}
 
 export async function POST(req: Request) {
   try {
@@ -269,31 +280,26 @@ export async function POST(req: Request) {
             throw err;
           }
 
-          for (const p of targetPos) {
-            await auditActivity(
-              tx as any,
-              p.id,
-              "PurchaseOrder",
-              "UPDATE",
-              {
-                id: dbUser?.id || (sessionObj as any)?.user?.id || "unknown",
-                name: getProfileName(sessionObj, dbUser),
-                role: safeRole,
-              },
-              {
-                field: "statusCreditLimit",
-                oldStatus: "REQUESTED",
-                newStatus: "APPROVED",
-                action: "approveAll",
-              }
-            );
-          }
+          // Preserve one audit entry per PO using one database round-trip.
+          await tx.auditLog.createMany({
+            data: targetPos.map((p: any) => ({
+              entityId: p.id,
+              entity: "PurchaseOrder",
+              action: "UPDATE",
+              userId: dbUser?.id || (sessionObj as any)?.user?.id || "unknown",
+              userName: getProfileName(sessionObj, dbUser),
+              userRole: safeRole,
+              newData: sanitizeAuditData({ field: "statusCreditLimit", oldStatus: "REQUESTED", newStatus: "APPROVED", action: "approveAll" }),
+            })),
+          });
 
           return updateRes;
-        });
+        }, APPROVAL_TRANSACTION_OPTIONS);
 
         return NextResponse.json({ success: true, count: result.count });
       } catch (err: any) {
+        const timeoutResponse = approvalTimeoutResponse(err);
+        if (timeoutResponse) return timeoutResponse;
         const status = typeof err?.statusCode === "number" ? err.statusCode : 500;
         return NextResponse.json({ error: err?.message || "Gagal melakukan persetujuan massal Pusat" }, { status });
       }
@@ -341,17 +347,18 @@ export async function POST(req: Request) {
           throw new Error("Sebagian PO mengalami perubahan status atau nomor ND selama transaksi approval Direksi.");
         }
 
-        // Audit logging per PO
-        for (const p of targetPos) {
-          await auditActivity(tx as any, p.id, "PurchaseOrder", "UPDATE", {
-            id: dbUser?.id || (sessionObj as any)?.user?.id || "unknown",
-            name: getProfileName(sessionObj, dbUser),
-            role: safeRole
-          }, {
-            field: "statusCreditLimit",
-            oldStatus: p.statusCreditLimit,
-            newStatus: "APPROVED_DIREKSI",
-            action: "approveDireksiAll"
+        // Audit rows remain atomic with status changes, batched into one query.
+        if (targetPos.length > 0) {
+          await tx.auditLog.createMany({
+            data: targetPos.map((p: any) => ({
+              entityId: p.id,
+              entity: "PurchaseOrder",
+              action: "UPDATE",
+              userId: dbUser?.id || (sessionObj as any)?.user?.id || "unknown",
+              userName: getProfileName(sessionObj, dbUser),
+              userRole: safeRole,
+              newData: sanitizeAuditData({ field: "statusCreditLimit", oldStatus: p.statusCreditLimit, newStatus: "APPROVED_DIREKSI", action: "approveDireksiAll" }),
+            })),
           });
         }
 
@@ -373,7 +380,7 @@ export async function POST(req: Request) {
         }
 
         return updateRes;
-      });
+      }, APPROVAL_TRANSACTION_OPTIONS);
 
       return NextResponse.json({ success: true, count: result.count });
     }
@@ -423,7 +430,7 @@ export async function POST(req: Request) {
           });
 
           return updatedPo;
-        });
+        }, APPROVAL_TRANSACTION_OPTIONS);
 
         return NextResponse.json({ success: true, data: po });
       } catch (err: any) {
@@ -439,6 +446,8 @@ export async function POST(req: Request) {
         if (err.message === "PO_CONCURRENT_MODIFICATION") {
           return NextResponse.json({ error: "PO sedang dimodifikasi atau status telah berubah. Silakan coba kembali." }, { status: 409 });
         }
+        const timeoutResponse = approvalTimeoutResponse(err);
+        if (timeoutResponse) return timeoutResponse;
         const status = typeof err?.statusCode === "number" ? err.statusCode : 500;
         return NextResponse.json({ error: err?.message || "Gagal menyetujui PO" }, { status });
       }
@@ -510,7 +519,7 @@ export async function POST(req: Request) {
             }
           }
           return updatedPo;
-        });
+        }, APPROVAL_TRANSACTION_OPTIONS);
         return NextResponse.json({ success: true, data: po });
       } catch (err: any) {
         if (err.message === "PO_NOT_FOUND") return NextResponse.json({ error: "PO tidak ditemukan" }, { status: 404 });
@@ -829,6 +838,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ error: "Unhandled action" }, { status: 400 });
   } catch (error: any) {
+    const timeoutResponse = approvalTimeoutResponse(error);
+    if (timeoutResponse) return timeoutResponse;
     console.error("Credit limit API error:", error);
     return NextResponse.json({ error: "Internal Server Error", details: error?.message }, { status: 500 });
   }
