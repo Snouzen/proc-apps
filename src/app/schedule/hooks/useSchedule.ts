@@ -1,5 +1,6 @@
+import { applySavedShipment } from "@/lib/scheduleShipmentState";
 import { saveScheduleRequest, showScheduleError } from "@/lib/scheduleErrorPopup";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getMe } from "@/lib/me";
 import { format } from "date-fns";
@@ -47,7 +48,16 @@ export function useSchedule() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const dataRevision = useRef(0);
+  const latestFetch = useRef(0);
+  const applyConfirmedPcs = (poId: string, changes: Array<{ itemId: string; pcsKirim: number }>) => {
+    dataRevision.current++;
+    setPoData(prev => prev.map(po => po.id === poId ? applySavedShipment(po, changes) : po));
+  };
+
   const fetchData = useCallback(async (silent = false) => {
+    const requestId = ++latestFetch.current;
+    const revision = dataRevision.current;
     if (!silent) setLoading(true);
     setFetchError(null);
     try {
@@ -81,14 +91,16 @@ export function useSchedule() {
         }
       } while (offset < total);
 
-      setPoData(allItems);
+      if (requestId === latestFetch.current && revision === dataRevision.current) setPoData(allItems);
     } catch (err: any) {
       console.error("Failed to fetch PO data:", err);
       const msg = err instanceof Error ? err.message : "Gagal mengambil data jadwal PO";
-      setFetchError(msg);
-      setPoData([]);
+      if (requestId === latestFetch.current && revision === dataRevision.current) {
+        setFetchError(msg);
+        if (!silent) setPoData([]);
+      }
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent && requestId === latestFetch.current) setLoading(false);
     }
   }, []);
 
@@ -200,8 +212,7 @@ export function useSchedule() {
     try {
       await saveScheduleRequest("/api/po/pcs-kirim", { id: poId, itemId, pcsKirim: pcs });
       {
-        fetchData();
-        router.refresh();
+        applyConfirmedPcs(poId, [{ itemId, pcsKirim: pcs }]);
       }
     } catch (err) {
       console.error("Update Item Pcs Kirim failed:", err);
@@ -233,8 +244,7 @@ export function useSchedule() {
     try {
       await saveScheduleRequest("/api/po/pcs-kirim", { id, pcsKirim: pcs });
       {
-        fetchData(true);
-        router.refresh();
+        applyConfirmedPcs(id, (targetPo.Items || []).map((item: any) => ({ itemId: item.id, pcsKirim: pcs })));
         return true;
       }
     } catch (err) {
@@ -265,29 +275,10 @@ export function useSchedule() {
 
     setSavingBatchPoId(poId);
 
-    // 2. Optimistic UI update secara lokal tanpa menunggu network
-    const newTotalKirim = itemsToUpdate.reduce(
-      (acc, curr) => acc + (Number(curr.pcsKirim) || 0),
-      0
-    );
-    setPoData((prev: any[]) =>
-      prev.map((p: any) => {
-        if (p.id !== poId) return p;
-        const updatedItems = (p.Items || []).map((it: any) => {
-          const match = itemsToUpdate.find((u) => u.itemId === it.id);
-          return match ? { ...it, pcsKirim: match.pcsKirim } : it;
-        });
-        return {
-          ...p,
-          pcsKirimTotal: newTotalKirim,
-          Items: updatedItems,
-        };
-      })
-    );
-
     // 3. Simpan ke database via Batch API
     try {
       await saveScheduleRequest("/api/po/pcs-kirim", { id: poId, items: itemsToUpdate });
+      applyConfirmedPcs(poId, itemsToUpdate);
       {
         Swal.fire({
           toast: true,
@@ -298,13 +289,11 @@ export function useSchedule() {
           timer: 2000,
           timerProgressBar: true,
         });
-        await fetchData(true);
-        router.refresh();
+        // Saved row is already synchronized; do not reload the entire PO list.
       }
     } catch (err: any) {
       console.error("Batch update Pcs Kirim failed:", err);
       await showScheduleError(err, "Gagal Menyimpan PCS Kirim", "/api/po/pcs-kirim");
-      await fetchData(true);
     } finally {
       setSavingBatchPoId(null);
     }
