@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { invalidatePoCache } from "@/lib/ttl-cache";
 import { getSessionWithRole, getProfileName } from "@/lib/auth";
 import { checkPOOwnership } from "@/lib/utils/regional";
 import { auditActivity } from "@/lib/audit";
-import { hasPermission } from "@/lib/accessControl";
+import { checkSchedulePermission } from "@/lib/scheduleAuthorization";
+import { createScheduleResponder } from "@/lib/scheduleErrorReference";
 
 function parseStrictNonNegativeInteger(val: any): number | null {
   if (val === null || val === undefined) return null;
@@ -23,10 +23,13 @@ function parseStrictNonNegativeInteger(val: any): number | null {
 }
 
 export async function PATCH(request: Request) {
+  let diagnosticRole: string | undefined;
+  let diagnosticAction: string | undefined;
+  const respond = createScheduleResponder(request, () => ({ role: diagnosticRole, action: diagnosticAction }));
   try {
     const auth = await getSessionWithRole(request);
     if (!auth) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return respond({ error: "Unauthorized" }, { status: 401 });
     }
     const { session, role: safeRole, dbUser } = auth;
     const userRegional = dbUser?.regional || session?.regional || null;
@@ -39,11 +42,13 @@ export async function PATCH(request: Request) {
     // Batch update requires sched_batch; single item update requires sched_edit
     const isBatch = Array.isArray(items) && items.length > 0;
     const requiredAction = isBatch ? "sched_batch" : "sched_edit";
-    const allowed = await hasPermission(safeRole, requiredAction);
-    if (!allowed) {
-      return NextResponse.json(
-        { error: `Forbidden: Akun Anda tidak memiliki izin '${requiredAction}' untuk mengubah alokasi pengiriman` },
-        { status: 403 }
+    diagnosticRole = safeRole;
+    diagnosticAction = requiredAction;
+    const permission = await checkSchedulePermission(safeRole, [requiredAction]);
+    if (!permission.allowed) {
+      return respond(
+        { error: permission.status === 503 ? "Layanan pemeriksaan izin belum tersedia. Data belum disimpan. Silakan coba kembali." : `Forbidden: Akun Anda tidak memiliki izin '${requiredAction}' untuk mengubah alokasi pengiriman`, code: permission.code },
+        { status: permission.status }
       );
     }
 
@@ -54,7 +59,7 @@ export async function PATCH(request: Request) {
         .filter(Boolean);
 
       if (itemIds.length === 0) {
-        return NextResponse.json({ error: "Daftar itemId tidak valid" }, { status: 400 });
+        return respond({ error: "Daftar itemId tidak valid" }, { status: 400 });
       }
 
       const dbItems = await prisma.purchaseOrderItem.findMany({
@@ -67,27 +72,27 @@ export async function PATCH(request: Request) {
       });
 
       if (dbItems.length === 0) {
-        return NextResponse.json({ error: "Item tidak ditemukan" }, { status: 404 });
+        return respond({ error: "Item tidak ditemukan" }, { status: 404 });
       }
 
       // Verifikasi wewenang regional / sitearea untuk setiap item & validasi jumlah
       for (const item of dbItems) {
         if (!item.PurchaseOrder) {
-          return NextResponse.json({ error: "Purchase Order terkait tidak ditemukan" }, { status: 404 });
+          return respond({ error: "Purchase Order terkait tidak ditemukan" }, { status: 404 });
         }
         const check = checkPOOwnership(item.PurchaseOrder, safeRole, userRegional, userSiteArea);
         if (!check.allowed) {
-          return NextResponse.json({ error: `Forbidden: ${check.reason}` }, { status: 403 });
+          return respond({ error: `Forbidden: ${check.reason}`, code: "SCHEDULE_SCOPE_DENIED" }, { status: 403 });
         }
 
         const payloadItem = items.find((it: any) => (it.itemId || it.id) === item.id);
         const val = parseStrictNonNegativeInteger(payloadItem?.pcsKirim);
         if (val === null) {
-          return NextResponse.json({ error: `Jumlah pcs kirim item ${item.id} tidak valid (wajib berupa bilangan bulat >= 0)` }, { status: 400 });
+          return respond({ error: `Jumlah pcs kirim item ${item.id} tidak valid (wajib berupa bilangan bulat >= 0)` }, { status: 400 });
         }
         const orderPcs = Number(item.pcs) || 0;
         if (val > orderPcs) {
-          return NextResponse.json({ error: `Pcs kirim (${val}) tidak boleh melebihi jumlah pesanan (${orderPcs})` }, { status: 400 });
+          return respond({ error: `Pcs kirim (${val}) tidak boleh melebihi jumlah pesanan (${orderPcs})` }, { status: 400 });
         }
       }
 
@@ -125,16 +130,16 @@ export async function PATCH(request: Request) {
 
       invalidatePoCache();
 
-      return NextResponse.json({ ok: true, count: dbItems.length });
+      return respond({ ok: true, count: dbItems.length });
     }
 
     if (!id && !itemId) {
-      return NextResponse.json({ error: "id PO atau itemId wajib diisi" }, { status: 400 });
+      return respond({ error: "id PO atau itemId wajib diisi" }, { status: 400 });
     }
 
     const value = parseStrictNonNegativeInteger(pcsKirim);
     if (value === null) {
-      return NextResponse.json({ error: "Jumlah Pcs Kirim tidak valid (wajib berupa bilangan bulat >= 0)" }, { status: 400 });
+      return respond({ error: "Jumlah Pcs Kirim tidak valid (wajib berupa bilangan bulat >= 0)" }, { status: 400 });
     }
 
     // [ACTION 2] Update Granular (Per Item)
@@ -148,17 +153,17 @@ export async function PATCH(request: Request) {
         }
       });
       
-      if (!item) return NextResponse.json({ error: "Item tidak ditemukan" }, { status: 404 });
-      if (!item.PurchaseOrder) return NextResponse.json({ error: "Purchase Order terkait tidak ditemukan" }, { status: 404 });
+      if (!item) return respond({ error: "Item tidak ditemukan" }, { status: 404 });
+      if (!item.PurchaseOrder) return respond({ error: "Purchase Order terkait tidak ditemukan" }, { status: 404 });
       
       const check = checkPOOwnership(item.PurchaseOrder, safeRole, userRegional, userSiteArea);
       if (!check.allowed) {
-        return NextResponse.json({ error: `Forbidden: ${check.reason}` }, { status: 403 });
+        return respond({ error: `Forbidden: ${check.reason}`, code: "SCHEDULE_SCOPE_DENIED" }, { status: 403 });
       }
 
       const orderPcs = Number(item.pcs) || 0;
       if (value > orderPcs) {
-        return NextResponse.json({ error: `Pcs kirim (${value}) tidak boleh melebihi jumlah pesanan (${orderPcs})` }, { status: 400 });
+        return respond({ error: `Pcs kirim (${value}) tidak boleh melebihi jumlah pesanan (${orderPcs})` }, { status: 400 });
       }
 
       const actualDiscount = (Number(item.discount || 0) / (orderPcs || 1)) * value;
@@ -195,11 +200,11 @@ export async function PATCH(request: Request) {
         }
       });
 
-      if (!po) return NextResponse.json({ error: "PO tidak ditemukan" }, { status: 404 });
+      if (!po) return respond({ error: "PO tidak ditemukan" }, { status: 404 });
 
       const check = checkPOOwnership(po, safeRole, userRegional, userSiteArea);
       if (!check.allowed) {
-        return NextResponse.json({ error: `Forbidden: ${check.reason}` }, { status: 403 });
+        return respond({ error: `Forbidden: ${check.reason}`, code: "SCHEDULE_SCOPE_DENIED" }, { status: 403 });
       }
 
       const items = po.Items || [];
@@ -208,7 +213,7 @@ export async function PATCH(request: Request) {
       for (const it of items) {
         const orderPcs = Number(it.pcs) || 0;
         if (value > orderPcs) {
-          return NextResponse.json({ error: `Pcs kirim (${value}) tidak boleh melebihi jumlah pesanan (${orderPcs}) pada salah satu item PO` }, { status: 400 });
+          return respond({ error: `Pcs kirim (${value}) tidak boleh melebihi jumlah pesanan (${orderPcs}) pada salah satu item PO` }, { status: 400 });
         }
       }
 
@@ -243,9 +248,9 @@ export async function PATCH(request: Request) {
 
     invalidatePoCache();
     
-    return NextResponse.json({ ok: true });
+    return respond({ ok: true });
   } catch (error: any) {
     console.error("PATCH /api/po/pcs-kirim error:", error);
-    return NextResponse.json({ error: error.message || "Server Error" }, { status: 500 });
+    return respond({ error: "Terjadi gangguan saat menyimpan data. Muat ulang untuk memeriksa status terbaru sebelum mencoba kembali.", code: error?.name === "AuthServiceError" ? "AUTH_SERVICE_UNAVAILABLE" : error?.code === "P2028" ? "SCHEDULE_TRANSACTION_TIMEOUT" : "SCHEDULE_INTERNAL_ERROR" }, { status: error?.name === "AuthServiceError" ? 503 : 500 });
   }
 }

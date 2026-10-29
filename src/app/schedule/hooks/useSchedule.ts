@@ -1,3 +1,4 @@
+import { saveScheduleRequest, showScheduleError } from "@/lib/scheduleErrorPopup";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getMe } from "@/lib/me";
@@ -100,32 +101,19 @@ export function useSchedule() {
 
   const handleUpdateSchedule = async () => {
     if (!selectedPo || !selectedDate) {
-      Swal.fire({
-        icon: "warning",
-        title: "Form Belum Lengkap",
-        text: "Mohon isi tanggal pengiriman terlebih dahulu.",
-        confirmButtonColor: "#3085d6",
-      });
+      await showScheduleError(new Error("Mohon isi tanggal pengiriman terlebih dahulu."), "Form Belum Lengkap", "/api/po/schedule", "SCHEDULE_DATE_REQUIRED");
       return;
     }
 
     setUpdatingId(selectedPo.id);
 
     try {
-      const res = await fetch("/api/po/schedule", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedPo.id,
-          tglKirim: selectedDate
-            ? format(new Date(selectedDate), "yyyy-MM-dd")
-            : null,
-          namaSupir: namaSupir ? String(namaSupir).trim() : null,
-          platNomor: platNomor ? String(platNomor).trim() : null,
-        }),
+      await saveScheduleRequest("/api/po/schedule", {
+        id: selectedPo.id,
+        tglKirim: selectedDate ? format(new Date(selectedDate), "yyyy-MM-dd") : null,
+        namaSupir, platNomor,
       });
-
-      if (res.ok) {
+      {
         setModalOpen(false);
         await Swal.fire({
           icon: "success",
@@ -169,20 +157,10 @@ export function useSchedule() {
         }
 
         fetchData();
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(
-          errData.error || errData.message || "Gagal menyimpan ke server",
-        );
       }
     } catch (err: any) {
       console.error("Update Schedule Error:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Gagal Update",
-        text: err.message || "Terjadi kesalahan sistem, silakan coba lagi.",
-        confirmButtonColor: "#d33",
-      });
+      await showScheduleError(err, "Gagal Update", "/api/po/schedule");
     } finally {
       setUpdatingId(null);
     }
@@ -208,40 +186,26 @@ export function useSchedule() {
     const maxPcs = Number(targetItem.pcs || 0);
 
     if (pcs > maxPcs) {
-      Swal.fire({
-        toast: true,
-        position: "top-end",
-        icon: "error",
-        title: "Pcs Kirim melebihi Pcs PO!",
-        text: `Item ${targetItem.namaProduk} maks: ${maxPcs}`,
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        background: "#fff1f2",
-      });
+      await showScheduleError(new Error(`Item ${targetItem.namaProduk} maks: ${maxPcs}`), "Pcs Kirim Melebihi Pesanan", "/api/po/pcs-kirim", "PCS_EXCEEDS_ORDER");
       fetchData();
       return;
     }
 
-    if (isNaN(pcs) || pcs < 0) return;
+    if (!Number.isInteger(pcs) || pcs < 0) {
+      await showScheduleError(new Error("PCS kirim wajib bilangan bulat minimal 0."), "Input Tidak Valid", "/api/po/pcs-kirim", "PCS_INVALID");
+      return;
+    }
 
     setSavingPcsId(itemId);
     try {
-      const res = await fetch("/api/po/pcs-kirim", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: poId, itemId, pcsKirim: pcs }),
-      });
-
-      if (res.ok) {
+      await saveScheduleRequest("/api/po/pcs-kirim", { id: poId, itemId, pcsKirim: pcs });
+      {
         fetchData();
         router.refresh();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Gagal update Pcs Kirim Item");
       }
     } catch (err) {
       console.error("Update Item Pcs Kirim failed:", err);
+      await showScheduleError(err, "Gagal Menyimpan PCS Kirim", "/api/po/pcs-kirim");
     } finally {
       setSavingPcsId(null);
     }
@@ -255,41 +219,27 @@ export function useSchedule() {
     const maxPcs = Number(targetPo.pcsTotal || 0);
 
     if (pcs > maxPcs) {
-      Swal.fire({
-        toast: true,
-        position: "top-end",
-        icon: "error",
-        title: "Pcs Kirim melebihi Pcs PO!",
-        text: `Maksimum yang diizinkan: ${maxPcs}`,
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        background: "#fff1f2",
-      });
+      await showScheduleError(new Error(`Maksimum yang diizinkan: ${maxPcs}`), "Pcs Kirim Melebihi Pesanan", "/api/po/pcs-kirim", "PCS_EXCEEDS_ORDER");
       fetchData(true); 
       return false;
     }
 
-    if (!value.trim() || !Number.isInteger(pcs) || pcs < 0) return false;
+    if (!value.trim() || !Number.isInteger(pcs) || pcs < 0) {
+      await showScheduleError(new Error("PCS kirim wajib bilangan bulat minimal 0."), "Input Tidak Valid", "/api/po/pcs-kirim", "PCS_INVALID");
+      return false;
+    }
 
     setSavingPcsId(id);
     try {
-      const res = await fetch("/api/po/pcs-kirim", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, pcsKirim: pcs }),
-      });
-
-      if (res.ok) {
+      await saveScheduleRequest("/api/po/pcs-kirim", { id, pcsKirim: pcs });
+      {
         fetchData(true);
         router.refresh();
         return true;
-      } else {
-        const err = await res.json();
-        alert(err.error || "Gagal update Pcs Kirim");
       }
     } catch (err) {
       console.error("Update Pcs Kirim failed:", err);
+      await showScheduleError(err, "Gagal Menyimpan PCS Kirim", "/api/po/pcs-kirim");
     } finally {
       setSavingPcsId(null);
     }
@@ -308,17 +258,7 @@ export function useSchedule() {
       const origItem = targetPo.Items?.find((it: any) => it.id === item.itemId);
       const maxPcs = Number(origItem?.pcs || 0);
       if (item.pcsKirim > maxPcs) {
-        Swal.fire({
-          toast: true,
-          position: "top-end",
-          icon: "error",
-          title: "Pcs Kirim Melebihi Pesanan!",
-          text: `Item ${origItem?.namaProduk || "produk"} maksimum: ${maxPcs}`,
-          showConfirmButton: false,
-          timer: 3000,
-          timerProgressBar: true,
-          background: "#fff1f2",
-        });
+        await showScheduleError(new Error(`Item ${origItem?.namaProduk || "produk"} maksimum: ${maxPcs}`), "Pcs Kirim Melebihi Pesanan", "/api/po/pcs-kirim", "PCS_EXCEEDS_ORDER");
         return;
       }
     }
@@ -347,16 +287,8 @@ export function useSchedule() {
 
     // 3. Simpan ke database via Batch API
     try {
-      const res = await fetch("/api/po/pcs-kirim", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: poId,
-          items: itemsToUpdate,
-        }),
-      });
-
-      if (res.ok) {
+      await saveScheduleRequest("/api/po/pcs-kirim", { id: poId, items: itemsToUpdate });
+      {
         Swal.fire({
           toast: true,
           position: "top-end",
@@ -368,22 +300,10 @@ export function useSchedule() {
         });
         await fetchData(true);
         router.refresh();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        Swal.fire({
-          icon: "error",
-          title: "Gagal Menyimpan",
-          text: err.error || "Gagal mengupdate Pcs Kirim.",
-        });
-        await fetchData(true);
       }
     } catch (err: any) {
       console.error("Batch update Pcs Kirim failed:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Kesalahan Sistem",
-        text: err.message || "Gagal menghubungi server.",
-      });
+      await showScheduleError(err, "Gagal Menyimpan PCS Kirim", "/api/po/pcs-kirim");
       await fetchData(true);
     } finally {
       setSavingBatchPoId(null);

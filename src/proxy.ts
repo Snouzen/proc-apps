@@ -1,3 +1,4 @@
+import { createScheduleResponder } from "@/lib/scheduleErrorReference";
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionEdge } from "@/lib/auth-edge";
 import { sanitizeInternalRedirect } from "@/lib/utils/redirect";
@@ -91,6 +92,8 @@ function isValidOrigin(req: NextRequest): boolean {
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const isScheduleMutation = ["/api/po/pcs-kirim", "/api/po/schedule"].includes(pathname);
+  const respond = isScheduleMutation ? createScheduleResponder(req) : NextResponse.json;
   const token = req.cookies.get("session")?.value;
   const session = await verifySessionEdge(token);
 
@@ -102,7 +105,7 @@ export async function proxy(req: NextRequest) {
         || req.headers.get("x-real-ip")
         || "unknown";
       if (isRateLimited(ip)) {
-        return NextResponse.json(
+        return respond(
           { error: "Terlalu banyak percobaan login. Coba lagi dalam 1 menit." },
           { status: 429 },
         );
@@ -113,8 +116,8 @@ export async function proxy(req: NextRequest) {
     const method = req.method.toUpperCase();
     if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
       if (!isValidOrigin(req)) {
-        return NextResponse.json(
-          { error: "Forbidden: invalid origin" },
+        return respond(
+          { error: "Forbidden: invalid origin", ...(isScheduleMutation ? { code: "REQUEST_ORIGIN_REJECTED" } : {}) },
           { status: 403 },
         );
       }
@@ -127,7 +130,7 @@ export async function proxy(req: NextRequest) {
 
     // All other API routes require authentication
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return respond({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Content-Type enforcement: strictly for mutating methods that submit a body (POST, PUT, PATCH)
@@ -136,7 +139,7 @@ export async function proxy(req: NextRequest) {
       const ct = req.headers.get("content-type") || "";
       const isJson = ct.toLowerCase().includes("application/json");
       if (!isJson) {
-        return NextResponse.json(
+        return respond(
           { error: "Content-Type harus application/json" },
           { status: 415 },
         );

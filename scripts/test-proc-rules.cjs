@@ -21,7 +21,7 @@ const mocks = {
   '@/lib/prisma': { __esModule: true, default: prisma },
   '@/lib/auth': { getSessionWithRole: async () => auth, getProfileName: () => 'Tester', canonicalizeRole: role => ['pusat', 'rm', 'sitearea', 'magang'].includes(role) ? role : null },
   '@/lib/ttl-cache': { invalidatePoCache: () => {}, cacheGet: () => undefined },
-  '@/lib/accessControl': { hasPermission: async () => true },
+  '@/lib/accessControl': { hasPermission: async () => true, readPermissionsConfigWithVersion: async () => ({ config: Object.fromEntries(['pusat', 'rm', 'sitearea', 'magang'].map(role => [role, { enabledMenus: [], enabledActions: ['sched_edit', 'sched_batch', 'po_edit'] }])), version: 1 }) },
   '@/lib/audit': {
     auditUpdatePO: async (client, where, data) => { assert.equal(client, tx); events.push('write-audit'); writes.push(data); return { ...po, ...data }; },
     auditActivity: async client => { assert.equal(client, tx); events.push('audit'); },

@@ -1,31 +1,36 @@
-import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionWithRole, getProfileName } from "@/lib/auth";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
 import { auditUpdatePO } from "@/lib/audit";
 import { checkPOOwnership } from "@/lib/utils/regional";
-import { hasPermission } from "@/lib/accessControl";
+import { checkSchedulePermission } from "@/lib/scheduleAuthorization";
+import { createScheduleResponder } from "@/lib/scheduleErrorReference";
 import { withTransactionRetry, ensureInvoiceNumber } from "@/lib/generatePoInvoiceNumber";
 
 export async function PATCH(request: Request) {
+  let diagnosticRole: string | undefined;
+  let diagnosticAction: string | undefined;
+  const respond = createScheduleResponder(request, () => ({ role: diagnosticRole, action: diagnosticAction }));
   try {
     const auth = await getSessionWithRole(request);
     if (!auth) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return respond({ error: "Unauthorized" }, { status: 401 });
     }
     const { session: sessionObj, email, dbUser, safeRole } = auth;
 
-    const allowed = (await hasPermission(safeRole, "sched_edit")) || (await hasPermission(safeRole, "po_edit"));
-    if (!allowed) {
-      return NextResponse.json(
-        { error: "Forbidden: Akun Anda tidak memiliki izin mengatur jadwal pengiriman (sched_edit / po_edit)" },
-        { status: 403 }
+    diagnosticRole = safeRole;
+    diagnosticAction = "sched_edit / po_edit";
+    const permission = await checkSchedulePermission(safeRole, ["sched_edit", "po_edit"]);
+    if (!permission.allowed) {
+      return respond(
+        { error: permission.status === 503 ? "Layanan pemeriksaan izin belum tersedia. Data belum disimpan. Silakan coba kembali." : "Forbidden: Akun Anda tidak memiliki izin mengatur jadwal pengiriman (sched_edit / po_edit)", code: permission.code },
+        { status: permission.status }
       );
     }
 
     const { id, tglKirim, namaSupir, platNomor } = await request.json();
     if (!id) {
-      return NextResponse.json({ error: "ID PO wajib diisi" }, { status: 400 });
+      return respond({ error: "ID PO wajib diisi" }, { status: 400 });
     }
 
     // Get existing PO first and verify ownership
@@ -34,14 +39,14 @@ export async function PATCH(request: Request) {
       include: { UnitProduksi: true }
     });
     if (!existingPo) {
-      return NextResponse.json({ error: "PO tidak ditemukan" }, { status: 404 });
+      return respond({ error: "PO tidak ditemukan" }, { status: 404 });
     }
 
     const userRegional = dbUser?.regional || (sessionObj as any)?.regional || null;
     const userSiteArea = dbUser?.siteArea || (sessionObj as any)?.siteArea || null;
     const check = checkPOOwnership(existingPo, safeRole, userRegional, userSiteArea);
     if (!check.allowed) {
-      return NextResponse.json({ error: check.reason || "Forbidden: Di luar wewenang Anda" }, { status: 403 });
+      return respond({ error: check.reason || "Forbidden: Di luar wewenang Anda", code: "SCHEDULE_SCOPE_DENIED" }, { status: 403 });
     }
 
     const parsedDate = parseYmdOrIsoToUtcNoon(tglKirim);
@@ -88,9 +93,9 @@ export async function PATCH(request: Request) {
     const { invalidatePoCache } = await import("@/lib/ttl-cache");
     invalidatePoCache();
 
-    return NextResponse.json({ ok: true, data: updated });
+    return respond({ ok: true, data: updated });
   } catch (error: any) {
     console.error("PATCH /api/po/schedule error:", error);
-    return NextResponse.json({ error: error.message || "Server Error" }, { status: 500 });
+    return respond({ error: "Terjadi gangguan saat menyimpan data. Muat ulang untuk memeriksa status terbaru sebelum mencoba kembali.", code: error?.name === "AuthServiceError" ? "AUTH_SERVICE_UNAVAILABLE" : error?.code === "P2028" ? "SCHEDULE_TRANSACTION_TIMEOUT" : "SCHEDULE_INTERNAL_ERROR" }, { status: error?.name === "AuthServiceError" ? 503 : 500 });
   }
 }

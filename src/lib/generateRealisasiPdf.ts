@@ -1,3 +1,4 @@
+import { REALISASI_PDF_CSS, REALISASI_REPORT_WIDTH, fitRealisasiToLandscape, layoutRealisasiForLandscape } from "@/lib/realisasiPdfStyles";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -11,18 +12,48 @@ export async function generateRealisasiPdf({
   element,
   fileName = "Realisasi_Pemenuhan.pdf",
 }: ExportPdfOptions): Promise<void> {
-  // 1. Gather all CSS rules and stylesheets from the client document quickly (instant)
+  // Inline CSS because the server renderer intentionally blocks network requests.
   let styles = "";
-  if (typeof document !== "undefined") {
-    for (const styleEl of Array.from(
-      document.querySelectorAll("style, link[rel='stylesheet']")
-    )) {
-      styles += styleEl.outerHTML + "\n";
-    }
+  for (const sheet of Array.from(document.styleSheets)) {
+    try { styles += "<style>" + Array.from(sheet.cssRules).map(rule => rule.cssText).join("\n") + "</style>"; }
+    catch { /* Cross-origin stylesheets cannot be read by the browser. */ }
   }
+  const exportElement = element.cloneNode(true) as HTMLElement;
+  // Embed images before sending HTML to the air-gapped server renderer.
+  let imageEmbeddingFailed = false;
+  const embeddedImages = new Map<string, Promise<string>>();
+  await Promise.all(Array.from(exportElement.querySelectorAll("img")).map(async img => {
+    if (!img.src || img.src.startsWith("data:")) return;
+    try {
+      let pending = embeddedImages.get(img.src);
+      if (!pending) {
+        pending = (async () => {
+          const response = await fetch(img.src, { signal: AbortSignal.timeout(8000) });
+          if (!response.ok) throw new Error("Image unavailable");
+          const blob = await response.blob();
+          if (!blob.type.startsWith("image/")) throw new Error("Invalid image");
+          const bitmap = await createImageBitmap(blob);
+          try {
+            const ratio = Math.min(1, 900 / bitmap.width, 600 / bitmap.height);
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(bitmap.width * ratio));
+            canvas.height = Math.max(1, Math.round(bitmap.height * ratio));
+            const context = canvas.getContext("2d");
+            if (!context) throw new Error("Canvas unavailable");
+            context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL("image/webp", 0.9);
+          } finally { bitmap.close(); }
+        })();
+        embeddedImages.set(img.src, pending);
+      }
+      img.src = await pending;
+      img.removeAttribute("srcset");
+    } catch { imageEmbeddingFailed = true; }
+  }));
 
   // 2. Primary Method: High-fidelity Chromium Puppeteer Engine (Plek ketiplek dengan Web, <1 detik)
   try {
+    if (imageEmbeddingFailed) throw new Error("Using local renderer for images unavailable to PDF server");
     const res = await fetch("/api/realisasi/export-pdf", {
       method: "POST",
       credentials: "same-origin",
@@ -30,7 +61,7 @@ export async function generateRealisasiPdf({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        html: element.outerHTML,
+        html: exportElement.outerHTML,
         styles,
         fileName,
       }),
@@ -56,6 +87,9 @@ export async function generateRealisasiPdf({
     console.warn("Puppeteer export failed, using html2canvas fallback:", err);
   }
 
+  const isDailyReport = element.dataset.realisasiReport === "daily";
+  const renderWidth = isDailyReport ? REALISASI_REPORT_WIDTH : 1280;
+
   // 3. Fallback Method: Client-side html2canvas + jsPDF
   if (typeof document !== "undefined" && document.fonts) {
     try {
@@ -71,70 +105,38 @@ export async function generateRealisasiPdf({
     allowTaint: true,
     backgroundColor: "#ffffff",
     logging: false,
-    windowWidth: 1280,
-    onclone: (clonedDoc: Document) => {
-      const clonedSlide = clonedDoc.querySelector(
-        "[class*='font-slide']"
-      ) as HTMLElement;
+    windowWidth: renderWidth,
+    onclone: (clonedDoc: Document, clonedSlide: HTMLElement) => {
       if (clonedSlide) {
-        clonedSlide.style.width = "1280px";
-        clonedSlide.style.minWidth = "1280px";
-        clonedSlide.style.maxWidth = "1280px";
+        clonedSlide.style.width = renderWidth + "px";
+        clonedSlide.style.minWidth = renderWidth + "px";
+        clonedSlide.style.maxWidth = renderWidth + "px";
         clonedSlide.style.border = "none";
         clonedSlide.style.borderRadius = "0";
         clonedSlide.style.boxShadow = "none";
       }
 
       const style = clonedDoc.createElement("style");
-      style.innerHTML = `
-        .font-slide p,
-        .font-slide span,
-        .font-slide h1,
-        .font-slide h2,
-        .font-slide h3 {
-          line-height: 1.35 !important;
-        }
-        .font-slide .truncate,
-        .font-slide [class*="line-clamp-1"] {
-          display: block !important;
-          overflow: hidden !important;
-          text-overflow: ellipsis !important;
-          white-space: nowrap !important;
-          line-height: 1.35 !important;
-          -webkit-line-clamp: unset !important;
-        }
-        .font-slide [class*="line-clamp-2"] {
-          display: -webkit-box !important;
-          -webkit-box-orient: vertical !important;
-          -webkit-line-clamp: 2 !important;
-          overflow: hidden !important;
-          line-height: 1.35 !important;
-        }
-        .font-slide [class*="line-clamp-3"] {
-          display: -webkit-box !important;
-          -webkit-box-orient: vertical !important;
-          -webkit-line-clamp: 3 !important;
-          overflow: hidden !important;
-          line-height: 1.3 !important;
-        }
-      `;
+      style.innerHTML = REALISASI_PDF_CSS;
       clonedDoc.head.appendChild(style);
+      if (isDailyReport && clonedSlide) layoutRealisasiForLandscape(clonedSlide);
     },
   });
 
   const imgData = canvas.toDataURL("image/png");
 
   // Borderless exact-fit PDF matching presentation slide aspect ratio
-  const pdfWidth = 297;
-  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+  const fit = isDailyReport ? fitRealisasiToLandscape(canvas.width, canvas.height) : null;
+  const pdfWidth = fit?.paperWidth || 297;
+  const pdfHeight = fit?.paperHeight || (canvas.height * pdfWidth) / canvas.width;
 
   const pdf = new jsPDF({
     orientation: "landscape",
     unit: "mm",
-    format: [pdfWidth, pdfHeight],
+    format: fit ? "a4" : [pdfWidth, pdfHeight],
     compress: true,
   });
 
-  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
+  pdf.addImage(imgData, "PNG", fit?.x || 0, fit?.y || 0, fit?.width || pdfWidth, fit?.height || pdfHeight, undefined, "FAST");
   pdf.save(fileName);
 }

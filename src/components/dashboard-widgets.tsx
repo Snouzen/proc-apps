@@ -2,7 +2,7 @@
 
 import { openDashboardPOs } from "@/lib/dashboardDrilldown";
 import React from "react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, Legend } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PoDateBadge } from "@/components/PoDateBadge";
 import { ArrowRight, FileWarning, Activity, CheckCircle2, Clock } from "lucide-react";
@@ -11,6 +11,30 @@ import { useEffect, useState } from "react";
 import DateInputHybrid from "@/components/DateInputHybrid";
 
 const COLORS = ["#3b82f6", "#f59e0b", "#f43f5e", "#10b981", "#64748b"];
+
+
+/** Measure chart space, including changes caused by the neighbouring PO list/sidebar. */
+function useWidgetChartSize() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const observerRef = React.useRef<ResizeObserver | null>(null);
+  const ref = React.useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    if (!node) return;
+    const measure = () => {
+      const { width, height } = node.getBoundingClientRect();
+      const next = { width: Math.round(width), height: Math.round(height) };
+      setSize(current => current.width === next.width && current.height === next.height ? current : next);
+    };
+    measure();
+    if (typeof ResizeObserver !== "undefined") {
+      observerRef.current = new ResizeObserver(measure);
+      observerRef.current.observe(node);
+    }
+  }, []);
+  useEffect(() => () => observerRef.current?.disconnect(), []);
+  return [ref, size] as const;
+}
 
 export function PoStatusDonut({ stats }: { stats: any }) {
   const data = [
@@ -30,24 +54,26 @@ export function PoStatusDonut({ stats }: { stats: any }) {
   };
 
   return (
-    <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full">
+    <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full min-h-fit min-w-0">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+        <CardTitle className="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
           Status Keseluruhan PO
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 min-h-[260px] pb-6">
+      <CardContent className="flex flex-col flex-1 min-h-[300px] min-w-0 px-4 sm:px-6 pb-6">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-slate-400 text-sm">Tidak ada data</div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 15, right: 0, left: 0, bottom: 0 }}>
+          <>
+          <div className="flex-1 min-h-[240px] min-w-0 w-full" data-dashboard-status-chart>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <PieChart margin={{ top: 12, right: 12, left: 12, bottom: 12 }}>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={65}
-                outerRadius={85}
+                innerRadius="60%"
+                outerRadius="84%"
                 paddingAngle={3}
                 dataKey="value"
                 stroke="none"
@@ -59,16 +85,20 @@ export function PoStatusDonut({ stats }: { stats: any }) {
               </Pie>
               <Tooltip 
                 formatter={(value: any, name: any) => [`${value} PO`, name]}
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                contentStyle={{ fontSize: '14px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
-              <Legend 
-                verticalAlign="bottom" 
-                align="center" 
-                iconType="circle" 
-                wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} 
-              />
-            </PieChart>
+</PieChart>
           </ResponsiveContainer>
+          </div>
+          <ul aria-label="Legenda status PO" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-4 text-xs sm:text-sm leading-relaxed shrink-0">
+            {data.map(entry => (
+              <li key={entry.name} className="flex items-center gap-1.5" style={{ color: STATUS_COLORS[entry.name] }}>
+                <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLORS[entry.name] }} aria-hidden="true" />
+                <span>{entry.name}</span>
+              </li>
+            ))}
+          </ul>
+          </>
         )}
       </CardContent>
     </Card>
@@ -83,7 +113,8 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
+  const [chartContainerRef, chartDimensions] = useWidgetChartSize();
+  const compactChart = chartDimensions.width > 0 && chartDimensions.width < 360;
 
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const latestReqIdRef = React.useRef<number>(0);
@@ -105,20 +136,6 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
     if (toDisplay) return `s.d. ${toDisplay}`;
     return "";
   };
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(max-width: 640px)");
-    const update = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
-    update(mql);
-    if (mql.addEventListener) {
-      mql.addEventListener("change", update);
-      return () => mql.removeEventListener("change", update);
-    } else {
-      mql.addListener(update);
-      return () => mql.removeListener(update);
-    }
-  }, []);
 
   useEffect(() => {
     // Abort any ongoing request immediately
@@ -204,10 +221,10 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
       ];
 
   return (
-    <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full relative">
+    <Card className="flex flex-col shadow-sm border-slate-100 dark:border-slate-800 h-full min-h-fit min-w-0 relative">
       <CardHeader className="pb-2 flex flex-col gap-2.5">
         <div className="flex items-center justify-between gap-2 w-full">
-          <CardTitle className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider shrink-0">
+          <CardTitle className="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider min-w-0">
             Distribusi PO (Top 5)
           </CardTitle>
           {loading && (
@@ -249,7 +266,7 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
           <button
             type="button"
             onClick={handleResetAll}
-            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all uppercase tracking-wider shrink-0 cursor-pointer ${(!tglFrom && !tglTo) ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all uppercase tracking-wider shrink-0 cursor-pointer ${(!tglFrom && !tglTo) ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
           >
             All
           </button>
@@ -275,17 +292,18 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-[260px] pb-6 relative">
+      <CardContent className="flex flex-col flex-1 min-h-[300px] min-w-0 px-4 sm:px-6 pb-6 relative">
         {loading && (
           <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 z-10 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           </div>
         )}
-        <ResponsiveContainer width="100%" height="100%">
+        <div ref={chartContainerRef} className="flex-1 min-h-[260px] min-w-0 w-full" data-dashboard-distribution-chart>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ top: 5, right: isMobile ? 15 : 30, left: 0, bottom: 5 }}
+            margin={{ top: 8, right: compactChart ? 12 : 24, left: 0, bottom: 8 }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
             <XAxis type="number" hide />
@@ -294,26 +312,30 @@ export function RegionalDistributionBar({ stats }: { stats?: any }) {
               type="category"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: '#64748b', fontSize: isMobile ? 9 : 10 }}
-              width={isMobile ? 75 : 120}
-              tickFormatter={(val: string) => {
-                if (isMobile && typeof val === "string" && val.length > 11) {
-                  return val.slice(0, 10) + "…";
-                }
-                return val;
+              tick={({ x, y, payload }: any) => {
+                const label = String(payload.value ?? "");
+                const limit = compactChart ? 11 : 19;
+                return (
+                  <text x={x} y={y} dy="0.35em" textAnchor="end" fill="#64748b" fontSize={compactChart ? 11 : 14} fontWeight={500}>
+                    <title>{label}</title>
+                    {label.length > limit ? label.slice(0, limit - 1) + "…" : label}
+                  </text>
+                );
               }}
+              width={compactChart ? 88 : 144}
             />
             <Tooltip 
                cursor={{fill: '#f1f5f9'}}
-               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+               contentStyle={{ fontSize: '14px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
             />
-            <Bar onClick={(entry: any) => openDashboardPOs({ siteArea: entry.name || entry.payload?.name, tglFrom: lastSuccessRange?.from || "", tglTo: lastSuccessRange?.to || "" }, "PO per Site Area")} dataKey="po" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={isMobile ? 18 : 24}>
+            <Bar onClick={(entry: any) => openDashboardPOs({ siteArea: entry.name || entry.payload?.name, tglFrom: lastSuccessRange?.from || "", tglTo: lastSuccessRange?.to || "" }, "PO per Site Area")} dataKey="po" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={Math.min(compactChart ? 32 : 44, Math.max(22, (chartDimensions.height - 16) / Math.max(data.length, 1) * 0.42))}>
               {data.map((entry: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

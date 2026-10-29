@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer, { Browser } from "puppeteer";
-import jsPDF from "jspdf";
+import { REALISASI_PDF_CSS, REALISASI_REPORT_WIDTH, fitRealisasiToLandscape, layoutRealisasiForLandscape } from "@/lib/realisasiPdfStyles";
 import { getSessionWithRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/accessControl";
 
@@ -186,46 +186,7 @@ export async function POST(req: NextRequest) {
       align-items: flex-start;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     }
-    /* Lock slide element dimensions to standard desktop presentation ratio */
-    .font-slide {
-      width: 1280px !important;
-      min-width: 1280px !important;
-      max-width: 1280px !important;
-      border: none !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-      margin: 0 !important;
-    }
-    .font-slide p,
-    .font-slide span,
-    .font-slide h1,
-    .font-slide h2,
-    .font-slide h3 {
-      line-height: 1.35 !important;
-    }
-    .font-slide .truncate,
-    .font-slide [class*="line-clamp-1"] {
-      display: block !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
-      white-space: nowrap !important;
-      line-height: 1.35 !important;
-      -webkit-line-clamp: unset !important;
-    }
-    .font-slide [class*="line-clamp-2"] {
-      display: -webkit-box !important;
-      -webkit-box-orient: vertical !important;
-      -webkit-line-clamp: 2 !important;
-      overflow: hidden !important;
-      line-height: 1.35 !important;
-    }
-    .font-slide [class*="line-clamp-3"] {
-      display: -webkit-box !important;
-      -webkit-box-orient: vertical !important;
-      -webkit-line-clamp: 3 !important;
-      overflow: hidden !important;
-      line-height: 1.3 !important;
-    }
+    ${REALISASI_PDF_CSS}
   </style>
 </head>
 <body>
@@ -260,7 +221,7 @@ export async function POST(req: NextRequest) {
       });
 
       await page.setViewport({
-        width: 1280,
+        width: REALISASI_REPORT_WIDTH,
         height: 900,
         deviceScaleFactor: 2.5,
       });
@@ -282,36 +243,46 @@ export async function POST(req: NextRequest) {
         } catch {}
       });
 
-      // Capture element screenshot at high DPI
-      const slideEl = await page.$(".font-slide");
-      const boundingBox = slideEl ? await slideEl.boundingBox() : null;
-      const target = slideEl || page;
-      const origWidth = boundingBox?.width || 1280;
-      const origHeight = boundingBox?.height || 720;
-
-      const screenshotBuffer = await target.screenshot({
-        type: "png",
-        omitBackground: false,
+      // Render native PDF text instead of flattening the entire report to a PNG.
+      await page.emulateMediaType("screen");
+      await page.evaluate(async () => {
+        await Promise.all(Array.from(document.images).map(img => img.decode().catch(() => {})));
       });
-
-      // Close page immediately to free memory
+      const slideEl = await page.$(".font-slide");
+      const isDailyReport = slideEl ? await slideEl.evaluate((el: HTMLElement) => el.dataset.realisasiReport === "daily") : false;
+      if (isDailyReport && slideEl) await slideEl.evaluate(layoutRealisasiForLandscape);
+      const boundingBox = slideEl ? await slideEl.boundingBox() : null;
+      const width = Math.ceil(boundingBox?.width || 1280);
+      const height = Math.ceil(boundingBox?.height || 720);
+      if (isDailyReport) {
+        const fit = fitRealisasiToLandscape(width, height);
+        await page.evaluate(({ fit, width }: { fit: ReturnType<typeof fitRealisasiToLandscape>; width: number }) => {
+          const pxPerMm = 96 / 25.4;
+          const paperWidth = fit.paperWidth * pxPerMm;
+          const paperHeight = fit.paperHeight * pxPerMm;
+          for (const node of [document.documentElement, document.body]) {
+            Object.assign(node.style, { display: "block", width: paperWidth + "px", height: paperHeight + "px", margin: "0", padding: "0", overflow: "hidden" });
+          }
+          document.body.style.position = "relative";
+          const slide = document.querySelector<HTMLElement>(".font-slide");
+          if (slide) {
+            slide.style.position = "absolute";
+            slide.style.left = fit.x * pxPerMm + "px";
+            slide.style.top = fit.y * pxPerMm + "px";
+            slide.style.transformOrigin = "top left";
+            slide.style.setProperty("transform", "scale(" + (fit.width * pxPerMm / width) + ")", "important");
+          }
+        }, { fit, width });
+      }
+      const output = await page.pdf({
+        ...(isDailyReport ? { format: "a4" as const, landscape: true } : { width: width + "px", height: height + "px" }),
+        printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 },
+        preferCSSPageSize: false,
+      });
       await page.close();
       page = null;
+      return output;
 
-      // Embed into exact-fit presentation Landscape jsPDF matching slide aspect ratio
-      const pdfWidth = 297; // mm
-      const pdfHeight = (origHeight * pdfWidth) / origWidth;
-
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: [pdfWidth, pdfHeight],
-        compress: true,
-      });
-
-      const b64 = "data:image/png;base64," + Buffer.from(screenshotBuffer).toString("base64");
-      pdf.addImage(b64, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
-      return pdf.output("arraybuffer");
     };
 
     const timeoutPromise = new Promise((_, reject) =>

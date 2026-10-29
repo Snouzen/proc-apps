@@ -118,9 +118,10 @@ export function invalidateMemoryPermissionsCache(): void {
  * - If DB query fails: strictly fails closed (returns null, 0); NEVER falls back to stale file.
  * - Only if DB query succeeds with 0 records (initial bootstrap condition): falls back to bootstrap file/default.
  */
-export async function readPermissionsConfigWithVersion(): Promise<{
+export async function readPermissionsConfigWithVersion(options: { retryTransient?: boolean } = {}): Promise<{
   config: Record<string, { enabledMenus: string[]; enabledActions: string[] }> | null;
   version: number;
+  failure?: "DB_UNAVAILABLE" | "CONFIG_INVALID" | "BOOTSTRAP_UNAVAILABLE";
 }> {
   const now = Date.now();
   if (memoryCachedConfig && now - lastCacheTime < CACHE_TTL_MS) {
@@ -132,7 +133,7 @@ export async function readPermissionsConfigWithVersion(): Promise<{
   let latestAudit: any = null;
 
   try {
-    latestAudit = await prisma.auditLog.findFirst({
+    const readSnapshot = () => prisma.auditLog.findFirst({
       where: {
         entity: "AccessControl",
         entityId: "role-permissions",
@@ -140,12 +141,22 @@ export async function readPermissionsConfigWithVersion(): Promise<{
       },
       orderBy: { createdAt: "desc" },
     });
+    for (let attempt = 0; ; attempt++) {
+      try { latestAudit = await readSnapshot(); break; }
+      catch (error: any) {
+        const transientCodes = ["P1001", "P1002", "P1008", "P1017", "P2024", "ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "57P01", "08006"];
+        const transient = [error?.code, error?.cause?.code, error?.meta?.driverAdapterError?.cause?.originalCode]
+          .some(code => transientCodes.includes(code));
+        if (!options.retryTransient || !transient || attempt >= 2) throw error;
+        await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
+      }
+    }
     dbQueriedSuccessfully = true;
   } catch (dbErr: any) {
     // Database error: JANGAN fallback ke file fisik lama yang bisa mengembalikan izin yang sudah dicabut!
     console.error("[AccessControl] DB query error (fail-closed, file fallback blocked):", dbErr?.message || dbErr);
     invalidateMemoryPermissionsCache();
-    return { config: null, version: 0 };
+    return { config: null, version: 0, failure: "DB_UNAVAILABLE" };
   }
 
   // Jika snapshot DB ditemukan, DB adalah satu-satunya sumber kebenaran
@@ -177,7 +188,7 @@ export async function readPermissionsConfigWithVersion(): Promise<{
     // Snapshot di DB korup secara struktural -> fail-closed (jangan gunakan default!)
     console.error("[AccessControl] DB audit snapshot exists but failed schema validation (fail-closed)");
     invalidateMemoryPermissionsCache();
-    return { config: null, version: dbVersion };
+    return { config: null, version: dbVersion, failure: "CONFIG_INVALID" };
   }
 
   // 2. Kondisi Bootstrap: DB terhubung normal tapi BELUM PERNAH ada snapshot (tabel audit kosong)
@@ -189,7 +200,7 @@ export async function readPermissionsConfigWithVersion(): Promise<{
   }
 
   invalidateMemoryPermissionsCache();
-  return { config: null, version: 0 };
+  return { config: null, version: 0, failure: "BOOTSTRAP_UNAVAILABLE" };
 }
 
 /**

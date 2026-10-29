@@ -377,6 +377,7 @@ export default function RealisasiSlide({
   return (
     <div
       ref={slideRef}
+      data-realisasi-report="daily"
       className="font-slide font-normal w-full bg-white text-slate-800 p-6 sm:p-8 rounded-xl shadow-lg border border-slate-200 overflow-hidden select-none relative"
       style={{
         maxWidth: "1280px",
@@ -386,20 +387,17 @@ export default function RealisasiSlide({
       {/* ── TOP-RIGHT BACKGROUND ILLUSTRATION (Smooth Corner Background) ──── */}
       <div
         className="absolute top-0 right-0 pointer-events-none z-0 select-none overflow-hidden flex justify-end items-start w-[240px] sm:w-[280px] md:w-[310px] lg:w-[340px] xl:w-[370px] h-[105px] sm:h-[118px] md:h-[128px] lg:h-[138px] xl:h-[148px]"
-        style={{
-          maskImage:
-            "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 5%, rgba(0,0,0,0.6) 14%, black 22%), linear-gradient(to top, transparent 0%, rgba(0,0,0,0.15) 6%, rgba(0,0,0,0.7) 16%, black 26%)",
-          WebkitMaskImage:
-            "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.05) 5%, rgba(0,0,0,0.6) 14%, black 22%), linear-gradient(to top, transparent 0%, rgba(0,0,0,0.15) 6%, rgba(0,0,0,0.7) 16%, black 26%)",
-          maskComposite: "intersect",
-          WebkitMaskComposite: "destination-in",
-        }}
+        data-pdf-pangan-art
+        style={{ height: "clamp(130px, 13.5vw, 190px)", paddingTop: "10px" }}
       >
         <img
           src="/img/pangan-vol-2.png"
           alt="Pangan Berkualitas untuk Negeri"
           className="w-full h-full object-cover object-right-top"
         />
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: "linear-gradient(to right, #fff 0%, rgba(255,255,255,0.85) 8%, rgba(255,255,255,0.25) 22%, transparent 38%), linear-gradient(to top, #fff 0%, rgba(255,255,255,0.97) 10%, rgba(255,255,255,0.65) 26%, rgba(255,255,255,0.15) 44%, transparent 60%)",
+        }} />
       </div>
 
       {/* ── HEADER BANNER ─────────────────────────────────────────────────── */}
@@ -434,7 +432,7 @@ export default function RealisasiSlide({
       </div>
 
       {/* ── 5 SUMMARY METRIC CARDS ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[0.95fr_1.5fr_1.1fr_1.15fr_1.3fr] gap-2 xl:gap-2.5 mt-2.5 sm:mt-3 -mr-3 sm:-mr-5 items-stretch">
+      <div data-pdf-summary-grid className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[0.95fr_1.5fr_1.1fr_1.15fr_1.3fr] gap-2 xl:gap-2.5 mt-2.5 sm:mt-3 -mr-3 sm:-mr-5 items-stretch">
         {/* Card 1: Dari Bumi Indonesia untuk Keluarga Indonesia (Bleed flush to Left Edge, expanded top & bottom) */}
         <div className="relative -ml-6 sm:-ml-8 -mr-3 sm:-mr-5 -mt-2.5 sm:-mt-3.5 -mb-1.5 sm:-mb-2 z-0 rounded-r-2xl overflow-hidden h-[calc(100%+1rem)] sm:h-[calc(100%+1.375rem)] min-h-[114px] sm:min-h-[124px] xl:min-h-[130px] flex items-center select-none shadow-xs">
           <img
@@ -453,46 +451,46 @@ export default function RealisasiSlide({
         </div>
 
         {/* Card 2: Total Realisasi (Smoothly elevated on top of Card 1's gradasi background) */}
-        <div className="relative z-10 bg-[#0B2A59] text-white rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 xl:gap-3.5 shadow-xl border border-blue-900/40 h-full min-h-[102px] sm:min-h-[110px] xl:min-h-[116px]">
+        <div data-pdf-metric-card data-pdf-summary-kind="total" className="relative z-10 bg-[#0B2A59] text-white rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 xl:gap-3.5 shadow-xl border border-blue-900/40 h-full min-h-[102px] sm:min-h-[110px] xl:min-h-[116px]">
           {/* Box Icon with Gold/Amber Circular Ring */}
-          <div className="w-13 h-13 sm:w-14 sm:h-14 xl:w-15 xl:h-15 rounded-full bg-[#0B2A59] border-[2.5px] border-[#F5A623] flex items-center justify-center shrink-0 shadow-inner">
+          <div data-pdf-summary-icon className="w-13 h-13 sm:w-14 sm:h-14 xl:w-15 xl:h-15 rounded-full bg-[#0B2A59] border-[2.5px] border-[#F5A623] flex items-center justify-center shrink-0 shadow-inner">
             <img src="/img/box-icon.png" alt="Box" className="w-7 h-7 sm:w-8 sm:h-8 xl:w-9 xl:h-9 object-contain" />
           </div>
 
           {/* Total Realisasi Text Block (Dense, bold, centered) */}
-          <div className="min-w-0 text-center flex flex-col items-center flex-1">
-            <p className="text-[11px] sm:text-xs xl:text-[13px] font-extrabold text-[#F5A623] uppercase tracking-wider leading-none">
+          <div data-pdf-metric-content className="min-w-0 text-center flex flex-col items-center flex-1">
+            <p data-pdf-metric-label className="text-[11px] sm:text-xs xl:text-[13px] font-extrabold text-[#F5A623] uppercase tracking-wider leading-none">
               TOTAL REALISASI
             </p>
-            <div className="flex items-baseline justify-center gap-0.5 sm:gap-1 my-0.5 sm:my-1">
-              <span className={`${getDynamicNumberFontSize(totalKgStr)} font-black tracking-tight text-white leading-none`}>
+            <div data-pdf-metric-value className="flex items-baseline justify-center gap-0.5 sm:gap-1 my-0.5 sm:my-1">
+              <span data-pdf-metric-number className={`${getDynamicNumberFontSize(totalKgStr)} font-black tracking-tight text-white leading-none`}>
                 {totalKgStr}
               </span>
-              <span className={`${getDynamicUnitFontSize(totalKgStr)} font-black text-white ml-0.5 sm:ml-1`}>
+              <span data-pdf-metric-unit className={`${getDynamicUnitFontSize(totalKgStr)} font-black text-white ml-0.5 sm:ml-1`}>
                 KG
               </span>
             </div>
-            <p className={`${totalTonFormatted.length > 10 ? "text-[9px] sm:text-[10px] xl:text-[11px]" : "text-[10px] sm:text-[11px] xl:text-xs"} font-semibold text-white/90 leading-none`}>
+            <p data-pdf-metric-subtitle className={`${totalTonFormatted.length > 10 ? "text-[9px] sm:text-[10px] xl:text-[11px]" : "text-[10px] sm:text-[11px] xl:text-xs"} font-semibold text-white/90 leading-none`}>
               ({totalTonFormatted} TON)
             </p>
           </div>
         </div>
 
         {/* Card 3: Realisasi Jabodetabek */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 xl:gap-3.5 shadow-sm">
-          <div className="w-13 h-13 sm:w-14 sm:h-14 xl:w-15 xl:h-15 rounded-full bg-[#0B2A59] text-white flex items-center justify-center shrink-0 shadow-xs">
+        <div data-pdf-metric-card data-pdf-summary-kind="jabodetabek" className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 xl:gap-3.5 shadow-sm">
+          <div data-pdf-summary-icon className="w-13 h-13 sm:w-14 sm:h-14 xl:w-15 xl:h-15 rounded-full bg-[#0B2A59] text-white flex items-center justify-center shrink-0 shadow-xs">
             <ShoppingCart size={24} className="xl:hidden" strokeWidth={2.5} />
             <ShoppingCart size={27} className="hidden xl:block" strokeWidth={2.5} />
           </div>
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs xl:text-[13px] font-extrabold text-[#0B2A59] uppercase tracking-wider leading-tight">
+          <div data-pdf-metric-content className="min-w-0">
+            <p data-pdf-metric-label className="text-[11px] sm:text-xs xl:text-[13px] font-extrabold text-[#0B2A59] uppercase tracking-wider leading-tight">
               REALISASI<br />JABODETABEK
             </p>
-            <div className="flex items-baseline gap-0.5 sm:gap-1 mt-1 sm:mt-1.5">
-              <span className={`${getDynamicNumberFontSize(jabodetabekKgStr)} font-black text-[#0B2A59] tracking-tight leading-none`}>
+            <div data-pdf-metric-value className="flex items-baseline gap-0.5 sm:gap-1 mt-1 sm:mt-1.5">
+              <span data-pdf-metric-number className={`${getDynamicNumberFontSize(jabodetabekKgStr)} font-black text-[#0B2A59] tracking-tight leading-none`}>
                 {jabodetabekKgStr}
               </span>
-              <span className={`${getDynamicUnitFontSize(jabodetabekKgStr)} font-black text-[#0B2A59] ml-0.5 sm:ml-1`}>
+              <span data-pdf-metric-unit className={`${getDynamicUnitFontSize(jabodetabekKgStr)} font-black text-[#0B2A59] ml-0.5 sm:ml-1`}>
                 KG
               </span>
             </div>
@@ -500,25 +498,25 @@ export default function RealisasiSlide({
         </div>
 
         {/* Card 4: Jumlah Regional */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 xl:gap-3.5 shadow-sm">
-          <div className="w-13 h-13 sm:w-14 sm:h-14 xl:w-15 xl:h-15 rounded-full bg-[#0B2A59] text-white flex items-center justify-center shrink-0 shadow-xs">
+        <div data-pdf-metric-card data-pdf-summary-kind="regional" className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 xl:gap-3.5 shadow-sm">
+          <div data-pdf-summary-icon className="w-13 h-13 sm:w-14 sm:h-14 xl:w-15 xl:h-15 rounded-full bg-[#0B2A59] text-white flex items-center justify-center shrink-0 shadow-xs">
             <MapPin size={24} className="xl:hidden" strokeWidth={2.5} />
             <MapPin size={27} className="hidden xl:block" strokeWidth={2.5} />
           </div>
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs xl:text-[13px] font-extrabold text-[#0B2A59] uppercase tracking-wider whitespace-nowrap leading-none">
+          <div data-pdf-metric-content className="min-w-0">
+            <p data-pdf-metric-label className="text-[11px] sm:text-xs xl:text-[13px] font-extrabold text-[#0B2A59] uppercase tracking-wider whitespace-nowrap leading-none">
               JUMLAH REGIONAL
             </p>
-            <div className="flex items-baseline gap-1 mt-0.5 sm:mt-1">
-              <span className={`${getDynamicRegionalFontSize(String(jumlahRegional))} font-black text-[#0B2A59] tracking-tight leading-none`}>
+            <div data-pdf-metric-value className="flex items-baseline gap-1 mt-0.5 sm:mt-1">
+              <span data-pdf-metric-number data-pdf-regional-count className={`${getDynamicRegionalFontSize(String(jumlahRegional))} font-black text-[#0B2A59] tracking-tight leading-none`}>
                 {jumlahRegional}
               </span>
-              <span className="text-xs sm:text-sm xl:text-base font-black text-[#0B2A59] uppercase ml-1">
+              <span data-pdf-metric-unit className="text-xs sm:text-sm xl:text-base font-black text-[#0B2A59] uppercase ml-1">
                 REGIONAL
               </span>
             </div>
             {regionalSubtitle && (
-              <p className="text-[8.5px] sm:text-[9.5px] xl:text-[10.5px] font-bold text-[#0B2A59] uppercase break-words line-clamp-2 mt-0.5 leading-[1.25]" title={regionalSubtitle}>
+              <p data-pdf-metric-subtitle className="text-[8.5px] sm:text-[9.5px] xl:text-[10.5px] font-bold text-[#0B2A59] uppercase break-words line-clamp-2 mt-0.5 leading-[1.25]" title={regionalSubtitle}>
                 {regionalSubtitle}
               </p>
             )}
@@ -526,7 +524,7 @@ export default function RealisasiSlide({
         </div>
 
         {/* Card 5: Cakupan Wilayah */}
-        <div className="sm:col-span-2 lg:col-span-1 bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex flex-col justify-between items-center text-center shadow-sm h-full">
+        <div data-pdf-map-card className="sm:col-span-2 lg:col-span-1 bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 xl:p-3.5 flex flex-col justify-between items-center text-center shadow-sm h-full">
           {/* Top: Judul Cakupan Wilayah */}
           <p className="text-[11px] sm:text-xs xl:text-[13px] font-extrabold text-[#0B2A59] uppercase tracking-wider leading-none">
             CAKUPAN WILAYAH
@@ -625,7 +623,8 @@ export default function RealisasiSlide({
       {/* ── BOTTOM SECTION: TOP 3 & CAKUPAN WILAYAH ───────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 mt-2.5 sm:mt-3 -mx-3 sm:-mx-5 items-stretch">
         {/* Left Column: Top 3 Volume Realisasi (4 cols) */}
-        <div className="lg:col-span-4 bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
+        <div data-pdf-top-three
+          className="lg:col-span-4 bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-xs flex flex-col justify-between">
           <div className="bg-[#0B2A59] text-white px-3.5 py-1.5 sm:py-2 flex items-center gap-1.5">
             <Trophy size={15} className="text-[#F5A623] shrink-0" />
             <div className="flex items-center gap-1.5">
@@ -638,7 +637,8 @@ export default function RealisasiSlide({
             </div>
           </div>
 
-          <div className="p-2 sm:p-2.5 grid grid-cols-3 gap-1.5 sm:gap-2 flex-1 items-stretch">
+          <div data-pdf-ranking-grid
+            className="p-2 sm:p-2.5 grid grid-cols-3 gap-1.5 sm:gap-2 flex-1 items-stretch">
             {sortedByVolume.map((topItem, topIdx) => {
               const rankStyles = [
                 {
@@ -685,7 +685,8 @@ export default function RealisasiSlide({
                   </div>
 
                   {/* Name (Dynamic 2-line wrap with consistent height baseline) */}
-                  <div className="w-full my-auto py-0.5 min-h-[26px] sm:min-h-[28px] flex items-center justify-center">
+                  <div data-pdf-ranking-name
+                    className="w-full my-auto py-0.5 min-h-[26px] sm:min-h-[28px] flex items-center justify-center">
                     <p
                       className={`${
                         topItem.namaRitel.length > 20
@@ -737,13 +738,15 @@ export default function RealisasiSlide({
             </div>
           ) : (
             <div
+              data-pdf-region-grid
               className="grid divide-x divide-slate-200/80 p-1.5 sm:p-2 flex-1 bg-white text-[10px] overflow-x-auto items-stretch"
               style={{
+                "--pdf-region-columns": Math.ceil(dynamicRegions.length / Math.ceil(dynamicRegions.length / 5)),
                 gridTemplateColumns:
                   dynamicRegions.length <= 8
                     ? `repeat(${dynamicRegions.length}, minmax(0, 1fr))`
                     : `repeat(${dynamicRegions.length}, minmax(95px, 1fr))`,
-              }}
+              } as React.CSSProperties}
             >
               {dynamicRegions.map((reg) => (
                 <div key={reg.key} className="px-1.5 sm:px-2 flex flex-col min-w-0">
