@@ -106,7 +106,7 @@ export async function generateRealisasiPdf({
     backgroundColor: "#ffffff",
     logging: false,
     windowWidth: renderWidth,
-    onclone: (clonedDoc: Document, clonedSlide: HTMLElement) => {
+    onclone: async (clonedDoc: Document, clonedSlide: HTMLElement) => {
       if (clonedSlide) {
         clonedSlide.style.width = renderWidth + "px";
         clonedSlide.style.minWidth = renderWidth + "px";
@@ -119,7 +119,11 @@ export async function generateRealisasiPdf({
       const style = clonedDoc.createElement("style");
       style.innerHTML = REALISASI_PDF_CSS;
       clonedDoc.head.appendChild(style);
-      if (isDailyReport && clonedSlide) layoutRealisasiForLandscape(clonedSlide);
+      if (isDailyReport && clonedSlide) {
+        if (clonedDoc.fonts) await Promise.race([clonedDoc.fonts.ready, new Promise(resolve => setTimeout(resolve, 2000))]);
+        await Promise.all(Array.from(clonedSlide.querySelectorAll("img")).map(img => img.decode().catch(() => {})));
+        layoutRealisasiForLandscape(clonedSlide);
+      }
     },
   });
 

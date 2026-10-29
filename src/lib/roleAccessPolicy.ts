@@ -5,9 +5,9 @@ export function applyCreditLimitAccessRules(config: RoleAccessConfig): RoleAcces
   return Object.fromEntries(Object.entries(config).map(([role, entry]) => {
     const enabledMenus = [...entry.enabledMenus];
     const enabledActions = [...entry.enabledActions];
-    // Schedule is an operational responsibility of sitearea. Apply this floor to
+    // Schedule operations are shared by RM and sitearea. Apply this floor to
     // persisted snapshots as well as defaults; endpoint ownership checks still scope the PO.
-    if (role === "sitearea" || role === "pusat") {
+    if (role === "sitearea" || role === "rm" || role === "pusat") {
       if (!enabledMenus.includes("action_plan_schedule")) enabledMenus.push("action_plan_schedule");
       const scheduleActions = role === "pusat"
         ? ["sched_view", "sched_edit", "sched_batch", "sched_export"]
