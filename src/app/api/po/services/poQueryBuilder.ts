@@ -203,7 +203,9 @@ export function buildPOQueryParams(
   }
 
   if (safeRole === "pusat" && regionalParam && regionalParam.trim()) {
-    const syn = getRegionalSynonyms(regionalParam);
+    // Keep the exact master label as well as legacy aliases. Alias expansion
+    // alone drops labels such as "REGIONAL 2 SURABAYA" from an exact-match query.
+    const syn = [...new Set([regionalParam.trim(), ...getRegionalSynonyms(regionalParam)])];
     where.OR = [
       ...syn.map((s) => ({
         regional: { equals: s, mode: "insensitive" as const },

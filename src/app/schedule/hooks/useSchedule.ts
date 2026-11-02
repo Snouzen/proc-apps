@@ -1,6 +1,6 @@
 import { applySavedShipment } from "@/lib/scheduleShipmentState";
 import { saveScheduleRequest, showScheduleError } from "@/lib/scheduleErrorPopup";
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getMe } from "@/lib/me";
 import { format } from "date-fns";
@@ -32,84 +32,92 @@ export function useSchedule() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
 
-  // -- Filter State --
-  const [activeFilter, setActiveFilter] = useState<
-    "all" | "scheduled" | "unscheduled"
-  >("all");
-
-  // -- Pagination State --
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  // -- Date & Sort Filter State --
-  const [tglFrom, setTglFrom] = useState("");
-  const [tglTo, setTglTo] = useState("");
-  const [sortField, setSortField] = useState<"tglPo" | "expiredTgl" | "tglkirim" | null>(null);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [searchInput, setSearchInput] = useState("");
+  const [criteria, setCriteria] = useState({ activeFilter: "all" as "all" | "scheduled" | "unscheduled", currentPage: 1, itemsPerPage: 10, tglFrom: "", tglTo: "", sortField: null as "tglPo" | "expiredTgl" | "tglkirim" | null, sortOrder: "desc" as "asc" | "desc", columnFilters: [] as Array<{ id: string; value: unknown }>, tableSorting: [] as Array<{ id: string; desc: boolean }> });
+  const { activeFilter, currentPage, itemsPerPage, tglFrom, tglTo, sortField, sortOrder, columnFilters, tableSorting } = criteria;
+  const changeCriteria = (patch: Partial<typeof criteria>) => setCriteria(prev => ({ ...prev, ...patch, currentPage: 1 }));
+  const setActiveFilter = (value: typeof activeFilter) => changeCriteria({ activeFilter: value });
+  const setCurrentPage = (value: number) => setCriteria(prev => ({ ...prev, currentPage: value }));
+  const setItemsPerPage = (value: number) => changeCriteria({ itemsPerPage: value });
+  const setTglFrom = (value: string) => changeCriteria({ tglFrom: value });
+  const setTglTo = (value: string) => changeCriteria({ tglTo: value });
+  const setSortField = (value: typeof sortField) => changeCriteria({ sortField: value, tableSorting: [] });
+  const setSortOrder = (value: typeof sortOrder) => changeCriteria({ sortOrder: value, tableSorting: [] });
+  const setColumnFilters = (updater: typeof columnFilters | ((prev: typeof columnFilters) => typeof columnFilters)) => setCriteria(prev => ({ ...prev, currentPage: 1, columnFilters: typeof updater === "function" ? updater(prev.columnFilters) : updater }));
+  const setTableSorting = (updater: typeof tableSorting | ((prev: typeof tableSorting) => typeof tableSorting)) => setCriteria(prev => ({ ...prev, currentPage: 1, tableSorting: (typeof updater === "function" ? updater(prev.tableSorting) : updater).slice(0, 1) }));
+  const [totalRows, setTotalRows] = useState(0);
+  const [stats, setStats] = useState({ total: 0, scheduled: 0, pending: 0 });
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const params = new URLSearchParams({ page: String(currentPage), pageSize: String(itemsPerPage), tab: activeFilter, sort: tableSorting[0] ? tableSorting[0].id + "_" + (tableSorting[0].desc ? "desc" : "asc") : (sortField || "tglPo") + "_" + sortOrder });
+  if (search) params.set("q", search);
+  if (tglFrom) params.set("tglFrom", tglFrom);
+  if (tglTo) params.set("tglTo", tglTo);
+  if (columnFilters.length) params.set("colFilters", JSON.stringify(Object.fromEntries(columnFilters.map(filter => [filter.id, filter.value]))));
+  const queryString = params.toString();
+  const queryRef = useRef(queryString);
+  useLayoutEffect(() => { queryRef.current = queryString; }, [queryString]);
+  const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
+  const requestController = useRef<AbortController | null>(null);
+  const confirmedPcs = useRef(new Map<string, { revision: number; changes: Array<{ itemId: string; pcsKirim: number }> }>());
+
+  useEffect(() => {
+    if (searchInput.trim() === search) return;
+    const timer = setTimeout(() => { setSearch(searchInput.trim()); setCriteria(prev => ({ ...prev, currentPage: 1 })); }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, search]);
 
   const dataRevision = useRef(0);
   const latestFetch = useRef(0);
   const applyConfirmedPcs = (poId: string, changes: Array<{ itemId: string; pcsKirim: number }>) => {
     dataRevision.current++;
+    const merged = new Map((confirmedPcs.current.get(poId)?.changes || []).map(item => [item.itemId, item]));
+    changes.forEach(item => merged.set(item.itemId, item));
+    confirmedPcs.current.set(poId, { revision: dataRevision.current, changes: [...merged.values()] });
     setPoData(prev => prev.map(po => po.id === poId ? applySavedShipment(po, changes) : po));
   };
 
   const fetchData = useCallback(async (silent = false) => {
     const requestId = ++latestFetch.current;
     const revision = dataRevision.current;
+    const requestedQuery = queryRef.current;
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
     if (!silent) setLoading(true);
     setFetchError(null);
     try {
-      const pageSize = 1000;
-      let offset = 0;
-      let allItems: any[] = [];
-      let total = 0;
-
-      do {
-        const res = await fetch(
-          `/api/po?group=schedule_page&summary=true&includeItems=false&limit=${pageSize}&offset=${offset}&sort=tglPo_desc`,
-          { cache: "no-store" },
-        );
-        if (!res.ok) {
-          const errData = await res.json().catch(() => null);
-          const msg = errData?.error || `Gagal memuat data jadwal (HTTP ${res.status})`;
-          throw new Error(msg);
-        }
-        const data = await res.json();
-        const list = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.data)
-            ? data.data
-            : [];
-        allItems = allItems.concat(list);
-        total = typeof data?.total === "number" ? data.total : list.length;
-        offset += list.length;
-
-        if (list.length < pageSize || allItems.length >= total) {
-          break;
-        }
-      } while (offset < total);
-
-      if (requestId === latestFetch.current && revision === dataRevision.current) setPoData(allItems);
-    } catch (err: any) {
-      console.error("Failed to fetch PO data:", err);
-      const msg = err instanceof Error ? err.message : "Gagal mengambil data jadwal PO";
-      if (requestId === latestFetch.current && revision === dataRevision.current) {
-        setFetchError(msg);
-        if (!silent) setPoData([]);
-      }
+      const res = await fetch("/api/po/schedule?" + requestedQuery, { cache: "no-store", signal: controller.signal });
+      if (!res.ok) { const error = await res.json().catch(() => null); throw new Error(error?.error || "Gagal memuat jadwal (HTTP " + res.status + ")"); }
+      const result = await res.json();
+      if (requestId !== latestFetch.current || requestedQuery !== queryRef.current) return;
+      if (!Array.isArray(result.data) || typeof result.total !== "number" || !result.stats) throw new Error("Respons jadwal tidak valid.");
+      setPoData(result.data.map((po: any) => {
+        const saved = confirmedPcs.current.get(po.id);
+        return saved && saved.revision > revision ? applySavedShipment(po, saved.changes) : po;
+      }));
+      for (const [id, saved] of confirmedPcs.current) if (saved.revision <= revision) confirmedPcs.current.delete(id);
+      setTotalRows(result.total);
+      setStats(result.stats);
+      setLoadedQuery(requestedQuery);
+      const page = Number(new URLSearchParams(requestedQuery).get("page"));
+      const size = Number(new URLSearchParams(requestedQuery).get("pageSize"));
+      const lastPage = Math.max(1, Math.ceil(result.total / size));
+      if (page > lastPage) setCriteria(prev => ({ ...prev, currentPage: lastPage }));
+    } catch (error) {
+      if (controller.signal.aborted || requestId !== latestFetch.current || requestedQuery !== queryRef.current) return;
+      console.error("Failed to fetch Schedule page:", error);
+      setFetchError(error instanceof Error ? error.message : "Gagal memuat jadwal.");
+      if (!silent) setPoData([]);
     } finally {
-      if (!silent && requestId === latestFetch.current) setLoading(false);
+      if (requestId === latestFetch.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    getMe().then((u) => {
-      setUser(u);
-    });
-    fetchData();
-  }, [fetchData]);
+    void fetchData();
+    return () => requestController.current?.abort();
+  }, [fetchData, queryString]);
+  useEffect(() => { getMe().then(setUser).catch(() => setUser(null)); }, []);
 
   const handleUpdateSchedule = async () => {
     if (!selectedPo || !selectedDate) {
@@ -127,6 +135,8 @@ export function useSchedule() {
       });
       {
         setModalOpen(false);
+        dataRevision.current++;
+        void fetchData(true);
         await Swal.fire({
           icon: "success",
           title: "Berhasil!",
@@ -168,7 +178,6 @@ export function useSchedule() {
           }
         }
 
-        fetchData();
       }
     } catch (err: any) {
       console.error("Update Schedule Error:", err);
@@ -365,7 +374,8 @@ export function useSchedule() {
           background: "#ecfdf5",
         });
 
-        router.refresh();
+        dataRevision.current++;
+        void fetchData(true);
       } else {
         Swal.fire({
           icon: "error",
@@ -459,78 +469,15 @@ export function useSchedule() {
     }
   };
 
-  const filteredPo = useMemo(() => {
-    let result = poData;
-    if (activeFilter === "scheduled") {
-      result = poData.filter((po) => po.tglkirim);
-    } else if (activeFilter === "unscheduled") {
-      result = poData.filter((po) => !po.tglkirim);
-    }
-
-    if (tglFrom) {
-      result = result.filter((po) => po.tglPo && new Date(po.tglPo) >= new Date(tglFrom));
-    }
-    if (tglTo) {
-      const toDate = new Date(tglTo);
-      toDate.setHours(23, 59, 59, 999);
-      result = result.filter((po) => po.tglPo && new Date(po.tglPo) <= toDate);
-    }
-
-    if (search.trim()) {
-      const query = search.toLowerCase();
-      result = result.filter((po) => {
-        const siteArea = String(po.UnitProduksi?.siteArea || po.siteArea || "").toLowerCase();
-        const company = String(po.RitelModern?.namaPt || po.company || "").toLowerCase();
-        const inisial = String(po.RitelModern?.inisial || "").toLowerCase();
-        const noPo = String(po.noPo || "").toLowerCase();
-        const noInvoice = String(po.noInvoice || "").toLowerCase();
-        return (
-          siteArea.includes(query) ||
-          company.includes(query) ||
-          inisial.includes(query) ||
-          noPo.includes(query) ||
-          noInvoice.includes(query)
-        );
-      });
-    }
-
-    if (sortField) {
-      result = [...result].sort((a, b) => {
-        const aVal = a[sortField] ? new Date(a[sortField]).getTime() : 0;
-        const bVal = b[sortField] ? new Date(b[sortField]).getTime() : 0;
-        return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
-      });
-    }
-
-    return result;
-  }, [poData, activeFilter, search, tglFrom, tglTo, sortField, sortOrder]);
-
-  const stats = useMemo(() => {
-    const emptyInv = ["", "-", "Unknown"];
-    const hasNoInvoice = (po: any) => !po.noInvoice || emptyInv.includes(po.noInvoice);
-    const noInvoicePOs = poData.filter(hasNoInvoice);
-    const total = noInvoicePOs.length;
-    const pending = noInvoicePOs.filter((po) => !po.tglkirim).length;
-    const scheduled = poData.filter((po) => po.tglkirim).length;
-    return { total, scheduled, pending };
-  }, [poData]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, activeFilter, tglFrom, tglTo, sortField, sortOrder]);
-
-  const paginatedPOs = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredPo.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredPo, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredPo.length / itemsPerPage);
+  const filteredPo = poData;
+  const paginatedPOs = loadedQuery === queryString ? poData : [];
+  const totalPages = Math.max(1, Math.ceil(totalRows / itemsPerPage));
 
   return {
     poData, setPoData,
     loading,
     fetchError,
-    search, setSearch,
+    search: searchInput, setSearch: setSearchInput,
     updatingId, setUpdatingId,
     selectedDate, setSelectedDate,
     modalOpen, setModalOpen,
@@ -546,7 +493,8 @@ export function useSchedule() {
     pdfPreviewUrl, setPdfPreviewUrl,
     activeFilter, setActiveFilter,
     currentPage, setCurrentPage,
-    itemsPerPage,
+    itemsPerPage, setItemsPerPage, totalRows,
+    columnFilters, setColumnFilters, tableSorting, setTableSorting,
     fetchData,
     handleUpdateSchedule,
     toggleRow,

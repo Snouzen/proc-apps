@@ -1,6 +1,7 @@
 "use client";
 import { SESSION_VERIFIED_EVENT } from "@/lib/session-policy";
 import dynamic from "next/dynamic";
+import AppUpdateBell from "@/components/AppUpdateBell";
 import { useEffect, useState } from "react";
 import { Menu, LogOut, Sun, Moon, ChevronDown, Settings, ShieldCheck } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
@@ -238,6 +239,7 @@ export default function ClientLayout({
               </div>
 
               <div className="flex items-center gap-3">
+                <AppUpdateBell key={profileEmail || "pending"} userEmail={profileEmail} />
                 {/* Theme Toggle Button */}
                 <button
                   onClick={toggleTheme}

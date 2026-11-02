@@ -83,13 +83,6 @@ export default function SchedulePage() {
 
   const columns = useMemo(() => getScheduleColumns((d: any) => d ? format(new Date(d), "dd MMM yyyy") : "-"), []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoaderThree label="Loading schedule data..." />
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-7">
@@ -150,12 +143,20 @@ export default function SchedulePage() {
           getRowId={(row: any) => row.id}
           loading={loading}
           isFetching={false}
+          rowCount={hook.totalRows}
+          manualSorting={true}
+          sorting={hook.tableSorting}
+          onSortingChange={hook.setTableSorting}
+          manualFiltering={true}
+          columnFilters={hook.columnFilters}
+          onColumnFiltersChange={hook.setColumnFilters}
           manualPagination={true}
           pageCount={totalPages}
           pagination={{ pageIndex: Math.max(0, currentPage - 1), pageSize: itemsPerPage }}
           onPaginationChange={(updater: any) => {
             const next = typeof updater === "function" ? updater({ pageIndex: Math.max(0, currentPage - 1), pageSize: itemsPerPage }) : updater;
-            setCurrentPage(next.pageIndex + 1);
+            if (next.pageSize !== itemsPerPage) hook.setItemsPerPage(next.pageSize);
+            else setCurrentPage(next.pageIndex + 1);
           }}
           meta={{
             expandedRows,

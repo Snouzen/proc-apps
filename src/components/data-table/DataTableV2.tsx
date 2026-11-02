@@ -48,6 +48,7 @@ interface DataTableV2Props<TData, TValue> {
   manualPagination?: boolean;
   hidePagination?: boolean;
   pageCount?: number;
+  rowCount?: number;
   pagination?: { pageIndex: number; pageSize: number };
   onPaginationChange?: (updater: any) => void;
   manualSorting?: boolean;
@@ -219,6 +220,7 @@ export function DataTableV2<TData, TValue>({
   hidePagination,
   manualPagination,
   pageCount,
+  rowCount,
   pagination,
   onPaginationChange,
   manualSorting,
@@ -416,7 +418,7 @@ export function DataTableV2<TData, TValue>({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-sm text-slate-500">
           <div className="text-xs sm:text-sm text-slate-500 text-center sm:text-left">
             Halaman {table.getState().pagination.pageIndex + 1} dari{" "}
-            {table.getPageCount()} (Total {table.getFilteredRowModel().rows.length} data)
+            {table.getPageCount()} (Total {rowCount ?? table.getFilteredRowModel().rows.length} data)
           </div>
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-6">
             <div className="flex items-center space-x-2">

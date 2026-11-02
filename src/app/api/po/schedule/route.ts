@@ -1,3 +1,4 @@
+import { getSchedulePage } from "../services/scheduleListService";
 import prisma from "@/lib/prisma";
 import { getSessionWithRole, getProfileName } from "@/lib/auth";
 import { parseYmdOrIsoToUtcNoon } from "@/lib/utils/dates";
@@ -97,5 +98,23 @@ export async function PATCH(request: Request) {
   } catch (error: any) {
     console.error("PATCH /api/po/schedule error:", error);
     return respond({ error: "Terjadi gangguan saat menyimpan data. Muat ulang untuk memeriksa status terbaru sebelum mencoba kembali.", code: error?.name === "AuthServiceError" ? "AUTH_SERVICE_UNAVAILABLE" : error?.code === "P2028" ? "SCHEDULE_TRANSACTION_TIMEOUT" : "SCHEDULE_INTERNAL_ERROR" }, { status: error?.name === "AuthServiceError" ? 503 : 500 });
+  }
+}
+
+export async function GET(request: Request) {
+  let role: string | undefined;
+  const respond = createScheduleResponder(request, () => ({ role, action: "sched_view" }));
+  try {
+    const auth = await getSessionWithRole(request);
+    if (!auth) return respond({ error: "Unauthorized" }, { status: 401 });
+    role = auth.safeRole;
+    const permission = await checkSchedulePermission(role, ["sched_view"]);
+    if (!permission.allowed) return respond({ error: permission.status === 503 ? "Layanan pemeriksaan izin belum tersedia." : "Akses Schedule ditolak.", code: permission.code }, { status: permission.status });
+    const result = await getSchedulePage(new URL(request.url).searchParams, auth);
+    return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_SCHEDULE_QUERY") return respond({ error: "Parameter halaman Schedule tidak valid." }, { status: 400 });
+    console.error("GET /api/po/schedule error:", error);
+    return respond({ error: "Gagal memuat jadwal. Silakan coba kembali." }, { status: 503 });
   }
 }

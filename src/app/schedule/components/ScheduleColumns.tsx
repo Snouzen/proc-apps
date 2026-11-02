@@ -77,6 +77,7 @@ export const getScheduleColumns = (formatDate: (d: any) => string) => [
     ),
   }),
   helper.accessor("tglPo", {
+    enableColumnFilter: false,
     header: "Tgl PO",
     size: 120,
     cell: ({ row }) => (
@@ -88,6 +89,7 @@ export const getScheduleColumns = (formatDate: (d: any) => string) => [
     ),
   }),
   helper.accessor("expiredTgl", {
+    enableColumnFilter: false,
     header: "Due Date",
     size: 110,
     cell: ({ row }) => (
@@ -106,6 +108,7 @@ export const getScheduleColumns = (formatDate: (d: any) => string) => [
     ),
   }),
   helper.accessor("tglkirim", {
+    enableColumnFilter: false,
     header: "Tgl Kirim",
     size: 130,
     meta: { align: "center" },
@@ -129,6 +132,8 @@ export const getScheduleColumns = (formatDate: (d: any) => string) => [
     },
   }),
   helper.accessor("pcsTotal", {
+    enableSorting: false,
+    enableColumnFilter: false,
     header: "Pcs",
     size: 60,
     meta: { align: "center" },
@@ -139,6 +144,8 @@ export const getScheduleColumns = (formatDate: (d: any) => string) => [
     ),
   }),
   helper.accessor("pcsKirim", {
+    enableSorting: false,
+    enableColumnFilter: false,
     header: "Pcs Kirim",
     size: 140,
     meta: { align: "center" },
@@ -184,6 +191,8 @@ export const getScheduleColumns = (formatDate: (d: any) => string) => [
     },
   }),
   helper.accessor("actions", {
+    enableSorting: false,
+    enableColumnFilter: false,
     header: "Action",
     size: 130,
     meta: { align: "center" },

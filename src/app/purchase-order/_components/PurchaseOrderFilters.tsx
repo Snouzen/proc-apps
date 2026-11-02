@@ -1,4 +1,4 @@
-import { Check, ChevronsUpDown, Loader2, ArrowUpRight, Building2, MapPin, Tags, Globe, Factory } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, ArrowUpRight, Building2, MapPin, Tags, Globe, Factory, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -24,15 +24,35 @@ interface PurchaseOrderFiltersProps {
   poTable: ReturnType<typeof usePurchaseOrderTable>;
 }
 
+function ClearFilterButton({ label, visible, disabled, onClear }: {
+  label: string;
+  visible: boolean;
+  disabled: boolean;
+  onClear: () => void;
+}) {
+  if (!visible) return null;
+  return <button type="button" onClick={onClear} disabled={disabled}
+    aria-label={`Reset filter ${label}`} title={`Reset filter ${label}`}
+    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40 dark:hover:bg-rose-500/10 dark:hover:text-rose-400">
+    <X size={14} aria-hidden="true" />
+  </button>;
+}
+
 export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFiltersProps) {
   return (
     <>
       {/* Dropdown 1: Ritel */}
       <div className="w-full space-y-2">
+        <div className="flex min-h-7 items-center justify-between gap-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
           <Building2 size={12} className="text-blue-500" />
           Ritel Modern
         </label>
+        <ClearFilterButton label="Ritel Modern" visible={!!ritelFilters.selectedNamaPt} disabled={poTable.loadingData} onClear={() => {
+          ritelFilters.handleSelectNamaPt("");
+          void poTable.handleFetchData("", "", "", ritelFilters.selectedRegional, ritelFilters.selectedSiteArea);
+        }} />
+        </div>
         <Popover open={ritelFilters.openRitel} onOpenChange={ritelFilters.setOpenRitel}>
           <PopoverTrigger asChild>
             <Button
@@ -109,10 +129,16 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
 
       {/* Dropdown 2: Inisial */}
       <div className="w-full space-y-2">
+        <div className="flex min-h-7 items-center justify-between gap-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
           <Tags size={12} className="text-indigo-500" />
           Inisial (Opsional)
         </label>
+        <ClearFilterButton label="Inisial" visible={!!ritelFilters.selectedInisial} disabled={poTable.loadingData} onClear={() => {
+          ritelFilters.handleSelectInisial("");
+          void poTable.handleFetchData(ritelFilters.selectedNamaPt, "", "", ritelFilters.selectedRegional, ritelFilters.selectedSiteArea);
+        }} />
+        </div>
         <Popover open={ritelFilters.openInisial} onOpenChange={ritelFilters.setOpenInisial}>
           <PopoverTrigger asChild>
             <Button
@@ -205,10 +231,16 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
 
       {/* Input 3: Tujuan Detail */}
       <div className="w-full space-y-2">
+        <div className="flex min-h-7 items-center justify-between gap-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
           <MapPin size={12} className="text-teal-500" />
           Tujuan Detail (Opsional)
         </label>
+        <ClearFilterButton label="Tujuan Detail" visible={!!ritelFilters.selectedTujuan} disabled={poTable.loadingData} onClear={() => {
+          ritelFilters.handleSelectTujuan("");
+          void poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, "", ritelFilters.selectedRegional, ritelFilters.selectedSiteArea);
+        }} />
+        </div>
         <Popover open={ritelFilters.openTujuan} onOpenChange={ritelFilters.setOpenTujuan}>
           <PopoverTrigger asChild>
             <Button
@@ -301,10 +333,16 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
 
       {/* Dropdown 4: Regional */}
       <div className="w-full space-y-2">
+        <div className="flex min-h-7 items-center justify-between gap-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
           <Globe size={12} className="text-orange-500" />
           Regional
         </label>
+        <ClearFilterButton label="Regional" visible={!!ritelFilters.selectedRegional && !ritelFilters.regionalLocked} disabled={poTable.loadingData} onClear={() => {
+          ritelFilters.handleSelectRegional("");
+          void poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, ritelFilters.selectedTujuan, "", "");
+        }} />
+        </div>
         <Popover open={ritelFilters.openRegional} onOpenChange={ritelFilters.setOpenRegional}>
           <PopoverTrigger asChild>
             <Button
@@ -397,10 +435,16 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
 
       {/* Dropdown 5: Unit Produksi (Site Area) */}
       <div className="w-full space-y-2">
+        <div className="flex min-h-7 items-center justify-between gap-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
           <Factory size={12} className="text-fuchsia-500" />
           Unit Produksi
         </label>
+        <ClearFilterButton label="Unit Produksi" visible={!!ritelFilters.selectedSiteArea && !ritelFilters.siteAreaLocked} disabled={poTable.loadingData} onClear={() => {
+          ritelFilters.handleSelectSiteArea("");
+          void poTable.handleFetchData(ritelFilters.selectedNamaPt, ritelFilters.selectedInisial, ritelFilters.selectedTujuan, ritelFilters.selectedRegional, "");
+        }} />
+        </div>
         <Popover open={ritelFilters.openSiteArea} onOpenChange={ritelFilters.setOpenSiteArea}>
           <PopoverTrigger asChild>
             <Button
