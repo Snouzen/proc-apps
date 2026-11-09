@@ -58,7 +58,7 @@ export default function CreditLimitDataPage() {
         cell: ({ row }) => {
           return (
             <span className="text-slate-500 font-medium text-xs">
-              {row.index + 1}
+              {(data.currentPage - 1) * data.itemsPerPage + row.index + 1}
             </span>
           );
         },
@@ -134,6 +134,7 @@ export default function CreditLimitDataPage() {
         },
       }),
       helper.accessor("tglPo", {
+        enableColumnFilter: false,
         header: "TGL PO",
         size: 120,
         cell: ({ row }) => {
@@ -152,6 +153,7 @@ export default function CreditLimitDataPage() {
         },
       }),
       helper.accessor("expiredTgl", {
+        enableColumnFilter: false,
         header: "DUE DATE",
         size: 110,
         cell: ({ row }) => {
@@ -172,6 +174,7 @@ export default function CreditLimitDataPage() {
         },
       }),
       helper.accessor("tglkirim", {
+        enableColumnFilter: false,
         header: "TGL KIRIM",
         size: 130,
         meta: { align: "center" },
@@ -186,6 +189,8 @@ export default function CreditLimitDataPage() {
         },
       }),
       helper.accessor("pcsTotal", {
+        enableSorting: false,
+        enableColumnFilter: false,
         header: "PCS",
         size: 60,
         meta: { align: "center" },
@@ -199,6 +204,8 @@ export default function CreditLimitDataPage() {
         },
       }),
       helper.accessor("pcsKirimTotal", {
+        enableSorting: false,
+        enableColumnFilter: false,
         header: "PCS KIRIM",
         size: 100,
         meta: { align: "center" },
@@ -348,7 +355,9 @@ export default function CreditLimitDataPage() {
       </div>
 
       {/* ── Additional Filters ───────────────────────────────────────────── */}
-      <CreditLimitFilters {...filters} totalCount={data.filteredPo.length} />
+      <CreditLimitFilters {...filters} totalCount={data.totalRows} />
+
+      {data.fetchError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300"><span>{data.fetchError}</span><button type="button" onClick={() => void data.fetchData()} className="font-semibold underline">Coba Lagi</button></div>}
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
@@ -370,9 +379,25 @@ export default function CreditLimitDataPage() {
         ) : (
           <DataTableV2
             columns={columns}
-            data={data.filteredPo}
+            data={data.paginatedPOs}
             getRowId={(row: any) => row.id}
             loading={data.loading}
+            manualPagination={true}
+            rowCount={data.totalRows}
+            pageCount={data.totalPages}
+            pagination={{ pageIndex: data.currentPage - 1, pageSize: data.itemsPerPage }}
+            onPaginationChange={(updater: any) => {
+              const current = { pageIndex: data.currentPage - 1, pageSize: data.itemsPerPage };
+              const next = typeof updater === "function" ? updater(current) : updater;
+              if (next.pageSize !== data.itemsPerPage) data.setItemsPerPage(next.pageSize);
+              else data.setCurrentPage(next.pageIndex + 1);
+            }}
+            manualSorting={true}
+            sorting={data.sorting}
+            onSortingChange={data.setSorting}
+            manualFiltering={true}
+            columnFilters={data.columnFilters}
+            onColumnFiltersChange={data.setColumnFilters}
             onRowClick={(po: any) => detail.handleViewRow(po)}
           />
         )}

@@ -20,14 +20,6 @@ export function useMasterUnits() {
       fetchUnits();
     };
     
-    if (typeof document !== "undefined" && !document.hasFocus()) {
-      window.addEventListener("focus", run, { once: true });
-      return () => {
-        mounted = false;
-        window.removeEventListener("focus", run);
-      };
-    }
-    
     run();
     return () => {
       mounted = false;

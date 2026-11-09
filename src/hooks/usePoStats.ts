@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { withReadDeadline } from "@/lib/readDeadline";
 import { RoleType } from "./useAuthData";
 
 interface PoStatsProps {
@@ -12,6 +13,8 @@ interface PoStatsProps {
 
 export function usePoStats({ roleReady, role, regional, siteArea, dateFrom, dateTo }: PoStatsProps) {
   const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const activeRequest = useRef<{ id: number; controller?: AbortController }>({ id: 0 });
   const [stats, setStats] = useState({
     totalCount: 0,
     activeCount: 0,
@@ -38,14 +41,26 @@ export function usePoStats({ roleReady, role, regional, siteArea, dateFrom, date
   }, [role, regional, siteArea, dateFrom, dateTo]);
 
   const fetchStats = useCallback(async (signal?: AbortSignal) => {
+    activeRequest.current.controller?.abort();
+    const controller = new AbortController();
+    const id = activeRequest.current.id + 1;
+    activeRequest.current = { id, controller };
+    const cancel = () => controller.abort();
+    signal?.addEventListener("abort", cancel, { once: true });
+    if (signal?.aborted) controller.abort();
     setStatsLoading(true);
+    setStatsError(null);
     try {
-      const res = await fetch(`/api/po/stats?${statsParams}`, {
-        cache: "no-store",
-        signal,
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json) throw new Error("Gagal mengambil statistik PO");
+      const json = await withReadDeadline((async () => {
+        const res = await fetch(`/api/po/stats?${statsParams}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json) throw new Error("Gagal mengambil statistik PO");
+        return json;
+      })());
+      if (id !== activeRequest.current.id || controller.signal.aborted) return;
       const s = json as any;
       setStats({
         totalCount: Number(s?.cAll) || 0,
@@ -58,9 +73,12 @@ export function usePoStats({ roleReady, role, regional, siteArea, dateFrom, date
         topSiteAreas: Array.isArray(s?.topSiteAreas) ? s.topSiteAreas : [],
       });
     } catch (err) {
-      if ((err as any)?.name === "AbortError") return;
+      if (id !== activeRequest.current.id || controller.signal.aborted) return;
+      setStatsError(err instanceof Error ? err.message : "Gagal mengambil statistik PO");
+      controller.abort();
     } finally {
-      setStatsLoading(false);
+      signal?.removeEventListener("abort", cancel);
+      if (id === activeRequest.current.id && !signal?.aborted) setStatsLoading(false);
     }
   }, [statsParams]);
 
@@ -73,22 +91,13 @@ export function usePoStats({ roleReady, role, regional, siteArea, dateFrom, date
       if (mounted) fetchStats(controller.signal);
     };
     
-    if (typeof document !== "undefined" && !document.hasFocus()) {
-      window.addEventListener("focus", run, { once: true });
-      return () => {
-        mounted = false;
-        window.removeEventListener("focus", run);
-        controller.abort();
-      };
-    }
-    
-    const timer = window.setTimeout(run, 100);
+    run();
     return () => {
       mounted = false;
-      window.clearTimeout(timer);
       controller.abort();
+      activeRequest.current.controller?.abort();
     };
   }, [roleReady, fetchStats]);
 
-  return { stats, statsLoading, fetchStats };
+  return { stats, statsLoading, statsError, fetchStats };
 }

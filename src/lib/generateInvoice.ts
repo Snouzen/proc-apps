@@ -8,6 +8,10 @@ export const generateInvoicePdf = (
   data: any,
   action: "download" | "preview" = "download",
 ) => {
+  // Exact company match: applies to all its aliases, dates, roles and units.
+  // Keep the account as text to preserve every digit.
+  const showPaymentAccount = String(data?.RitelModern?.namaPt ?? "")
+    .trim().replace(/\s+/g, " ").toUpperCase() === "O! SAVE GROUP";
   // --- 0. HARD COMPRESSION INITIALIZATION ---
   const doc = new jsPDF({
     orientation: "p",
@@ -162,7 +166,13 @@ export const generateInvoicePdf = (
   });
 
   // --- 6. SUBTOTAL, DISCOUNT & PAJAK CALCULATIONS ---
-  const finalY = (doc as any).lastAutoTable.finalY + 5;
+  let finalY = (doc as any).lastAutoTable.finalY + 5;
+  // Keep the summary, payment details, signature and footer together on A4.
+  // Other companies retain their existing pagination.
+  if (showPaymentAccount && finalY + 59 > doc.internal.pageSize.getHeight() - 12) {
+    doc.addPage();
+    finalY = 20;
+  }
   doc.setLineWidth(0.3);
   doc.line(115, finalY, 195, finalY);
 
@@ -218,6 +228,16 @@ export const generateInvoicePdf = (
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.text(`Diterima oleh : ${namaPt}`, 15, finalY + 28);
+
+  if (showPaymentAccount) {
+    doc.setFontSize(8);
+    doc.text([
+      "Pembayaran melalui:",
+      "Bank BRI",
+      "No. Rekening: 180501000026304",
+      "Atas Nama: MANAJEMEN UB INDUSTRI PERUM BULOG",
+    ], 15, finalY + 34, { lineHeightFactor: 1.35 });
+  }
 
   // --- 7. FOOTER CETAKAN BAWAH (DINAMIS Y) ---
   const footerY = finalY + 50; // Jarak diturunin dikit biar stempel muat dengan aman

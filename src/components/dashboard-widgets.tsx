@@ -567,24 +567,35 @@ export function RecentActivityWidget() {
 
   useEffect(() => {
     let isMounted = true;
+    let pending = false;
+    const controller = new AbortController();
     const loadData = async () => {
+      if (!isMounted || pending) return;
+      pending = true;
       try {
-        const response = await fetch('/api/activities');
+        const response = await fetch('/api/activities', { signal: controller.signal });
+        if (!response.ok) throw new Error("Gagal memuat aktivitas");
         const json = await response.json();
         if (isMounted) {
           setRes(json);
           setError(null);
         }
       } catch (err) {
-        if (isMounted) setError(err);
+        if (isMounted && !controller.signal.aborted) setError(err);
+      } finally {
+        pending = false;
       }
     };
 
     loadData();
-    const interval = setInterval(loadData, 10000);
+    const refresh = () => { if (!document.hidden) void loadData(); };
+    const interval = setInterval(refresh, 10000);
+    document.addEventListener("visibilitychange", refresh);
     return () => {
       isMounted = false;
+      controller.abort();
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
   

@@ -1,3 +1,7 @@
+## Pelaporan dampak perubahan (permintaan pemilik proyek)
+
+Setiap perubahan, penambahan, atau perbaikan fitur/proses wajib dilaporkan bersama dampaknya pada perilaku existing, modul lain yang terpengaruh, hasil verifikasi, dan skenario yang perlu diuji pemilik di dev sebelum deploy. Nyatakan keterbatasan verifikasi secara eksplisit. Jangan memperluas perubahan aturan bisnis atau autentikasi tanpa memberi tahu pemilik.
+
 <!-- ngodingpakeai:skill:start -->
 # NgodingPakeAI — Codebase Sync
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import { getDueDateZone, needsRemarks } from "@/lib/credit-limit";
 import { isInvoiceEmpty } from "@/lib/utils/invoice";
@@ -28,8 +28,37 @@ export function useCreditLimitData({
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userSiteArea, setUserSiteArea] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [totalRows, setTotalRows] = useState(0);
+  const [stats, setStats] = useState({ total: 0, normal: 0, remarksNeeded: 0 });
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  const [sorting, setSorting] = useState<Array<{ id: string; desc: boolean }>>([]);
+  const [columnFilters, setColumnFilters] = useState<Array<{ id: string; value: unknown }>>([]);
+  const [pageState, setPageState] = useState({ key: "", page: 1, size: 10 });
+  const params = new URLSearchParams({ tab: activeFilter, sort: sorting[0] ? (sorting[0].id === "zone" ? "statusCreditLimit" : sorting[0].id) + (sorting[0].desc ? "_desc" : "_asc") : "tglPo_desc" });
+  for (const [key, value] of Object.entries({ q: debouncedSearch.trim(), company: selectedNamaPt, inisial: selectedInisial, tujuan: selectedTujuan, status: selectedStatus, tglFrom, tglTo })) {
+    if (value) params.set(key, value);
+  }
+  if (columnFilters.length) params.set("colFilters", JSON.stringify(Object.fromEntries(columnFilters.map(filter => [filter.id, filter.value]))));
+  const filterKey = params.toString();
+  const currentPage = pageState.key === filterKey ? pageState.page : 1;
+  const itemsPerPage = pageState.size;
+  const setCurrentPage = (page: number) => setPageState(prev => ({ ...prev, key: filterKey, page }));
+  const setItemsPerPage = (size: number) => setPageState({ key: filterKey, page: 1, size });
+  params.set("page", String(currentPage));
+  params.set("pageSize", String(itemsPerPage));
+  const queryString = params.toString();
+  const queryRef = useRef(queryString);
+  useLayoutEffect(() => { queryRef.current = queryString; }, [queryString]);
+  const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
+  const latestRequest = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+  const vendorRevision = useRef(0);
+  const savedVendors = useRef(new Map<string, { value: string; revision: number }>());
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Detect user role & siteArea
   useEffect(() => {
@@ -37,42 +66,65 @@ export function useCreditLimitData({
       getMe().then((me) => {
         setUserRole(me?.role || null);
         setUserSiteArea(me?.siteArea || null);
-      });
-    });
+      }).catch(() => { setUserRole(null); setUserSiteArea(null); });
+    }).catch(() => { setUserRole(null); setUserSiteArea(null); });
   }, []);
 
   const fetchData = useCallback(async () => {
+    const requestId = ++latestRequest.current;
+    const requestedQuery = queryRef.current;
+    const revision = vendorRevision.current;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
     setLoading(true);
+    setFetchError(null);
     try {
       const res = await fetch(
-        "/api/po?group=credit_data&summary=true&includeItems=false&limit=5000&offset=0&sort=tglPo_desc",
-        { cache: "no-store" },
+        "/api/po/credit-limit/data?" + requestedQuery,
+        { cache: "no-store", signal: controller.signal },
       );
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.error || `Gagal memuat Credit Limit (HTTP ${res.status})`);
+      }
       const data = await res.json();
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-          ? data.data
-          : [];
+      if (requestId !== latestRequest.current || requestedQuery !== queryRef.current) return;
+      if (!Array.isArray(data.data) || !Number.isFinite(data.total) || !data.stats) throw new Error("Respons Data Credit Limit tidak valid.");
+      const list = data.data;
 
       // Filter: Hanya yang sudah dijadwalkan (tglkirim ada) dan belum memiliki nomor invoice (menggunakan helper kanonisasi bersama)
       const eligible = list.filter(
         (po: any) => !!po.tglkirim && isInvoiceEmpty(po.noInvoice),
       );
 
-      setPoData(eligible);
+      setPoData(eligible.map((po: any) => {
+        const saved = savedVendors.current.get(po.id);
+        return saved && saved.revision > revision ? { ...po, kodeVendor: saved.value } : po;
+      }));
+      for (const [id, saved] of savedVendors.current) if (saved.revision <= revision) savedVendors.current.delete(id);
+      setTotalRows(data.total);
+      setStats(data.stats);
+      setLoadedQuery(requestedQuery);
+      const requestParams = new URLSearchParams(requestedQuery);
+      const lastPage = Math.max(1, Math.ceil(data.total / Number(requestParams.get("pageSize"))));
+      if (Number(requestParams.get("page")) > lastPage) setPageState(prev => ({ ...prev, page: lastPage }));
     } catch (err) {
+      if (controller.signal.aborted || requestId !== latestRequest.current || requestedQuery !== queryRef.current) return;
       console.error("Failed to fetch PO data:", err);
+      setFetchError(err instanceof Error ? err.message : "Gagal memuat Data Credit Limit.");
     } finally {
-      setLoading(false);
+      if (requestId === latestRequest.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    void fetchData();
+    return () => controllerRef.current?.abort();
+  }, [fetchData, queryString]);
 
   const handleUpdateKodeVendor = useCallback((id: string, val: string) => {
+    savedVendors.current.set(id, { value: val, revision: ++vendorRevision.current });
     setPoData((prev) =>
       prev.map((po) => (po.id === id ? { ...po, kodeVendor: val } : po)),
     );
@@ -181,6 +233,7 @@ export function useCreditLimitData({
 
       // Hapus PO yang barusan diajukan dari list state
       setPoData((prev) => prev.filter((item) => item.id !== po.id));
+      void fetchData();
     } catch (err) {
       Swal.fire({
         icon: "error",
@@ -190,132 +243,19 @@ export function useCreditLimitData({
     }
   };
 
-  const filteredPo = useMemo(() => {
-    // Tahap 1: Filter berdasarkan Card yang diklik
-    let categoryFiltered = poData;
-    if (activeFilter === "pending") {
-      categoryFiltered = poData.filter(
-        (po) =>
-          (!po.statusCreditLimit || po.statusCreditLimit === "REJECTED") &&
-          getDueDateZone(po.expiredTgl) === "normal",
-      );
-    } else if (activeFilter === "outdate") {
-      categoryFiltered = poData.filter(
-        (po) =>
-          (!po.statusCreditLimit || po.statusCreditLimit === "REJECTED") &&
-          needsRemarks(getDueDateZone(po.expiredTgl)),
-      );
-    } else {
-      // activeFilter === "all" (Total Credit Limit): Menampilkan SEMUA PO (baik diajukan maupun belum diajukan)
-      categoryFiltered = poData;
-    }
-
-    // Tahap 1.5: Filter berdasarkan Status Dropdown (jika dipilih)
-    if (selectedStatus) {
-      if (selectedStatus === "PENDING") {
-        categoryFiltered = categoryFiltered.filter(
-          (po) => !po.statusCreditLimit || po.statusCreditLimit === "REJECTED",
-        );
-      } else if (selectedStatus === "WAITING_PUSAT") {
-        categoryFiltered = categoryFiltered.filter(
-          (po) => po.statusCreditLimit === "REQUESTED",
-        );
-      } else if (selectedStatus === "WAITING_DIREKSI") {
-        categoryFiltered = categoryFiltered.filter(
-          (po) => po.statusCreditLimit === "APPROVED",
-        );
-      } else if (selectedStatus === "COMPLETED") {
-        categoryFiltered = categoryFiltered.filter(
-          (po) => po.statusCreditLimit === "APPROVED_DIREKSI",
-        );
-      }
-    }
-
-    // Tahap 2: Filter berdasarkan Combobox (Ritel, Inisial, Tujuan)
-    if (selectedNamaPt) {
-      categoryFiltered = categoryFiltered.filter((po) => po.RitelModern?.namaPt === selectedNamaPt);
-    }
-    if (selectedInisial) {
-      categoryFiltered = categoryFiltered.filter((po) => po.RitelModern?.inisial === selectedInisial);
-    }
-    if (selectedTujuan) {
-      categoryFiltered = categoryFiltered.filter((po) => po.tujuanDetail === selectedTujuan);
-    }
-
-    // Tahap 3: Filter berdasarkan Periode (tglPo)
-    if (tglFrom) {
-      const fromDate = new Date(tglFrom);
-      fromDate.setHours(0, 0, 0, 0);
-      categoryFiltered = categoryFiltered.filter((po) => new Date(po.tglPo) >= fromDate);
-    }
-    if (tglTo) {
-      const toDate = new Date(tglTo);
-      toDate.setHours(23, 59, 59, 999);
-      categoryFiltered = categoryFiltered.filter((po) => new Date(po.tglPo) <= toDate);
-    }
-
-    // Tahap 4: Filter berdasarkan Search Bar
-    if (!search.trim()) return categoryFiltered;
-
-    const query = search.toLowerCase();
-    return categoryFiltered.filter((po) => {
-      const siteArea = String(
-        po.UnitProduksi?.siteArea || po.siteArea || "",
-      ).toLowerCase();
-      const company = String(
-        po.RitelModern?.namaPt || po.company || "",
-      ).toLowerCase();
-      const inisial = String(po.RitelModern?.inisial || "").toLowerCase();
-      const noPo = String(po.noPo || "").toLowerCase();
-      const noInvoice = String(po.noInvoice || "").toLowerCase();
-      return (
-        siteArea.includes(query) ||
-        company.includes(query) ||
-        inisial.includes(query) ||
-        noPo.includes(query) ||
-        noInvoice.includes(query)
-      );
-    });
-  }, [poData, activeFilter, selectedStatus, search, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
-
-  // Reset pagination to page 1 whenever search or filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, activeFilter, selectedStatus, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
-
-  // Compute paginated slice
-  const paginatedPOs = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredPo.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredPo, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredPo.length / itemsPerPage);
-
-  // Stats for 3 info cards
-  const stats = useMemo(() => {
-    const unsubmitted = poData.filter(
-      (po) => !po.statusCreditLimit || po.statusCreditLimit === "REJECTED",
-    );
-    const normal = unsubmitted.filter(
-      (po) => getDueDateZone(po.expiredTgl) === "normal",
-    ).length;
-    const remarksNeeded = unsubmitted.filter((po) =>
-      needsRemarks(getDueDateZone(po.expiredTgl)),
-    ).length;
-    return {
-      total: poData.length, // Menampilkan total SEMUA PO (diajukan + belum diajukan)
-      normal,
-      remarksNeeded,
-    };
-  }, [poData]);
+  // Server applies all predicates before take/skip; never filter/slice just this page.
+  const filteredPo = loadedQuery === queryString ? poData : [];
+  const paginatedPOs = filteredPo;
+  const totalPages = Math.max(1, Math.ceil(totalRows / itemsPerPage));
 
   return {
-    loading,
+    loading, fetchError, fetchData, totalRows,
+    sorting, setSorting, columnFilters, setColumnFilters,
     userRole,
     userSiteArea,
     currentPage,
     setCurrentPage,
-    itemsPerPage,
+    itemsPerPage, setItemsPerPage,
     totalPages,
     paginatedPOs,
     filteredPo,

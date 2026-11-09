@@ -29,6 +29,7 @@ import { StandardTooltip } from "./StandardTooltip";
 import { ActionButton } from "./ActionButton";
 import { StatusBadge } from "./StatusBadge";
 import { InlineVendorInput } from "./InlineVendorInput";
+import type { ApprovalBatchSummary } from "@/lib/creditApprovalBatch";
 
 const helper = createColumnHelper<any>();
 
@@ -51,6 +52,11 @@ export function BatchAccordion({
   onUncloseBatch,
   onUpdateKodeVendor,
   onOpenNdModal,
+  summary,
+  detailsLoading = false,
+  detailError,
+  onRetry,
+  actionBusy = false,
 }: {
   batchCode: string;
   pos: any[];
@@ -70,17 +76,23 @@ export function BatchAccordion({
   onUncloseBatch?: (batchCode: string) => void;
   onUpdateKodeVendor?: (poId: string, val: string) => void;
   onOpenNdModal?: (batchCode: string, pos: any[]) => void;
+  summary?: ApprovalBatchSummary;
+  detailsLoading?: boolean;
+  detailError?: string;
+  onRetry?: () => void;
+  actionBusy?: boolean;
 }) {
   const [editNdId, setEditNdId] = useState<string | null>(null);
   const [tempNoNd, setTempNoNd] = useState("");
   const [tempLinkNd, setTempLinkNd] = useState("");
 
-  const totalPcs = pos.reduce((sum, po) => sum + Number(po.pcsTotal || 0), 0);
-  const totalPcsKirim = pos.reduce((sum, po) => sum + Number(po.pcsKirimTotal || 0), 0);
-  const isAllNDChecked = pos.length > 0 && pos.every(p => p.isNotaDinas);
+  const totalPcs = summary?.totalPcs ?? pos.reduce((sum, po) => sum + Number(po.pcsTotal || 0), 0);
+  const totalPcsKirim = summary?.totalPcsKirim ?? pos.reduce((sum, po) => sum + Number(po.pcsKirimTotal || 0), 0);
+  const poCount = summary?.poCount ?? pos.length;
+  const isAllNDChecked = summary ? summary.poCount > 0 && summary.ndCount === summary.poCount : pos.length > 0 && pos.every(p => p.isNotaDinas);
   
-  const hasRequested = pos.some((po) => po.statusCreditLimit === "REQUESTED");
-  const hasApproved = pos.some((po) => po.statusCreditLimit === "APPROVED");
+  const hasRequested = summary ? summary.requestedCount > 0 : pos.some((po) => po.statusCreditLimit === "REQUESTED");
+  const hasApproved = summary ? summary.approvedCount > 0 : pos.some((po) => po.statusCreditLimit === "APPROVED");
 
    
   const columns = useMemo(() => [
@@ -424,6 +436,7 @@ export function BatchAccordion({
         tabIndex={0}
         onClick={onToggle}
         onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             onToggle();
@@ -461,7 +474,7 @@ export function BatchAccordion({
           <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
             <Package size={12} className="text-slate-400 dark:text-slate-500" />
             <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tabular-nums">
-              {pos.length}
+              {poCount}
             </span>
             <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">PO</span>
           </div>
@@ -482,7 +495,7 @@ export function BatchAccordion({
             <span className="text-[10px] text-emerald-400 dark:text-emerald-500 font-medium">Kirim</span>
           </div>
 
-          <div className="pl-2 border-l border-slate-200 dark:border-slate-700/50 flex items-center gap-2">
+          <fieldset disabled={detailsLoading || actionBusy} className="pl-2 border-l border-slate-200 dark:border-slate-700/50 flex items-center gap-2 disabled:opacity-60">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -539,7 +552,7 @@ export function BatchAccordion({
                 Unclose Batch
               </button>
             )}
-            {!isArchived && pos.some(p => p.statusCreditLimit === "REQUESTED") && (
+            {!isArchived && hasRequested && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -551,7 +564,7 @@ export function BatchAccordion({
                 Approve Semua (Pusat)
               </button>
             )}
-            {!isArchived && !pos.some(p => p.statusCreditLimit === "REQUESTED") && pos.some(p => p.statusCreditLimit === "APPROVED") && (
+            {!isArchived && !hasRequested && hasApproved && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -563,7 +576,7 @@ export function BatchAccordion({
                 Approve Semua (Direksi)
               </button>
             )}
-          </div>
+          </fieldset>
         </div>
 
         {/* Chevron */}
@@ -575,14 +588,16 @@ export function BatchAccordion({
         />
       </div>
 
-      {/* Accordion Body */}
+      {detailsLoading && <div role="status" className="px-6 pb-3 text-xs text-indigo-600 dark:text-indigo-400">Memuat detail batch…</div>}
+      {/* Accordion Body: closed batches never mount PO tables. */}
       <div
         className={`transition-all duration-300 ease-in-out overflow-hidden ${
-          isExpanded ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
+          isExpanded ? "opacity-100" : "hidden"
         }`}
       >
-        <div className="border-t border-slate-100 dark:border-slate-800/50">
-          <DataTableV2
+        {isExpanded && <div className="border-t border-slate-100 dark:border-slate-800/50">
+          {detailError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 bg-rose-50 p-4 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"><span>{detailError}</span><button type="button" onClick={onRetry} disabled={detailsLoading} className="font-semibold underline">Coba Lagi</button></div>}
+          {!pos.length && detailsLoading ? <div role="status" className="p-8 text-center text-sm text-slate-500">Memuat seluruh PO dalam batch…</div> : !pos.length && !detailError ? <div className="p-8 text-center text-sm text-slate-500">Tidak ada PO dalam batch ini.</div> : pos.length > 0 && <fieldset disabled={detailsLoading || !!detailError || actionBusy} className="min-w-0"><DataTableV2
             columns={columns}
             data={pos}
             getRowId={(row: any) => row.id}
@@ -600,8 +615,8 @@ export function BatchAccordion({
               onUpdateKodeVendor,
               onAction,
             }}
-          />
-        </div>
+          /></fieldset>}
+        </div>}
       </div>
     </div>
   );

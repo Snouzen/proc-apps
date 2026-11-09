@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Truck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Truck, Download, Loader2 } from "lucide-react";
 
 import PODetailModal from "@/components/po-detail-modal";
 import {
@@ -56,11 +56,18 @@ export default function CreditLimitApprovalPage() {
           </p>
         </div>
 
-        <CreditLimitSearchBar value={filters.search} onChange={filters.setSearch} placeholder="Search No PO, Site, Company..." />
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <CreditLimitSearchBar value={filters.search} onChange={filters.setSearch} placeholder="Search No PO, Site, Company..." />
+          {data.role === "pusat" && <button type="button" disabled={data.exporting || data.loading || !!data.fetchError || !data.totalBatches} onClick={() => void data.handleExportExcel()} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+            {data.exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}{data.exporting ? "Menyiapkan..." : "Export Semua"}
+          </button>}
+        </div>
       </div>
 
       {/* ── Filters ──────────────────────────────────────────────────── */}
-      <CreditLimitFilters {...filters} totalCount={data.filteredPo.length} />
+      <CreditLimitFilters {...filters} totalCount={data.matchingPoCount} />
+
+      {data.fetchError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-rose-50 p-4 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"><span>{data.fetchError}</span><button type="button" onClick={() => void data.fetchData()} className="font-semibold underline">Coba Lagi</button></div>}
 
       {/* ── Accordion List ──────────────────────────────────────────── */}
       {data.loading ? (
@@ -102,6 +109,11 @@ export default function CreditLimitApprovalPage() {
               key={batch.batchCode}
               batchCode={batch.batchCode}
               pos={batch.pos}
+              summary={batch}
+              detailsLoading={!!data.detailLoading[batch.batchCode]}
+              actionBusy={!!data.batchBusy[batch.batchCode]}
+              detailError={data.detailErrors[batch.batchCode]}
+              onRetry={() => void data.retryBatch(batch.batchCode)}
               isExpanded={data.expandedBatches.has(batch.batchCode)}
               isArchived={batch.isArchived}
               onUpdateKodeVendor={data.handleUpdateKodeVendor}
@@ -117,7 +129,7 @@ export default function CreditLimitApprovalPage() {
               onUpdateNDDetails={data.handleUpdateNDDetails}
               onCloseBatch={data.handleCloseBatch}
               onUncloseBatch={data.handleUncloseBatch}
-              onOpenNdModal={handleOpenNdModal}
+              onOpenNdModal={(code) => void data.withBatchDetails(code, pos => handleOpenNdModal(code, pos))}
             />
           ))}
         </div>
@@ -129,7 +141,7 @@ export default function CreditLimitApprovalPage() {
         totalPages={data.totalPages}
         onPageChange={data.setCurrentPage}
         itemsCount={data.paginatedBatches.length}
-        totalItems={data.batchGroups.length}
+        totalItems={data.totalBatches}
         itemName="batch"
       />
 

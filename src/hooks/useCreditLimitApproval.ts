@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useApprovalBatchPages } from "./useApprovalBatchPages";
 import Swal from "sweetalert2";
-import * as XLSX from "xlsx";
-import { format } from "date-fns";
-import { cleanSiteArea } from "@/lib/credit-limit";
+import { useRef, useState } from "react";
 
 export function useCreditLimitApproval({
   search,
@@ -21,51 +19,68 @@ export function useCreditLimitApproval({
   tglFrom: string;
   tglTo: string;
 }) {
-  const [poData, setPoData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<string>("");
+  const pages = useApprovalBatchPages({ search, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo });
+  const { poData, setPoData, loading, role, expandedBatches, currentPage, setCurrentPage, fetchData, batchGroups, paginatedBatches, totalPages, toggleBatch } = pages;
+  const filteredPo = poData;
+  const [batchBusy, setBatchBusy] = useState<Record<string, boolean>>({});
+  const [exporting, setExporting] = useState(false);
+  const activeActions = useRef(new Set<string>());
+  const exportActive = useRef(false);
 
-  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
-  const batchesPerPage = 10;
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const approveFromServer = async (batchId: string, batchCode: string, stage: "pusat" | "direksi", poId?: string) => {
+    if (activeActions.current.size || exportActive.current) return;
+    activeActions.current.add(batchCode);
+    setBatchBusy(prev => ({ ...prev, [batchCode]: true }));
+    const post = async (payload: Record<string, unknown>) => {
+      const response = await fetch("/api/po/credit-limit/approval", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batchId, stage, poId, ...payload }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Gagal memproses approval batch.");
+      return result;
+    };
     try {
-      const res = await fetch(
-        "/api/po?group=credit_approval&summary=true&includeItems=false&limit=5000&offset=0&sort=tglPo_desc",
-        { cache: "no-store" },
-      );
-      const data = await res.json();
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-          ? data.data
-          : [];
-
-      setPoData(list);
-    } catch (err) {
-      console.error("Failed to fetch PO data:", err);
+      void Swal.fire({ title: stage === "direksi" ? "Memeriksa Nomor ND..." : "Memeriksa Batch...", text: "Memeriksa data PO terbaru di server.", allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+      const checked = await post({ mode: "check" });
+      Swal.close();
+      if (!checked.ready) {
+        await Swal.fire({ icon: "warning", title: "Nomor ND Belum Lengkap", text: `${checked.missingNdCount} PO belum memiliki No. ND: ${checked.missingNd.slice(0, 5).join(", ")}${checked.missingNdCount > 5 ? ", ..." : ""}. Lengkapi No. ND sebelum persetujuan Direksi.` });
+        return;
+      }
+      const confirmed = await Swal.fire({ icon: "warning", title: stage === "pusat" ? "Approve Semua PO (Pusat)?" : poId ? "Setujui Credit Limit (Direksi)?" : "Approve Semua PO (Direksi)?", text: `${checked.targetCount} PO pada batch ${checked.batchCode} akan disetujui.`, showCancelButton: true, confirmButtonText: "Ya, Setujui", cancelButtonText: "Batal", confirmButtonColor: stage === "pusat" ? "#10b981" : "#4f46e5" });
+      if (!confirmed.isConfirmed) return;
+      void Swal.fire({ title: "Memproses Approval...", allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+      const result = await post({ mode: "approve", expectedSnapshot: checked.snapshot });
+      Swal.close();
+      pages.refreshBatches([batchCode]);
+      await Swal.fire({ icon: "success", title: "Berhasil Disetujui!", text: `${result.count} PO telah disetujui.`, timer: 1500, showConfirmButton: false });
+    } catch (error) {
+      Swal.close();
+      pages.refreshBatches([batchCode]);
+      await Swal.fire({ icon: "error", title: "Approval Belum Berhasil", text: error instanceof Error ? error.message : "Muat ulang status sebelum mencoba kembali." });
     } finally {
-      setLoading(false);
+      activeActions.current.delete(batchCode);
+      setBatchBusy(prev => ({ ...prev, [batchCode]: false }));
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    import("@/lib/me").then(({ getMe }) => {
-      getMe().then((me) => {
-        setRole(me?.role || "");
-        if (me?.role === "pusat") {
-          fetchData();
-        } else {
-          setLoading(false);
-        }
-      });
-    });
-  }, [fetchData]);
+  // Non-approval actions such as Create ND still need complete detail.
+
+  const requireBatchDetails = async (batchCode: string) => {
+    try { return await pages.loadBatch(batchCode, true); }
+    catch (error) { await Swal.fire({ icon: "error", title: "Detail Batch Belum Siap", text: error instanceof Error ? error.message : "Muat ulang detail sebelum memproses batch." }); return null; }
+  };
+  const withBatchDetails = async (batchCode: string, action: (pos: any[]) => void) => {
+    const pos = await requireBatchDetails(batchCode);
+    if (pos) action(pos);
+  };
 
   const handleAction = async (po: any, action: "approve" | "approveDireksi" | "reject" | "reRequest") => {
-    const isApprove = action === "approve" || action === "approveDireksi";
+    if (action === "approveDireksi") {
+      const batchCode = po.CreditLimitBatch?.batchCode;
+      if (!po.creditLimitBatchId || !batchCode) { await Swal.fire({ icon: "warning", title: "Muat Ulang Batch", text: "Identitas batch belum tersedia. Muat ulang detail PO." }); return; }
+      await approveFromServer(po.creditLimitBatchId, batchCode, "direksi", po.id);
+      return;
+    }
+    const isApprove = action === "approve";
     const isReRequest = action === "reRequest";
     
     let confirmText = "Setujui Credit Limit?";
@@ -73,11 +88,7 @@ export function useCreditLimitApproval({
     let iconColor = "#10b981";
     let confirmBtnText = "Ya, Setujui!";
     
-    if (action === "approveDireksi") {
-      confirmText = "Setujui Credit Limit (Direksi)?";
-      successText = "Disetujui Direksi!";
-      iconColor = "#4f46e5";
-    } else if (isReRequest) {
+    if (isReRequest) {
       confirmText = "Ajukan Ulang Credit Limit?";
       successText = "Berhasil Diajukan Ulang!";
       iconColor = "#3b82f6";
@@ -87,17 +98,6 @@ export function useCreditLimitApproval({
       successText = "Berhasil Ditolak!";
       iconColor = "#f43f5e";
       confirmBtnText = "Ya, Tolak!";
-    }
-
-    // Validasi Direksi: Nomor ND wajib diisi
-    if (action === "approveDireksi" && (!po.noNd || !po.noNd.trim())) {
-      Swal.fire({
-        icon: "warning",
-        title: "Nomor ND Wajib Diisi",
-        text: `PO #${po.noPo} belum memiliki nomor Nota Dinas (ND). Harap isi nomor ND terlebih dahulu sebelum disetujui Direksi.`,
-        confirmButtonColor: "#f59e0b",
-      });
-      return;
     }
 
     const result = await Swal.fire({
@@ -144,12 +144,12 @@ export function useCreditLimitApproval({
             ? { 
                 ...item, 
                 statusCreditLimit: action === "approve" ? "APPROVED" : 
-                                   action === "approveDireksi" ? "APPROVED_DIREKSI" : 
                                    action === "reRequest" ? "REQUESTED" : "REJECTED" 
               }
             : item
         );
       });
+      pages.refreshForPoIds([po.id]);
     } catch (err: any) {
       Swal.fire({ icon: "error", title: "Gagal", text: err?.message || "Terjadi kesalahan sistem" });
     }
@@ -175,6 +175,7 @@ export function useCreditLimitApproval({
       if (!res.ok) {
         throw new Error("Gagal menyimpan status ND");
       }
+      pages.refreshForPoIds([poId]);
     } catch (err) {
       console.error(err);
       Swal.fire({
@@ -214,6 +215,7 @@ export function useCreditLimitApproval({
         throw new Error("Gagal menyimpan detail ND");
       }
       
+      pages.refreshForPoIds([poId]);
       Swal.fire({
         icon: "success",
         title: "Berhasil",
@@ -234,76 +236,19 @@ export function useCreditLimitApproval({
         showConfirmButton: false,
         timer: 3000
       });
-      // We don't revert optimistic update here, they can just refresh or try again
+      pages.refreshForPoIds([poId]);
     }
   };
 
-  const handleApproveAll = async (batchCode: string, pos: any[]) => {
-    const hasRequested = pos.some(p => p.statusCreditLimit === "REQUESTED");
-    const action = hasRequested ? "approveAll" : "approveDireksiAll";
-    const titleText = hasRequested ? "Approve Semua PO (Pusat)?" : "Approve Semua PO (Direksi)?";
-
-    // Validasi Direksi: Seluruh PO wajib memiliki nomor Nota Dinas (ND)
-    if (action === "approveDireksiAll") {
-      const missingNd = pos.filter(p => !p.noNd || !p.noNd.trim());
-      if (missingNd.length > 0) {
-        Swal.fire({
-          icon: "warning",
-          title: "Nomor ND Belum Lengkap",
-          text: `Terdapat ${missingNd.length} PO dalam batch ini yang belum memiliki nomor Nota Dinas (ND). Harap lengkapi nomor ND untuk semua PO sebelum disetujui Direksi.`,
-          confirmButtonColor: "#f59e0b",
-        });
-        return;
-      }
-    }
-
-    const result = await Swal.fire({
-      title: titleText,
-      text: `Anda akan menyetujui ${pos.length} PO dalam batch ${batchCode}.`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: hasRequested ? "#10b981" : "#4f46e5",
-      cancelButtonColor: "#94a3b8",
-      confirmButtonText: "Ya, Setujui Semua",
-      cancelButtonText: "Batal",
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      const poIds = pos.map((po) => po.id);
-      const res = await fetch("/api/po/credit-limit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ poIds, action }),
-      });
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => null);
-        throw new Error(json?.error || "Gagal memproses credit limit");
-      }
-
-      Swal.fire({
-        icon: "success",
-        title: "Berhasil Disetujui!",
-        text: `${pos.length} PO telah disetujui.`,
-        timer: 1500,
-        showConfirmButton: false,
-      });
-
-      setPoData((prev) =>
-        prev.map((item) =>
-          poIds.includes(item.id)
-            ? { ...item, statusCreditLimit: hasRequested ? "APPROVED" : "APPROVED_DIREKSI" }
-            : item
-        )
-      );
-    } catch (err: any) {
-      Swal.fire({ icon: "error", title: "Gagal", text: err?.message || "Terjadi kesalahan sistem" });
-    }
+  const handleApproveAll = async (batchCode: string, _pos: any[]) => {
+    const batch = batchGroups.find(item => item.batchCode === batchCode);
+    if (!batch) return;
+    await approveFromServer(batch.id, batchCode, batch.requestedCount > 0 ? "pusat" : "direksi");
   };
 
-  const handleChecklistAllND = async (batchCode: string, batchPos: any[], checked: boolean) => {
+  const handleChecklistAllND = async (batchCode: string, _batchPos: any[], checked: boolean) => {
+    const batchPos = await requireBatchDetails(batchCode);
+    if (!batchPos) return;
     const modifiablePos = batchPos.filter(p => p.statusCreditLimit !== "APPROVED_DIREKSI");
     if (modifiablePos.length === 0) return;
     const poIds = modifiablePos.map(p => p.id);
@@ -325,6 +270,7 @@ export function useCreditLimitApproval({
       if (!res.ok) {
         throw new Error("Gagal menyimpan status ND massal");
       }
+      pages.refreshBatches([batchCode]);
     } catch (err) {
       console.error(err);
       Swal.fire({
@@ -348,197 +294,38 @@ export function useCreditLimitApproval({
     }
   };
 
-  const handleExportExcel = (batchCode: string, posToExport: any[]) => {
-    if (!posToExport || posToExport.length === 0) {
-      Swal.fire({
-        title: "Info",
-        text: "Tidak ada data untuk diexport",
-        icon: "info"
-      });
-      return;
+  const handleExportExcel = async (batchCode?: string, _posToExport?: any[]) => {
+    if (exportActive.current || activeActions.current.size) return;
+    const batch = batchCode ? batchGroups.find(item => item.batchCode === batchCode) : null;
+    if (batchCode && !batch) return;
+    exportActive.current = true; setExporting(true);
+    if (batchCode) setBatchBusy(prev => ({ ...prev, [batchCode]: true }));
+    try {
+      const params = batch ? new URLSearchParams({ batchId: batch.id }) : new URLSearchParams();
+      if (!batch) for (const [key, value] of Object.entries({ q: search.trim(), company: selectedNamaPt, inisial: selectedInisial, tujuan: selectedTujuan, tglFrom, tglTo })) if (value) params.set(key, value);
+      const response = await fetch("/api/po/credit-limit/approval/export?" + params, { cache: "no-store" });
+      if (!response.ok) { const error = await response.json().catch(() => null); throw new Error(error?.error || "Gagal mengambil data export lengkap."); }
+      if (!response.headers.get("Content-Type")?.includes("spreadsheetml")) throw new Error("Format file export tidak valid.");
+      const blob = await response.blob();
+      if (!blob.size) throw new Error("File export kosong.");
+      const url = URL.createObjectURL(blob), link = document.createElement("a");
+      link.href = url;
+      link.download = response.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] || "Approval_Credit_Limit.xlsx";
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      await Swal.fire({ icon: "error", title: "Export Dibatalkan", text: error instanceof Error ? error.message : "Gagal menyiapkan file export." });
+    } finally {
+      exportActive.current = false; setExporting(false);
+      if (batchCode) setBatchBusy(prev => ({ ...prev, [batchCode]: false }));
     }
-
-    const dataToExport = posToExport.map((po, index) => {
-      const company = po.RitelModern?.namaPt || po.company || "-";
-      return {
-        "No": index + 1,
-        "Batch": po.CreditLimitBatch?.batchCode || "Tanpa Batch",
-        "No PO": po.noPo || "-",
-        "Company": company,
-        "Inisial": po.RitelModern?.inisial || "-",
-        "Site Area": cleanSiteArea(po.UnitProduksi?.siteArea || po.siteArea),
-        "Tujuan": po.tujuanDetail || po.RitelModern?.tujuan || "-",
-        "Tgl PO": po.tglPo ? format(new Date(po.tglPo), "dd/MM/yyyy") : "-",
-        "Due Date": po.expiredTgl ? format(new Date(po.expiredTgl), "dd/MM/yyyy") : "-",
-        "Tgl Kirim": po.tglkirim ? format(new Date(po.tglkirim), "dd/MM/yyyy") : "-",
-        "Pcs Total": Number(po.pcsTotal || 0),
-        "Pcs Kirim": Number(po.pcsKirimTotal || 0),
-        "Nominal": Number(po.totalNominal || 0),
-        "Kode Vendor": po.kodeVendor || "-",
-        "Remarks": po.remarksCreditLimit || "-",
-        "ND": po.isNotaDinas ? "true" : "false",
-        "Status": po.statusCreditLimit === "APPROVED" ? "Approved (Pusat)" : po.statusCreditLimit === "APPROVED_DIREKSI" ? "Approved (Direksi)" : (po.statusCreditLimit || "-"),
-      };
-    });
-
-    const totalPcsSum = dataToExport.reduce((sum, r) => sum + (Number(r["Pcs Total"]) || 0), 0);
-    const totalPcsKirimSum = dataToExport.reduce((sum, r) => sum + (Number(r["Pcs Kirim"]) || 0), 0);
-    const totalNominalSum = dataToExport.reduce((sum, r) => sum + (Number(r["Nominal"]) || 0), 0);
-
-    dataToExport.push({
-      "No": "" as any,
-      "Batch": "",
-      "No PO": "",
-      "Company": "",
-      "Inisial": "",
-      "Site Area": "",
-      "Tujuan": "",
-      "Tgl PO": "",
-      "Due Date": "",
-      "Tgl Kirim": "SUB TOTAL",
-      "Pcs Total": totalPcsSum,
-      "Pcs Kirim": totalPcsKirimSum,
-      "Nominal": totalNominalSum,
-      "Kode Vendor": "",
-      "Remarks": "",
-      "ND": "",
-      "Status": "",
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-
-    worksheet["!cols"] = [
-      { wch: 4 }, { wch: 16 }, { wch: 18 }, { wch: 25 }, { wch: 12 }, { wch: 18 },
-      { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
-      { wch: 16 }, { wch: 14 }, { wch: 25 }, { wch: 12 },
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Approval PO");
-    
-    const safeBatchCode = batchCode.replace(/[^a-zA-Z0-9-]/g, "_");
-    XLSX.writeFile(workbook, `Export_${safeBatchCode}_${format(new Date(), "dd-MMM-yyyy")}.xlsx`);
-  };
-
-  const filteredPo = useMemo(() => {
-    let result = poData;
-
-    if (selectedNamaPt) {
-      result = result.filter((po) => po.RitelModern?.namaPt === selectedNamaPt);
-    }
-    if (selectedInisial) {
-      result = result.filter((po) => po.RitelModern?.inisial === selectedInisial);
-    }
-    if (selectedTujuan) {
-      result = result.filter((po) => po.tujuanDetail === selectedTujuan);
-    }
-
-    if (tglFrom) {
-      const fromDate = new Date(tglFrom);
-      fromDate.setHours(0, 0, 0, 0);
-      result = result.filter((po) => new Date(po.tglPo) >= fromDate);
-    }
-    if (tglTo) {
-      const toDate = new Date(tglTo);
-      toDate.setHours(23, 59, 59, 999);
-      result = result.filter((po) => new Date(po.tglPo) <= toDate);
-    }
-
-    if (search.trim()) {
-      const query = search.toLowerCase();
-      result = result.filter((po) => {
-        const siteArea = String(po.UnitProduksi?.siteArea || po.siteArea || "").toLowerCase();
-        const company = String(po.RitelModern?.namaPt || po.company || "").toLowerCase();
-        const inisial = String(po.RitelModern?.inisial || "").toLowerCase();
-        const noPo = String(po.noPo || "").toLowerCase();
-        const noInvoice = String(po.noInvoice || "").toLowerCase();
-        return (
-          siteArea.includes(query) ||
-          company.includes(query) ||
-          inisial.includes(query) ||
-          noPo.includes(query) ||
-          noInvoice.includes(query)
-        );
-      });
-    }
-
-    return result;
-  }, [poData, search, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
-
-  const batchGroups = useMemo(() => {
-    const map = new Map<string, { batchCode: string; pos: any[]; isArchived: boolean; isBatchOpen: boolean; seqNumber: number; isBatchUncloseable: boolean }>();
-    let maxSeq = 0;
-
-    filteredPo.forEach((po) => {
-      const code = po.CreditLimitBatch?.batchCode || "Tanpa Batch";
-      const seq = po.CreditLimitBatch?.seqNumber || 0;
-      if (seq > maxSeq) maxSeq = seq;
-      
-      if (!map.has(code)) {
-        map.set(code, { 
-          batchCode: code, 
-          pos: [], 
-          isArchived: true, 
-          isBatchOpen: po.CreditLimitBatch?.status === "OPEN",
-          seqNumber: seq,
-          isBatchUncloseable: false,
-        });
-      }
-      
-      const group = map.get(code)!;
-      group.pos.push(po);
-      if (po.statusCreditLimit === "REQUESTED" || po.statusCreditLimit === "APPROVED") {
-        group.isArchived = false;
-      }
-    });
-
-    const groups = Array.from(map.values());
-    
-    // Set isBatchUncloseable: must be CLOSED, distance <= 1, PO count < 50, and NOT all completed
-    groups.forEach((g) => {
-      const isAllCompleted = g.pos.length > 0 && g.pos.every(p => p.statusCreditLimit === "APPROVED_DIREKSI");
-      if (!g.isBatchOpen && g.seqNumber >= maxSeq - 1 && g.pos.length < 50 && !isAllCompleted) {
-        g.isBatchUncloseable = true;
-      }
-    });
-
-    return groups.sort((a, b) => {
-      if (a.isArchived && !b.isArchived) return 1;
-      if (!a.isArchived && b.isArchived) return -1;
-      return b.batchCode.localeCompare(a.batchCode);
-    });
-  }, [filteredPo]);
-
-  const paginatedBatches = useMemo(() => {
-    const startIndex = (currentPage - 1) * batchesPerPage;
-    return batchGroups.slice(startIndex, startIndex + batchesPerPage);
-  }, [batchGroups, currentPage]);
-
-  const totalPages = Math.ceil(batchGroups.length / batchesPerPage);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, selectedNamaPt, selectedInisial, selectedTujuan, tglFrom, tglTo]);
-
-  const toggleBatch = (batchCode: string) => {
-    setExpandedBatches((prev) => {
-      const next = new Set(prev);
-      if (next.has(batchCode)) {
-        next.delete(batchCode);
-      } else {
-        next.add(batchCode);
-      }
-      return next;
-    });
   };
 
   const handleCloseBatch = async (batchCode: string) => {
     // Rule 2: Pre-check apakah seluruh PO dalam batch sudah APPROVED_DIREKSI
-    const targetGroup = batchGroups.find((g) => g.batchCode === batchCode);
-    const isAllApprovedDireksi =
-      targetGroup &&
-      targetGroup.pos.length > 0 &&
-      targetGroup.pos.every((p: any) => p.statusCreditLimit === "APPROVED_DIREKSI");
+    const batchPos = await requireBatchDetails(batchCode);
+    if (!batchPos) return;
+    const isAllApprovedDireksi = batchPos.length > 0 && batchPos.every((p: any) => p.statusCreditLimit === "APPROVED_DIREKSI");
 
     if (!isAllApprovedDireksi) {
       Swal.fire({
@@ -584,7 +371,7 @@ export function useCreditLimitApproval({
         showConfirmButton: false,
       });
 
-      await fetchData();
+      pages.refreshBatches([batchCode]);
     } catch (err: any) {
       Swal.fire({ icon: "error", title: "Gagal", text: err?.message || "Terjadi kesalahan sistem" });
     }
@@ -625,7 +412,7 @@ export function useCreditLimitApproval({
         showConfirmButton: false,
       });
 
-      await fetchData();
+      pages.refreshBatches([batchCode]);
     } catch (err: any) {
       Swal.fire({ icon: "error", title: "Gagal", text: err?.message || "Terjadi kesalahan sistem" });
     }
@@ -635,9 +422,13 @@ export function useCreditLimitApproval({
     setPoData((prev) =>
       prev.map((item) => (item.id === poId ? { ...item, kodeVendor: val } : item))
     );
+    pages.refreshForPoIds([poId]);
   };
 
   return {
+    batchBusy, exporting,
+    fetchError: pages.fetchError, fetchData, matchingPoCount: pages.matchingPoCount, totalBatches: pages.totalBatches,
+    detailLoading: pages.detailLoading, detailErrors: pages.detailErrors, retryBatch: (code: string) => pages.loadBatch(code, true).catch(() => {}), withBatchDetails,
     loading,
     role,
     currentPage,

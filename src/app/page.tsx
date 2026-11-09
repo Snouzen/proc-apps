@@ -42,7 +42,7 @@ export default function Home() {
   const refreshTick = useAutoRefreshTick();
   
   // Custom Hooks calls
-  const { role, regional, siteArea, email, roleReady, authLoading } = useAuthData();
+  const { role, regional, siteArea, email, roleReady, authLoading, authError, fetchMe } = useAuthData({ loadingDeadline: true });
   const { unitData } = useMasterUnits();
 
   // Format username and role based on header logic (clientlayout.tsx)
@@ -64,7 +64,7 @@ export default function Home() {
   const poTable = usePoTable({ role, regional, siteArea, initialGroup: "all" });
   
   // Stats Hook
-  const { stats, statsLoading } = usePoStats({
+  const { stats, statsLoading, statsError, fetchStats } = usePoStats({
     roleReady, role, regional, siteArea,
     dateFrom: poTable.dateFrom, dateTo: poTable.dateTo
   });
@@ -93,7 +93,16 @@ export default function Home() {
 
         {/* Stat Cards Grid */}
         <div className="2xl:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-          {showStatsSkeleton ? (
+          {authError || statsError ? (
+            <div role="alert" className="sm:col-span-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <p>{authError || statsError}</p>
+              <p className="mt-1">Statistik belum dapat diperbarui.</p>
+              <Button className="mt-3" disabled={authLoading || statsLoading && !authError} onClick={() => {
+                if (authError) void fetchMe(true);
+                else void fetchStats();
+              }}>Coba Lagi</Button>
+            </div>
+          ) : showStatsSkeleton ? (
             Array.from({ length: 3 }).map((_, i) => <StatCardSkeleton key={i} />)
           ) : (
             <>
@@ -138,13 +147,13 @@ export default function Home() {
       {/* Middle Row: Charts & Expiring PO Table */}
       <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
         <div className="lg:col-span-1 min-h-[360px]">
-          <PoStatusDonut stats={stats} />
+          {!authError && !statsError && <PoStatusDonut stats={stats} />}
         </div>
         <div className="lg:col-span-1 min-h-[360px]">
-          <RegionalDistributionBar stats={stats} />
+          {!authError && !statsError && <RegionalDistributionBar stats={stats} />}
         </div>
         <div className="lg:col-span-2 2xl:col-span-1 min-h-[380px]">
-          {showStatsSkeleton ? (
+          {authError || statsError ? null : showStatsSkeleton ? (
             <div className="h-full w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm animate-pulse min-h-[380px]" />
           ) : (
             <ExpiringPoMiniTable 
@@ -158,7 +167,7 @@ export default function Home() {
       </div>
 
       {/* Bottom Row Widgets */}
-      {roleReady && !showStatsSkeleton && (
+      {roleReady && !showStatsSkeleton && !authError && !statsError && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="h-full min-h-[300px]">
             <PoReadinessRadialChart stats={stats} />

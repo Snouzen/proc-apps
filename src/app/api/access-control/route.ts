@@ -1,4 +1,5 @@
 import { applyCreditLimitAccessRules } from "@/lib/roleAccessPolicy";
+import { createReadTiming } from "@/lib/readTiming";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionWithRole, getProfileName } from "@/lib/auth";
@@ -15,16 +16,17 @@ import {
 } from "@/lib/accessControl";
 
 export async function GET(req: Request) {
+  const timing = createReadTiming("/api/access-control");
   try {
-    const auth = await getSessionWithRole(req);
-    if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const { config, version } = await readPermissionsConfigWithVersion();
-    if (!config) return NextResponse.json({ error: "Konfigurasi akses tidak tersedia" }, { status: 503 });
+    const auth = await timing.measure("auth", () => getSessionWithRole(req));
+    if (!auth) return timing.finish(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
+    const { config, version } = await timing.measure("permissions", () => readPermissionsConfigWithVersion());
+    if (!config) return timing.finish(NextResponse.json({ error: "Konfigurasi akses tidak tersedia" }, { status: 503 }));
     const role = auth.safeRole || auth.role;
     const data = role === "pusat" ? config : { [role]: config[role] || { enabledMenus: [], enabledActions: [] } };
-    return NextResponse.json({ ok: true, data, version });
+    return timing.finish(NextResponse.json({ ok: true, data, version }));
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: "Konfigurasi akses tidak tersedia" }, { status: 500 });
+    return timing.finish(NextResponse.json({ ok: false, error: "Konfigurasi akses tidak tersedia" }, { status: 500 }));
   }
 }
 

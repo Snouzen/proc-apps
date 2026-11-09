@@ -9,7 +9,7 @@ function loader(mocks = {}) {
   function load(file) {
     if (cache.has(file)) return cache.get(file);
     const actual = path.join(repo, file);
-    const module = { exports: {} };
+    const loadedModule = { exports: {} };
     const code = ts.transpileModule(fs.readFileSync(actual, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     }).outputText;
@@ -19,9 +19,9 @@ function loader(mocks = {}) {
       if (id.startsWith('@/')) return load('src/' + id.slice(2) + '.ts');
       if (id.startsWith('.')) return load(path.relative(repo, path.resolve(path.dirname(actual), id + '.ts')));
       return require(id);
-    }, module, module.exports);
-    cache.set(file, module.exports);
-    return module.exports;
+    }, loadedModule, loadedModule.exports);
+    cache.set(file, loadedModule.exports);
+    return loadedModule.exports;
   }
   return load;
 }
