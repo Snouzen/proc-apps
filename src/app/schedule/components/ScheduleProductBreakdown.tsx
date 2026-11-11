@@ -181,9 +181,12 @@ export default function ScheduleProductBreakdown({
                         max={item.pcs}
                         value={currentVal}
                         disabled={isSaving}
-                        onChange={(e) =>
-                          handleInputChange(item.id, e.target.value, item.pcs)
-                        }
+                        onFocus={(e) => e.currentTarget.select()}
+                        onChange={(e) => {
+                          const normalized = e.currentTarget.value.replace(/^0+(?=\d)/, "");
+                          e.currentTarget.value = normalized;
+                          handleInputChange(item.id, normalized, item.pcs);
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !isSaving && !invalidItem && isDirty) {
                             handleSubmit();

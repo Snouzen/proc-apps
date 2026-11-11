@@ -81,6 +81,7 @@ export function usePoDetailModal({ role, regional }: UsePoDetailModalProps = {})
       id: fullPo?.id || "",
       noPo: fullPo?.noPo || fullPo?.nopo || "-",
       company: getCompanyName(fullPo),
+      inisial: fullPo?.RitelModern?.inisial || fullPo?.inisial || null,
       createdAt: fullPo?.createdAt || null,
       updatedAt: fullPo?.updatedAt || null,
       tglPo: fullPo?.tglPo || null,

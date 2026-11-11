@@ -238,6 +238,7 @@ export function buildPOQueryParams(
   if (company && company.trim()) {
     where.RitelModern = {
       is: {
+        ...(where.RitelModern?.is || {}),
         namaPt: {
           equals: company.trim(),
           mode: "insensitive",

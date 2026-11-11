@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PODetailModal from "@/components/po-detail-modal";
 import { usePoDetailModal } from "@/hooks/usePoDetailModal";
+import Link from "next/link";
 
 export default function DashboardPoDialog() {
-  const [selection, setSelection] = useState<{ filters: Record<string, string>; title: string } | null>(null);
+  const [selection, setSelection] = useState<{ filters: Record<string, string>; title: string; activity?: { id: string; recordId: string } } | null>(null);
   const [page, setPage] = useState(0);
   const [rows, setRows] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -37,9 +38,9 @@ export default function DashboardPoDialog() {
         <DialogHeader><DialogTitle>{selection?.title}</DialogTitle></DialogHeader>
         {loading ? <p>Memuat PO...</p> : error ? <div role="alert">{error} <button onClick={() => setRetry(n => n + 1)}>Coba Lagi</button></div> : <>
           <p className="text-sm">{total} PO sesuai filter dan akses akun.</p>
-          <div className="space-y-2">{rows.map(po => <button key={po.id} className="w-full rounded-xl border p-3 text-left hover:bg-slate-50" onClick={() => void detail.openModal(po)}>
+          <div className="space-y-2">{rows.map(po => <div key={po.id}><button className="w-full rounded-xl border p-3 text-left hover:bg-slate-50" onClick={() => void detail.openModal(po)}>
             <strong>{po.noPo}</strong><p className="text-sm">{po.RitelModern?.namaPt || "-"} · {po.UnitProduksi?.siteArea || "Belum ditetapkan"}</p>
-          </button>)}{!rows.length && <p>Tidak ada PO pada filter ini.</p>}</div>
+          </button>{selection?.activity && selection.activity.recordId === po.id && <Link href={`/activities/${encodeURIComponent(selection.activity.id)}?recordId=${encodeURIComponent(po.id)}`} className="ml-3 mt-1 inline-block text-sm font-semibold text-blue-600 underline">Lihat Detail</Link>}</div>)}{!rows.length && <p>Tidak ada PO pada filter ini.</p>}</div>
           <div className="flex justify-between"><button disabled={!page} onClick={() => setPage(p => p - 1)}>Sebelumnya</button><span>{page + 1} / {Math.max(1, Math.ceil(total / 20))}</span><button disabled={(page + 1) * 20 >= total} onClick={() => setPage(p => p + 1)}>Berikutnya</button></div>
         </>}
       </DialogContent>

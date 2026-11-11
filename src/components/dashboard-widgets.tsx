@@ -9,6 +9,7 @@ import { ArrowRight, FileWarning, Activity, CheckCircle2, Clock } from "lucide-r
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import DateInputHybrid from "@/components/DateInputHybrid";
+import { ActivitySummaryDialog } from "@/components/ActivitySummary";
 
 const COLORS = ["#3b82f6", "#f59e0b", "#f43f5e", "#10b981", "#64748b"];
 
@@ -564,6 +565,8 @@ function timeAgo(dateString: string) {
 export function RecentActivityWidget() {
   const [res, setRes] = useState<any>(null);
   const [error, setError] = useState<any>(null);
+  const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
+  const activityTrigger = React.useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -601,20 +604,17 @@ export function RecentActivityWidget() {
   
   const renderActivity = (act: any) => {
     let text = "Aktivitas tidak diketahui";
-    let link = "#";
     let icon = <Activity size={14} className="text-blue-500" />;
     
     if (act.entity === "PurchaseOrder") {
       const poRef = act.refNumber || act.newData?.noPo || act.newData?.noInvoice;
       const refText = poRef ? ` (${poRef})` : '';
       text = `PO${refText} baru diupload oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
-      link = `/dashboard/po`;
       icon = <FileWarning size={14} className="text-blue-500" />;
     } else if (act.entity === "Reconcile") {
       const rekonRef = act.refNumber || act.newData?.noRekonsiliasi;
       const refText = rekonRef ? ` (${rekonRef})` : '';
       text = `Rekonsiliasi${refText} dibuat oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
-      link = `/dashboard/rekon?action=edit&id=${act.entityId}`;
       icon = <CheckCircle2 size={14} className="text-emerald-500" />;
     } else if (act.entity === "DataRetur") {
       const isBatch = act.newData?.isBatch || act.entityId.startsWith("batch-");
@@ -622,16 +622,17 @@ export function RecentActivityWidget() {
       const rtvRef = act.refNumber || act.newData?.rtvCn;
       const refText = (!isBatch && rtvRef) ? ` (${rtvRef})` : '';
       text = `${isBatch ? count : 1} Data Retur${refText} diupload oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
-      link = `/dashboard/retur`;
       icon = <Activity size={14} className="text-rose-500" />;
     } else if (act.entity === "CreditLimitBatch") {
       text = `Batch Credit Limit diajukan oleh ${act.userName} (${act.userRole?.toUpperCase() || 'SYSTEM'})`;
-      link = `/dashboard/credit-limit`;
       icon = <Clock size={14} className="text-amber-500" />;
     }
     
     return (
-      <Link onClick={e => { if (act.entity === "PurchaseOrder") { e.preventDefault(); openDashboardPOs({ q: act.refNumber || act.newData?.noPo || "" }, "PO dari aktivitas"); } }} href={link} key={act.id} className="flex gap-3 items-start hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 -mx-2 rounded-lg transition-colors">
+      <button type="button" onClick={e => {
+        if (act.entity === "PurchaseOrder") openDashboardPOs({ q: act.refNumber || act.newData?.noPo || "" }, "PO dari aktivitas", { id: act.id, recordId: act.entityId });
+        else { activityTrigger.current = e.currentTarget; setSelectedActivity(act.id); }
+      }} key={act.id} className="flex w-full gap-3 items-start text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 rounded-lg transition-colors">
         <div className="mt-0.5 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700">
           {icon}
         </div>
@@ -639,7 +640,7 @@ export function RecentActivityWidget() {
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300 leading-tight">{text}</span>
           <span className="text-[10px] text-slate-400 mt-0.5">{timeAgo(act.createdAt)}</span>
         </div>
-      </Link>
+      </button>
     );
   };
 
@@ -654,13 +655,15 @@ export function RecentActivityWidget() {
         {(!res && !error) ? (
           <div className="text-xs text-slate-400 text-center py-4">Memuat data...</div>
         ) : (res?.data?.length === 0) ? (
-          <div className="text-xs text-slate-400 text-center py-4">Belum ada aktivitas</div>
+          <div className="text-xs text-slate-400 text-center py-4">Belum ada aktivitas yang dapat ditampilkan.</div>
         ) : (
           <div className="flex flex-col gap-2">
             {res?.data?.map(renderActivity)}
           </div>
         )}
+        {res?.scopeScanLimited && <p className="mt-2 text-xs text-slate-500">Riwayat lebih lama tidak dimuat pada widget ini.</p>}
       </CardContent>
+      <ActivitySummaryDialog activityId={selectedActivity} onClose={() => setSelectedActivity(null)} returnFocus={() => activityTrigger.current?.focus()} />
     </Card>
   );
 }

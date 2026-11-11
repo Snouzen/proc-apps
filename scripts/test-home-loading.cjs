@@ -115,7 +115,7 @@ test('Activity loads initially without focus, pauses hidden polling, resumes onc
   global.fetch = (_, options) => { calls++; signal = options.signal; return new Promise(r => resolve = r); };
   const empty = {}, mocks = {
     'react/jsx-runtime': { jsx: () => null, jsxs: () => null },
-    '@/lib/dashboardDrilldown': empty, recharts: empty, '@/components/ui/card': empty,
+    '@/lib/dashboardDrilldown': empty, recharts: empty, '@/components/ui/card': empty, '@/components/ActivitySummary': empty,
     '@/components/PoDateBadge': empty, 'lucide-react': empty, 'next/link': empty, '@/components/DateInputHybrid': empty,
   };
   const f = hooks('src/components/dashboard-widgets.tsx', 'RecentActivityWidget', mocks);

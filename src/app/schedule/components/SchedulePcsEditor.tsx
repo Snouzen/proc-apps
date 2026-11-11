@@ -24,7 +24,12 @@ export function SchedulePcsEditor({ value, max, saving, onSave }: {
     if (await onSave(draft)) setEditing(false);
     else setError("Belum tersimpan. Coba lagi.");
   }}>
-    <input aria-label="PCS Kirim" type="number" min={0} max={max} step={1} value={draft} disabled={saving} onChange={e => { setDraft(e.target.value); setError(""); }} className="w-full border rounded-lg p-2 text-xs bg-transparent" />
+    <input aria-label="PCS Kirim" type="number" min={0} max={max} step={1} value={draft} disabled={saving} onFocus={e => e.currentTarget.select()} onChange={e => {
+      const normalized = e.currentTarget.value.replace(/^0+(?=\d)/, "");
+      e.currentTarget.value = normalized;
+      setDraft(normalized);
+      setError("");
+    }} className="w-full border rounded-lg p-2 text-xs bg-transparent" />
     {error && <span role="alert" className="text-xs text-rose-600">{error}</span>}
     <div className="flex gap-2 text-xs"><button type="submit" disabled={saving} className="text-indigo-600 p-1">{saving ? "Menyimpan…" : "Simpan"}</button><button type="button" disabled={saving} onClick={() => setEditing(false)} className="p-1">Batal</button></div>
   </form>;

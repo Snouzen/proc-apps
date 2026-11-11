@@ -107,6 +107,23 @@ test('Conflicting regional + sitearea yields empty result, not a wider scope', (
 test('Optional company combines with regional instead of becoming mandatory', () => {
   assert.deepEqual(ids(query({ regional: 'REGIONAL 2 SURABAYA', company: 'COMPANY A' })), ['KDL']);
 });
+
+test('Company and inisial intersect without including other aliases of the same company', () => {
+  assert.deepEqual(ids(query({ company: 'COMPANY A', inisial: 'alias-2' })), ['KDL']);
+});
+
+test('Inisial remains effective without a company filter', () => {
+  assert.deepEqual(ids(query({ inisial: 'ALIAS-2' })), ['KDL']);
+});
+
+test('Inisial belonging to another company yields no results', () => {
+  assert.deepEqual(ids(query({ company: 'COMPANY A', inisial: 'ALIAS-1' })), []);
+});
+
+test('Search and column filters cannot broaden the chosen company/inisial', () => {
+  assert.deepEqual(ids(query({ company: 'COMPANY A', inisial: 'ALIAS-2', q: 'PO-0' })), []);
+  assert.deepEqual(ids(query({ company: 'COMPANY A', inisial: 'ALIAS-2', colFilters: JSON.stringify({ inisial: 'ALIAS-0' }) })), []);
+});
 test('Legacy regional aliases remain accepted without broad substring matching', () => {
   const oldRow = { ...rows[1], regional: 'reg ii', UnitProduksi: null };
   assert(matches(oldRow, query({ regional: 'REGIONAL 2 SURABAYA' }).where));
