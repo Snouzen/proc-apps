@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import ExcelJS from "exceljs";
+import { getReturExportKg } from "@/lib/returExportWeight";
 
 export async function GET(request: Request) {
   try {
@@ -210,7 +211,7 @@ export async function GET(request: Request) {
       { key: "link", header: "LINK", width: 25, getValue: (item: any) => item.link || "-" },
       { key: "produk", header: "PRODUK", width: 35, getValue: (item: any) => item.produk || "-" },
       { key: "qtyReturn", header: "QTY RETUR", width: 14, numFmt: "#,##0", getValue: (item: any) => Number(item.qtyReturn || 0) },
-      { key: "kg", header: "KG", width: 14, numFmt: "#,##0.00", getValue: (item: any) => Number(item.qtyReturn || 0) * (item.Product?.satuanKg || 1) },
+      { key: "kg", header: "KG", width: 24, numFmt: "#,##0", getValue: (item: any) => getReturExportKg(item) ?? "Berat belum tersedia" },
       { key: "nominal", header: "NOMINAL", width: 18, numFmt: '"Rp" #,##0', getValue: (item: any) => Number(item.nominal || 0) },
       { key: "rpKg", header: "RP/KG", width: 18, numFmt: '"Rp" #,##0', getValue: (item: any) => Number(item.rpKg || 0) },
       { key: "statusBarang", header: "STATUS BARANG", width: 18, getValue: (item: any) => item.statusBarang || "BELUM DIAMBIL" },

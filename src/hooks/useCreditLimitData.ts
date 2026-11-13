@@ -34,12 +34,13 @@ export function useCreditLimitData({
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [sorting, setSorting] = useState<Array<{ id: string; desc: boolean }>>([]);
   const [columnFilters, setColumnFilters] = useState<Array<{ id: string; value: unknown }>>([]);
+  const [debouncedColumnFilters, setDebouncedColumnFilters] = useState(columnFilters);
   const [pageState, setPageState] = useState({ key: "", page: 1, size: 10 });
   const params = new URLSearchParams({ tab: activeFilter, sort: sorting[0] ? (sorting[0].id === "zone" ? "statusCreditLimit" : sorting[0].id) + (sorting[0].desc ? "_desc" : "_asc") : "tglPo_desc" });
   for (const [key, value] of Object.entries({ q: debouncedSearch.trim(), company: selectedNamaPt, inisial: selectedInisial, tujuan: selectedTujuan, status: selectedStatus, tglFrom, tglTo })) {
     if (value) params.set(key, value);
   }
-  if (columnFilters.length) params.set("colFilters", JSON.stringify(Object.fromEntries(columnFilters.map(filter => [filter.id, filter.value]))));
+  if (debouncedColumnFilters.length) params.set("colFilters", JSON.stringify(Object.fromEntries(debouncedColumnFilters.map(filter => [filter.id, filter.value]))));
   const filterKey = params.toString();
   const currentPage = pageState.key === filterKey ? pageState.page : 1;
   const itemsPerPage = pageState.size;
@@ -59,6 +60,10 @@ export function useCreditLimitData({
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
   }, [search]);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedColumnFilters(columnFilters), 300);
+    return () => clearTimeout(timer);
+  }, [columnFilters]);
 
   // Detect user role & siteArea
   useEffect(() => {

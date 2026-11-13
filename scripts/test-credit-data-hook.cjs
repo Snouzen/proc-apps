@@ -3,19 +3,29 @@ const repo = path.resolve(__dirname, '..'), ts = require(path.join(repo, 'node_m
 function fixture(props = {}) {
   let cursor = 0, refCursor = 0, states = [], refs = [], getImpl = async () => Response.json(payload()), requests = [], confirm = true, failPost = false;
   let currentProps = { search: '', activeFilter: 'all', selectedNamaPt: '', selectedInisial: '', selectedTujuan: '', selectedStatus: '', tglFrom: '', tglTo: '', ...props };
+  let clock = 0, timerId = 0, filterDeps, filterCleanup;
+  const timers = new Map();
   const po = () => ({ id: 'P1', noPo: 'PO-1', kodeVendor: 'V1', noInvoice: null, tglkirim: '2026-10-30', expiredTgl: '2026-11-03', statusCreditLimit: null });
   const payload = (data = [po()], total = 31) => ({ data, total, stats: { total: 31, normal: 20, remarksNeeded: 5 } });
   const react = {
     useState(initial) { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], value => { states[i] = typeof value === 'function' ? value(states[i]) : value; }]; },
     useRef(initial) { const i = refCursor++; return refs[i] || (refs[i] = { current: initial }); },
-    useCallback: fn => fn, useLayoutEffect: fn => fn(), useEffect: () => {},
+    useCallback: fn => fn, useLayoutEffect: fn => fn(),
+    // Run the column-filter debounce effect; fetch/auth effects remain explicit mocks.
+    useEffect(fn, deps) {
+      if (deps?.length === 1 && Array.isArray(deps[0]) && deps[0] !== filterDeps) {
+        filterCleanup?.(); filterDeps = deps[0]; filterCleanup = fn();
+      }
+    },
   };
   const mocks = { react, sweetalert2: { __esModule: true, default: { fire: async () => ({ isConfirmed: confirm, value: { remarks: 'Test remarks' } }) } }, '@/lib/credit-limit': { getDueDateZone: () => 'normal', needsRemarks: () => false }, '@/lib/utils/invoice': { isInvoiceEmpty: value => value === null || value === '' } };
   const file = path.join(repo, 'src/hooks/useCreditLimitData.ts'), loadedModule = { exports: {} }, code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-  new Function('require', 'module', 'exports', code)(id => { if (id in mocks) return mocks[id]; throw Error('Unexpected import ' + id); }, loadedModule, loadedModule.exports);
+  new Function('require', 'module', 'exports', 'setTimeout', 'clearTimeout', code)(id => { if (id in mocks) return mocks[id]; throw Error('Unexpected import ' + id); }, loadedModule, loadedModule.exports,
+    (fn, delay) => { const id = ++timerId; timers.set(id, { fn, at: clock + delay }); return id; }, id => timers.delete(id));
   const original = global.fetch;
   global.fetch = async (url, options = {}) => { requests.push({ url: new URL(url, 'http://local'), options }); return options.method === 'POST' ? Response.json(failPost ? { error: 'Denied' } : { ok: true }, { status: failPost ? 403 : 200 }) : getImpl(url, options); };
   return { requests, po, payload,
+    advance(ms) { clock += ms; for (const [id, timer] of timers) if (timer.at <= clock) { timers.delete(id); timer.fn(); } },
     render(patch = {}) { currentProps = { ...currentProps, ...patch }; cursor = 0; refCursor = 0; return loadedModule.exports.useCreditLimitData(currentProps); },
     fetch(fn) { getImpl = fn; }, cancel() { confirm = false; }, failPost() { failPost = true; }, restore() { global.fetch = original; },
   };
@@ -33,4 +43,24 @@ test('Successful request still posts once with same action/payload and reloads o
 test('Missing vendor blocks request; failed request does not remove PO or replay mutation', () => withFixture(async f => { await f.render().fetchData(); await f.render().handleAjukanCreditLimit({ ...f.po(), kodeVendor: '' }); assert.equal(f.requests.length, 1); f.failPost(); await f.render().handleAjukanCreditLimit(f.po()); assert.equal(f.requests.filter(r => r.options.method === 'POST').length, 1); assert.equal(f.render().paginatedPOs.length, 1); }));
 test('Shrinking result clamps last page and allows refill from valid server page', () => withFixture(async f => { f.render().setCurrentPage(4); f.fetch(async () => Response.json(f.payload([], 20))); await f.render().fetchData(); assert.equal(f.render().currentPage, 2); }));
 test('Frontend eligibility guard still rejects invoiced or unscheduled response records', () => withFixture(async f => { f.fetch(async () => Response.json(f.payload([f.po(), { ...f.po(), id: 'BAD-INV', noInvoice: 'INV-1' }, { ...f.po(), id: 'BAD-DATE', tglkirim: null }]))); await f.render().fetchData(); assert.deepEqual(f.render().paginatedPOs.map(po => po.id), ['P1']); }));
+test('Column typing updates immediately but only the final value reaches the query after 300ms; clear also recovers empty results', () => withFixture(async f => {
+  await f.render().fetchData();
+  f.render().setCurrentPage(2); await f.render().fetchData();
+  f.render().setColumnFilters([{ id: 'noPo', value: 'P' }]);
+  assert.equal(f.render().columnFilters[0].value, 'P');
+  f.advance(200);
+  f.render().setColumnFilters([{ id: 'noPo', value: 'PO-NOT-FOUND' }]); f.render();
+  f.advance(299); await f.render().fetchData();
+  assert.equal(f.requests.at(-1).url.searchParams.get('colFilters'), null);
+  assert.equal(f.requests.at(-1).url.searchParams.get('page'), '2');
+  f.advance(1);
+  f.fetch(async () => Response.json(f.payload([], 0))); await f.render().fetchData();
+  assert.deepEqual(JSON.parse(f.requests.at(-1).url.searchParams.get('colFilters')), { noPo: 'PO-NOT-FOUND' });
+  assert.equal(f.requests.at(-1).url.searchParams.get('page'), '1');
+  assert.equal(f.render().paginatedPOs.length, 0);
+  f.render().setColumnFilters([]); f.render(); f.advance(300);
+  f.fetch(async () => Response.json(f.payload())); await f.render().fetchData();
+  assert.equal(f.requests.at(-1).url.searchParams.get('colFilters'), null);
+  assert.equal(f.render().paginatedPOs.length, 1);
+}));
 (async () => { let passed = 0; for (const [name, run] of tests) { try { await run(); passed++; console.log('PASS ' + name); } catch (error) { process.exitCode = 1; console.error('FAIL ' + name, error); } } console.log(passed + '/' + tests.length + ' passed; actual hook with mocked React/network, no production writes'); })();

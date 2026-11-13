@@ -8,7 +8,6 @@ import {
   CalendarDays,
   MapPin,
   CheckCircle2,
-  Truck,
   AlertTriangle,
   Clock,
 } from "lucide-react";
@@ -361,23 +360,7 @@ export default function CreditLimitDataPage() {
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-        {data.filteredPo.length === 0 && !data.loading ? (
-          <div className="flex flex-col items-center gap-3 py-16">
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-              <Truck size={28} className="text-slate-300 dark:text-slate-600" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                Belum ada PO yang siap
-              </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                PO akan muncul setelah dijadwalkan, Pcs Kirim sesuai, dan due
-                date dalam range 14 hari.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <DataTableV2
+        <DataTableV2
             columns={columns}
             data={data.paginatedPOs}
             getRowId={(row: any) => row.id}
@@ -399,8 +382,7 @@ export default function CreditLimitDataPage() {
             columnFilters={data.columnFilters}
             onColumnFiltersChange={data.setColumnFilters}
             onRowClick={(po: any) => detail.handleViewRow(po)}
-          />
-        )}
+        />
       </div>
 
       {/* ── View Detail Modal ────────────────────────────────────────────── */}
