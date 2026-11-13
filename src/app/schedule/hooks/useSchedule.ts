@@ -120,8 +120,8 @@ export function useSchedule() {
   useEffect(() => { getMe().then(setUser).catch(() => setUser(null)); }, []);
 
   const handleUpdateSchedule = async () => {
-    if (!selectedPo || !selectedDate) {
-      await showScheduleError(new Error("Mohon isi tanggal pengiriman terlebih dahulu."), "Form Belum Lengkap", "/api/po/schedule", "SCHEDULE_DATE_REQUIRED");
+    if (!selectedPo) {
+      await showScheduleError(new Error("Pilih PO yang akan diperbarui terlebih dahulu."), "PO Belum Dipilih", "/api/po/schedule", "SCHEDULE_PO_REQUIRED");
       return;
     }
 

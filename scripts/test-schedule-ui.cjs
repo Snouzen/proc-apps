@@ -10,6 +10,19 @@ const tests=[];function test(name,run){tests.push([name,run]);}
 test('Batch save updates confirmed totals immediately without list reload or router refresh',async()=>{const f=fixture();await f.render().fetchData();await f.render().handleBatchUpdateItemPcsKirim('PO1',[{itemId:'A',pcsKirim:4}]);const h=f.render(),po=h.poData[0];assert.equal(po.pcsKirimTotal,6);assert.equal(po.totalKgKirim,30);assert.equal(po.totalTagihan,760);assert.equal(po.Items[1].pcsKirim,2);assert.equal(h.savingBatchPoId,null);assert.equal(f.gets,1);assert.equal(f.refreshes,0);});
 test('Pending save never displays unconfirmed PCS; failed save preserves stored values and draft baseline',async()=>{const f=fixture();await f.render().fetchData();let reject;f.save(()=>new Promise((_,r)=>reject=r));const pending=f.render().handleBatchUpdateItemPcsKirim('PO1',[{itemId:'A',pcsKirim:4}]);assert.equal(f.render().poData[0].Items[0].pcsKirim,1);assert.equal(f.render().savingBatchPoId,'PO1');reject(Error('Simulated save failure'));await pending;assert.equal(f.render().poData[0].Items[0].pcsKirim,1);assert.equal(f.render().savingBatchPoId,null);assert.equal(f.errors,1);assert.equal(f.gets,1);});
 test('Single PO save updates row and accepts zero immediately after confirmation',async()=>{const f=fixture();await f.render().fetchData();assert.equal(await f.render().handleUpdatePcsKirim('PO1','0'),true);assert.equal(f.render().poData[0].pcsKirimTotal,0);assert.equal(f.render().poData[0].totalTagihan,0);assert.equal(f.refreshes,0);assert.equal(f.gets,1);});
+
+test('Clearing delivery date submits null without changing shipment quantities',async()=>{
+ const f=fixture(); const original=fixturePo(); let captured;
+ const h=f.render(); h.setSelectedPo({...original,tglkirim:'2026-11-04T12:00:00Z'}); h.setSelectedDate(''); h.setNamaSupir(''); h.setPlatNomor(''); h.setModalOpen(true);
+ f.save(async(endpoint,payload)=>{captured={endpoint,payload};});
+ await f.render().handleUpdateSchedule();
+ assert.deepEqual(captured,{endpoint:'/api/po/schedule',payload:{id:'PO1',tglKirim:null,namaSupir:'',platNomor:''}});
+ assert.equal(f.render().modalOpen,false); assert.equal(f.errors,0); assert.deepEqual(original.Items,fixturePo().Items);
+});
+
+test('Schedule update still rejects a missing target PO',async()=>{
+ const f=fixture(); let saves=0; f.save(async()=>{saves++;}); await f.render().handleUpdateSchedule(); assert.equal(saves,0); assert.equal(f.errors,1);
+});
 test('Granular PCS save refreshes only matching item and preserves sibling',async()=>{const f=fixture();await f.render().fetchData();await f.render().handleUpdateItemPcsKirim('PO1','A','3');assert.equal(f.render().poData[0].pcsKirimTotal,5);assert.equal(f.render().poData[0].Items[1].pcsKirim,2);assert.equal(f.gets,1);});
 test('Slow list response started before confirmed save cannot restore stale PCS',async()=>{const f=fixture();await f.render().fetchData();let resolve;f.fetch(()=>new Promise(r=>resolve=r));const pending=f.render().fetchData(true);await f.render().handleUpdateItemPcsKirim('PO1','A','4');resolve(Response.json({data:[fixturePo()],total:1,stats:{total:1,pending:1,scheduled:0}}));await pending;assert.equal(f.render().poData[0].Items[0].pcsKirim,4);});
 test('Failed background read does not erase confirmed save',async()=>{const f=fixture();await f.render().fetchData();let reject;f.fetch(()=>new Promise((_,r)=>reject=r));const pending=f.render().fetchData(true);await f.render().handleUpdateItemPcsKirim('PO1','A','4');reject(Error('Simulated read failure'));await pending;assert.equal(f.render().poData[0].Items[0].pcsKirim,4);assert.equal(f.render().fetchError,'Simulated read failure');});

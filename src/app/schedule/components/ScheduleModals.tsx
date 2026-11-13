@@ -110,7 +110,7 @@ export default function ScheduleModals({
                 Batal
               </button>
               <button
-                disabled={!selectedDate || !!updatingId}
+                disabled={!selectedPo || !!updatingId}
                 onClick={handleUpdateSchedule}
                 className="flex-1 px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95 flex items-center justify-center gap-2"
               >
