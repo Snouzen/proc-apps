@@ -154,7 +154,7 @@ export const POBodySchema = z
     ),
     buktiBayar: z.preprocess(
       (v) =>
-        v == null || String(v).trim() === "" ? undefined : String(v).trim(),
+        v === undefined ? undefined : v === null || String(v).trim() === "" ? null : String(v).trim(),
       z.string().optional().nullable(),
     ),
     buktiKirim: z.preprocess(
