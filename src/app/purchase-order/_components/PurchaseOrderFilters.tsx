@@ -361,7 +361,7 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
                 "truncate text-[11px]",
                 !ritelFilters.selectedRegional ? "text-slate-400 font-normal" : "text-slate-800 dark:text-slate-100 font-bold"
               )}>
-                {ritelFilters.selectedRegional || "Semua Regional..."}
+                {ritelFilters.selectedRegionalLabel || "Semua Regional..."}
               </span>
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-slate-400" />
             </Button>
@@ -463,7 +463,7 @@ export function PurchaseOrderFilters({ ritelFilters, poTable }: PurchaseOrderFil
                 "truncate text-[11px]",
                 !ritelFilters.selectedSiteArea ? "text-slate-400 font-normal" : "text-slate-800 dark:text-slate-100 font-bold"
               )}>
-                {ritelFilters.selectedSiteArea || "Semua Unit..."}
+                {ritelFilters.selectedSiteAreaLabel || "Semua Unit..."}
               </span>
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-slate-400" />
             </Button>

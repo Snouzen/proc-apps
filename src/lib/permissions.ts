@@ -186,7 +186,7 @@ export function isMenuAllowedForRole(
 ): boolean {
   if (!role) return false;
   const normalizedRole = role === "spb_dki" ? "sitearea" : role;
-  if (menuId === "credit_limit_approval" && normalizedRole !== "pusat") return false;
+  if (["credit_limit_approval", "report_realisasi"].includes(menuId) && normalizedRole !== "pusat") return false;
   const map = applyCreditLimitAccessRules(customMap || getStoredPermissions());
   const roleConfig = map[normalizedRole] || DEFAULT_ROLE_CONFIGS[normalizedRole] || DEFAULT_ROLE_CONFIGS.pusat;
   return roleConfig?.enabledMenus?.includes(menuId) ?? true;
@@ -231,13 +231,14 @@ export function usePermissions(currentRole?: string | null) {
 
   const isMenuAllowed = (menuId: string): boolean => {
     if (!currentRole) return false;
-    if (menuId === "credit_limit_approval" && normalizedRole !== "pusat") return false;
+    if (["credit_limit_approval", "report_realisasi"].includes(menuId) && normalizedRole !== "pusat") return false;
     return roleConfig?.enabledMenus?.includes(menuId) ?? false;
   };
 
   const isActionAllowed = (actionId: string): boolean => {
     if (!currentRole) return false;
     if (/^cl_(appr_|batch_)/.test(actionId) && normalizedRole !== "pusat") return false;
+    if (actionId.startsWith("real_") && normalizedRole !== "pusat") return false;
     if (/(^|_)delete($|_)/.test(actionId) && normalizedRole !== "pusat") return false;
     return roleConfig?.enabledActions?.includes(actionId) ?? false;
   };

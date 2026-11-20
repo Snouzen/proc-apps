@@ -197,13 +197,6 @@ export function useCreditLimitApproval({
   };
 
   const handleUpdateNDDetails = async (poId: string, noNd: string, linkNd: string) => {
-    // Optimistic UI update
-    setPoData((prev) =>
-      prev.map((item) =>
-        item.id === poId ? { ...item, noNd, linkNd } : item
-      )
-    );
-
     try {
       const res = await fetch("/api/po/credit-limit", {
         method: "POST",
@@ -211,11 +204,15 @@ export function useCreditLimitApproval({
         body: JSON.stringify({ poId, action: "updateNDDetails", noNd, linkNd }),
       });
 
-      if (!res.ok) {
-        throw new Error("Gagal menyimpan detail ND");
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal menyimpan detail ND");
+      const saved = result.data;
+      if (!result.success || saved?.id !== poId || typeof saved.isNotaDinas !== "boolean" ||
+        !(saved.noNd === null || typeof saved.noNd === "string") ||
+        !(saved.linkNd === null || typeof saved.linkNd === "string")) {
+        throw new Error("Respons penyimpanan ND tidak valid. Silakan coba lagi.");
       }
-      
-      pages.refreshForPoIds([poId]);
+      pages.applyNdDetails(poId, { noNd: saved.noNd, linkNd: saved.linkNd, isNotaDinas: saved.isNotaDinas });
       Swal.fire({
         icon: "success",
         title: "Berhasil",
@@ -225,18 +222,55 @@ export function useCreditLimitApproval({
         showConfirmButton: false,
         timer: 3000
       });
+      return true;
     } catch (err) {
       console.error(err);
       Swal.fire({
         icon: "error",
         title: "Gagal",
-        text: "Gagal menyimpan detail ND. Silakan coba lagi.",
+        text: err instanceof Error ? err.message : "Gagal menyimpan detail ND. Silakan coba lagi.",
         toast: true,
         position: "top-end",
         showConfirmButton: false,
         timer: 3000
       });
-      pages.refreshForPoIds([poId]);
+      return false;
+    }
+  };
+
+  const handleBatchND = async (batchCode: string, noNd: string) => {
+    const batch = batchGroups.find(item => item.batchCode === batchCode);
+    if (!batch || activeActions.current.size || exportActive.current) return false;
+    activeActions.current.add(batchCode);
+    setBatchBusy(prev => ({ ...prev, [batchCode]: true }));
+    try {
+      const post = async (mode: "check" | "save", expectedSnapshot?: string) => {
+        const response = await fetch("/api/po/credit-limit/nd", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ batchId: batch.id, noNd: noNd.trim(), policy: "empty", mode, expectedSnapshot }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(`${result.error || "Gagal menyimpan ND batch."}${result.code ? ` (${result.code})` : ""}`);
+        return result;
+      };
+      const checked = await post("check");
+      if (!checked.count) {
+        await Swal.fire({ icon: "info", title: "Tidak Ada PO yang Perlu Diubah", text: "Seluruh target sudah memiliki No. ND atau telah selesai disetujui Direksi." });
+        return false;
+      }
+      const confirmed = await Swal.fire({ icon: "question", title: "Isi No. ND yang Kosong?",
+        text: `${checked.count} PO pada batch ${checked.batchCode} akan memakai No. ND ${noNd.trim()}. Nomor yang sudah terisi tetap dipertahankan. ${checked.completedCount} PO selesai tidak diubah.`,
+        showCancelButton: true, confirmButtonText: "Ya, Terapkan", cancelButtonText: "Batal" });
+      if (!confirmed.isConfirmed) return false;
+      const result = await post("save", checked.snapshot);
+      if (!result.success || result.batchId !== batch.id || result.batchCode !== batchCode || !Array.isArray(result.data) || result.data.length !== result.total || !result.data.length || result.data.length > 50 || result.data.some((po: any) => typeof po.id !== "string" || typeof po.isNotaDinas !== "boolean" || !(po.noNd === null || typeof po.noNd === "string") || !(po.linkNd === null || typeof po.linkNd === "string"))) throw new Error("Respons ND batch tidak valid. Periksa data sebelum mencoba kembali.");
+      pages.applyBatchNdDetails(batchCode, result.data);
+      void Swal.fire({ icon: "success", title: `${result.count} No. ND berhasil disimpan`, toast: true, position: "top-end", timer: 2500, showConfirmButton: false });
+      return true;
+    } catch (error) {
+      await Swal.fire({ icon: "error", title: "ND Batch Belum Tersimpan", text: error instanceof Error ? error.message : "Silakan coba kembali." });
+      return false;
+    } finally {
+      activeActions.current.delete(batchCode);
+      setBatchBusy(prev => ({ ...prev, [batchCode]: false }));
     }
   };
 
@@ -445,6 +479,7 @@ export function useCreditLimitApproval({
     handleChecklistAllND,
     handleExportExcel,
     handleUpdateNDDetails,
+    handleBatchND,
     handleCloseBatch,
     handleUncloseBatch,
     handleUpdateKodeVendor,

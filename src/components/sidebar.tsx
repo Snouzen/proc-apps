@@ -96,7 +96,7 @@ export default function Sidebar({
   const [regional, setRegional] = useState<string | null>(
     initialRegional ?? null,
   );
-  const [siteArea, setSiteArea] = useState<string | null>(
+  const [, setSiteArea] = useState<string | null>(
     initialSiteArea ?? null,
   );
 
@@ -307,7 +307,7 @@ export default function Sidebar({
       id: "report_realisasi",
     },
   ];
-  const reportSubItems = allReportSubItems.filter((sub) => isMenuAllowed(sub.id));
+  const reportSubItems = allReportSubItems.filter((sub) => (sub.id !== "report_realisasi" || role === "pusat") && isMenuAllowed(sub.id));
 
   const allBranchSubItems = [
     {
@@ -417,7 +417,7 @@ export default function Sidebar({
           {isMenuAllowed("dashboard") && <RenderLink item={dashboardItem} pathname={pathname} isOpen={isOpen} onNavigate={handleNavClick} />}
 
           {/* 2. Purchase Order */}
-          {isMenuAllowed("po") && (role !== "sitearea" || !siteArea || siteArea.replace(/\s+/g, "").toUpperCase() === "SPBDKI") && (
+          {isMenuAllowed("po") && (
             <RenderLink item={poItem} pathname={pathname} isOpen={isOpen} onNavigate={handleNavClick} />
           )}
           

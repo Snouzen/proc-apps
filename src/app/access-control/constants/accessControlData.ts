@@ -60,7 +60,6 @@ export const EXISTING_ROLES: RoleDef[] = [
     modules: [
       "Purchase Order (View & Tracking Regional)",
       "Schedule Monitoring Regional",
-      "Laporan Realisasi Regional",
       "Trend Pengadaan Regional",
     ],
   },
@@ -76,7 +75,6 @@ export const EXISTING_ROLES: RoleDef[] = [
       "Input & Edit Purchase Order Cabang",
       "Alokasi Cabang & Expired Tracking",
       "Tools Nota Dinas",
-      "Laporan Realisasi Cabang",
     ],
   },
   {
@@ -396,7 +394,6 @@ export const DEFAULT_ROLE_CONFIGS: Record<
       "rekon_data",
       "credit_limit_data",
       "report_po",
-      "report_realisasi",
       "master_ritel",
     ],
     enabledActions: [
@@ -423,8 +420,6 @@ export const DEFAULT_ROLE_CONFIGS: Record<
       "rep_view",
       "rep_trend",
       "rep_export",
-      "real_view",
-      "real_export_pdf",
       "m_ritel_view",
     ],
   },
@@ -438,7 +433,6 @@ export const DEFAULT_ROLE_CONFIGS: Record<
       "branch_expired",
       "retur",
       "nota_dinas",
-      "report_realisasi",
     ],
     enabledActions: [
       "cl_data_view",
@@ -464,10 +458,6 @@ export const DEFAULT_ROLE_CONFIGS: Record<
       "nd_download_word",
       "nd_download_pdf",
       "nd_preview",
-      "real_view",
-      "real_multidate",
-      "real_input",
-      "real_export_pdf",
     ],
   },
   magang: {

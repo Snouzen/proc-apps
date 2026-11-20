@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import puppeteer, { Browser } from "puppeteer";
 import { REALISASI_PDF_CSS, REALISASI_REPORT_WIDTH, fitRealisasiToLandscape, layoutRealisasiForLandscape } from "@/lib/realisasiPdfStyles";
 import { getSessionWithRole } from "@/lib/auth";
-import { hasPermission } from "@/lib/accessControl";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -85,7 +84,7 @@ export async function POST(req: NextRequest) {
     }
 
     const safeRole = auth.safeRole || auth.role;
-    const canExport = safeRole === "pusat" || (await hasPermission(safeRole, "real_export_pdf"));
+    const canExport = safeRole === "pusat";
     if (!canExport) {
       return NextResponse.json(
         { error: "Akses ditolak: Anda tidak memiliki wewenang untuk mengekspor dokumen Realisasi Pemenuhan (real_export_pdf)." },

@@ -15,11 +15,27 @@ function fixture({role='pusat',authenticated=true,extra=0,brokenCount=false}={})
   purchaseOrderItem:{findMany:async({where})=>{calls.itemIds.push(where.purchaseOrderId.in);return where.purchaseOrderId.in.flatMap(id=>[1,2].map(n=>({id:id+'I'+n,purchaseOrderId:id,pcs:10,pcsKirim:5,nominal:100,Product:{name:'PRODUCT',satuanKg:5}})));}},
   $queryRaw:async sql=>{const ids=sql.values.flatMap(v=>Array.isArray(v?.values)?v.values:[]);calls.aggregateIds.push(ids);assert(sql.strings.join('').includes('COUNT(DISTINCT po.id)'));return batches.filter(b=>ids.includes(b.id)).map(b=>({batchId:b.id,poCount:BigInt(b.PurchaseOrders.length),requestedCount:BigInt(b.PurchaseOrders.filter(p=>p.statusCreditLimit==='REQUESTED').length),approvedCount:BigInt(b.PurchaseOrders.filter(p=>p.statusCreditLimit==='APPROVED').length),completedCount:BigInt(b.PurchaseOrders.filter(p=>p.statusCreditLimit==='APPROVED_DIREKSI').length),ndCount:BigInt(b.PurchaseOrders.filter(p=>p.isNotaDinas).length),totalPcs:BigInt(b.PurchaseOrders.length*20),totalPcsKirim:BigInt(b.PurchaseOrders.length*10),totalNominal:b.PurchaseOrders.length*200}));},
  };
+ const aggregate=db.$queryRaw;
+ db.$queryRaw=async sql=>{
+  assert(sql.strings.join('').includes(`COALESCE(po."noNd", '') ~ '^[[:space:]]*$'`));
+  return(await aggregate(sql)).map(row=>({...row,missingNdCount:BigInt(batches.find(b=>b.id===row.batchId).PurchaseOrders.filter(po=>!po.noNd?.trim()).length)}));
+ };
  db.$transaction=async(fn,options)=>{calls.transactions.push(options);return fn(db);};
  const load=loader({'@/lib/prisma':{__esModule:true,default:db},'@/lib/ttl-cache':{cacheGet:()=>undefined},'@/lib/accessControl':{},'@/app/api/po/services/creditApprovalActionService':{},'@/lib/auth':{getSessionWithRole:async()=>authenticated?{role}:null},'../../../../../server/generated/prisma':{Prisma:{sql:(strings,...values)=>({strings,values}),join:values=>({values})}}});
  return{calls,batches,service:load('src/app/api/po/services/creditApprovalListService.ts'),load};
 }
 const tests=[],test=(name,run)=>tests.push([name,run]);
+test('Summary counts blank ND independently from checklist, including one blank in 50 unopened POs',async()=>{
+ const f=fixture(),pos=f.batches[12].PurchaseOrders;
+ pos.forEach(po=>{po.noNd='ND-FILLED';po.isNotaDinas=false;});
+ assert.equal((await f.service.listApprovalBatches(new URLSearchParams())).data[0].missingNdCount,0);
+ for(const blank of [null,'',' \t\n ']){
+  pos[0].noNd=blank;pos[0].isNotaDinas=true;
+  const batch=(await f.service.listApprovalBatches(new URLSearchParams())).data[0];
+  assert.equal(batch.missingNdCount,1);assert.equal(batch.ndCount,1);
+ }
+ assert.equal(f.calls.poReads.length,0);
+});
 test('Initial page returns only 10 summaries, never PO or item detail, for 6000 POs',async()=>{const f=fixture(),r=await f.service.listApprovalBatches(new URLSearchParams());assert.equal(r.data.length,10);assert.equal(r.total,120);assert.equal(r.matchingPoCount,6000);assert.equal(f.calls.poReads.length,0);assert.equal(f.calls.itemIds.length,0);assert.equal(f.calls.aggregateIds[0].length,10);assert(r.data.every(b=>b.poCount===50&&!('pos'in b)&&!('PurchaseOrders'in b)));assert.equal(r.data[0].batchCode,'CL-013/11/2026');assert.equal(r.data[0].totalPcs,1000);assert.equal(r.data[0].totalPcsKirim,500);assert.equal(r.data[0].totalNominal,10000);assert.equal(r.data[0].ndCount,25);assert.equal(f.calls.transactions[0].isolationLevel,'RepeatableRead');});
 test('Page 2 crosses active/archive boundary without duplicating or omitting batch',async()=>{const f=fixture(),first=await f.service.listApprovalBatches(new URLSearchParams()),next=await f.service.listApprovalBatches(new URLSearchParams({page:'2'}));assert.equal(next.data.length,10);assert.deepEqual(next.data.slice(0,3).map(b=>b.batchCode),['CL-003/11/2026','CL-002/11/2026','CL-001/11/2026']);assert.equal(next.data[3].batchCode,'CL-120/11/2026');assert(!first.data.some(a=>next.data.some(b=>a.id===b.id)));assert(next.data.slice(3).every(b=>b.isArchived));});
 test('Global latest sequence prevents page-local Unclose eligibility',async()=>{const f=fixture(),r=await f.service.listApprovalBatches(new URLSearchParams({page:'2'}));assert(r.data.every(b=>!b.isBatchUncloseable));});

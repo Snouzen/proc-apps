@@ -86,6 +86,20 @@ export function useRetailerFilters(scope?: { role: string | null; regional: stri
     return Array.from(new Set(sites)).sort();
   }, [selectedRegional, unitProduksis, siteAreaLocked, scope?.siteArea]);
 
+  const selectedRegionalLabel = useMemo(() => {
+    if (!regionalLocked || !selectedRegional) return selectedRegional;
+    const names = getRegionalSynonyms(selectedRegional);
+    return unitProduksis.find(unit => getRegionalSynonyms(unit.namaRegional).some(name => names.includes(name)))?.namaRegional || selectedRegional;
+  }, [regionalLocked, selectedRegional, unitProduksis]);
+
+  const selectedSiteAreaLabel = useMemo(() => {
+    if (!siteAreaLocked || !selectedSiteArea) return selectedSiteArea;
+    return selectedSiteArea.split(",").map(area => {
+      const normalized = area.trim().toLowerCase();
+      return unitProduksis.find(unit => unit.idRegional.toLowerCase() === normalized || unit.siteArea.trim().toLowerCase() === normalized)?.siteArea || area.trim();
+    }).join(", ");
+  }, [siteAreaLocked, selectedSiteArea, unitProduksis]);
+
   const handleSelectNamaPt = (namaPt: string) => {
     setSelectedNamaPt(namaPt);
     setSelectedInisial("");
@@ -128,6 +142,8 @@ export function useRetailerFilters(scope?: { role: string | null; regional: stri
     selectedTujuan,
     selectedRegional,
     selectedSiteArea,
+    selectedRegionalLabel,
+    selectedSiteAreaLabel,
     
     handleSelectNamaPt,
     handleSelectInisial,

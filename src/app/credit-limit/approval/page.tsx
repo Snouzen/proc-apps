@@ -127,6 +127,7 @@ export default function CreditLimitApprovalPage() {
               onToggleND={data.handleToggleND}
               onChecklistAllND={data.handleChecklistAllND}
               onUpdateNDDetails={data.handleUpdateNDDetails}
+              onBatchND={data.handleBatchND}
               onCloseBatch={data.handleCloseBatch}
               onUncloseBatch={data.handleUncloseBatch}
               onOpenNdModal={(code) => void data.withBatchDetails(code, pos => handleOpenNdModal(code, pos))}

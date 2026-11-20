@@ -18,23 +18,104 @@ test('Older page response cannot overwrite new filter; filters reset pagination'
 test('Mutation invalidates batch detail and refreshes open batch plus summary only',()=>withFixture(async f=>{await f.render().fetchData();f.render().toggleBatch('CL-B1');f.render();await tick();const before=f.requests.length;f.render().refreshForPoIds(['B1P0']);await tick();f.render();await tick();assert(f.requests.length>=before+2);assert.equal(f.render().batchGroups[0].pos.length,50);assert(f.requests.every(u=>u.pathname==='/api/po/credit-limit/approval'));}));
 test('A replaced detail response cannot restore stale status',()=>withFixture(async f=>{await f.render().fetchData();let resolve;f.fetch(()=>new Promise(r=>resolve=r));const pending=f.render().loadBatch('CL-B1').catch(()=>null);f.fetch(async()=>Response.json({...detail(summary()),data:detail(summary()).data.map(po=>({...po,statusCreditLimit:'APPROVED'}))}));await f.render().loadBatch('CL-B1',true);resolve(Response.json(detail(summary())));await pending;assert(f.render().poData.every(po=>po.statusCreditLimit==='APPROVED'));}));
 
-function compatFixture({failRead=false,missingNd=false,approve=false,cancel=false}={}) {
- const posts=[],alerts=[],downloads=[],reads=[],exportUrls=[];
+test('Inline ND updates row, summary and reopened cache without list/detail requests',()=>withFixture(async f=>{
+ await f.render().fetchData();f.render().toggleBatch('CL-B1');f.render();await tick();
+ const before=f.requests.length;
+ f.render().applyNdDetails('B1P0',{noNd:'NEW-ND',linkNd:'',isNotaDinas:true});
+ assert.equal(f.render().loading,false);assert.equal(f.render().poData[0].noNd,'NEW-ND');
+ assert.equal(f.render().batchGroups[0].ndCount,1);
+ assert.equal(f.render().batchGroups[0].missingNdCount,0);
+ const rows=await f.render().loadBatch('CL-B1');assert.equal(rows[0].noNd,'NEW-ND');
+ assert.equal(f.requests.length,before);
+ f.render().applyNdDetails('B1P0',{noNd:'EDITED-ND',linkNd:'',isNotaDinas:true});
+ assert.equal(f.render().batchGroups[0].ndCount,1);
+}));
+
+test('Old in-flight list and detail reads cannot restore pre-save ND',()=>withFixture(async f=>{
+ await f.render().fetchData();await f.render().loadBatch('CL-B1');f.render();
+ let resolveList,resolveDetail;
+ f.fetch(url=>new Promise(resolve=>{if(url.searchParams.has('batchId'))resolveDetail=resolve;else resolveList=resolve;}));
+ const list=f.render().fetchData();const detailRead=f.render().loadBatch('CL-B1',true).catch(()=>null);
+ f.render().applyNdDetails('B1P0',{noNd:'SAVED',linkNd:null,isNotaDinas:true});
+ resolveDetail(Response.json(detail(summary())));resolveList(Response.json({data:[summary()],total:34,matchingPoCount:1700}));
+ await Promise.all([list,detailRead]);
+ assert.equal(f.render().batchGroups[0].ndCount,1);assert.equal(f.render().poData[0].noNd,'SAVED');
+ assert.equal(f.render().batchGroups[0].missingNdCount,0);
+ assert.equal((await f.render().loadBatch('CL-B1'))[0].noNd,'SAVED');
+}));
+
+test('Bulk ND patches loaded cache and summary without refetch; unopened batch needs no fake detail rows',()=>withFixture(async f=>{
+ await f.render().fetchData();
+ const rows=detail(summary()).data.map(po=>({id:po.id,noNd:'BULK',linkNd:null,isNotaDinas:true}));
+ f.render().applyBatchNdDetails('CL-B1',rows);
+ assert.equal(f.render().batchGroups[0].missingNdCount,0);
+ assert.equal(f.render().batchGroups[0].ndCount,50);assert.equal(f.render().poData.length,0);assert.equal(f.requests.length,1);
+ await f.render().loadBatch('CL-B1');const before=f.requests.length;
+ f.render().applyBatchNdDetails('CL-B1',rows);
+ assert(f.render().poData.every(po=>po.noNd==='BULK'&&po.isNotaDinas));
+ assert((await f.render().loadBatch('CL-B1')).every(po=>po.noNd==='BULK'));
+ assert.equal(f.requests.length,before);
+}));
+
+test('Clearing and restoring one ND updates missing count without a reload',()=>withFixture(async f=>{
+ await f.render().fetchData();await f.render().loadBatch('CL-B1');f.render();const before=f.requests.length;
+ f.render().applyNdDetails('B1P0',{noNd:' \t ',linkNd:null,isNotaDinas:true});
+ assert.equal(f.render().batchGroups[0].missingNdCount,1);
+ f.render().applyNdDetails('B1P0',{noNd:'RESTORED',linkNd:null,isNotaDinas:false});
+ assert.equal(f.render().batchGroups[0].missingNdCount,0);assert.equal(f.requests.length,before);
+}));
+
+test('ND success patches authoritative response without refreshing whole batches',async()=>{
+ const f=compatFixture();try{
+  assert.equal(await f.actions.handleUpdateNDDetails('P1','ND-123',''),true);
+  assert.deepEqual(f.ndPatches,[{id:'P1',noNd:'ND-123',linkNd:'',isNotaDinas:true}]);
+  assert.equal(f.refreshes.length,0);assert.equal(f.posts.length,1);
+ }finally{f.restore();}
+});
+test('ND failure returns false, retains stored values and exposes server error without reload',async()=>{
+ const f=compatFixture({failNd:true});try{
+  assert.equal(await f.actions.handleUpdateNDDetails('P1','ND-123',''),false);
+  assert.equal(f.ndPatches.length,0);assert.equal(f.refreshes.length,0);
+  assert(f.alerts.some(a=>a.text==='ND save unavailable'));
+ }finally{f.restore();}
+});
+
+function compatFixture({failRead=false,missingNd=false,approve=false,cancel=false,failNd=false}={}) {
+ const posts=[],alerts=[],downloads=[],reads=[],exportUrls=[],ndPatches=[],refreshes=[],batchNdPatches=[];
  const full=detail(summary()).data.map(po=>({...po,noNd:missingNd?'':po.noNd,statusCreditLimit:approve?'APPROVED':'REQUESTED'}));
  const batch={...summary(),requestedCount:approve?0:50,approvedCount:approve?50:0};
- const pages={poData:[],setPoData:()=>{},loading:false,role:'pusat',expandedBatches:new Set(),currentPage:1,setCurrentPage:()=>{},fetchData:async()=>{},batchGroups:[batch],paginatedBatches:[batch],totalPages:1,loadBatch:async()=>{reads.push('details');if(failRead)throw Error('Incomplete');return full;},refreshForPoIds:()=>{},refreshBatches:()=>{},detailLoading:{},detailErrors:{}};
+ const pages={poData:[],setPoData:()=>{},loading:false,role:'pusat',expandedBatches:new Set(),currentPage:1,setCurrentPage:()=>{},fetchData:async()=>{},batchGroups:[batch],paginatedBatches:[batch],totalPages:1,loadBatch:async()=>{reads.push('details');if(failRead)throw Error('Incomplete');return full;},refreshForPoIds:ids=>refreshes.push(ids),refreshBatches:()=>{},applyNdDetails:(id,patch)=>ndPatches.push({id,...patch}),applyBatchNdDetails:(code,rows)=>batchNdPatches.push({code,rows}),detailLoading:{},detailErrors:{}};
  const original={fetch:global.fetch,document:global.document,create:URL.createObjectURL,revoke:URL.revokeObjectURL};
  global.document={body:{appendChild:()=>{}},createElement:()=>({click:()=>downloads.push(true),remove:()=>{}})};
  URL.createObjectURL=()=> 'blob:mock';URL.revokeObjectURL=()=>{};
  global.fetch=async(url,options)=> {
   if(String(url).includes('/export?')){exportUrls.push(new URL(url,'http://local'));return failRead?Response.json({error:'Incomplete'},{status:503}):new Response('xlsx',{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}});}
   const body=JSON.parse(options.body);posts.push(body);
+  if(String(url).endsWith('/nd'))return failNd?Response.json({error:'Batch changed',code:'ND_BATCH_CHANGED'},{status:409}):Response.json({success:true,batchId:'B1',batchCode:'CL-B1',snapshot:'a'.repeat(64),count:50,total:50,overwriteCount:2,completedCount:0,data:full.map(po=>({id:po.id,noNd:body.noNd,linkNd:null,isNotaDinas:true}))});
+  if(body.action==='updateNDDetails')return failNd?Response.json({error:'ND save unavailable'},{status:503}):Response.json({success:true,data:{id:body.poId,noNd:body.noNd,linkNd:body.linkNd,isNotaDinas:!!body.noNd}});
   if(body.mode==='check')return failRead?Response.json({error:'Incomplete'},{status:503}):Response.json({ready:!missingNd,missingNdCount:missingNd?50:0,missingNd:['PO-1'],snapshot:'a'.repeat(64),targetCount:50,batchCode:'CL-B1'});
   return Response.json({success:true,count:50});
  };
  const hook=load('src/hooks/useCreditLimitApproval.ts',{'./useApprovalBatchPages':{useApprovalBatchPages:()=>pages},react:{useRef:value=>({current:value}),useState:value=>[value,()=>{}]},sweetalert2:{__esModule:true,default:{fire:async options=>{alerts.push(options);return {isConfirmed:!cancel};},showLoading:()=>{},close:()=>{}}}}).useCreditLimitApproval;
- return {actions:hook({search:'NEEDLE',selectedNamaPt:'COMPANY A',selectedInisial:'',selectedTujuan:'',tglFrom:'',tglTo:''}),posts,alerts,downloads,reads,exportUrls,restore:()=>{global.fetch=original.fetch;global.document=original.document;URL.createObjectURL=original.create;URL.revokeObjectURL=original.revoke;}};
+ return {actions:hook({search:'NEEDLE',selectedNamaPt:'COMPANY A',selectedInisial:'',selectedTujuan:'',tglFrom:'',tglTo:''}),posts,alerts,downloads,reads,exportUrls,ndPatches,refreshes,batchNdPatches,restore:()=>{global.fetch=original.fetch;global.document=original.document;URL.createObjectURL=original.create;URL.revokeObjectURL=original.revoke;}};
 }
+
+test('Bulk ND always requests empty-only, confirms preservation and patches without loading closed batch',async()=>{
+ const f=compatFixture();try{
+  assert.equal(await f.actions.handleBatchND('CL-B1',' ND-BULK '),true);
+  assert.deepEqual(f.posts.map(p=>p.mode),['check','save']);assert.equal(f.posts[1].expectedSnapshot,'a'.repeat(64));
+  assert.equal(f.posts[0].noNd,'ND-BULK');assert(!f.posts[0].poIds);assert.equal(f.reads.length,0);assert.equal(f.refreshes.length,0);
+  assert(f.posts.every(p=>p.policy==='empty'));
+  assert.equal(f.batchNdPatches[0].rows.length,50);assert(f.alerts.some(a=>a.text?.includes('Nomor yang sudah terisi tetap dipertahankan')));
+ }finally{f.restore();}
+});
+test('Cancel mass ND confirmation never mutates; conflict leaves cache untouched with error code',async()=>{
+ for(const opts of [{cancel:true},{failNd:true}]){const f=compatFixture(opts);try{
+  assert.equal(await f.actions.handleBatchND('CL-B1','ND-BULK'),false);
+  assert.equal(f.posts.length,1);assert.equal(f.batchNdPatches.length,0);assert.equal(f.refreshes.length,0);
+  if(opts.failNd)assert(f.alerts.some(a=>a.text?.includes('ND_BATCH_CHANGED')));
+ }finally{f.restore();}}
+});
 test('Bulk approve checks and commits by batch ID without loading closed detail; ND checkbox still loads complete detail',async()=>{const f=compatFixture();try{await f.actions.handleApproveAll('CL-B1',[]);assert.equal(f.reads.length,0);assert.deepEqual(f.posts.map(p=>p.mode),['check','approve']);assert.equal(f.posts[1].batchId,'B1');assert(!f.posts[1].poIds);await f.actions.handleChecklistAllND('CL-B1',[],true);assert.equal(f.posts[2].action,'toggleAllND');assert.equal(f.posts[2].poIds.length,50);}finally{f.restore();}});
 test('Export downloads server workbook without loading any accordion PO',async()=>{const f=compatFixture();try{await f.actions.handleExportExcel('CL-B1',[]);assert.equal(f.downloads.length,1);assert.equal(f.reads.length,0);}finally{f.restore();}});
 test('Export Semua sends filters without page/limit or any browser-loaded PO list',async()=>{const f=compatFixture();try{await f.actions.handleExportExcel();assert.equal(f.downloads.length,1);const p=f.exportUrls[0].searchParams;assert.equal(p.get('q'),'NEEDLE');assert.equal(p.get('company'),'COMPANY A');assert(!p.has('page')&&!p.has('limit')&&!p.has('batchId'));assert.equal(f.reads.length,0);}finally{f.restore();}});
@@ -44,5 +125,5 @@ test('Cancel confirmation performs check only, never mutation',async()=>{const f
 test('Single Direksi uses server check then commit with the selected PO ID',async()=>{const f=compatFixture({approve:true});try{await f.actions.handleAction({id:'B1P0',creditLimitBatchId:'B1',CreditLimitBatch:{batchCode:'CL-B1'}},'approveDireksi');assert.equal(f.posts.length,2);assert(f.posts.every(p=>p.poId==='B1P0'&&p.stage==='direksi'));assert.equal(f.posts[1].expectedSnapshot,'a'.repeat(64));}finally{f.restore();}});
 test('Duplicate concurrent clicks produce a single check/commit pair',async()=>{const f=compatFixture();try{await Promise.all([f.actions.handleApproveAll('CL-B1',[]),f.actions.handleApproveAll('CL-B1',[])]);assert.equal(f.posts.length,2);}finally{f.restore();}});
 
-test('Closed accordion renders summary without mounting a PO table; opened batch renders all loaded PO',()=>{const Table=()=>null,helper={display:v=>v,accessor:(_,v)=>v};const mocks={react:{__esModule:true,default:{},useState:v=>[v,()=>{}],useMemo:fn=>fn()},'@/components/data-table/DataTableV2':{DataTableV2:Table},'@tanstack/react-table':{createColumnHelper:()=>helper},'lucide-react':new Proxy({},{get:()=>()=>null}),'date-fns':{format:()=>''},'@/lib/credit-limit':{},'./StandardTooltip':{},'./ActionButton':{},'./StatusBadge':{},'./InlineVendorInput':{}};const Accordion=load('src/components/credit-limit/BatchAccordion.tsx',mocks).BatchAccordion;function count(node){if(!node||typeof node!=='object')return 0;if(Array.isArray(node))return node.reduce((n,item)=>n+count(item),0);return(node.type===Table?1:0)+count(node.props?.children);}const props={batchCode:'CL-B1',pos:detail(summary()).data,isArchived:false,onToggle:()=>{},onAction:()=>{},onViewRow:()=>{},onApproveAll:()=>{},onExportExcel:()=>{},onToggleND:()=>{},onChecklistAllND:()=>{},onUpdateNDDetails:()=>{},summary:summary()};assert.equal(count(Accordion({...props,isExpanded:false})),0);assert.equal(count(Accordion({...props,isExpanded:true})),1);});
+test('Closed accordion renders summary without mounting a PO table; opened batch renders all loaded PO',()=>{const Table=()=>null,helper={display:v=>v,accessor:(_,v)=>v};const mocks={react:{__esModule:true,default:{},useState:v=>[v,()=>{}],useRef:v=>({current:v}),useMemo:fn=>fn()},'@/components/data-table/DataTableV2':{DataTableV2:Table},'@tanstack/react-table':{createColumnHelper:()=>helper},'lucide-react':new Proxy({},{get:()=>()=>null}),'date-fns':{format:()=>''},'@/lib/credit-limit':{},'./StandardTooltip':{},'./ActionButton':{},'./StatusBadge':{},'./InlineVendorInput':{}};const Accordion=load('src/components/credit-limit/BatchAccordion.tsx',mocks).BatchAccordion;function count(node){if(!node||typeof node!=='object')return 0;if(Array.isArray(node))return node.reduce((n,item)=>n+count(item),0);return(node.type===Table?1:0)+count(node.props?.children);}const props={batchCode:'CL-B1',pos:detail(summary()).data,isArchived:false,onToggle:()=>{},onAction:()=>{},onViewRow:()=>{},onApproveAll:()=>{},onExportExcel:()=>{},onToggleND:()=>{},onChecklistAllND:()=>{},onUpdateNDDetails:()=>{},summary:summary()};assert.equal(count(Accordion({...props,isExpanded:false})),0);assert.equal(count(Accordion({...props,isExpanded:true})),1);});
 (async()=>{let passed=0;for(const[name,run]of tests){try{await run();passed++;console.log('PASS '+name);}catch(error){process.exitCode=1;console.error('FAIL '+name,error);}}console.log(passed+'/'+tests.length+' passed; actual hooks and accordion with mocked React/network, no DB or file export writes');})();

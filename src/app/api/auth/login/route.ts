@@ -4,6 +4,7 @@ import { authenticate, signSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
+  let stage = "parse_request";
   try {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
     const windowStart = new Date(Date.now() - 60_000);
 
     // ── Distributed Rate Limiting with Atomic Advisory Transaction Lock ──
+    stage = "database_transaction";
     const authResult = await prisma.$transaction(async (tx) => {
       // 1. Transaction-level advisory lock serializes concurrent attempts for this IP and target email
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${ipKey}))`;
@@ -115,6 +117,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    stage = "sign_session";
     const token = signSession(authResult.payload);
     // Minimal server-side log for troubleshooting (email + role only)
     try {
@@ -142,6 +145,17 @@ export async function POST(req: Request) {
     });
     return res;
   } catch (e) {
+    // Do not log raw messages, payloads or connection strings: driver errors may contain secrets.
+    const error = e as { name?: unknown; code?: unknown; cause?: { code?: unknown }; meta?: { driverAdapterError?: { cause?: { kind?: unknown; originalCode?: unknown } } } } | null;
+    const safeCode = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_]{1,80}$/.test(value) ? value : null;
+    console.error("[auth/login] failed", {
+      stage,
+      name: safeCode(error?.name),
+      code: safeCode(error?.code),
+      causeCode: safeCode(error?.cause?.code),
+      driverKind: safeCode(error?.meta?.driverAdapterError?.cause?.kind),
+      driverCode: safeCode(error?.meta?.driverAdapterError?.cause?.originalCode),
+    });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

@@ -3,6 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { getMe } from "@/lib/me";
 import type { ApprovalBatchSummary } from "@/lib/creditApprovalBatch";
 
+type NdDetails = { noNd: string | null; linkNd: string | null; isNotaDinas: boolean };
+
 export function useApprovalBatchPages(filters: { search: string; selectedNamaPt: string; selectedInisial: string; selectedTujuan: string; tglFrom: string; tglTo: string }) {
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(true);
@@ -32,6 +34,10 @@ export function useApprovalBatchPages(filters: { search: string; selectedNamaPt:
   const versions = useRef(new Map<string, number>());
   const listController = useRef<AbortController | null>(null);
   const listVersion = useRef(0);
+  const ndRevision = useRef(0);
+  const ndVersions = useRef(new Map<string, number>());
+  const ndCounts = useRef(new Map<string, number>());
+  const missingNdCounts = useRef(new Map<string, number>());
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -42,6 +48,7 @@ export function useApprovalBatchPages(filters: { search: string; selectedNamaPt:
 
   const fetchData = useCallback(async () => {
     const requestedQuery = queryRef.current, version = ++listVersion.current;
+    const requestedNdRevision = ndRevision.current;
     listController.current?.abort();
     const controller = new AbortController(); listController.current = controller;
     setLoading(true); setFetchError(null);
@@ -51,8 +58,15 @@ export function useApprovalBatchPages(filters: { search: string; selectedNamaPt:
       if (!response.ok) throw new Error(result.error || "Gagal memuat daftar batch.");
       if (!alive.current || version !== listVersion.current || requestedQuery !== queryRef.current) return;
       if (!Array.isArray(result.data) || result.data.length > 10 || !Number.isFinite(result.total)) throw new Error("Respons daftar batch tidak valid.");
+      // A list read started before an inline save must not restore an old ND count.
+      result.data = result.data.map((batch: ApprovalBatchSummary) => {
+        return ndCounts.current.has(batch.batchCode) && (ndVersions.current.get(batch.batchCode) || 0) > requestedNdRevision
+          ? { ...batch, ndCount: ndCounts.current.get(batch.batchCode)!, missingNdCount: missingNdCounts.current.get(batch.batchCode)! }
+          : batch;
+      });
       result.data.forEach((batch: ApprovalBatchSummary) => {
         const saved = cache.current.get(batch.batchCode);
+        if (saved && saved.rows.filter(po => !po.noNd?.trim()).length !== batch.missingNdCount) cache.current.delete(batch.batchCode);
         if (saved && (saved.rows.length !== batch.poCount || saved.rows.filter(po => po.statusCreditLimit === "REQUESTED").length !== batch.requestedCount || saved.rows.filter(po => po.statusCreditLimit === "APPROVED").length !== batch.approvedCount || saved.rows.filter(po => po.isNotaDinas).length !== batch.ndCount)) cache.current.delete(batch.batchCode);
       });
       setSummaries(result.data); setTotalBatches(result.total); setMatchingPoCount(result.matchingPoCount);
@@ -101,6 +115,46 @@ export function useApprovalBatchPages(filters: { search: string; selectedNamaPt:
     return promise;
   }, []);
 
+  const applyNdDetails = useCallback((poId: string, details: NdDetails) => {
+    const code = poBatches.current.get(poId);
+    if (code) {
+      ndVersions.current.set(code, ++ndRevision.current);
+      // Cancel older detail reads without reloading or unmounting the batch.
+      versions.current.set(code, (versions.current.get(code) || 0) + 1);
+      detailFlights.current.get(code)?.controller.abort();
+      detailFlights.current.delete(code);
+      setDetailLoading(prev => ({ ...prev, [code]: false }));
+      const saved = cache.current.get(code);
+      if (saved) {
+        const rows = saved.rows.map(po => po.id === poId ? { ...po, ...details } : po);
+        cache.current.set(code, { ...saved, rows });
+        const ndCount = rows.filter(po => po.isNotaDinas).length;
+        const missingNdCount = rows.filter(po => !po.noNd?.trim()).length;
+        ndCounts.current.set(code, ndCount);
+        missingNdCounts.current.set(code, missingNdCount);
+        setSummaries(prev => prev.map(batch => batch.batchCode === code ? { ...batch, ndCount, missingNdCount } : batch));
+      }
+    }
+    setPoData(prev => prev.map(po => po.id === poId ? { ...po, ...details } : po));
+  }, []);
+
+  const applyBatchNdDetails = useCallback((code: string, rows: Array<NdDetails & { id: string }>) => {
+    const patches = new Map(rows.map(po => [po.id, { noNd: po.noNd, linkNd: po.linkNd, isNotaDinas: po.isNotaDinas }]));
+    ndVersions.current.set(code, ++ndRevision.current);
+    const ndCount = rows.filter(po => po.isNotaDinas).length;
+    const missingNdCount = rows.filter(po => !po.noNd?.trim()).length;
+    ndCounts.current.set(code, ndCount);
+    missingNdCounts.current.set(code, missingNdCount);
+    versions.current.set(code, (versions.current.get(code) || 0) + 1);
+    detailFlights.current.get(code)?.controller.abort();
+    detailFlights.current.delete(code);
+    setDetailLoading(prev => ({ ...prev, [code]: false }));
+    const saved = cache.current.get(code);
+    if (saved) cache.current.set(code, { ...saved, rows: saved.rows.map(po => patches.has(po.id) ? { ...po, ...patches.get(po.id) } : po) });
+    setSummaries(prev => prev.map(batch => batch.batchCode === code ? { ...batch, ndCount, missingNdCount } : batch));
+    setPoData(prev => prev.map(po => patches.has(po.id) ? { ...po, ...patches.get(po.id) } : po));
+  }, []);
+
   const refreshBatches = useCallback((codes: string[]) => {
     const targets = [...new Set(codes)];
     targets.forEach(code => { cache.current.delete(code); detailFlights.current.get(code)?.controller.abort(); versions.current.set(code, (versions.current.get(code) || 0) + 1); detailFlights.current.delete(code); });
@@ -118,5 +172,5 @@ export function useApprovalBatchPages(filters: { search: string; selectedNamaPt:
   const groups = summaries.map(batch => ({ ...batch, pos: poData.filter(po => po.creditLimitBatchId === batch.id) }));
   return { poData, setPoData, loading, role, fetchError, fetchData, matchingPoCount, totalBatches,
     currentPage, setCurrentPage: (value: number | ((prev: number) => number)) => setPagination(prev => ({ key: filterKey, page: typeof value === "function" ? value(prev.key === filterKey ? prev.page : 1) : value })), totalPages: Math.max(1, Math.ceil(totalBatches / 10)),
-    batchGroups: groups, paginatedBatches: groups, expandedBatches, toggleBatch, loadBatch, detailLoading, detailErrors, refreshBatches, refreshForPoIds };
+    batchGroups: groups, paginatedBatches: groups, expandedBatches, toggleBatch, loadBatch, detailLoading, detailErrors, refreshBatches, refreshForPoIds, applyNdDetails, applyBatchNdDetails };
 }

@@ -168,6 +168,9 @@ export async function proxy(req: NextRequest) {
   }
 
   // ── Role-based Access Control ──
+  if ((pathname === "/report/realisasi" || pathname.startsWith("/report/realisasi/")) && session.role !== "pusat") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
   if ((pathname === "/credit-limit/approval" || pathname.startsWith("/credit-limit/approval/")) && session.role !== "pusat") {
     return NextResponse.redirect(new URL("/", req.url));
   }

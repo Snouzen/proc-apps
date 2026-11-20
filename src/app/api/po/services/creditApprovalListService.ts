@@ -38,6 +38,7 @@ async function readApprovalBatches(input: URLSearchParams, db: Prisma.Transactio
       COUNT(DISTINCT po.id) FILTER (WHERE po."statusCreditLimit" = 'APPROVED') AS "approvedCount",
       COUNT(DISTINCT po.id) FILTER (WHERE po."statusCreditLimit" = 'APPROVED_DIREKSI') AS "completedCount",
       COUNT(DISTINCT po.id) FILTER (WHERE po."isNotaDinas" = true) AS "ndCount",
+      COUNT(DISTINCT po.id) FILTER (WHERE COALESCE(po."noNd", '') ~ '^[[:space:]]*$') AS "missingNdCount",
       COALESCE(SUM(item.pcs), 0) AS "totalPcs",
       COALESCE(SUM(item."pcsKirim"), 0) AS "totalPcsKirim",
       COALESCE(SUM(item.nominal), 0) AS "totalNominal"
@@ -54,7 +55,7 @@ async function readApprovalBatches(input: URLSearchParams, db: Prisma.Transactio
       isBatchOpen: batch.status === "OPEN", isArchived: !value("requestedCount") && !value("approvedCount"),
       isBatchUncloseable: batch.status !== "OPEN" && batch.seqNumber >= (latest._max.seqNumber || 0) - 1 && poCount < 50 && completedCount !== poCount,
       poCount, requestedCount: value("requestedCount"), approvedCount: value("approvedCount"), completedCount,
-      ndCount: value("ndCount"), totalPcs: value("totalPcs"), totalPcsKirim: value("totalPcsKirim"), totalNominal: value("totalNominal") };
+      ndCount: value("ndCount"), missingNdCount: value("missingNdCount"), totalPcs: value("totalPcs"), totalPcsKirim: value("totalPcsKirim"), totalNominal: value("totalNominal") };
   });
   return { data, total, matchingPoCount, page, pageSize: 10 };
 }

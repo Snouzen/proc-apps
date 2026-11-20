@@ -10,6 +10,7 @@ export interface ApprovalBatchSummary {
   approvedCount: number;
   completedCount: number;
   ndCount: number;
+  missingNdCount: number;
   totalPcs: number;
   totalPcsKirim: number;
   totalNominal: number;

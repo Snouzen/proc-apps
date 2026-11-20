@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { DataTableV2 } from "@/components/data-table/DataTableV2";
 import { createColumnHelper } from "@tanstack/react-table";
 
@@ -46,6 +46,7 @@ export function BatchAccordion({
   onToggleND,
   onChecklistAllND,
   onUpdateNDDetails,
+  onBatchND,
   isBatchOpen,
   onCloseBatch,
   isBatchUncloseable,
@@ -69,7 +70,8 @@ export function BatchAccordion({
   onExportExcel: (batchCode: string, pos: any[]) => void;
   onToggleND: (poId: string, currentVal: boolean) => void;
   onChecklistAllND: (batchCode: string, pos: any[], checked: boolean) => void;
-  onUpdateNDDetails: (poId: string, noNd: string, linkNd: string) => void;
+  onUpdateNDDetails: (poId: string, noNd: string, linkNd: string) => Promise<boolean>;
+  onBatchND?: (batchCode: string, noNd: string) => Promise<boolean>;
   isBatchOpen?: boolean;
   onCloseBatch?: (batchCode: string) => void;
   isBatchUncloseable?: boolean;
@@ -85,10 +87,44 @@ export function BatchAccordion({
   const [editNdId, setEditNdId] = useState<string | null>(null);
   const [tempNoNd, setTempNoNd] = useState("");
   const [tempLinkNd, setTempLinkNd] = useState("");
+  const [savingNd, setSavingNd] = useState(false);
+  const ndSaveActive = useRef(false);
+  const [showBatchNd, setShowBatchNd] = useState(false);
+  const [batchNoNd, setBatchNoNd] = useState("");
+  const [batchNdSaving, setBatchNdSaving] = useState(false);
+  const batchNdActive = useRef(false);
+  const saveBatchNd = async () => {
+    if (!onBatchND || !batchNoNd.trim() || batchNdActive.current || editNdId) return;
+    batchNdActive.current = true;
+    setBatchNdSaving(true);
+    try {
+      if (await onBatchND(batchCode, batchNoNd)) {
+        setShowBatchNd(false);
+        setBatchNoNd("");
+      }
+    } finally {
+      batchNdActive.current = false;
+      setBatchNdSaving(false);
+    }
+  };
+  const saveNd = async (poId: string) => {
+    if (ndSaveActive.current) return;
+    ndSaveActive.current = true;
+    setSavingNd(true);
+    try {
+      if (await onUpdateNDDetails(poId, tempNoNd, tempLinkNd)) setEditNdId(null);
+    } finally {
+      ndSaveActive.current = false;
+      setSavingNd(false);
+    }
+  };
 
   const totalPcs = summary?.totalPcs ?? pos.reduce((sum, po) => sum + Number(po.pcsTotal || 0), 0);
   const totalPcsKirim = summary?.totalPcsKirim ?? pos.reduce((sum, po) => sum + Number(po.pcsKirimTotal || 0), 0);
   const poCount = summary?.poCount ?? pos.length;
+  const hasEmptyNd = pos.length === poCount
+    ? pos.some(po => !po.noNd?.trim())
+    : (summary?.missingNdCount ?? 0) > 0;
   const isAllNDChecked = summary ? summary.poCount > 0 && summary.ndCount === summary.poCount : pos.length > 0 && pos.every(p => p.isNotaDinas);
   
   const hasRequested = summary ? summary.requestedCount > 0 : pos.some((po) => po.statusCreditLimit === "REQUESTED");
@@ -279,6 +315,7 @@ export function BatchAccordion({
           <input
             type="text"
             value={meta?.tempNoNd}
+            disabled={meta?.savingNd}
             onChange={(e) => meta?.setTempNoNd(e.target.value)}
             onClick={(e) => e.stopPropagation()}
             className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
@@ -304,6 +341,7 @@ export function BatchAccordion({
               <input
                 type="text"
                 value={meta?.tempLinkNd}
+                disabled={meta?.savingNd}
                 onChange={(e) => meta?.setTempLinkNd(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
                 className="min-w-[130px] w-full text-xs px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -352,15 +390,16 @@ export function BatchAccordion({
                   icon={Check}
                   onClick={(e) => {
                     e.stopPropagation();
-                    meta?.onUpdateNDDetails(po.id, meta?.tempNoNd, meta?.tempLinkNd);
-                    meta?.setEditNdId(null);
+                    void meta?.saveNd(po.id);
                   }}
-                  tooltip="Simpan ND"
+                  tooltip={meta?.savingNd ? "Menyimpan ND..." : "Simpan ND"}
+                  loading={meta?.savingNd}
                   variant="indigo"
                 />
               ) : (
                 <ActionButton
                   icon={Edit3}
+                  disabled={meta?.savingNd}
                   onClick={(e) => {
                     e.stopPropagation();
                     meta?.setTempNoNd(po.noNd || "");
@@ -442,7 +481,7 @@ export function BatchAccordion({
             onToggle();
           }
         }}
-        className="w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-200 group cursor-pointer focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/30"
+        className="w-full flex flex-wrap items-center gap-4 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-200 group cursor-pointer focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/30"
       >
         {/* Batch Badge */}
         <div className="flex items-center gap-2.5 min-w-0">
@@ -470,7 +509,7 @@ export function BatchAccordion({
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-4 ml-auto mr-4">
+        <div className="flex flex-wrap items-center justify-end gap-4 ml-auto mr-4 min-w-0 max-w-full">
           <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
             <Package size={12} className="text-slate-400 dark:text-slate-500" />
             <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tabular-nums">
@@ -495,7 +534,12 @@ export function BatchAccordion({
             <span className="text-[10px] text-emerald-400 dark:text-emerald-500 font-medium">Kirim</span>
           </div>
 
-          <fieldset disabled={detailsLoading || actionBusy} className="pl-2 border-l border-slate-200 dark:border-slate-700/50 flex items-center gap-2 disabled:opacity-60">
+          <fieldset disabled={detailsLoading || actionBusy} className="pl-2 border-l border-slate-200 dark:border-slate-700/50 flex flex-wrap items-center gap-2 disabled:opacity-60">
+            {onBatchND && hasEmptyNd && !isArchived && (hasRequested || hasApproved) && <button type="button" disabled={!!editNdId || savingNd}
+              onClick={e => { e.stopPropagation(); setShowBatchNd(value => !value); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300 disabled:opacity-50">
+              <Edit3 size={14} /> Isi ND per Batch
+            </button>}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -588,6 +632,17 @@ export function BatchAccordion({
         />
       </div>
 
+      {showBatchNd && hasEmptyNd && <form className="border-t border-slate-100 dark:border-slate-800 p-4 sm:px-6 bg-indigo-50/30 dark:bg-indigo-950/20" onSubmit={e => { e.preventDefault(); void saveBatchNd(); }}>
+        <fieldset disabled={actionBusy || batchNdSaving || !!editNdId} className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-xs font-semibold flex-1 min-w-0 basis-56">No. ND untuk Batch
+            <input value={batchNoNd} onChange={e => setBatchNoNd(e.target.value)} maxLength={255} required placeholder="Masukkan No. ND"
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" />
+          </label>
+          <button type="submit" disabled={!batchNoNd.trim()} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" aria-busy={batchNdSaving}>{batchNdSaving ? "Menyimpan…" : "Terapkan"}</button>
+          <button type="button" onClick={() => setShowBatchNd(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">Batal</button>
+        </fieldset>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Hanya mengisi No. ND yang kosong dalam batch ini. Nomor yang sudah terisi tetap dipertahankan; koreksi melalui edit per PO. PO yang sudah disetujui Direksi dan Link ND tidak diubah.</p>
+      </form>}
       {detailsLoading && <div role="status" className="px-6 pb-3 text-xs text-indigo-600 dark:text-indigo-400">Memuat detail batch…</div>}
       {/* Accordion Body: closed batches never mount PO tables. */}
       <div
@@ -607,6 +662,8 @@ export function BatchAccordion({
               editNdId,
               tempNoNd,
               tempLinkNd,
+              savingNd,
+              saveNd,
               setTempNoNd,
               setTempLinkNd,
               setEditNdId,

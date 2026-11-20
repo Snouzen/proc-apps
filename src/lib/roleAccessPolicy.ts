@@ -17,14 +17,16 @@ export function applyCreditLimitAccessRules(config: RoleAccessConfig): RoleAcces
       }
     }
     if (role === "sitearea") {
+      if (!enabledMenus.includes("po")) enabledMenus.push("po");
+      if (!enabledActions.includes("po_view")) enabledActions.push("po_view");
       if (!enabledMenus.includes("credit_limit_data")) enabledMenus.push("credit_limit_data");
       for (const action of ["cl_data_view", "cl_data_filter"]) {
         if (!enabledActions.includes(action)) enabledActions.push(action);
       }
     }
     return [role, {
-      enabledMenus: role === "pusat" ? enabledMenus : enabledMenus.filter(menu => menu !== "credit_limit_approval"),
-      enabledActions: role === "pusat" ? enabledActions : enabledActions.filter(action => !/^cl_(appr_|batch_)/.test(action)),
+      enabledMenus: role === "pusat" ? enabledMenus : enabledMenus.filter(menu => !["credit_limit_approval", "report_realisasi"].includes(menu)),
+      enabledActions: role === "pusat" ? enabledActions : enabledActions.filter(action => !/^cl_(appr_|batch_)/.test(action) && !action.startsWith("real_")),
     }];
   }));
 }
